@@ -1,0 +1,10 @@
+.next
+.local-tools
+node_modules
+coverage
+dist
+build
+*.lock
+pnpm-lock.yaml
+*.md
+node-dist-index.json
