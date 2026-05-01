@@ -2,14 +2,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
+import type { WorkshopSchedule } from "@/lib/workshop-schedule";
 
-const workshopDetails = [
-  "Live online masterclass",
-  "PCOS/PCOD lifestyle education",
-  "Date and time to be confirmed"
-];
+type HeroProps = {
+  schedule: WorkshopSchedule;
+};
 
-export function Hero() {
+export function Hero({ schedule }: HeroProps) {
+  const workshopDetails = [
+    "Live online masterclass",
+    "PCOS/PCOD lifestyle education",
+    `Next session: ${schedule.dateLabel}, ${schedule.timeLabel}`
+  ];
+
   return (
     <Section className="hero-section" aria-labelledby="hero-title">
       <header className="site-header" aria-label="Primary navigation">

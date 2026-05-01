@@ -1,34 +1,39 @@
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
+import type { WorkshopSchedule } from "@/lib/workshop-schedule";
 
-const logistics = [
-  {
-    label: "Date",
-    value: "To be confirmed"
-  },
-  {
-    label: "Time",
-    value: "To be confirmed"
-  },
-  {
-    label: "Duration",
-    value: "To be confirmed"
-  },
-  {
-    label: "Language",
-    value: "To be confirmed"
-  },
-  {
-    label: "Platform",
-    value: "Zoom / WhatsApp details after payment"
-  },
-  {
-    label: "After payment",
-    value: "Confirmation email and WhatsApp onboarding"
-  }
-];
+type LogisticsProps = {
+  schedule: WorkshopSchedule;
+};
 
-export function Logistics() {
+export function Logistics({ schedule }: LogisticsProps) {
+  const logistics = [
+    {
+      label: "Date",
+      value: schedule.dateLabel
+    },
+    {
+      label: "Time",
+      value: schedule.timeLabel
+    },
+    {
+      label: "Duration",
+      value: schedule.durationLabel
+    },
+    {
+      label: "Language",
+      value: "To be confirmed"
+    },
+    {
+      label: "Platform",
+      value: "Zoom / WhatsApp details after payment"
+    },
+    {
+      label: "After payment",
+      value: "Confirmation email and WhatsApp onboarding"
+    }
+  ];
+
   return (
     <Section className="logistics-section" tone="soft" aria-labelledby="logistics-title">
       <Container className="logistics-layout">
