@@ -9,10 +9,23 @@ type CheckoutResponse = {
 };
 
 export function CheckoutButton() {
+  const paymentEnabled = process.env.NEXT_PUBLIC_PAYMENT_ENABLED === "true";
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(
+    paymentEnabled
+      ? ""
+      : "Registration payment is opening soon. Final schedule and payment access will be shared here."
+  );
 
   async function startCheckout() {
+    if (!paymentEnabled) {
+      setStatus("error");
+      setMessage(
+        "Registration payment is opening soon. Final schedule and payment access will be shared here."
+      );
+      return;
+    }
+
     setStatus("loading");
     setMessage("");
 
@@ -51,7 +64,7 @@ export function CheckoutButton() {
         onClick={startCheckout}
         type="button"
       >
-        {status === "loading" ? "Starting Checkout..." : "Reserve My Seat"}
+        {status === "loading" ? "Starting Checkout..." : paymentEnabled ? "Pay ₹29" : "Notify Me"}
       </button>
       {message ? <p className="checkout-message">{message}</p> : null}
     </div>

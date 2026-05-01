@@ -14,10 +14,10 @@ export function Pricing() {
       <Container className="pricing-layout">
         <div className="pricing-copy">
           <Badge tone="accent">Registration</Badge>
-          <h2 id="pricing-title">Reserve your place after the final schedule is confirmed.</h2>
+          <h2 id="pricing-title">Registration will open after the final schedule is confirmed.</h2>
           <p>
-            Payment will connect to a hosted Razorpay flow later. Confirmation is sent only after
-            the payment webhook is verified by the system.
+            The live payment button will be enabled after Razorpay and n8n tracking are configured.
+            Confirmation will be sent only after verified payment.
           </p>
         </div>
 
@@ -25,7 +25,7 @@ export function Pricing() {
           <p className="pricing-label">Current price</p>
           <div className="pricing-price">₹29</div>
           <p className="pricing-note">
-            Refund policy and payment link will be added after approval.
+            The price is set. Payment access will open after final technical checks.
           </p>
           <CheckoutButton />
           <p className="pricing-security">
