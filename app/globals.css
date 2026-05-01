@@ -1,12 +1,14 @@
 :root {
-  --color-background: #ffffff;
-  --color-surface: #f8faf9;
-  --color-surface-strong: #edf3ef;
-  --color-text: #1e2521;
-  --color-text-muted: #637067;
-  --color-border: #dbe4de;
-  --color-accent: #1f7a5f;
-  --color-accent-strong: #145943;
+  --color-background: #fffdf8;
+  --color-surface: #f7fbf4;
+  --color-surface-strong: #e8f4ec;
+  --color-text: #17211b;
+  --color-text-muted: #687267;
+  --color-border: #d8e3d8;
+  --color-accent: #1f8a63;
+  --color-accent-strong: #105a42;
+  --color-accent-soft: #dff5e7;
+  --color-gold: #c28b2c;
   --color-danger: #b42318;
   --color-warning: #b7791f;
   --color-success: #1f7a5f;
@@ -30,7 +32,10 @@
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
 
-  --shadow-soft: 0 16px 50px rgb(31 55 43 / 0.08);
+  --radius-xl: 1.5rem;
+
+  --shadow-soft: 0 18px 60px rgb(31 55 43 / 0.1);
+  --shadow-lift: 0 22px 80px rgb(16 90 66 / 0.18);
   --container-max-width: 72rem;
 }
 
@@ -52,7 +57,10 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
-  background: var(--color-background);
+  background:
+    radial-gradient(circle at 8% 2%, rgb(223 245 231 / 0.72), transparent 28rem),
+    radial-gradient(circle at 92% 14%, rgb(255 232 191 / 0.52), transparent 30rem),
+    var(--color-background);
   overflow-x: hidden;
 }
 
@@ -131,6 +139,7 @@ svg {
 }
 
 .ui-section {
+  position: relative;
   padding-block: var(--space-16);
 }
 
@@ -194,12 +203,14 @@ svg {
 }
 
 .ui-button--primary {
-  background: var(--color-accent);
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-strong));
   color: #ffffff;
+  box-shadow: 0 14px 30px rgb(31 138 99 / 0.24);
 }
 
 .ui-button--primary:hover {
-  background: var(--color-accent-strong);
+  background: linear-gradient(135deg, #26a574, var(--color-accent-strong));
+  box-shadow: 0 18px 38px rgb(31 138 99 / 0.32);
 }
 
 .ui-button--secondary {
@@ -241,7 +252,7 @@ svg {
 }
 
 .ui-badge--accent {
-  background: rgb(31 122 95 / 0.1);
+  background: linear-gradient(135deg, rgb(31 138 99 / 0.13), rgb(194 139 44 / 0.12));
   color: var(--color-accent-strong);
 }
 
@@ -256,12 +267,97 @@ svg {
 }
 
 .hero-section {
+  position: relative;
   min-height: 100svh;
   display: flex;
   align-items: center;
+  padding-top: 6.5rem;
   background:
-    linear-gradient(135deg, rgb(31 122 95 / 0.08), transparent 42%),
-    linear-gradient(315deg, rgb(183 121 31 / 0.08), transparent 36%), var(--color-background);
+    linear-gradient(112deg, rgb(255 253 248 / 0.92), rgb(255 253 248 / 0.56) 52%, transparent),
+    radial-gradient(circle at 72% 18%, rgb(223 245 231 / 0.86), transparent 24rem),
+    radial-gradient(circle at 86% 78%, rgb(255 222 178 / 0.66), transparent 24rem),
+    var(--color-background);
+  overflow: clip;
+}
+
+.hero-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgb(23 33 27 / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(23 33 27 / 0.04) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, black, transparent 82%);
+}
+
+.site-header {
+  position: fixed;
+  z-index: 20;
+  top: 1rem;
+  left: 50%;
+  width: min(calc(100% - 2rem), 82rem);
+  min-height: 3.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border: 1px solid rgb(255 255 255 / 0.68);
+  border-radius: 999px;
+  background: rgb(255 253 248 / 0.78);
+  padding: 0.5rem 0.75rem;
+  box-shadow: 0 16px 50px rgb(23 33 27 / 0.1);
+  backdrop-filter: blur(18px);
+  transform: translateX(-50%);
+}
+
+.site-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.site-brand span {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-accent-strong);
+  color: #ffffff;
+  font-size: 0.74rem;
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.site-nav a {
+  min-height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.site-nav a:hover {
+  background: rgb(31 138 99 / 0.1);
+  color: var(--color-accent-strong);
 }
 
 .hero-layout {
@@ -278,7 +374,7 @@ svg {
 .hero-copy h1 {
   margin: var(--space-5) 0 0;
   color: var(--color-text);
-  font-size: clamp(3rem, 8vw, 5.75rem);
+  font-size: clamp(3.2rem, 8vw, 6.6rem);
   line-height: 0.96;
   letter-spacing: 0;
   overflow-wrap: anywhere;
@@ -317,20 +413,40 @@ svg {
 }
 
 .hero-media {
+  position: relative;
   display: grid;
   gap: var(--space-4);
+  isolation: isolate;
+}
+
+.hero-orbit {
+  position: absolute;
+  z-index: -1;
+  border: 1px solid rgb(31 138 99 / 0.2);
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.hero-orbit--one {
+  inset: -1.25rem 1.5rem 4rem -1.5rem;
+}
+
+.hero-orbit--two {
+  inset: 4rem -1.5rem -1.25rem 2.5rem;
+  border-color: rgb(194 139 44 / 0.22);
 }
 
 .hero-photo-slot {
   aspect-ratio: 4 / 5;
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border: 1px solid rgb(255 255 255 / 0.78);
+  border-radius: 1.75rem;
   background:
     linear-gradient(145deg, rgb(31 122 95 / 0.14), transparent 52%),
     linear-gradient(330deg, rgb(183 121 31 / 0.12), transparent 48%), var(--color-surface);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-lift);
   margin: 0;
+  transform: rotate(1.5deg);
 }
 
 .hero-photo-slot img {
@@ -340,17 +456,37 @@ svg {
   object-position: 50% 18%;
 }
 
-.hero-media p {
+.hero-media-caption {
+  width: min(88%, 24rem);
+  justify-self: center;
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid rgb(255 255 255 / 0.74);
+  border-radius: 1rem;
+  background: rgb(255 253 248 / 0.82);
+  padding: var(--space-4);
+  box-shadow: 0 18px 45px rgb(23 33 27 / 0.1);
+  backdrop-filter: blur(16px);
+  transform: translateY(-2.75rem);
+}
+
+.hero-media-caption strong {
+  color: var(--color-text);
+  font-size: 0.95rem;
+}
+
+.hero-media-caption span {
   margin: 0;
   color: var(--color-text-muted);
-  font-size: 0.9375rem;
-  line-height: 1.6;
-  text-align: center;
+  font-size: 0.86rem;
+  line-height: 1.45;
 }
 
 .credibility-section {
   padding-block: var(--space-8);
-  border-block: 1px solid var(--color-border);
+  border-block: 1px solid rgb(23 33 27 / 0.08);
+  background: rgb(255 255 255 / 0.64);
+  backdrop-filter: blur(18px);
 }
 
 .credibility-grid {
@@ -407,9 +543,10 @@ svg {
 }
 
 .audience-panel {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  border: 1px solid rgb(255 255 255 / 0.72);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.9), rgb(247 251 244 / 0.74)), var(--color-surface);
   padding: var(--space-8);
   box-shadow: var(--shadow-soft);
 }
@@ -475,10 +612,27 @@ svg {
   min-height: 17rem;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-background);
+  border: 1px solid rgb(23 33 27 / 0.08);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.92), rgb(247 251 244 / 0.72)),
+    var(--color-background);
   padding: var(--space-6);
+  box-shadow: 0 12px 40px rgb(23 33 27 / 0.06);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.learning-card:hover,
+.testimonial-card:hover,
+.bonus-item:hover,
+.logistics-item:hover,
+.faq-item:hover {
+  border-color: rgb(31 138 99 / 0.24);
+  box-shadow: 0 20px 60px rgb(23 33 27 / 0.12);
+  transform: translateY(-4px);
 }
 
 .learning-card span {
@@ -524,7 +678,7 @@ svg {
   overflow: hidden;
   margin-top: var(--space-10);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   background: var(--color-border);
 }
 
@@ -533,12 +687,15 @@ svg {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  background: var(--color-background);
+  background:
+    linear-gradient(160deg, rgb(255 255 255 / 0.94), rgb(247 251 244 / 0.78)),
+    var(--color-background);
   padding: var(--space-6);
 }
 
 .method-pillar:nth-child(even) {
-  background: var(--color-surface);
+  background:
+    linear-gradient(160deg, rgb(232 244 236 / 0.76), rgb(255 253 248 / 0.78)), var(--color-surface);
 }
 
 .method-pillar h3 {
@@ -564,8 +721,10 @@ svg {
 }
 
 .outcomes-card {
-  border-radius: var(--radius-lg);
-  background: var(--color-background);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(232 244 236 / 0.5)),
+    var(--color-background);
   padding: var(--space-8);
   box-shadow: var(--shadow-soft);
 }
@@ -590,7 +749,7 @@ svg {
   min-height: 5rem;
   align-items: center;
   border: 1px solid rgb(30 37 33 / 0.1);
-  border-radius: var(--radius-md);
+  border-radius: 1rem;
   background: rgb(255 255 255 / 0.62);
   padding: var(--space-5);
   color: var(--color-text);
@@ -621,10 +780,15 @@ svg {
 }
 
 .testimonial-card {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  border: 1px solid rgb(23 33 27 / 0.08);
+  border-radius: var(--radius-xl);
+  background: rgb(255 255 255 / 0.72);
   padding: var(--space-6);
+  box-shadow: 0 12px 40px rgb(23 33 27 / 0.06);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .testimonial-avatar {
@@ -669,10 +833,14 @@ svg {
 
 .logistics-item {
   min-height: 9rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-background);
+  border: 1px solid rgb(23 33 27 / 0.08);
+  border-radius: var(--radius-xl);
+  background: rgb(255 255 255 / 0.76);
   padding: var(--space-5);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .logistics-item p {
@@ -717,11 +885,17 @@ svg {
   display: grid;
   align-content: space-between;
   min-height: 15rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-background);
+  border: 1px solid rgb(23 33 27 / 0.08);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(255 249 237 / 0.68)),
+    var(--color-background);
   padding: var(--space-6);
   box-shadow: var(--shadow-soft);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .bonus-item h3 {
@@ -764,11 +938,13 @@ svg {
 }
 
 .pricing-card {
-  border: 1px solid rgb(30 37 33 / 0.1);
-  border-radius: var(--radius-lg);
-  background: var(--color-background);
+  border: 1px solid rgb(255 255 255 / 0.78);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.96), rgb(232 244 236 / 0.62)),
+    var(--color-background);
   padding: var(--space-8);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-lift);
 }
 
 .pricing-label {
@@ -836,10 +1012,14 @@ svg {
 }
 
 .faq-item {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+  border: 1px solid rgb(23 33 27 / 0.08);
+  border-radius: 1rem;
+  background: rgb(255 255 255 / 0.68);
   padding: var(--space-5);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .faq-item summary {
@@ -859,7 +1039,8 @@ svg {
 
 .footer-compliance {
   border-top: 1px solid var(--color-border);
-  background: var(--color-text);
+  background:
+    radial-gradient(circle at 12% 0%, rgb(31 138 99 / 0.24), transparent 22rem), var(--color-text);
   color: #ffffff;
   padding-block: var(--space-10);
 }
@@ -1136,6 +1317,7 @@ svg {
 
   .hero-section {
     align-items: start;
+    padding-top: 6rem;
   }
 
   .hero-details,
@@ -1166,6 +1348,20 @@ svg {
   .hero-layout {
     grid-template-columns: 1fr;
     gap: var(--space-8);
+  }
+
+  .site-header {
+    top: 0.5rem;
+    width: min(calc(100% - 1rem), 82rem);
+    border-radius: 1rem;
+  }
+
+  .site-brand {
+    font-size: 0;
+  }
+
+  .site-brand span {
+    font-size: 0.74rem;
   }
 
   .hero-details {

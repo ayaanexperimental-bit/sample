@@ -12,6 +12,16 @@ const workshopDetails = [
 export function Hero() {
   return (
     <Section className="hero-section" aria-labelledby="hero-title">
+      <header className="site-header" aria-label="Primary navigation">
+        <a className="site-brand" href="#top" aria-label="Women Health Masterclass 101 home">
+          <span>WHM</span>
+          Women Health Masterclass 101
+        </a>
+        <nav className="site-nav" aria-label="Page sections">
+          <a href="#details">Details</a>
+          <a href="#registration">₹29</a>
+        </nav>
+      </header>
       <Container className="hero-layout" size="wide">
         <div className="hero-copy">
           <Badge tone="accent">Women Health Masterclass 101</Badge>
@@ -39,13 +49,18 @@ export function Hero() {
         </div>
 
         <div className="hero-media" aria-label="Coach photo placeholder">
+          <div className="hero-orbit hero-orbit--one" aria-hidden="true" />
+          <div className="hero-orbit hero-orbit--two" aria-hidden="true" />
           <figure className="hero-photo-slot">
             <img
               src="/images/coach-hero.jpg"
               alt="Coach portrait for Women Health Masterclass 101"
             />
           </figure>
-          <p>Coach portrait for the Women Health Masterclass 101.</p>
+          <div className="hero-media-caption">
+            <strong>Guided live session</strong>
+            <span>Education-first, symptom-aware, and supportive.</span>
+          </div>
         </div>
       </Container>
     </Section>

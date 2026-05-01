@@ -13,7 +13,7 @@ import { WhoItsFor } from "@/components/landing/who-its-for";
 
 export default function Home() {
   return (
-    <main>
+    <main id="top">
       <Hero />
       <CredibilityStrip />
       <WhoItsFor />
