@@ -2,9 +2,14 @@
   "name": "pcos-wellness-landing-system",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.33.2",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:cloudflare": "opennextjs-cloudflare build",
+    "preview:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
@@ -24,6 +29,8 @@
     "eslint": "latest",
     "eslint-config-next": "latest",
     "prettier": "latest",
-    "typescript": "latest"
+    "@opennextjs/cloudflare": "latest",
+    "typescript": "latest",
+    "wrangler": "latest"
   }
 }
