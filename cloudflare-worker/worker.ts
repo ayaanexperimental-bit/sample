@@ -41,6 +41,7 @@ type RazorpayWebhookPayload = {
         short_url?: string;
         shortUrl?: string;
         amount?: number;
+        amount_paid?: number;
         currency?: string;
         customer?: {
           name?: string | null;
@@ -131,10 +132,15 @@ async function handleRazorpayWebhook(request: Request, env: Env, url: URL) {
   const paidUserPayload = buildPaidUserPayload(webhook, env, url.origin);
 
   if (!paidUserPayload) {
+    const paymentDetails = getPaymentDetails(webhook);
+
     return json({
       ok: false,
       event: webhook.event ?? "unknown",
-      error: "Payment payload is missing required INR 5100 payment details."
+      error: "Payment payload is missing accepted paid payment details.",
+      received: paymentDetails,
+      accepted_amounts: [...getAllowedAmounts(env)],
+      accepted_currency: getCurrency(env)
     }, 422);
   }
 
@@ -169,7 +175,7 @@ function buildPaidUserPayload(webhook: RazorpayWebhookPayload, env: Env, siteOri
   const payment = webhook.payload?.payment?.entity;
   const order = webhook.payload?.order?.entity;
   const paymentLink = webhook.payload?.payment_link?.entity;
-  const amount = payment?.amount ?? order?.amount ?? paymentLink?.amount;
+  const amount = payment?.amount ?? order?.amount_paid ?? order?.amount ?? paymentLink?.amount_paid ?? paymentLink?.amount;
   const currency = payment?.currency ?? order?.currency ?? paymentLink?.currency;
   const transactionId = payment?.id || paymentLink?.id || order?.id;
 
@@ -219,6 +225,24 @@ function buildPaidUserPayload(webhook: RazorpayWebhookPayload, env: Env, siteOri
     utm_term: asString(notes.utm_term),
     created_at: createdAt,
     lead_timestamp: formatLeadTimestamp(createdAt)
+  };
+}
+
+function getPaymentDetails(webhook: RazorpayWebhookPayload) {
+  const payment = webhook.payload?.payment?.entity;
+  const order = webhook.payload?.order?.entity;
+  const paymentLink = webhook.payload?.payment_link?.entity;
+
+  return {
+    payment_id: payment?.id ?? null,
+    order_id: order?.id ?? payment?.order_id ?? null,
+    payment_link_id: paymentLink?.id ?? null,
+    payment_amount: payment?.amount ?? null,
+    order_amount_paid: order?.amount_paid ?? null,
+    order_amount: order?.amount ?? null,
+    payment_link_amount_paid: paymentLink?.amount_paid ?? null,
+    payment_link_amount: paymentLink?.amount ?? null,
+    currency: payment?.currency ?? order?.currency ?? paymentLink?.currency ?? null
   };
 }
 
