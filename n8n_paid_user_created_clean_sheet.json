@@ -1,0 +1,174 @@
+{
+  "name": "GYANA-WHM101 - Paid User Created - Clean Sheet",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whm101-paid-user-created",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "id": "5d6b4bc0-dc46-423c-a72f-90318359a13f",
+      "name": "Webhook",
+      "webhookId": "eb1c1a74-e4b2-4ed0-80c0-794b242a286b"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1D1orv4pqfmI7WRGzvCP_jMspFlAQPaXTDm5H3HerxO8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "SUCCESSFUL PAYMENTS",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{($json.body || $json).lead_timestamp || ($json.body || $json).created_at}}",
+            "Email ID": "={{($json.body || $json).email}}",
+            "Full Name": "={{($json.body || $json).full_name}}",
+            "First Name": "={{(($json.body || $json).full_name || '').trim().split(/\\s+/)[0] || ''}}",
+            "Last Name": "={{(($json.body || $json).full_name || '').trim().split(/\\s+/).slice(1).join(' ')}}",
+            "Mobile Number": "={{(($json.body || $json).phone_number || '').replace(/^\\+/, '')}}",
+            "Webinar Tag": "WHM101",
+            "Platform": "Razorpay",
+            "Status": "Paid"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email ID",
+              "displayName": "Email ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Full Name",
+              "displayName": "Full Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "First Name",
+              "displayName": "First Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Last Name",
+              "displayName": "Last Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Mobile Number",
+              "displayName": "Mobile Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Webinar Tag",
+              "displayName": "Webinar Tag",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Platform",
+              "displayName": "Platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [336, -80],
+      "id": "6ac012fd-dd03-45fd-b039-dc1b3262c52f",
+      "name": "Append clean paid user row",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CQbOAKdgi3qVQjL4",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Append clean paid user row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "tags": []
+}

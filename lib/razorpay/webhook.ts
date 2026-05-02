@@ -173,6 +173,7 @@ export function buildPaidUserCreatedPayload(input: {
   const createdAt = payment?.created_at
     ? new Date(payment.created_at * 1000).toISOString()
     : new Date().toISOString();
+  const leadTimestamp = formatLeadTimestamp(createdAt);
 
   return {
     event_type: "paid_user_created",
@@ -196,7 +197,8 @@ export function buildPaidUserCreatedPayload(input: {
     utm_campaign: asString(notes.utm_campaign),
     utm_content: asString(notes.utm_content),
     utm_term: asString(notes.utm_term),
-    created_at: createdAt
+    created_at: createdAt,
+    lead_timestamp: leadTimestamp
   };
 }
 
@@ -217,6 +219,22 @@ function asString(value: unknown) {
 
 function normalizePhone(value: string) {
   return value.replace(/[^\d+]/g, "");
+}
+
+function formatLeadTimestamp(isoTimestamp: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true
+  })
+    .format(new Date(isoTimestamp))
+    .replace(",", "")
+    .toUpperCase();
 }
 
 function splitEnvList(value: string | undefined) {

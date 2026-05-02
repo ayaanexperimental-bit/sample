@@ -58,6 +58,7 @@ export type PaidUserCreatedPayload = {
   utm_content: string;
   utm_term: string;
   created_at: string;
+  lead_timestamp: string;
 };
 
 export type WhatsappGroupLinkClickedPayload = {
