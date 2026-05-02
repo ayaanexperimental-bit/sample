@@ -5,6 +5,7 @@ type Env = {
   RAZORPAY_WEBHOOK_SECRET: string;
   RAZORPAY_HOSTED_CHECKOUT_URL?: string;
   RAZORPAY_IGNORED_PAYMENT_PAGE_SLUG?: string;
+  WORKSHOP_ALLOWED_AMOUNTS_PAISE?: string;
   WORKSHOP_AMOUNT_PAISE?: string;
   WORKSHOP_CURRENCY?: string;
   WHATSAPP_COMMUNITY_INVITE_URL?: string;
@@ -172,7 +173,7 @@ function buildPaidUserPayload(webhook: RazorpayWebhookPayload, env: Env, siteOri
   const currency = payment?.currency ?? order?.currency ?? paymentLink?.currency;
   const paymentId = payment?.id;
 
-  if (!paymentId || amount !== getAmount(env) || currency !== getCurrency(env)) {
+  if (!paymentId || typeof amount !== "number" || !getAllowedAmounts(env).has(amount) || currency !== getCurrency(env)) {
     return null;
   }
 
@@ -203,7 +204,7 @@ function buildPaidUserPayload(webhook: RazorpayWebhookPayload, env: Env, siteOri
       asString(notes.email) || asString(payment?.email) || asString(paymentLink?.customer?.email),
     program_slug: asString(notes.program_slug) || "women-health-masterclass-101",
     workshop_slot: asString(notes.workshop_slot) || "next-saturday-7pm-ist",
-    amount: getAmount(env),
+    amount,
     currency: getCurrency(env),
     payment_status: "success",
     member_status: "paid_not_joined",
@@ -302,6 +303,16 @@ function formatLeadTimestamp(isoTimestamp: string) {
 
 function getAmount(env: Env) {
   return Number.parseInt(env.WORKSHOP_AMOUNT_PAISE || "5100", 10);
+}
+
+function getAllowedAmounts(env: Env) {
+  const configuredAmounts = env.WORKSHOP_ALLOWED_AMOUNTS_PAISE || `${getAmount(env)},100`;
+  const amounts = configuredAmounts
+    .split(",")
+    .map((amount) => Number.parseInt(amount.trim(), 10))
+    .filter((amount) => Number.isFinite(amount) && amount > 0);
+
+  return new Set(amounts.length > 0 ? amounts : [getAmount(env)]);
 }
 
 function getCurrency(env: Env) {
