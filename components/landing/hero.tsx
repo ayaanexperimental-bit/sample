@@ -30,7 +30,9 @@ export function Hero({ schedule }: HeroProps) {
       <Container className="hero-layout" size="wide">
         <div className="hero-copy">
           <Badge tone="accent">Women Health Masterclass 101</Badge>
-          <h1 id="hero-title">An integrated and holistic approach for PCOS/PCOD</h1>
+          <h1 id="hero-title">
+            An integrated and holistic approach for <span className="gradient-text">PCOS/PCOD</span>
+          </h1>
           <p className="hero-lede">
             A guided masterclass for women who want practical, symptom-aware routines for wellness,
             confidence, and everyday self-care. This is education and support, not a replacement for
@@ -48,7 +50,10 @@ export function Hero({ schedule }: HeroProps) {
 
           <ul className="hero-details" aria-label="Masterclass details">
             {workshopDetails.map((detail) => (
-              <li key={detail}>{detail}</li>
+              <li key={detail}>
+                <span aria-hidden="true" />
+                {detail}
+              </li>
             ))}
           </ul>
         </div>

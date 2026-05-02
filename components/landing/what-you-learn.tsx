@@ -38,7 +38,7 @@ export function WhatYouLearn() {
         <div className="learning-grid">
           {learningItems.map((item, index) => (
             <article className="learning-card" key={item.title}>
-              <span>{String(index + 1).padStart(2, "0")}</span>
+              <span className="learning-card-index">{String(index + 1).padStart(2, "0")}</span>
               <h3>{item.title}</h3>
               <p>{item.description}</p>
             </article>

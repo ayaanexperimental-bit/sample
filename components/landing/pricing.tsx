@@ -14,7 +14,7 @@ export function Pricing() {
       <Container className="pricing-layout">
         <div className="pricing-copy">
           <Badge tone="accent">Registration</Badge>
-          <h2 id="pricing-title">Registration will open after the final schedule is confirmed.</h2>
+          <h2 id="pricing-title">Registration opens after payment tracking is connected.</h2>
           <p>
             The live payment button will be enabled after Razorpay and n8n tracking are configured.
             Confirmation will be sent only after verified payment.
@@ -29,6 +29,7 @@ export function Pricing() {
           </p>
           <CheckoutButton />
           <p className="pricing-security">
+            <span aria-hidden="true">*</span>
             Hosted payment. No card details are collected on this site.
           </p>
         </div>
