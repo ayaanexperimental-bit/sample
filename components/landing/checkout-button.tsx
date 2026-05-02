@@ -8,6 +8,8 @@ type CheckoutResponse = {
   checkoutUrl?: string;
 };
 
+const hostedCheckoutUrl = process.env.NEXT_PUBLIC_RAZORPAY_HOSTED_CHECKOUT_URL;
+
 export function CheckoutButton() {
   const paymentDisabled = process.env.NEXT_PUBLIC_PAYMENT_ENABLED === "false";
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -28,6 +30,11 @@ export function CheckoutButton() {
 
     setStatus("loading");
     setMessage("");
+
+    if (hostedCheckoutUrl) {
+      window.location.href = hostedCheckoutUrl;
+      return;
+    }
 
     try {
       const response = await fetch("/api/checkout/session", {

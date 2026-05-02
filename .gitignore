@@ -1,4 +1,5 @@
 .next/
+.cloudflare-pages-build/
 .open-next/
 .wrangler/
 node_modules/

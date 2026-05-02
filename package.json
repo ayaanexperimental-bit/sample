@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:pages": "node scripts/build-static.mjs",
+    "build:pages:worker": "pnpm build:pages && pnpm exec esbuild cloudflare-worker/worker.ts --bundle --format=esm --outfile=out/_worker.js",
     "build:cloudflare": "opennextjs-cloudflare build",
     "preview:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
@@ -28,6 +30,7 @@
     "@types/react-dom": "latest",
     "eslint": "latest",
     "eslint-config-next": "latest",
+    "esbuild": "latest",
     "prettier": "latest",
     "@opennextjs/cloudflare": "latest",
     "typescript": "latest",

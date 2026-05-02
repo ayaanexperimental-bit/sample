@@ -1,14 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { useMemo } from "react";
 
 const DEFAULT_WHATSAPP_COMMUNITY_URL = "https://chat.whatsapp.com/LYf1V55hDimAhfNVCghaN4";
 
-type SuccessPageProps = {
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
-};
-
-export default async function SuccessPage({ searchParams }: SuccessPageProps) {
-  const resolvedSearchParams = (await searchParams) ?? {};
-  const whatsappJoinUrl = buildWhatsappJoinUrl(resolvedSearchParams);
+export default function SuccessPage() {
+  const whatsappJoinUrl = useMemo(() => buildWhatsappJoinUrl(), []);
 
   return (
     <main className="success-page">
@@ -51,27 +49,23 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
   );
 }
 
-function buildWhatsappJoinUrl(searchParams: Record<string, string | string[] | undefined>) {
-  const trackingUrl = process.env.N8N_WHATSAPP_CLICK_TRACKING_URL;
-  const fallbackUrl = process.env.WHATSAPP_COMMUNITY_INVITE_URL || DEFAULT_WHATSAPP_COMMUNITY_URL;
+function buildWhatsappJoinUrl() {
+  const trackingUrl = process.env.NEXT_PUBLIC_N8N_WHATSAPP_CLICK_TRACKING_URL;
+  const fallbackUrl =
+    process.env.NEXT_PUBLIC_WHATSAPP_COMMUNITY_INVITE_URL || DEFAULT_WHATSAPP_COMMUNITY_URL;
 
-  if (!trackingUrl) {
+  if (!trackingUrl || typeof window === "undefined") {
     return fallbackUrl;
   }
 
   const url = new URL(trackingUrl);
+  const currentParams = new URLSearchParams(window.location.search);
 
-  for (const [key, value] of Object.entries(searchParams)) {
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        if (item) {
-          url.searchParams.append(key, item);
-        }
-      }
-    } else if (value) {
+  currentParams.forEach((value, key) => {
+    if (value) {
       url.searchParams.set(key, value);
     }
-  }
+  });
 
   url.searchParams.set("event_type", "whatsapp_group_link_clicked");
   url.searchParams.set("program_slug", "women-health-masterclass-101");
