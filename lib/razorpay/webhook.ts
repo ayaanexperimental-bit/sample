@@ -98,7 +98,8 @@ export function getRazorpayActiveSourceConfig(env: NodeJS.ProcessEnv = process.e
   return {
     slugs: splitEnvList(env.RAZORPAY_ACTIVE_PAYMENT_PAGE_SLUG || "xBIZzJHv"),
     paymentLinkIds: splitEnvList(env.RAZORPAY_ACTIVE_PAYMENT_LINK_ID),
-    paymentPageIds: splitEnvList(env.RAZORPAY_ACTIVE_PAYMENT_PAGE_ID)
+    paymentPageIds: splitEnvList(env.RAZORPAY_ACTIVE_PAYMENT_PAGE_ID),
+    ignoredSlugs: splitEnvList(env.RAZORPAY_IGNORED_PAYMENT_PAGE_SLUG || "gy1111")
   };
 }
 
@@ -111,14 +112,22 @@ export function isActiveRazorpayPaymentSource(
     ...config.paymentLinkIds,
     ...config.paymentPageIds
   ].map((value) => value.toLowerCase());
-
-  if (acceptedIdentifiers.length === 0) {
-    return true;
-  }
-
+  const ignoredIdentifiers = config.ignoredSlugs.map((value) => value.toLowerCase());
   const webhookIdentifiers = collectRazorpaySourceIdentifiers(webhook).map((value) =>
     value.toLowerCase()
   );
+
+  const matchesIgnoredSource = ignoredIdentifiers.some((ignoredIdentifier) =>
+    webhookIdentifiers.some((webhookIdentifier) => webhookIdentifier.includes(ignoredIdentifier))
+  );
+
+  if (matchesIgnoredSource) {
+    return false;
+  }
+
+  if (acceptedIdentifiers.length === 0 || webhookIdentifiers.length === 0) {
+    return true;
+  }
 
   return acceptedIdentifiers.some((acceptedIdentifier) =>
     webhookIdentifiers.some((webhookIdentifier) => webhookIdentifier.includes(acceptedIdentifier))
