@@ -31,6 +31,7 @@ type RazorpayWebhookPayload = {
     order?: {
       entity?: {
         id?: string;
+        amount_paid?: number;
         amount?: number;
         currency?: string;
         notes?: Record<string, unknown> | null;
@@ -59,13 +60,38 @@ const DEFAULT_CHECKOUT_URL = "https://rzp.io/rzp/xBIZzJHv";
 const DEFAULT_WHATSAPP_URL = "https://chat.whatsapp.com/LYf1V55hDimAhfNVCghaN4";
 const DEFAULT_N8N_WEBHOOK_URL = "https://ayaantester.app.n8n.cloud/webhook/whm101-paid-user-created";
 const PAID_EVENTS = new Set(["payment.captured", "order.paid", "payment_link.paid"]);
+const MAX_WEBHOOK_BODY_BYTES = 100_000;
+const SECURITY_HEADERS = {
+  "Content-Security-Policy": [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self' data:",
+    "connect-src 'self' https://ayaantester.app.n8n.cloud",
+    "frame-src 'none'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self' https://rzp.io https://pages.razorpay.com https://api.razorpay.com",
+    "frame-ancestors 'none'",
+    "upgrade-insecure-requests"
+  ].join("; "),
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+  "Cross-Origin-Opener-Policy": "same-origin",
+  "Cross-Origin-Resource-Policy": "same-origin",
+  "X-Permitted-Cross-Domain-Policies": "none",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY"
+};
 
 export default {
   async fetch(request: Request, env: Env) {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
-      return withCors(new Response(null, { status: 204 }));
+      return withSecurityHeaders(withCors(new Response(null, { status: 204 })));
     }
 
     if (url.pathname === "/api/health") {
@@ -90,7 +116,7 @@ export default {
     }
 
     if (env.ASSETS) {
-      return env.ASSETS.fetch(request);
+      return withSecurityHeaders(await env.ASSETS.fetch(request), url);
     }
 
     return json({ ok: false, error: "Not found." }, 404);
@@ -100,6 +126,12 @@ export default {
 async function handleRazorpayWebhook(request: Request, env: Env, url: URL) {
   if (!env.RAZORPAY_WEBHOOK_SECRET) {
     return json({ ok: false, error: "Razorpay webhook secret is not configured." }, 501);
+  }
+
+  const contentLength = Number.parseInt(request.headers.get("content-length") || "0", 10);
+
+  if (contentLength > MAX_WEBHOOK_BODY_BYTES) {
+    return json({ ok: false, error: "Razorpay webhook body is too large." }, 413);
   }
 
   const rawBody = await request.text();
@@ -169,7 +201,7 @@ async function verifyRazorpaySignature(rawBody: string, signature: string, secre
     ["sign"]
   );
   const digest = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody));
-  return toHex(digest) === signature;
+  return timingSafeEqual(toHex(digest), signature);
 }
 
 function buildPaidUserPayload(webhook: RazorpayWebhookPayload, env: Env, siteOrigin: string) {
@@ -357,19 +389,70 @@ function toHex(buffer: ArrayBuffer) {
   return [...new Uint8Array(buffer)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function timingSafeEqual(left: string, right: string) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  let result = 0;
+
+  for (let index = 0; index < left.length; index += 1) {
+    result |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+
+  return result === 0;
+}
+
 function json(body: unknown, status = 200) {
-  return withCors(
+  return withSecurityHeaders(withCors(
     new Response(JSON.stringify(body), {
       status,
       headers: { "Content-Type": "application/json" }
     })
-  );
+  ));
 }
 
 function withCors(response: Response) {
   const headers = new Headers(response.headers);
-  headers.set("Access-Control-Allow-Origin", "*");
+  headers.set("Access-Control-Allow-Origin", "https://freedomfromdiabetes.in");
   headers.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   headers.set("Access-Control-Allow-Headers", "Content-Type,x-razorpay-signature");
+  headers.append("Vary", "Origin");
   return new Response(response.body, { status: response.status, headers });
+}
+
+function withSecurityHeaders(response: Response, url?: URL) {
+  const headers = new Headers(response.headers);
+  const contentType = headers.get("Content-Type") || "";
+
+  headers.set("Referrer-Policy", SECURITY_HEADERS["Referrer-Policy"]);
+  headers.set("Strict-Transport-Security", SECURITY_HEADERS["Strict-Transport-Security"]);
+  headers.set("Cross-Origin-Opener-Policy", SECURITY_HEADERS["Cross-Origin-Opener-Policy"]);
+  headers.set("Cross-Origin-Resource-Policy", SECURITY_HEADERS["Cross-Origin-Resource-Policy"]);
+  headers.set("X-Permitted-Cross-Domain-Policies", SECURITY_HEADERS["X-Permitted-Cross-Domain-Policies"]);
+  headers.set("X-Content-Type-Options", SECURITY_HEADERS["X-Content-Type-Options"]);
+  headers.set("X-Frame-Options", SECURITY_HEADERS["X-Frame-Options"]);
+
+  if (contentType.includes("text/html")) {
+    headers.delete("Access-Control-Allow-Origin");
+    headers.delete("Access-Control-Allow-Headers");
+    headers.delete("Access-Control-Allow-Methods");
+    headers.set("Content-Security-Policy", SECURITY_HEADERS["Content-Security-Policy"]);
+    headers.set("Permissions-Policy", SECURITY_HEADERS["Permissions-Policy"]);
+    headers.set("Cache-Control", "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400");
+  } else if (url && isImmutableAsset(url.pathname)) {
+    headers.set("Cache-Control", "public, max-age=31536000, immutable");
+  } else if (contentType.includes("application/json")) {
+    headers.set("Cache-Control", "no-store");
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}
+
+function isImmutableAsset(pathname: string) {
+  return pathname.startsWith("/_next/static/") || /\.(?:css|js|jpg|jpeg|png|webp|avif|svg|ico|woff2?)$/i.test(pathname);
 }
