@@ -95,11 +95,11 @@ I will keep this updated as the build progresses.
 
 ## n8n Automation
 
-- n8n webhook URL
+- n8n paid-user webhook URL: `https://ayaantester.app.n8n.cloud/webhook/whm101-paid-user-created`
 - n8n webhook secret
-- `N8N_WHATSAPP_CLICK_TRACKING_URL`
+- `N8N_WHATSAPP_CLICK_TRACKING_URL`: `https://ayaantester.app.n8n.cloud/webhook/whm101-whatsapp-clicked`
 - n8n click webhook must accept required `whatsapp_group_link_clicked` payload: `registration_id`, `registration_token`, `full_name`, `phone_number`, `email`, `program_slug`, `payment_status`, `member_status`, `clicked_at`
-- Confirm n8n Google Sheets credential method
+- Confirm n8n Google Sheets credential method: Google Sheets OAuth2 API
 - Confirm n8n workflow owner/admin access
 - Confirm n8n reminder interval: 10 minutes or 15 minutes
 - Confirm reminder spacing after first reminder: 1 hour or 1.5 hours
@@ -118,7 +118,7 @@ I will keep this updated as the build progresses.
 - Sender name
 - Sender email
 - Email API key
-- Confirmation email copy
+- Confirmation email copy: drafted in `n8n_post_payment_automation_plan.md`
 - Pending-payment email copy
 - Failed-payment recovery email copy
 - Refund email copy
@@ -132,7 +132,7 @@ I will keep this updated as the build progresses.
 - Approved template name
 - Template variables
 - WhatsApp group/community link
-- Onboarding WhatsApp copy
+- Onboarding WhatsApp copy: drafted in `n8n_post_payment_automation_plan.md`
 - Pending-payment WhatsApp copy
 - Failed-payment recovery WhatsApp copy
 - Refund WhatsApp copy
