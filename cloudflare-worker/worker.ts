@@ -171,9 +171,9 @@ function buildPaidUserPayload(webhook: RazorpayWebhookPayload, env: Env, siteOri
   const paymentLink = webhook.payload?.payment_link?.entity;
   const amount = payment?.amount ?? order?.amount ?? paymentLink?.amount;
   const currency = payment?.currency ?? order?.currency ?? paymentLink?.currency;
-  const paymentId = payment?.id;
+  const transactionId = payment?.id || paymentLink?.id || order?.id;
 
-  if (!paymentId || typeof amount !== "number" || !getAllowedAmounts(env).has(amount) || currency !== getCurrency(env)) {
+  if (!transactionId || typeof amount !== "number" || !getAllowedAmounts(env).has(amount) || currency !== getCurrency(env)) {
     return null;
   }
 
@@ -185,11 +185,11 @@ function buildPaidUserPayload(webhook: RazorpayWebhookPayload, env: Env, siteOri
   const createdAt = payment?.created_at
     ? new Date(payment.created_at * 1000).toISOString()
     : new Date().toISOString();
-  const registrationToken = btoa(paymentId).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+  const registrationToken = btoa(transactionId).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 
   return {
     event_type: "paid_user_created",
-    registration_id: `rzp_${paymentId}`,
+    registration_id: `rzp_${transactionId}`,
     registration_token: registrationToken,
     full_name:
       asString(notes.full_name) ||
@@ -208,8 +208,8 @@ function buildPaidUserPayload(webhook: RazorpayWebhookPayload, env: Env, siteOri
     currency: getCurrency(env),
     payment_status: "success",
     member_status: "paid_not_joined",
-    razorpay_order_id: payment?.order_id || order?.id || paymentLink?.id || paymentId,
-    razorpay_payment_id: paymentId,
+    razorpay_order_id: payment?.order_id || order?.id || paymentLink?.id || transactionId,
+    razorpay_payment_id: payment?.id || transactionId,
     whatsapp_group_link: env.WHATSAPP_COMMUNITY_INVITE_URL || DEFAULT_WHATSAPP_URL,
     thank_you_url: `${siteOrigin}/success?registration_token=${registrationToken}`,
     utm_source: asString(notes.utm_source),
