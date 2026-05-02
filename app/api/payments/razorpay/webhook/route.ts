@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   buildPaidUserCreatedPayload,
   getWebhookEventStatus,
+  getRazorpayActiveSourceConfig,
+  isActiveRazorpayPaymentSource,
   type RazorpayWebhookPayload,
   verifyRazorpayWebhookSignature
 } from "@/lib/razorpay/webhook";
@@ -51,6 +53,18 @@ export async function POST(request: NextRequest) {
       event: webhook.event ?? "unknown",
       status: eventStatus,
       handled: false
+    });
+  }
+
+  const activeSourceConfig = getRazorpayActiveSourceConfig();
+
+  if (!isActiveRazorpayPaymentSource(webhook, activeSourceConfig)) {
+    return NextResponse.json({
+      ok: true,
+      event: webhook.event ?? "unknown",
+      status: eventStatus,
+      handled: false,
+      ignored_reason: "Payment did not come from the active Razorpay payment page."
     });
   }
 

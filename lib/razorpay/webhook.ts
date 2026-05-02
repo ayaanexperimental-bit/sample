@@ -31,6 +31,12 @@ export type RazorpayWebhookPayload = {
     payment_link?: {
       entity?: {
         id?: string;
+        short_url?: string;
+        shortUrl?: string;
+        reference_id?: string | null;
+        payment_page_id?: string | null;
+        page_id?: string | null;
+        description?: string | null;
         amount?: number;
         currency?: string;
         status?: string;
@@ -39,6 +45,17 @@ export type RazorpayWebhookPayload = {
           email?: string | null;
           contact?: string | null;
         } | null;
+        notes?: Record<string, unknown> | null;
+      };
+    };
+    payment_page?: {
+      entity?: {
+        id?: string;
+        short_url?: string;
+        shortUrl?: string;
+        slug?: string;
+        reference_id?: string | null;
+        description?: string | null;
         notes?: Record<string, unknown> | null;
       };
     };
@@ -75,6 +92,37 @@ export function getWebhookEventStatus(eventType: string | undefined) {
   }
 
   return "ignored" as const;
+}
+
+export function getRazorpayActiveSourceConfig(env: NodeJS.ProcessEnv = process.env) {
+  return {
+    slugs: splitEnvList(env.RAZORPAY_ACTIVE_PAYMENT_PAGE_SLUG || "xBIZzJHv"),
+    paymentLinkIds: splitEnvList(env.RAZORPAY_ACTIVE_PAYMENT_LINK_ID),
+    paymentPageIds: splitEnvList(env.RAZORPAY_ACTIVE_PAYMENT_PAGE_ID)
+  };
+}
+
+export function isActiveRazorpayPaymentSource(
+  webhook: RazorpayWebhookPayload,
+  config = getRazorpayActiveSourceConfig()
+) {
+  const acceptedIdentifiers = [
+    ...config.slugs,
+    ...config.paymentLinkIds,
+    ...config.paymentPageIds
+  ].map((value) => value.toLowerCase());
+
+  if (acceptedIdentifiers.length === 0) {
+    return true;
+  }
+
+  const webhookIdentifiers = collectRazorpaySourceIdentifiers(webhook).map((value) =>
+    value.toLowerCase()
+  );
+
+  return acceptedIdentifiers.some((acceptedIdentifier) =>
+    webhookIdentifiers.some((webhookIdentifier) => webhookIdentifier.includes(acceptedIdentifier))
+  );
 }
 
 export function buildPaidUserCreatedPayload(input: {
@@ -160,6 +208,63 @@ function asString(value: unknown) {
 
 function normalizePhone(value: string) {
   return value.replace(/[^\d+]/g, "");
+}
+
+function splitEnvList(value: string | undefined) {
+  return (value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function collectRazorpaySourceIdentifiers(webhook: RazorpayWebhookPayload) {
+  const payment = webhook.payload?.payment?.entity;
+  const order = webhook.payload?.order?.entity;
+  const paymentLink = webhook.payload?.payment_link?.entity;
+  const paymentPage = webhook.payload?.payment_page?.entity;
+  const identifiers: string[] = [];
+
+  collectStringValues(paymentLink, identifiers);
+  collectStringValues(paymentPage, identifiers);
+  collectStringValues(payment?.notes, identifiers);
+  collectStringValues(order?.notes, identifiers);
+
+  return identifiers;
+}
+
+function collectStringValues(value: unknown, output: string[]) {
+  if (!value) {
+    return;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+
+    if (trimmed) {
+      output.push(trimmed);
+    }
+
+    return;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    output.push(String(value));
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectStringValues(item, output);
+    }
+
+    return;
+  }
+
+  if (typeof value === "object") {
+    for (const nestedValue of Object.values(value)) {
+      collectStringValues(nestedValue, output);
+    }
+  }
 }
 
 function createRegistrationId(paymentId: string) {
