@@ -1,14 +1,16 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "freedomfromdiabetes",
-  "main": ".open-next/worker.js",
+  "pages_build_output_dir": "out",
   "compatibility_date": "2026-05-02",
-  "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
   "observability": {
     "enabled": true
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "WHM101_DB",
+      "database_name": "whm101-db",
+      "database_id": "4c4a685f-1e36-46ec-a487-3e0c7a8b195c"
+    }
+  ]
 }

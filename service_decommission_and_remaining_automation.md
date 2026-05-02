@@ -88,16 +88,25 @@ These actions must be completed inside the external dashboards because they are 
 
 ### 1. Durable Registration Storage
 
-Required before unattended high-volume production:
+Implemented as the hidden reliability ledger:
 
 ```text
-Cloudflare D1 registrations table
-Cloudflare D1 automation_events table
+Cloudflare D1 database: whm101-db
+registrations table
+automation_events table
 idempotency by razorpay_payment_id
-retry failed n8n dispatches
+scheduled retry failed n8n dispatches
+safe 7-day cleanup for sent records
 ```
 
 This prevents paid registrations from being lost if n8n or Google Sheets is unavailable.
+
+Safety rule:
+
+```text
+Only sent/synced old records are deleted automatically.
+Pending, failed, and dead records are retained.
+```
 
 ### 2. n8n Paid User Workflow Completion
 

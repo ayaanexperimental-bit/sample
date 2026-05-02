@@ -1,10 +1,21 @@
 {
   "$schema": "../node_modules/wrangler/config-schema.json",
-  "name": "freedomfromdiabetes-api",
+  "name": "freedomfromdiabetes-retry-worker",
   "main": "worker.ts",
   "compatibility_date": "2026-05-02",
+  "workers_dev": false,
   "observability": {
     "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "WHM101_DB",
+      "database_name": "whm101-db",
+      "database_id": "4c4a685f-1e36-46ec-a487-3e0c7a8b195c"
+    }
+  ],
+  "triggers": {
+    "crons": ["*/5 * * * *", "17 0 * * *"]
   },
   "vars": {
     "RAZORPAY_HOSTED_CHECKOUT_URL": "https://rzp.io/rzp/xBIZzJHv",

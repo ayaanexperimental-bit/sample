@@ -1,7 +1,10 @@
+/// <reference types="@cloudflare/workers-types" />
+
 type Env = {
   ASSETS?: {
     fetch(request: Request): Promise<Response>;
   };
+  WHM101_DB: D1Database;
   RAZORPAY_WEBHOOK_SECRET: string;
   RAZORPAY_HOSTED_CHECKOUT_URL?: string;
   RAZORPAY_IGNORED_PAYMENT_PAGE_SLUG?: string;
@@ -10,6 +13,49 @@ type Env = {
   WORKSHOP_CURRENCY?: string;
   WHATSAPP_COMMUNITY_INVITE_URL?: string;
   N8N_WEBHOOK_URL?: string;
+};
+
+type PaidUserPayload = {
+  event_type: "paid_user_created";
+  registration_id: string;
+  registration_token: string;
+  full_name: string;
+  phone_number: string;
+  email: string;
+  program_slug: string;
+  workshop_slot: string;
+  amount: number;
+  currency: string;
+  payment_status: "success";
+  member_status: "paid_not_joined";
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  whatsapp_group_link: string;
+  thank_you_url: string;
+  utm_source: string;
+  utm_medium: string;
+  utm_campaign: string;
+  utm_content: string;
+  utm_term: string;
+  created_at: string;
+  lead_timestamp: string;
+};
+
+type AutomationDispatchResult = {
+  status: "sent" | "failed" | "skipped";
+  statusCode?: number;
+  reason?: string;
+  error?: string;
+};
+
+type AutomationEventRow = {
+  id: string;
+  registration_id: string;
+  event_type: string;
+  payload_json: string;
+  status: "pending" | "sent" | "failed" | "dead";
+  retry_count: number;
+  last_error: string | null;
 };
 
 type RazorpayWebhookPayload = {
@@ -61,6 +107,9 @@ const DEFAULT_WHATSAPP_URL = "https://chat.whatsapp.com/LYf1V55hDimAhfNVCghaN4";
 const DEFAULT_N8N_WEBHOOK_URL = "https://ayaantester.app.n8n.cloud/webhook/whm101-paid-user-created";
 const PAID_EVENTS = new Set(["payment.captured", "order.paid", "payment_link.paid"]);
 const MAX_WEBHOOK_BODY_BYTES = 100_000;
+const MAX_AUTOMATION_RETRIES = 20;
+const RETRY_BATCH_SIZE = 25;
+const RETENTION_DAYS = 7;
 const SECURITY_HEADERS = {
   "Content-Security-Policy": [
     "default-src 'self'",
@@ -95,7 +144,7 @@ export default {
     }
 
     if (url.pathname === "/api/health") {
-      return json({ ok: true, runtime: "cloudflare-worker" });
+      return json({ ok: true, runtime: "cloudflare-worker", durable_capture: Boolean(env.WHM101_DB) });
     }
 
     if (url.pathname === "/api/checkout/session" && request.method === "POST") {
@@ -120,6 +169,11 @@ export default {
     }
 
     return json({ ok: false, error: "Not found." }, 404);
+  },
+
+  async scheduled(_event: ScheduledEvent, env: Env) {
+    await retryPendingAutomationEvents(env);
+    await cleanupSyncedOldData(env);
   }
 };
 
@@ -177,13 +231,23 @@ async function handleRazorpayWebhook(request: Request, env: Env, url: URL) {
     }, 422);
   }
 
-  const automation = await dispatchToN8n(paidUserPayload, env);
+  await upsertRegistration(env.WHM101_DB, paidUserPayload);
+  const automationEvent = await upsertAutomationEvent(env.WHM101_DB, paidUserPayload);
+  let automation: AutomationDispatchResult = {
+    status: "skipped",
+    reason: "Automation event was already sent."
+  };
+
+  if (automationEvent.status !== "sent") {
+    automation = await dispatchAutomationEvent(env.WHM101_DB, automationEvent, env);
+  }
 
   return json({
     ok: true,
     event: webhook.event,
     handled: true,
     registration_id: paidUserPayload.registration_id,
+    automation_event_id: automationEvent.id,
     automation
   });
 }
@@ -204,7 +268,7 @@ async function verifyRazorpaySignature(rawBody: string, signature: string, secre
   return timingSafeEqual(toHex(digest), signature);
 }
 
-function buildPaidUserPayload(webhook: RazorpayWebhookPayload, env: Env, siteOrigin: string) {
+function buildPaidUserPayload(webhook: RazorpayWebhookPayload, env: Env, siteOrigin: string): PaidUserPayload | null {
   const payment = webhook.payload?.payment?.entity;
   const order = webhook.payload?.order?.entity;
   const paymentLink = webhook.payload?.payment_link?.entity;
@@ -280,7 +344,184 @@ function getPaymentDetails(webhook: RazorpayWebhookPayload) {
   };
 }
 
-async function dispatchToN8n(payload: unknown, env: Env) {
+async function upsertRegistration(db: D1Database, payload: PaidUserPayload) {
+  await db.prepare(`
+    insert into registrations (
+      id,
+      registration_token,
+      full_name,
+      phone_number,
+      email,
+      program_slug,
+      workshop_slot,
+      amount,
+      currency,
+      payment_status,
+      member_status,
+      razorpay_order_id,
+      razorpay_payment_id,
+      whatsapp_group_link,
+      thank_you_url,
+      payload_json,
+      created_at,
+      updated_at
+    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    on conflict(razorpay_payment_id) do update set
+      registration_token = excluded.registration_token,
+      full_name = excluded.full_name,
+      phone_number = excluded.phone_number,
+      email = excluded.email,
+      program_slug = excluded.program_slug,
+      workshop_slot = excluded.workshop_slot,
+      amount = excluded.amount,
+      currency = excluded.currency,
+      payment_status = excluded.payment_status,
+      member_status = excluded.member_status,
+      razorpay_order_id = excluded.razorpay_order_id,
+      whatsapp_group_link = excluded.whatsapp_group_link,
+      thank_you_url = excluded.thank_you_url,
+      payload_json = excluded.payload_json,
+      updated_at = datetime('now')
+  `).bind(
+    payload.registration_id,
+    payload.registration_token,
+    payload.full_name,
+    payload.phone_number,
+    payload.email,
+    payload.program_slug,
+    payload.workshop_slot,
+    payload.amount,
+    payload.currency,
+    payload.payment_status,
+    payload.member_status,
+    payload.razorpay_order_id,
+    payload.razorpay_payment_id,
+    payload.whatsapp_group_link,
+    payload.thank_you_url,
+    JSON.stringify(payload),
+    payload.created_at
+  ).run();
+}
+
+async function upsertAutomationEvent(db: D1Database, payload: PaidUserPayload) {
+  const eventId = `${payload.registration_id}:paid_user_created`;
+
+  await db.prepare(`
+    insert into automation_events (
+      id,
+      registration_id,
+      event_type,
+      payload_json,
+      status,
+      retry_count,
+      created_at,
+      updated_at
+    ) values (?, ?, 'paid_user_created', ?, 'pending', 0, datetime('now'), datetime('now'))
+    on conflict(registration_id, event_type) do update set
+      payload_json = case
+        when automation_events.status = 'sent' then automation_events.payload_json
+        else excluded.payload_json
+      end,
+      updated_at = case
+        when automation_events.status = 'sent' then automation_events.updated_at
+        else datetime('now')
+      end
+  `).bind(eventId, payload.registration_id, JSON.stringify(payload)).run();
+
+  return getAutomationEvent(db, eventId);
+}
+
+async function getAutomationEvent(db: D1Database, eventId: string) {
+  const event = await db.prepare(`
+    select id, registration_id, event_type, payload_json, status, retry_count, last_error
+    from automation_events
+    where id = ?
+  `).bind(eventId).first<AutomationEventRow>();
+
+  if (!event) {
+    throw new Error(`Automation event not found: ${eventId}`);
+  }
+
+  return event;
+}
+
+async function dispatchAutomationEvent(db: D1Database, event: AutomationEventRow, env: Env) {
+  const payload = JSON.parse(event.payload_json) as PaidUserPayload;
+  const result = await dispatchToN8n(payload, env);
+
+  if (result.status === "sent") {
+    await db.prepare(`
+      update automation_events
+      set status = 'sent',
+          last_error = null,
+          sent_at = datetime('now'),
+          updated_at = datetime('now')
+      where id = ?
+    `).bind(event.id).run();
+    return result;
+  }
+
+  const retryCount = event.retry_count + 1;
+  const shouldDeadLetter = retryCount >= MAX_AUTOMATION_RETRIES;
+  const lastError =
+    result.error ||
+    result.reason ||
+    (result.statusCode ? `n8n returned HTTP ${result.statusCode}` : "n8n dispatch failed");
+
+  await db.prepare(`
+    update automation_events
+    set status = ?,
+        retry_count = ?,
+        last_error = ?,
+        dead_at = case when ? then datetime('now') else dead_at end,
+        updated_at = datetime('now')
+    where id = ?
+  `).bind(
+    shouldDeadLetter ? "dead" : "failed",
+    retryCount,
+    lastError,
+    shouldDeadLetter ? 1 : 0,
+    event.id
+  ).run();
+
+  return { ...result, retry_count: retryCount, dead: shouldDeadLetter };
+}
+
+async function retryPendingAutomationEvents(env: Env) {
+  const events = await env.WHM101_DB.prepare(`
+    select id, registration_id, event_type, payload_json, status, retry_count, last_error
+    from automation_events
+    where status in ('pending', 'failed')
+      and retry_count < ?
+    order by updated_at asc
+    limit ?
+  `).bind(MAX_AUTOMATION_RETRIES, RETRY_BATCH_SIZE).all<AutomationEventRow>();
+
+  for (const event of events.results || []) {
+    await dispatchAutomationEvent(env.WHM101_DB, event, env);
+  }
+}
+
+async function cleanupSyncedOldData(env: Env) {
+  await env.WHM101_DB.prepare(`
+    delete from automation_events
+    where status = 'sent'
+      and datetime(coalesce(sent_at, updated_at)) < datetime('now', ?)
+  `).bind(`-${RETENTION_DAYS} days`).run();
+
+  await env.WHM101_DB.prepare(`
+    delete from registrations
+    where datetime(created_at) < datetime('now', ?)
+      and not exists (
+        select 1
+        from automation_events
+        where automation_events.registration_id = registrations.id
+          and automation_events.status != 'sent'
+      )
+  `).bind(`-${RETENTION_DAYS} days`).run();
+}
+
+async function dispatchToN8n(payload: unknown, env: Env): Promise<AutomationDispatchResult> {
   const webhookUrl = env.N8N_WEBHOOK_URL || DEFAULT_N8N_WEBHOOK_URL;
 
   if (!webhookUrl) {
