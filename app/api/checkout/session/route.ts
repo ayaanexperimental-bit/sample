@@ -5,6 +5,7 @@ import { validateCheckoutSessionInput } from "@/lib/checkout/validation";
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 10;
+const DEFAULT_HOSTED_CHECKOUT_URL = "https://rzp.io/rzp/gy1111";
 
 export async function POST(request: NextRequest) {
   const rateLimit = checkRateLimit(
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, errors: validation.errors }, { status: 400 });
   }
 
-  const hostedCheckoutUrl = process.env.RAZORPAY_HOSTED_CHECKOUT_URL;
+  const hostedCheckoutUrl = process.env.RAZORPAY_HOSTED_CHECKOUT_URL || DEFAULT_HOSTED_CHECKOUT_URL;
 
   if (hostedCheckoutUrl) {
     return NextResponse.json({
