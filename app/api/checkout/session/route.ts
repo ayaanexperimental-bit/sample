@@ -5,7 +5,7 @@ import { validateCheckoutSessionInput } from "@/lib/checkout/validation";
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 10;
-const DEFAULT_HOSTED_CHECKOUT_URL = "https://rzp.io/rzp/gy1111";
+const DEFAULT_HOSTED_CHECKOUT_URL = "https://rzp.io/rzp/xBIZzJHv";
 
 export async function POST(request: NextRequest) {
   const rateLimit = checkRateLimit(

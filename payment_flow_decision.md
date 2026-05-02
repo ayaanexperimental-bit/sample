@@ -54,7 +54,7 @@ Landing page
 
 ## Provided Razorpay Payment Window
 
-- Hosted payment window URL: `https://rzp.io/rzp/gy1111`
+- Hosted payment window URL: `https://rzp.io/rzp/xBIZzJHv`
 - This URL is recorded for the payment phase.
 - Final production verification still needs backend-side Razorpay confirmation before creating a confirmed registration.
 
