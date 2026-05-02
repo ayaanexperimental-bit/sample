@@ -1,19 +1,19 @@
 :root {
-  --color-background: #fffdf8;
-  --color-surface: #f7fbf4;
-  --color-surface-strong: #e8f4ec;
-  --color-text: #17211b;
-  --color-text-muted: #687267;
-  --color-border: #d8e3d8;
-  --color-accent: #1f8a63;
-  --color-accent-strong: #105a42;
-  --color-accent-soft: #dff5e7;
-  --color-coral: #ef6a3d;
-  --color-coral-strong: #cf4e29;
-  --color-gold: #c28b2c;
+  --color-background: #fff7fb;
+  --color-surface: #fff0f6;
+  --color-surface-strong: #ffe2ee;
+  --color-text: #251822;
+  --color-text-muted: #75606c;
+  --color-border: #f2c9da;
+  --color-accent: #d94683;
+  --color-accent-strong: #9f174d;
+  --color-accent-soft: #fde2ef;
+  --color-coral: #f472b6;
+  --color-coral-strong: #db2777;
+  --color-gold: #d79a50;
   --color-danger: #b42318;
   --color-warning: #b7791f;
-  --color-success: #1f7a5f;
+  --color-success: #be185d;
 
   --font-sans:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -36,8 +36,8 @@
 
   --radius-xl: 1.5rem;
 
-  --shadow-soft: 0 18px 60px rgb(31 55 43 / 0.1);
-  --shadow-lift: 0 22px 80px rgb(16 90 66 / 0.18);
+  --shadow-soft: 0 18px 60px rgb(80 28 54 / 0.1);
+  --shadow-lift: 0 22px 80px rgb(159 23 77 / 0.18);
   --container-max-width: 72rem;
 }
 
@@ -60,7 +60,7 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(circle at 8% 2%, rgb(223 245 231 / 0.72), transparent 28rem),
+    radial-gradient(circle at 8% 2%, rgb(252 231 243 / 0.72), transparent 28rem),
     radial-gradient(circle at 92% 14%, rgb(255 232 191 / 0.52), transparent 30rem),
     var(--color-background);
   overflow-x: hidden;
@@ -183,7 +183,7 @@ svg {
 }
 
 .ui-button:focus-visible {
-  outline: 3px solid rgb(31 122 95 / 0.28);
+  outline: 3px solid rgb(190 24 93 / 0.28);
   outline-offset: 3px;
 }
 
@@ -207,12 +207,12 @@ svg {
 .ui-button--primary {
   background: linear-gradient(135deg, var(--color-coral), var(--color-coral-strong));
   color: #ffffff;
-  box-shadow: 0 14px 30px rgb(239 106 61 / 0.26);
+  box-shadow: 0 14px 30px rgb(244 114 182 / 0.26);
 }
 
 .ui-button--primary:hover {
-  background: linear-gradient(135deg, #ff7b4f, var(--color-coral-strong));
-  box-shadow: 0 18px 38px rgb(239 106 61 / 0.34);
+  background: linear-gradient(135deg, #fb80c1, var(--color-coral-strong));
+  box-shadow: 0 18px 38px rgb(244 114 182 / 0.34);
 }
 
 .ui-button--secondary {
@@ -231,7 +231,7 @@ svg {
 }
 
 .ui-button--ghost:hover {
-  background: rgb(31 122 95 / 0.08);
+  background: rgb(190 24 93 / 0.08);
 }
 
 .ui-badge {
@@ -254,12 +254,12 @@ svg {
 }
 
 .ui-badge--accent {
-  background: linear-gradient(135deg, rgb(31 138 99 / 0.13), rgb(239 106 61 / 0.14));
+  background: linear-gradient(135deg, rgb(217 70 132 / 0.13), rgb(244 114 182 / 0.14));
   color: var(--color-coral-strong);
 }
 
 .ui-badge--success {
-  background: rgb(31 122 95 / 0.1);
+  background: rgb(190 24 93 / 0.1);
   color: var(--color-success);
 }
 
@@ -275,8 +275,8 @@ svg {
   align-items: center;
   padding-top: 6.5rem;
   background:
-    linear-gradient(112deg, rgb(255 253 248 / 0.92), rgb(255 253 248 / 0.56) 52%, transparent),
-    radial-gradient(circle at 72% 18%, rgb(223 245 231 / 0.86), transparent 24rem),
+    linear-gradient(112deg, rgb(255 247 251 / 0.92), rgb(255 247 251 / 0.56) 52%, transparent),
+    radial-gradient(circle at 72% 18%, rgb(252 231 243 / 0.86), transparent 24rem),
     radial-gradient(circle at 86% 78%, rgb(255 222 178 / 0.66), transparent 24rem),
     var(--color-background);
   overflow: clip;
@@ -288,8 +288,8 @@ svg {
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgb(23 33 27 / 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(23 33 27 / 0.04) 1px, transparent 1px);
+    linear-gradient(rgb(37 24 34 / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(37 24 34 / 0.04) 1px, transparent 1px);
   background-size: 72px 72px;
   mask-image: linear-gradient(to bottom, black, transparent 82%);
 }
@@ -307,9 +307,9 @@ svg {
   gap: var(--space-4);
   border: 1px solid rgb(255 255 255 / 0.68);
   border-radius: 999px;
-  background: rgb(255 253 248 / 0.78);
+  background: rgb(255 247 251 / 0.78);
   padding: 0.5rem 0.75rem;
-  box-shadow: 0 16px 50px rgb(23 33 27 / 0.1);
+  box-shadow: 0 16px 50px rgb(37 24 34 / 0.1);
   backdrop-filter: blur(18px);
   transform: translateX(-50%);
 }
@@ -358,7 +358,7 @@ svg {
 }
 
 .site-nav a:hover {
-  background: rgb(31 138 99 / 0.1);
+  background: rgb(217 70 132 / 0.1);
   color: var(--color-accent-strong);
 }
 
@@ -417,7 +417,7 @@ svg {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  border: 1px solid rgb(23 33 27 / 0.08);
+  border: 1px solid rgb(37 24 34 / 0.08);
   border-radius: 999px;
   background: rgb(255 255 255 / 0.7);
   padding: var(--space-3) var(--space-4);
@@ -425,7 +425,7 @@ svg {
   font-size: 0.9375rem;
   font-weight: 750;
   line-height: 1.5;
-  box-shadow: 0 12px 30px rgb(23 33 27 / 0.06);
+  box-shadow: 0 12px 30px rgb(37 24 34 / 0.06);
 }
 
 .hero-details li span {
@@ -434,7 +434,7 @@ svg {
   flex: 0 0 auto;
   border-radius: 999px;
   background: var(--color-coral);
-  box-shadow: 0 0 0 5px rgb(239 106 61 / 0.12);
+  box-shadow: 0 0 0 5px rgb(244 114 182 / 0.12);
 }
 
 .hero-media {
@@ -447,7 +447,7 @@ svg {
 .hero-orbit {
   position: absolute;
   z-index: -1;
-  border: 1px solid rgb(31 138 99 / 0.2);
+  border: 1px solid rgb(217 70 132 / 0.2);
   border-radius: 999px;
   pointer-events: none;
 }
@@ -458,7 +458,7 @@ svg {
 
 .hero-orbit--two {
   inset: 4rem -1.5rem -1.25rem 2.5rem;
-  border-color: rgb(194 139 44 / 0.22);
+  border-color: rgb(215 154 80 / 0.22);
 }
 
 .hero-photo-slot {
@@ -467,7 +467,7 @@ svg {
   border: 1px solid rgb(255 255 255 / 0.78);
   border-radius: 1.75rem;
   background:
-    linear-gradient(145deg, rgb(31 122 95 / 0.14), transparent 52%),
+    linear-gradient(145deg, rgb(190 24 93 / 0.14), transparent 52%),
     linear-gradient(330deg, rgb(183 121 31 / 0.12), transparent 48%), var(--color-surface);
   box-shadow: var(--shadow-lift);
   margin: 0;
@@ -488,9 +488,9 @@ svg {
   gap: 0.25rem;
   border: 1px solid rgb(255 255 255 / 0.74);
   border-radius: 1rem;
-  background: rgb(255 253 248 / 0.82);
+  background: rgb(255 247 251 / 0.82);
   padding: var(--space-4);
-  box-shadow: 0 18px 45px rgb(23 33 27 / 0.1);
+  box-shadow: 0 18px 45px rgb(37 24 34 / 0.1);
   backdrop-filter: blur(16px);
   transform: translateY(-2.75rem);
 }
@@ -509,7 +509,7 @@ svg {
 
 .credibility-section {
   padding-block: var(--space-8);
-  border-block: 1px solid rgb(23 33 27 / 0.08);
+  border-block: 1px solid rgb(37 24 34 / 0.08);
   background: rgb(255 255 255 / 0.64);
   backdrop-filter: blur(18px);
 }
@@ -571,7 +571,7 @@ svg {
   border: 1px solid rgb(255 255 255 / 0.72);
   border-radius: var(--radius-xl);
   background:
-    linear-gradient(145deg, rgb(255 255 255 / 0.9), rgb(247 251 244 / 0.74)), var(--color-surface);
+    linear-gradient(145deg, rgb(255 255 255 / 0.9), rgb(255 240 246 / 0.74)), var(--color-surface);
   padding: var(--space-8);
   box-shadow: var(--shadow-soft);
 }
@@ -639,13 +639,13 @@ svg {
   min-height: 17rem;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgb(23 33 27 / 0.08);
+  border: 1px solid rgb(37 24 34 / 0.08);
   border-radius: var(--radius-xl);
   background:
-    linear-gradient(145deg, rgb(255 255 255 / 0.92), rgb(247 251 244 / 0.72)),
+    linear-gradient(145deg, rgb(255 255 255 / 0.92), rgb(255 240 246 / 0.72)),
     var(--color-background);
   padding: var(--space-6);
-  box-shadow: 0 12px 40px rgb(23 33 27 / 0.06);
+  box-shadow: 0 12px 40px rgb(37 24 34 / 0.06);
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
@@ -658,8 +658,8 @@ svg {
 .logistics-item:hover,
 .faq-item:hover,
 .method-pillar:hover {
-  border-color: rgb(31 138 99 / 0.24);
-  box-shadow: 0 20px 60px rgb(23 33 27 / 0.12);
+  border-color: rgb(217 70 132 / 0.24);
+  box-shadow: 0 20px 60px rgb(37 24 34 / 0.12);
   transform: translateY(-4px);
 }
 
@@ -667,7 +667,7 @@ svg {
   position: absolute;
   top: var(--space-4);
   right: var(--space-5);
-  color: rgb(31 138 99 / 0.1);
+  color: rgb(217 70 132 / 0.1);
   font-size: 4.75rem;
   font-weight: 800;
   line-height: 1;
@@ -723,7 +723,7 @@ svg {
   flex-direction: column;
   justify-content: flex-end;
   background:
-    linear-gradient(160deg, rgb(255 255 255 / 0.94), rgb(247 251 244 / 0.78)),
+    linear-gradient(160deg, rgb(255 255 255 / 0.94), rgb(255 240 246 / 0.78)),
     var(--color-background);
   padding: var(--space-6);
   transition:
@@ -734,7 +734,7 @@ svg {
 
 .method-pillar:nth-child(even) {
   background:
-    linear-gradient(160deg, rgb(232 244 236 / 0.76), rgb(255 253 248 / 0.78)), var(--color-surface);
+    linear-gradient(160deg, rgb(253 226 239 / 0.76), rgb(255 247 251 / 0.78)), var(--color-surface);
 }
 
 .method-icon {
@@ -746,7 +746,7 @@ svg {
   display: grid;
   place-items: center;
   border-radius: 1rem;
-  background: linear-gradient(145deg, rgb(31 138 99 / 0.14), rgb(239 106 61 / 0.12));
+  background: linear-gradient(145deg, rgb(217 70 132 / 0.14), rgb(244 114 182 / 0.12));
   color: var(--color-accent-strong);
   font-size: 1rem;
   font-weight: 900;
@@ -754,7 +754,7 @@ svg {
 }
 
 .method-pillar:nth-child(2n) .method-icon {
-  background: linear-gradient(145deg, rgb(239 106 61 / 0.16), rgb(194 139 44 / 0.12));
+  background: linear-gradient(145deg, rgb(244 114 182 / 0.16), rgb(215 154 80 / 0.12));
   color: var(--color-coral-strong);
 }
 
@@ -783,7 +783,7 @@ svg {
 .outcomes-card {
   border-radius: var(--radius-xl);
   background:
-    linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(232 244 236 / 0.5)),
+    linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(253 226 239 / 0.5)),
     var(--color-background);
   padding: var(--space-8);
   box-shadow: var(--shadow-soft);
@@ -840,11 +840,11 @@ svg {
 }
 
 .testimonial-card {
-  border: 1px solid rgb(23 33 27 / 0.08);
+  border: 1px solid rgb(37 24 34 / 0.08);
   border-radius: var(--radius-xl);
   background: rgb(255 255 255 / 0.72);
   padding: var(--space-6);
-  box-shadow: 0 12px 40px rgb(23 33 27 / 0.06);
+  box-shadow: 0 12px 40px rgb(37 24 34 / 0.06);
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
@@ -893,7 +893,7 @@ svg {
 
 .logistics-item {
   min-height: 9rem;
-  border: 1px solid rgb(23 33 27 / 0.08);
+  border: 1px solid rgb(37 24 34 / 0.08);
   border-radius: var(--radius-xl);
   background: rgb(255 255 255 / 0.76);
   padding: var(--space-5);
@@ -945,7 +945,7 @@ svg {
   display: grid;
   align-content: space-between;
   min-height: 15rem;
-  border: 1px solid rgb(23 33 27 / 0.08);
+  border: 1px solid rgb(37 24 34 / 0.08);
   border-radius: var(--radius-xl);
   background:
     linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(255 249 237 / 0.68)),
@@ -976,7 +976,7 @@ svg {
 .pricing-section {
   overflow: clip;
   background:
-    linear-gradient(135deg, rgb(16 90 66 / 0.94), rgb(23 33 27 / 0.98)), var(--color-accent-strong);
+    linear-gradient(135deg, rgb(159 23 77 / 0.94), rgb(37 24 34 / 0.98)), var(--color-accent-strong);
 }
 
 .pricing-section::before {
@@ -985,7 +985,7 @@ svg {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 15% 20%, rgb(239 106 61 / 0.2), transparent 24rem),
+    radial-gradient(circle at 15% 20%, rgb(244 114 182 / 0.2), transparent 24rem),
     linear-gradient(90deg, rgb(255 255 255 / 0.05) 1px, transparent 1px),
     linear-gradient(rgb(255 255 255 / 0.04) 1px, transparent 1px);
   background-size:
@@ -1030,7 +1030,7 @@ svg {
   border: 1px solid rgb(255 255 255 / 0.78);
   border-radius: var(--radius-xl);
   background:
-    linear-gradient(145deg, rgb(255 255 255 / 0.96), rgb(232 244 236 / 0.62)),
+    linear-gradient(145deg, rgb(255 255 255 / 0.96), rgb(253 226 239 / 0.62)),
     var(--color-background);
   padding: var(--space-8);
   box-shadow: 0 26px 90px rgb(0 0 0 / 0.28);
@@ -1074,7 +1074,7 @@ svg {
   flex: 0 0 auto;
   place-items: center;
   border-radius: 999px;
-  background: rgb(31 138 99 / 0.12);
+  background: rgb(217 70 132 / 0.12);
   color: var(--color-accent-strong);
   font-size: 0.8rem;
   font-weight: 900;
@@ -1120,7 +1120,7 @@ svg {
 }
 
 .faq-item {
-  border: 1px solid rgb(23 33 27 / 0.08);
+  border: 1px solid rgb(37 24 34 / 0.08);
   border-radius: 1rem;
   background: rgb(255 255 255 / 0.68);
   padding: var(--space-5);
@@ -1148,7 +1148,7 @@ svg {
 .footer-compliance {
   border-top: 1px solid var(--color-border);
   background:
-    radial-gradient(circle at 12% 0%, rgb(31 138 99 / 0.24), transparent 22rem), var(--color-text);
+    radial-gradient(circle at 12% 0%, rgb(217 70 132 / 0.24), transparent 22rem), var(--color-text);
   color: #ffffff;
   padding-block: var(--space-10);
 }
