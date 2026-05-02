@@ -96,7 +96,7 @@ export function getWebhookEventStatus(eventType: string | undefined) {
 
 export function getRazorpayActiveSourceConfig(env: NodeJS.ProcessEnv = process.env) {
   return {
-    slugs: splitEnvList(env.RAZORPAY_ACTIVE_PAYMENT_PAGE_SLUG || "xBIZzJHv"),
+    slugs: splitEnvList(env.RAZORPAY_ACTIVE_PAYMENT_PAGE_SLUG),
     paymentLinkIds: splitEnvList(env.RAZORPAY_ACTIVE_PAYMENT_LINK_ID),
     paymentPageIds: splitEnvList(env.RAZORPAY_ACTIVE_PAYMENT_PAGE_ID),
     ignoredSlugs: splitEnvList(env.RAZORPAY_IGNORED_PAYMENT_PAGE_SLUG || "gy1111")
