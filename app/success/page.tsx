@@ -1,22 +1,47 @@
 import Link from "next/link";
 
 export default function SuccessPage() {
+  const whatsappTrackingUrl = process.env.N8N_WHATSAPP_CLICK_TRACKING_URL;
+
   return (
-    <main className="policy-page">
-      <article className="policy-document">
-        <p className="policy-kicker">Payment status</p>
-        <h1>Registration received</h1>
+    <main className="success-page">
+      <article className="success-document">
+        <p className="policy-kicker">Payment successful</p>
+        <h1>Your registration is received.</h1>
         <p>
-          If your payment was completed, confirmation will be finalized after Razorpay sends a
-          verified payment webhook to our system.
+          Razorpay has received your payment for Women Health Masterclass 101. Your registration is
+          confirmed after the verified Razorpay payment event reaches our system.
         </p>
+
+        <section className="success-panel" aria-labelledby="success-next-step-title">
+          <h2 id="success-next-step-title">Next step: join the WhatsApp community</h2>
+          <p>
+            Join the community from the same phone you used during payment. This helps us send class
+            access, reminders, and workshop updates in one place.
+          </p>
+
+          {whatsappTrackingUrl ? (
+            <a
+              className="ui-button ui-button--primary ui-button--lg success-action"
+              href={whatsappTrackingUrl}
+            >
+              Join WhatsApp Community
+            </a>
+          ) : (
+            <p className="success-pending">
+              The WhatsApp community button is being connected. If you have already paid, your
+              joining details will be shared shortly.
+            </p>
+          )}
+        </section>
+
         <p>
-          Once verified, onboarding details are planned to be sent by email and WhatsApp. If payment
-          was deducted but confirmation is not received, contact support with your transaction ID.
+          If WhatsApp does not open after the button is enabled, copy the community link and open it
+          on your phone. Keep your Razorpay payment ID available if support asks for confirmation.
         </p>
         <p className="policy-warning">
-          This page does not by itself prove payment success. Payment status is confirmed only from
-          the verified backend payment event.
+          This page is shown after payment redirect. Final registration records are still based on
+          the verified Razorpay webhook, not on the browser redirect alone.
         </p>
         <Link href="/">Back to landing page</Link>
       </article>
