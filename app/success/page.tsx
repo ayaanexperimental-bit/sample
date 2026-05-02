@@ -1,7 +1,12 @@
 import Link from "next/link";
 
+const DEFAULT_WHATSAPP_COMMUNITY_URL = "https://chat.whatsapp.com/LYf1V55hDimAhfNVCghaN4";
+
 export default function SuccessPage() {
-  const whatsappTrackingUrl = process.env.N8N_WHATSAPP_CLICK_TRACKING_URL;
+  const whatsappJoinUrl =
+    process.env.N8N_WHATSAPP_CLICK_TRACKING_URL ||
+    process.env.WHATSAPP_COMMUNITY_INVITE_URL ||
+    DEFAULT_WHATSAPP_COMMUNITY_URL;
 
   return (
     <main className="success-page">
@@ -20,24 +25,19 @@ export default function SuccessPage() {
             access, reminders, and workshop updates in one place.
           </p>
 
-          {whatsappTrackingUrl ? (
-            <a
-              className="ui-button ui-button--primary ui-button--lg success-action"
-              href={whatsappTrackingUrl}
-            >
-              Join WhatsApp Community
-            </a>
-          ) : (
-            <p className="success-pending">
-              The WhatsApp community button is being connected. If you have already paid, your
-              joining details will be shared shortly.
-            </p>
-          )}
+          <a
+            className="ui-button ui-button--primary ui-button--lg success-action"
+            href={whatsappJoinUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Join WhatsApp Community
+          </a>
         </section>
 
         <p>
-          If WhatsApp does not open after the button is enabled, copy the community link and open it
-          on your phone. Keep your Razorpay payment ID available if support asks for confirmation.
+          If WhatsApp does not open, copy the community link and open it on your phone. Keep your
+          Razorpay payment ID available if support asks for confirmation.
         </p>
         <p className="policy-warning">
           This page is shown after payment redirect. Final registration records are still based on
