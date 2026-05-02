@@ -23,6 +23,7 @@ type RazorpayWebhookPayload = {
         currency?: string;
         email?: string | null;
         contact?: string | null;
+        name?: string | null;
         created_at?: number;
         notes?: Record<string, unknown> | null;
       };
@@ -201,10 +202,11 @@ function buildPaidUserPayload(webhook: RazorpayWebhookPayload, env: Env, siteOri
       asString(notes.full_name) ||
       asString(notes.fullName) ||
       asString(notes.name) ||
+      asString(payment?.name) ||
       asString(paymentLink?.customer?.name) ||
       "Workshop Participant",
     phone_number:
-      normalizePhone(asString(notes.phone_number) || asString(notes.phoneNumber)) ||
+      normalizePhone(asString(notes.phone_number) || asString(notes.phoneNumber) || asString(notes.whatsapp_no)) ||
       normalizePhone(payment?.contact ?? paymentLink?.customer?.contact ?? ""),
     email:
       asString(notes.email) || asString(payment?.email) || asString(paymentLink?.customer?.email),
