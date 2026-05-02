@@ -14,7 +14,7 @@ n8n handles Google Sheets, email, WhatsApp onboarding, reminders, and admin aler
 
 ```text
 Landing Page
--> Razorpay Standard Checkout for INR 29
+-> Razorpay Standard Checkout for INR 51
 -> Verified payment
 -> Confirmed registration created
 -> payment_status = success
@@ -196,7 +196,7 @@ RAZORPAY_LIVE_KEY_ID=
 RAZORPAY_LIVE_KEY_SECRET=
 RAZORPAY_WEBHOOK_SECRET=
 
-WORKSHOP_AMOUNT_PAISE=2900
+WORKSHOP_AMOUNT_PAISE=5100
 WORKSHOP_CURRENCY=INR
 
 WHATSAPP_COMMUNITY_INVITE_URL=

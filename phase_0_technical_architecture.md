@@ -23,7 +23,7 @@ Do not build direct Google Sheets, email, WhatsApp, reminder, or admin follow-up
 
 ```text
 Landing Page
--> User clicks Pay INR 29
+-> User clicks Pay INR 51
 -> Razorpay Standard Checkout opens
 -> User completes payment
 -> Backend verifies Razorpay payment
@@ -92,7 +92,7 @@ Create only these backend routes for the payment and n8n handoff phase:
 
 | Route | Method | Purpose |
 |---|---|---|
-| `/api/checkout/create-order` | POST | Create a Razorpay order for INR 29 / 2900 paise |
+| `/api/checkout/create-order` | POST | Create a Razorpay order for INR 51 / 5100 paise |
 | `/api/payments/razorpay/verify` | POST | Verify Razorpay Checkout payment signature and create confirmed registration |
 | `/api/payments/razorpay/webhook` | POST | Handle Razorpay webhook events if needed |
 | `/api/registrations/[registrationToken]` | GET | Serve safe registration data for the Thank You page |
@@ -265,7 +265,7 @@ If group join webhook is not available, do not falsely mark `active_member`.
   "email": "string",
   "program_slug": "string",
   "workshop_slot": "string",
-  "amount": 2900,
+  "amount": 5100,
   "currency": "INR",
   "payment_status": "success",
   "member_status": "paid_not_joined",
@@ -376,7 +376,7 @@ RAZORPAY_LIVE_KEY_ID=
 RAZORPAY_LIVE_KEY_SECRET=
 RAZORPAY_WEBHOOK_SECRET=
 
-WORKSHOP_AMOUNT_PAISE=2900
+WORKSHOP_AMOUNT_PAISE=5100
 WORKSHOP_CURRENCY=INR
 
 WHATSAPP_COMMUNITY_INVITE_URL=

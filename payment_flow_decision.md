@@ -16,8 +16,8 @@ The business goal is to avoid collecting many low-intent unpaid leads. Paid regi
 
 ```text
 Landing page
--> User clicks Pay INR 29
--> Backend creates Razorpay order for 2900 paise
+-> User clicks Pay INR 51
+-> Backend creates Razorpay order for 5100 paise
 -> Razorpay Checkout opens
 -> User completes payment
 -> Backend verifies Razorpay Checkout signature
@@ -48,9 +48,15 @@ Landing page
 
 ## Amount
 
-- `INR 29`
-- `2900` paise
+- `INR 51`
+- `5100` paise
 - `INR`
+
+## Provided Razorpay Payment Window
+
+- Hosted payment window URL: `https://rzp.io/rzp/gy1111`
+- This URL is recorded for the payment phase.
+- Final production verification still needs backend-side Razorpay confirmation before creating a confirmed registration.
 
 ## Required Payment Routes
 

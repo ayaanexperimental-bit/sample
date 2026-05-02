@@ -6,7 +6,8 @@ I will keep this updated as the build progresses.
 
 ## Already Provided
 
-- Final price: `₹29`
+- Final price: `₹51`
+- Razorpay hosted payment window URL: `https://rzp.io/rzp/gy1111`
 - Hero / coach photo: `public/images/coach-hero.jpg`
 - Page metadata title: `WOMEN HEALTH MASTERCLASS 101`
 - Page metadata description: `AN INTEGRATED AND HOLISTIC APPROACH FOR PCOS/PCOD`
@@ -87,8 +88,8 @@ I will keep this updated as the build progresses.
 - Razorpay live key ID
 - Razorpay live key secret
 - Razorpay webhook secret
-- Final payment link or checkout setup decision
-- Confirm checkout amount should remain `₹29` / `2900` paise
+- Final payment link or checkout setup decision: hosted Razorpay payment window provided for now, `https://rzp.io/rzp/gy1111`
+- Confirm checkout amount should remain `₹51` / `5100` paise
 - Confirm post-payment fallback fields if Razorpay contact details are missing
 - Confirm Razorpay dashboard webhook event selections
 

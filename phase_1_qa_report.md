@@ -45,7 +45,7 @@ Open `preview.html` in the browser and check:
 - CTA buttons are visible.
 - Credibility strip appears below the hero.
 - Sections stack cleanly when the browser is narrowed.
-- The pricing section shows `₹29`.
+- The pricing section shows `₹51`.
 - FAQ items expand and collapse.
 - Footer compliance copy is visible.
 - No horizontal scrolling appears on desktop or mobile-width browser sizes.
@@ -109,4 +109,3 @@ Before payment/automation work starts, confirm:
 - Email provider
 - WhatsApp provider
 - Support email and WhatsApp number
-

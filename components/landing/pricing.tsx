@@ -23,7 +23,7 @@ export function Pricing() {
 
         <div className="pricing-card">
           <p className="pricing-label">Current price</p>
-          <div className="pricing-price">₹29</div>
+          <div className="pricing-price">₹51</div>
           <p className="pricing-note">
             The price is set. Payment access will open after final technical checks.
           </p>

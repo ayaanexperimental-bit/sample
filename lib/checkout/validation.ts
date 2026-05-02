@@ -31,8 +31,8 @@ export function validateCheckoutSessionInput(payload: unknown): CheckoutValidati
   const currency = asString(input.currency) || "INR";
   const errors: string[] = [];
 
-  if (!Number.isInteger(amount) || amount !== 2900) {
-    errors.push("Amount must be 2900 paise for the ₹29 offer.");
+  if (!Number.isInteger(amount) || amount !== 5100) {
+    errors.push("Amount must be 5100 paise for the ₹51 offer.");
   }
 
   if (currency !== "INR") {

@@ -4,7 +4,7 @@ export type RazorpayConfig = {
   mode: RazorpayMode;
   keyId: string;
   keySecret: string;
-  amount: 2900;
+  amount: 5100;
   currency: "INR";
   isConfigured: boolean;
 };
@@ -24,14 +24,14 @@ export function getRazorpayConfig(): RazorpayConfig {
     mode === "live" ? process.env.RAZORPAY_LIVE_KEY_ID : process.env.RAZORPAY_TEST_KEY_ID;
   const keySecret =
     mode === "live" ? process.env.RAZORPAY_LIVE_KEY_SECRET : process.env.RAZORPAY_TEST_KEY_SECRET;
-  const amount = getPositiveInteger(process.env.WORKSHOP_AMOUNT_PAISE, 2900);
+  const amount = getPositiveInteger(process.env.WORKSHOP_AMOUNT_PAISE, 5100);
   const currency = process.env.WORKSHOP_CURRENCY === "INR" ? "INR" : "INR";
 
   return {
     mode,
     keyId: keyId ?? "",
     keySecret: keySecret ?? "",
-    amount: amount === 2900 ? 2900 : 2900,
+    amount: amount === 5100 ? 5100 : 5100,
     currency,
     isConfigured: Boolean(keyId && keySecret)
   };

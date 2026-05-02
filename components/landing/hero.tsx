@@ -24,7 +24,7 @@ export function Hero({ schedule }: HeroProps) {
         </a>
         <nav className="site-nav" aria-label="Page sections">
           <a href="#details">Details</a>
-          <a href="#registration">₹29</a>
+          <a href="#registration">₹51</a>
         </nav>
       </header>
       <Container className="hero-layout" size="wide">

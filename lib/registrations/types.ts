@@ -29,7 +29,7 @@ export type ConfirmedRegistrationInput = {
   email: string;
   programSlug: string;
   workshopSlot?: string;
-  amount: 2900;
+  amount: 5100;
   currency: "INR";
   razorpayOrderId: string;
   razorpayPaymentId: string;
@@ -44,7 +44,7 @@ export type PaidUserCreatedPayload = {
   email: string;
   program_slug: string;
   workshop_slot: string;
-  amount: 2900;
+  amount: 5100;
   currency: "INR";
   payment_status: "success";
   member_status: "paid_not_joined";

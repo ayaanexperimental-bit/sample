@@ -24,7 +24,7 @@ The app backend should not become a full CRM. It should only verify payment, cre
 ```text
 Instagram Ad / UTM Source
 -> Landing Page
--> User clicks Pay INR 29
+-> User clicks Pay INR 51
 -> Razorpay Standard Checkout opens
 -> User completes payment
 -> Backend verifies Razorpay payment
@@ -334,7 +334,7 @@ RAZORPAY_LIVE_KEY_ID=
 RAZORPAY_LIVE_KEY_SECRET=
 RAZORPAY_WEBHOOK_SECRET=
 
-WORKSHOP_AMOUNT_PAISE=2900
+WORKSHOP_AMOUNT_PAISE=5100
 WORKSHOP_CURRENCY=INR
 
 WHATSAPP_COMMUNITY_INVITE_URL=

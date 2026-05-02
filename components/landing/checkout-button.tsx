@@ -36,7 +36,7 @@ export function CheckoutButton() {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          amount: 2900,
+          amount: 5100,
           currency: "INR"
         })
       });
@@ -64,7 +64,7 @@ export function CheckoutButton() {
         onClick={startCheckout}
         type="button"
       >
-        {status === "loading" ? "Starting Checkout..." : paymentEnabled ? "Pay ₹29" : "Notify Me"}
+        {status === "loading" ? "Starting Checkout..." : paymentEnabled ? "Pay ₹51" : "Notify Me"}
       </button>
       {message ? <p className="checkout-message">{message}</p> : null}
     </div>
