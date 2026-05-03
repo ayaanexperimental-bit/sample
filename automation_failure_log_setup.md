@@ -118,9 +118,12 @@ This workflow remains intentionally simple:
 ```text
 Webhook
 → Append clean paid user row
+→ Respond after successful sheet write
 ```
 
 The failure sheet does not depend on n8n. Cloudflare/Apps Script is the direct failure-log path.
+
+Important: the webhook must not respond immediately. It must respond only after the Google Sheets row is written. Otherwise Cloudflare will mark the automation event as `sent` even if the Google Sheets node fails later.
 
 ## Important Limitation
 

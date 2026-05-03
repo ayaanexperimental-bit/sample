@@ -5,6 +5,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "whm101-paid-user-created",
+        "responseMode": "responseNode",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
@@ -149,6 +150,20 @@
           "name": "Google Sheets OAuth2 API"
         }
       }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"ok\":true,\"sheet\":\"SUCCESSFUL PAYMENTS\",\"razorpay_payment_id\":\"{{($json.body || $json).razorpay_payment_id}}\"}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [672, 0],
+      "id": "0830336d-0f5a-4e77-96e4-6f72bb2cf37f",
+      "name": "Respond after successful sheet write"
     }
   ],
   "pinData": {},
@@ -158,6 +173,17 @@
         [
           {
             "node": "Append clean paid user row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append clean paid user row": {
+      "main": [
+        [
+          {
+            "node": "Respond after successful sheet write",
             "type": "main",
             "index": 0
           }
