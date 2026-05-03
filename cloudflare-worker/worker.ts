@@ -10,7 +10,6 @@ type Env = {
   RAZORPAY_ACTIVE_PAYMENT_PAGE_SLUG?: string;
   RAZORPAY_ACTIVE_PAYMENT_LINK_ID?: string;
   RAZORPAY_ACTIVE_PAYMENT_PAGE_ID?: string;
-  RAZORPAY_IGNORED_PAYMENT_PAGE_SLUG?: string;
   WORKSHOP_ALLOWED_AMOUNTS_PAISE?: string;
   WORKSHOP_AMOUNT_PAISE?: string;
   WORKSHOP_CURRENCY?: string;
@@ -236,21 +235,12 @@ async function handleRazorpayWebhook(request: Request, env: Env, url: URL) {
     return json({ ok: true, event: webhook.event ?? "unknown", handled: false });
   }
 
-  if (isIgnoredPaymentSource(webhook, env)) {
-    return json({
-      ok: true,
-      event: webhook.event ?? "unknown",
-      handled: false,
-      ignored_reason: "Payment came from an ignored Razorpay payment page."
-    });
-  }
-
   if (!isAcceptedPaymentSource(webhook, env)) {
     return json({
       ok: true,
       event: webhook.event ?? "unknown",
       handled: false,
-      ignored_reason: "Payment did not come from the active WHM101 Razorpay payment page.",
+      ignored_reason: "Payment source is outside the active WHM101 automation allowlist.",
       accepted_payment_source: getAcceptedPaymentSourceIdentifiers(env)
     });
   }
@@ -644,22 +634,11 @@ async function syncFailureLog(
   }
 }
 
-function isIgnoredPaymentSource(webhook: RazorpayWebhookPayload, env: Env) {
-  const ignoredSlug = (env.RAZORPAY_IGNORED_PAYMENT_PAGE_SLUG || "gy1111").toLowerCase();
-  const identifiers: string[] = [];
-
-  collectStringValues(webhook.payload?.payment_link?.entity, identifiers);
-  collectStringValues(webhook.payload?.payment?.entity?.notes, identifiers);
-  collectStringValues(webhook.payload?.order?.entity?.notes, identifiers);
-
-  return identifiers.some((identifier) => identifier.toLowerCase().includes(ignoredSlug));
-}
-
 function isAcceptedPaymentSource(webhook: RazorpayWebhookPayload, env: Env) {
   const acceptedIdentifiers = getAcceptedPaymentSourceIdentifiers(env);
 
   if (acceptedIdentifiers.length === 0) {
-    return true;
+    return false;
   }
 
   const webhookIdentifiers: string[] = [];

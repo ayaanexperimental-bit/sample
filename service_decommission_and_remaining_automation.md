@@ -50,7 +50,7 @@ incandescent-tartufo-4b3df5.netlify.app
 75.2.60.5
 ```
 
-Pabbly or the old payment-page automation should not receive new WHM101 production leads.
+Separate legacy payment automations should not receive new WHM101 production leads.
 
 ## External Decommission Checklist
 
@@ -78,7 +78,7 @@ These actions must be completed inside the external dashboards because they are 
 
 1. Ensure webhook URL is the main domain only.
 2. Remove old temporary deployment webhook URLs.
-3. Remove old payment page automation links that send leads to Pabbly for WHM101.
+3. Keep WHM101 production leads isolated to the current configured Razorpay source allowlist.
 4. Keep enabled events:
    - `payment.captured`
    - `order.paid`

@@ -94,7 +94,7 @@ Use this checklist:
 6. Confirm unrelated/old payment pages do not update the sheet.
 ```
 
-## Failure Behavior
+## Outside-Ecosystem Payment Behavior
 
 If the active page/link identifier does not match:
 
@@ -104,4 +104,17 @@ Webhook is ignored by WHM101 automation
 D1/n8n/Google Sheet are not updated
 ```
 
-This is intentional. It protects the automation from unrelated payments.
+This is intentional. The WHM101 automation does not know or care whether that outside payment belongs to another old or separate system. It simply does not intermix ecosystems.
+
+## Fail-Closed Rule
+
+If no active Razorpay page/link identifiers are configured:
+
+```text
+Webhook is ignored by WHM101 automation
+No D1 registration is created
+No n8n event is sent
+No Google Sheet row is added
+```
+
+This prevents accidental broad acceptance of unrelated Razorpay payments.
