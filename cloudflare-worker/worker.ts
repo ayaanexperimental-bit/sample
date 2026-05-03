@@ -59,6 +59,12 @@ type AutomationDispatchResult = {
   error?: string;
 };
 
+type FailureLogSyncResult = {
+  ok: boolean;
+  statusCode?: number;
+  error?: string;
+};
+
 type AutomationEventRow = {
   id: string;
   registration_id: string;
@@ -506,6 +512,11 @@ async function dispatchAutomationEvent(db: D1Database, event: AutomationEventRow
     result.reason ||
     (result.statusCode ? `n8n returned HTTP ${result.statusCode}` : "n8n dispatch failed");
 
+  const failureLogResult = await syncFailureLog(env, event, { ...result, retry_count: retryCount, error: lastError }, "upsert_failure");
+  const storedError = failureLogResult.ok
+    ? lastError
+    : `${lastError}; failure_log_error=${failureLogResult.error || `HTTP ${failureLogResult.statusCode || "unknown"}`}`;
+
   await db.prepare(`
     update automation_events
     set status = ?,
@@ -517,12 +528,10 @@ async function dispatchAutomationEvent(db: D1Database, event: AutomationEventRow
   `).bind(
     shouldDeadLetter ? "dead" : "failed",
     retryCount,
-    lastError,
+    storedError,
     shouldDeadLetter ? 1 : 0,
     event.id
   ).run();
-
-  await syncFailureLog(env, event, { ...result, retry_count: retryCount, error: lastError }, "upsert_failure");
 
   return { ...result, retry_count: retryCount, dead: shouldDeadLetter };
 }
@@ -604,9 +613,9 @@ async function syncFailureLog(
   event: AutomationEventRow,
   result: AutomationDispatchResult & { retry_count?: number },
   action: FailureLogPayload["action"]
-) {
+) : Promise<FailureLogSyncResult> {
   if (!env.FAILURE_LOG_WEBHOOK_URL || !env.FAILURE_LOG_WEBHOOK_SECRET) {
-    return;
+    return { ok: false, error: "Failure log webhook is not configured." };
   }
 
   const payload = JSON.parse(event.payload_json) as PaidUserPayload;
@@ -632,13 +641,26 @@ async function syncFailureLog(
   };
 
   try {
-    await fetch(env.FAILURE_LOG_WEBHOOK_URL, {
+    const response = await fetch(env.FAILURE_LOG_WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(failurePayload)
     });
+
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      return { ok: false, statusCode: response.status, error: responseText.slice(0, 240) };
+    }
+
+    if (responseText && responseText.includes("\"ok\":false")) {
+      return { ok: false, statusCode: response.status, error: responseText.slice(0, 240) };
+    }
+
+    return { ok: true, statusCode: response.status };
   } catch {
     // D1 remains the source of truth. Failure-log sync must never break payment capture or retries.
+    return { ok: false, error: "Failure log webhook request failed." };
   }
 }
 
