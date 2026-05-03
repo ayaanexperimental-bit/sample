@@ -437,9 +437,18 @@ N8N_WEBHOOK_URL
 N8N_WEBHOOK_SECRET
 N8N_WHATSAPP_CLICK_TRACKING_URL
 NEXT_PUBLIC_N8N_WHATSAPP_CLICK_TRACKING_URL
-dispatchToN8n
 n8n documentation files
 n8n workflow JSON files
+```
+
+Migration prep already added:
+
+```text
+Worker supports PABBLY_WEBHOOK_URL.
+Worker supports AUTOMATION_WEBHOOK_URL.
+Worker keeps N8N_WEBHOOK_URL fallback until Pabbly is verified.
+Success page supports NEXT_PUBLIC_WHATSAPP_CLICK_TRACKING_URL with n8n fallback.
+Health endpoint exposes generic automation provider status.
 ```
 
 Preferred future naming:
@@ -673,13 +682,13 @@ Current code uses n8n naming.
 Safe code migration should be naming-only first:
 
 ```text
-Add support for AUTOMATION_WEBHOOK_URL and PABBLY_WEBHOOK_URL.
-Keep N8N_WEBHOOK_URL as fallback until migration passes.
-Rename dispatchToN8n to dispatchAutomationEvent.
-Do not change payload shape.
-Do not change D1 schema.
-Do not change retry logic.
-Do not change Razorpay verification.
+[x] Add support for AUTOMATION_WEBHOOK_URL and PABBLY_WEBHOOK_URL.
+[x] Keep N8N_WEBHOOK_URL as fallback until migration passes.
+[x] Rename dispatchToN8n path to generic automation dispatch naming.
+[x] Do not change payload shape.
+[x] Do not change D1 schema.
+[x] Do not change retry logic.
+[x] Do not change Razorpay verification.
 ```
 
 Recommended env resolution order:
@@ -1179,16 +1188,14 @@ Get the Pabbly Connect webhook URL for WHM101 - Paid User Created.
 Then implement:
 
 ```text
-1. Add generic automation env support in Worker.
-2. Keep n8n fallback until Pabbly is verified.
-3. Set PABBLY_WEBHOOK_URL in Cloudflare.
-4. Deploy.
-5. Run INR 1 payment test.
-6. Run broken-Pabbly failure test.
-7. Restore Pabbly URL.
-8. Confirm retry recovery.
-9. Decommission n8n.
-10. Update this file.
+1. Set PABBLY_WEBHOOK_URL in Cloudflare.
+2. Deploy.
+3. Run INR 1 payment test.
+4. Run broken-Pabbly failure test.
+5. Restore Pabbly URL.
+6. Confirm retry recovery.
+7. Decommission n8n.
+8. Update this file.
 ```
 
 ---
@@ -1198,4 +1205,4 @@ Then implement:
 | Date | Version | Change |
 | --- | --- | --- |
 | 03 May 2026 | 1.0 | Created hybrid source-of-truth and migration playbook from current build plus WHM101 Codex master prompt. |
-
+| 03 May 2026 | 1.1 | Added code-level migration prep: generic automation webhook support, Pabbly env support, n8n fallback, generic WhatsApp click tracking env support. |

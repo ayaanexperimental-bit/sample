@@ -15,7 +15,12 @@ type Env = {
   WORKSHOP_AMOUNT_PAISE?: string;
   WORKSHOP_CURRENCY?: string;
   WHATSAPP_COMMUNITY_INVITE_URL?: string;
+  AUTOMATION_WEBHOOK_URL?: string;
+  AUTOMATION_WEBHOOK_SECRET?: string;
+  PABBLY_WEBHOOK_URL?: string;
+  PABBLY_WEBHOOK_SECRET?: string;
   N8N_WEBHOOK_URL?: string;
+  N8N_WEBHOOK_SECRET?: string;
   FAILURE_LOG_WEBHOOK_URL?: string;
   FAILURE_LOG_WEBHOOK_SECRET?: string;
 };
@@ -140,6 +145,7 @@ type RazorpayWebhookPayload = {
 const DEFAULT_CHECKOUT_URL = "https://rzp.io/rzp/xBIZzJHv";
 const DEFAULT_WHATSAPP_URL = "https://chat.whatsapp.com/LYf1V55hDimAhfNVCghaN4";
 const DEFAULT_N8N_WEBHOOK_URL = "https://ayaantester.app.n8n.cloud/webhook/whm101-paid-user-created";
+const DEFAULT_AUTOMATION_WEBHOOK_URL = DEFAULT_N8N_WEBHOOK_URL;
 const PAID_EVENTS = new Set(["payment.captured", "order.paid", "payment_link.paid"]);
 const MAX_WEBHOOK_BODY_BYTES = 100_000;
 const MAX_AUTOMATION_RETRIES = 20;
@@ -152,7 +158,7 @@ const SECURITY_HEADERS = {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' data:",
-    "connect-src 'self' https://ayaantester.app.n8n.cloud",
+    "connect-src 'self' https://ayaantester.app.n8n.cloud https://connect.pabbly.com",
     "frame-src 'none'",
     "object-src 'none'",
     "base-uri 'self'",
@@ -183,6 +189,9 @@ export default {
         ok: true,
         runtime: "cloudflare-worker",
         durable_capture: Boolean(env.WHM101_DB),
+        automation_webhook_configured: Boolean(getAutomationWebhookUrl(env)),
+        automation_provider: getAutomationProvider(env),
+        pabbly_webhook_configured: Boolean(env.PABBLY_WEBHOOK_URL),
         n8n_webhook_configured: Boolean(env.N8N_WEBHOOK_URL || DEFAULT_N8N_WEBHOOK_URL),
         failure_log_configured: Boolean(env.FAILURE_LOG_WEBHOOK_URL && env.FAILURE_LOG_WEBHOOK_SECRET),
         active_payment_source_configured: getAcceptedPaymentSourceIdentifiers(env).length > 0 || getRequiredPaymentMarkers(env).length > 0
@@ -490,7 +499,7 @@ async function getAutomationEvent(db: D1Database, eventId: string) {
 
 async function dispatchAutomationEvent(db: D1Database, event: AutomationEventRow, env: Env) {
   const payload = buildAutomationDispatchPayload(event);
-  const result = await dispatchToN8n(payload, env);
+  const result = await dispatchToAutomationProvider(payload, env);
 
   if (result.status === "sent") {
     await db.prepare(`
@@ -510,7 +519,7 @@ async function dispatchAutomationEvent(db: D1Database, event: AutomationEventRow
   const lastError =
     result.error ||
     result.reason ||
-    (result.statusCode ? `n8n returned HTTP ${result.statusCode}` : "n8n dispatch failed");
+    (result.statusCode ? `${getAutomationProvider(env)} returned HTTP ${result.statusCode}` : `${getAutomationProvider(env)} dispatch failed`);
 
   const failureLogResult = await syncFailureLog(env, event, { ...result, retry_count: retryCount, error: lastError }, "upsert_failure");
   const storedError = failureLogResult.ok
@@ -585,17 +594,22 @@ async function cleanupSyncedOldData(env: Env) {
   `).bind(`-${RETENTION_DAYS} days`).run();
 }
 
-async function dispatchToN8n(payload: unknown, env: Env): Promise<AutomationDispatchResult> {
-  const webhookUrl = env.N8N_WEBHOOK_URL || DEFAULT_N8N_WEBHOOK_URL;
+async function dispatchToAutomationProvider(payload: unknown, env: Env): Promise<AutomationDispatchResult> {
+  const webhookUrl = getAutomationWebhookUrl(env);
+  const webhookSecret = env.PABBLY_WEBHOOK_SECRET || env.AUTOMATION_WEBHOOK_SECRET || env.N8N_WEBHOOK_SECRET;
+  const provider = getAutomationProvider(env);
 
   if (!webhookUrl) {
-    return { status: "skipped", reason: "N8N_WEBHOOK_URL is not configured." };
+    return { status: "skipped", reason: "Automation webhook URL is not configured." };
   }
 
   try {
     const response = await fetch(webhookUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(webhookSecret ? { "x-webhook-secret": webhookSecret } : {})
+      },
       body: JSON.stringify(payload)
     });
 
@@ -603,9 +617,25 @@ async function dispatchToN8n(payload: unknown, env: Env): Promise<AutomationDisp
   } catch (error) {
     return {
       status: "failed",
-      error: error instanceof Error ? error.message : "n8n dispatch failed."
+      error: error instanceof Error ? error.message : `${provider} dispatch failed.`
     };
   }
+}
+
+function getAutomationWebhookUrl(env: Env) {
+  return env.PABBLY_WEBHOOK_URL || env.AUTOMATION_WEBHOOK_URL || env.N8N_WEBHOOK_URL || DEFAULT_AUTOMATION_WEBHOOK_URL;
+}
+
+function getAutomationProvider(env: Env) {
+  if (env.PABBLY_WEBHOOK_URL) {
+    return "pabbly";
+  }
+
+  if (env.AUTOMATION_WEBHOOK_URL) {
+    return "automation";
+  }
+
+  return "n8n";
 }
 
 async function syncFailureLog(
@@ -634,7 +664,7 @@ async function syncFailureLog(
     failure_status: activeFailure ? "Active" : "Resolved",
     retry_count: result.retry_count ?? event.retry_count,
     last_error: activeFailure
-      ? result.error || result.reason || (result.statusCode ? `n8n returned HTTP ${result.statusCode}` : "n8n dispatch failed")
+      ? result.error || result.reason || (result.statusCode ? `${getAutomationProvider(env)} returned HTTP ${result.statusCode}` : `${getAutomationProvider(env)} dispatch failed`)
       : "",
     recovered_at: activeFailure ? "" : new Date().toISOString(),
     manual_followup: activeFailure ? "Manual follow-up required until this row is resolved." : "Resolved by retry."

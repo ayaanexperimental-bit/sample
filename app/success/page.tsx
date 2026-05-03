@@ -50,7 +50,9 @@ export default function SuccessPage() {
 }
 
 function buildWhatsappJoinUrl() {
-  const trackingUrl = process.env.NEXT_PUBLIC_N8N_WHATSAPP_CLICK_TRACKING_URL;
+  const trackingUrl =
+    process.env.NEXT_PUBLIC_WHATSAPP_CLICK_TRACKING_URL ||
+    process.env.NEXT_PUBLIC_N8N_WHATSAPP_CLICK_TRACKING_URL;
   const fallbackUrl =
     process.env.NEXT_PUBLIC_WHATSAPP_COMMUNITY_INVITE_URL || DEFAULT_WHATSAPP_COMMUNITY_URL;
 
