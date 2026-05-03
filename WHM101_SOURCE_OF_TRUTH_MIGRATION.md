@@ -282,6 +282,13 @@ It bypasses retry and failure logging.
 It can mix old payment ecosystems into the WHM101 reporting sheet.
 ```
 
+Duplicate prevention rule:
+
+```text
+Only payment.captured should create the paid_user_created automation event.
+Do not create paid-user rows from order.paid or payment_link.paid because those can describe the same payment through different Razorpay entities and create duplicate Sheet rows.
+```
+
 ---
 
 ## 8. Active Payment Source Allowlist
@@ -1236,3 +1243,4 @@ Then implement:
 | 03 May 2026 | 1.5 | Added explicit rule that Razorpay webhooks must point to Cloudflare and Pabbly must remain downstream automation only. |
 | 03 May 2026 | 1.6 | Verified Pabbly now writes mapped paid-user rows into SUCCESSFUL PAYMENTS and AUTOMATION FAILURES remains empty. |
 | 03 May 2026 | 1.7 | Verified live INR 1 payment path writes to SUCCESSFUL PAYMENTS and does not create an AUTOMATION FAILURES row. |
+| 03 May 2026 | 1.8 | Added duplicate-prevention rule: only payment.captured creates paid_user_created; order.paid and payment_link.paid must not create Sheet rows. |
