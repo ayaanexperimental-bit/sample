@@ -15,6 +15,7 @@
     "WORKSHOP_AMOUNT_PAISE": "5100",
     "WORKSHOP_CURRENCY": "INR",
     "WHATSAPP_COMMUNITY_INVITE_URL": "https://chat.whatsapp.com/LYf1V55hDimAhfNVCghaN4",
+    "PABBLY_WEBHOOK_URL": "https://connect.pabbly.com/webhook-listener/webhook/IjU3NjcwNTY0MDYzNDA0Mzc1MjZhNTUzNCI_3D_pc/IjU3NjcwNTZlMDYzNTA0MzI1MjY5NTUzNzUxMzUi_pc",
     "N8N_WEBHOOK_URL": "https://ayaantester.app.n8n.cloud/webhook/whm101-paid-user-created"
   },
   "d1_databases": [

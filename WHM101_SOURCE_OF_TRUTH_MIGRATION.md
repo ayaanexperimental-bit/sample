@@ -93,6 +93,7 @@ Owner-facing reporting: Google Sheets
 Failure log: Google Apps Script writing to Google Sheets
 Current automation endpoint: n8n
 Target automation endpoint: Pabbly Connect
+Pabbly paid-user-created webhook: configured in Cloudflare vars
 ```
 
 Landing page title:
@@ -421,7 +422,9 @@ Manual Followup Required
 Current state:
 
 ```text
-n8n is still wired in the current repository and Cloudflare configuration.
+Pabbly URL is configured in the repository Cloudflare vars.
+n8n remains as fallback until the INR 1 success test and failure/recovery test pass.
+Deployment from local Wrangler is blocked because the stored Cloudflare token is expired/invalid.
 ```
 
 Target state:
@@ -1137,7 +1140,7 @@ Visual animation polish only if it does not affect conversion or performance
 Needed for Pabbly migration:
 
 ```text
-Pabbly paid-user-created webhook URL
+Pabbly paid-user-created webhook URL: received and configured
 Proof Pabbly can report failure if Google Sheets action fails, or approval for callback workaround
 ```
 
@@ -1182,20 +1185,19 @@ Final test row cleanup decision
 Do this next:
 
 ```text
-Get the Pabbly Connect webhook URL for WHM101 - Paid User Created.
+Deploy the Pabbly-enabled Cloudflare config from Cloudflare dashboard or refresh CLOUDFLARE_API_TOKEN, then run the INR 1 end-to-end test.
 ```
 
 Then implement:
 
 ```text
-1. Set PABBLY_WEBHOOK_URL in Cloudflare.
-2. Deploy.
-3. Run INR 1 payment test.
-4. Run broken-Pabbly failure test.
-5. Restore Pabbly URL.
-6. Confirm retry recovery.
-7. Decommission n8n.
-8. Update this file.
+1. Deploy.
+2. Run INR 1 payment test.
+3. Run broken-Pabbly failure test.
+4. Restore Pabbly URL.
+5. Confirm retry recovery.
+6. Decommission n8n.
+7. Update this file.
 ```
 
 ---
@@ -1206,3 +1208,5 @@ Then implement:
 | --- | --- | --- |
 | 03 May 2026 | 1.0 | Created hybrid source-of-truth and migration playbook from current build plus WHM101 Codex master prompt. |
 | 03 May 2026 | 1.1 | Added code-level migration prep: generic automation webhook support, Pabbly env support, n8n fallback, generic WhatsApp click tracking env support. |
+| 03 May 2026 | 1.2 | Received Pabbly paid-user-created webhook URL and configured it for Cloudflare Pages and retry worker deployment. |
+| 03 May 2026 | 1.3 | Local Wrangler deploy attempted but blocked by expired/invalid Cloudflare token. Deployment still needs dashboard redeploy or refreshed CLOUDFLARE_API_TOKEN. |
