@@ -450,6 +450,8 @@ n8n remains as fallback until the INR 1 success test and failure/recovery test p
 Cloudflare Pages and retry worker are deployed with Pabbly provider config.
 Production health endpoint confirms automation_provider = pabbly.
 Pabbly-to-Google-Sheets mapping is verified for SUCCESSFUL PAYMENTS.
+Live INR 1 payment path is verified through Pabbly to SUCCESSFUL PAYMENTS.
+AUTOMATION FAILURES stayed empty during the successful Pabbly path.
 ```
 
 Target state:
@@ -1130,7 +1132,6 @@ Coach photo integration
 Current immediate work:
 
 ```text
-Run clean INR 1 live payment test through Razorpay -> Cloudflare -> Pabbly -> Google Sheets.
 Pabbly failure and recovery verification.
 n8n decommission after Pabbly passes
 ```
@@ -1208,23 +1209,17 @@ Final test row cleanup decision
 Do this next:
 
 ```text
-Run the INR 1 end-to-end payment test against the live site.
+Run controlled Pabbly failure/recovery test, then decommission n8n fallback if recovery passes.
 ```
 
 Then implement:
 
 ```text
-1. Run INR 1 payment test.
-2. Confirm Razorpay captured.
-3. Confirm D1 registration and automation event captured.
-4. Confirm Pabbly execution ran.
-5. Confirm SUCCESSFUL PAYMENTS updated.
-6. Confirm AUTOMATION FAILURES stayed empty.
-7. Run broken-Pabbly failure test.
-8. Restore Pabbly URL.
-9. Confirm retry recovery.
-10. Decommission n8n.
-11. Update this file.
+1. Run broken-Pabbly failure test.
+2. Restore Pabbly URL.
+3. Confirm retry recovery.
+4. Decommission n8n.
+5. Update this file.
 ```
 
 ---
@@ -1240,3 +1235,4 @@ Then implement:
 | 03 May 2026 | 1.4 | Wrangler OAuth login completed, Cloudflare Pages and retry worker deployed, and production health verified automation_provider = pabbly. |
 | 03 May 2026 | 1.5 | Added explicit rule that Razorpay webhooks must point to Cloudflare and Pabbly must remain downstream automation only. |
 | 03 May 2026 | 1.6 | Verified Pabbly now writes mapped paid-user rows into SUCCESSFUL PAYMENTS and AUTOMATION FAILURES remains empty. |
+| 03 May 2026 | 1.7 | Verified live INR 1 payment path writes to SUCCESSFUL PAYMENTS and does not create an AUTOMATION FAILURES row. |
