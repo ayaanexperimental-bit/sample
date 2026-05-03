@@ -9,6 +9,7 @@ Current accepted identifiers:
 ```text
 RAZORPAY_ACTIVE_PAYMENT_PAGE_SLUG=xBIZzJHv
 RAZORPAY_ACTIVE_PAYMENT_LINK_ID=pl_SKURMJD4JJjdxO
+RAZORPAY_ACTIVE_PAYMENT_MARKERS=whatsapp_no,your_health_goal,2.0 HEAL YOUR HORMONES
 ```
 
 This prevents unrelated Razorpay payments from entering the WHM101 Google Sheet/n8n flow.
@@ -53,6 +54,7 @@ For a controlled transition, multiple accepted identifiers can be used temporari
 ```text
 RAZORPAY_ACTIVE_PAYMENT_PAGE_SLUG=xBIZzJHv,newSlugHere
 RAZORPAY_ACTIVE_PAYMENT_LINK_ID=pl_SKURMJD4JJjdxO,newPaymentLinkIdHere
+RAZORPAY_ACTIVE_PAYMENT_MARKERS=whatsapp_no,your_health_goal,newUniqueFieldOrTitle
 ```
 
 After testing the new page, remove the old identifier.
@@ -88,7 +90,7 @@ Use this checklist:
 ```text
 1. If editing the same page, proceed.
 2. If creating/replacing a page, copy the new payment page slug and payment link ID.
-3. Add the new identifiers to Cloudflare before sending traffic.
+3. Add the new identifiers or unique page markers to Cloudflare before sending traffic.
 4. Do one Rs 1 test payment if test amount is still enabled.
 5. Confirm SUCCESSFUL PAYMENTS updates.
 6. Confirm unrelated/old payment pages do not update the sheet.

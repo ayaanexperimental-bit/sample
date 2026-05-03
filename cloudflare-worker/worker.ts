@@ -10,6 +10,7 @@ type Env = {
   RAZORPAY_ACTIVE_PAYMENT_PAGE_SLUG?: string;
   RAZORPAY_ACTIVE_PAYMENT_LINK_ID?: string;
   RAZORPAY_ACTIVE_PAYMENT_PAGE_ID?: string;
+  RAZORPAY_ACTIVE_PAYMENT_MARKERS?: string;
   WORKSHOP_ALLOWED_AMOUNTS_PAISE?: string;
   WORKSHOP_AMOUNT_PAISE?: string;
   WORKSHOP_CURRENCY?: string;
@@ -645,6 +646,9 @@ function isAcceptedPaymentSource(webhook: RazorpayWebhookPayload, env: Env) {
   collectStringValues(webhook.payload?.payment_link?.entity, webhookIdentifiers);
   collectStringValues(webhook.payload?.payment?.entity?.notes, webhookIdentifiers);
   collectStringValues(webhook.payload?.order?.entity?.notes, webhookIdentifiers);
+  collectKeyValueIdentifiers(webhook.payload?.payment?.entity?.notes, webhookIdentifiers);
+  collectKeyValueIdentifiers(webhook.payload?.order?.entity?.notes, webhookIdentifiers);
+  collectKeyValueIdentifiers(webhook.payload?.payment_link?.entity?.notes, webhookIdentifiers);
 
   const haystack = webhookIdentifiers.map((identifier) => identifier.toLowerCase());
   return acceptedIdentifiers.some((acceptedIdentifier) =>
@@ -656,11 +660,26 @@ function getAcceptedPaymentSourceIdentifiers(env: Env) {
   return [
     env.RAZORPAY_ACTIVE_PAYMENT_PAGE_SLUG,
     env.RAZORPAY_ACTIVE_PAYMENT_LINK_ID,
-    env.RAZORPAY_ACTIVE_PAYMENT_PAGE_ID
+    env.RAZORPAY_ACTIVE_PAYMENT_PAGE_ID,
+    env.RAZORPAY_ACTIVE_PAYMENT_MARKERS
   ]
     .flatMap((value) => (value || "").split(","))
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean);
+}
+
+function collectKeyValueIdentifiers(value: unknown, output: string[]) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return;
+  }
+
+  for (const [key, item] of Object.entries(value)) {
+    output.push(key);
+
+    if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") {
+      output.push(`${key}:${String(item)}`);
+    }
+  }
 }
 
 function collectStringValues(value: unknown, output: string[]) {
