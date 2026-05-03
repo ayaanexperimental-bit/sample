@@ -6,6 +6,17 @@
   "observability": {
     "enabled": true
   },
+  "vars": {
+    "RAZORPAY_HOSTED_CHECKOUT_URL": "https://rzp.io/rzp/xBIZzJHv",
+    "RAZORPAY_ACTIVE_PAYMENT_PAGE_SLUG": "xBIZzJHv",
+    "RAZORPAY_ACTIVE_PAYMENT_LINK_ID": "pl_SKURMJD4JJjdxO",
+    "RAZORPAY_IGNORED_PAYMENT_PAGE_SLUG": "gy1111",
+    "WORKSHOP_ALLOWED_AMOUNTS_PAISE": "100,5100",
+    "WORKSHOP_AMOUNT_PAISE": "5100",
+    "WORKSHOP_CURRENCY": "INR",
+    "WHATSAPP_COMMUNITY_INVITE_URL": "https://chat.whatsapp.com/LYf1V55hDimAhfNVCghaN4",
+    "N8N_WEBHOOK_URL": "https://ayaantester.app.n8n.cloud/webhook/whm101-paid-user-created"
+  },
   "d1_databases": [
     {
       "binding": "WHM101_DB",

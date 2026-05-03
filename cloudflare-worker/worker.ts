@@ -7,6 +7,9 @@ type Env = {
   WHM101_DB: D1Database;
   RAZORPAY_WEBHOOK_SECRET: string;
   RAZORPAY_HOSTED_CHECKOUT_URL?: string;
+  RAZORPAY_ACTIVE_PAYMENT_PAGE_SLUG?: string;
+  RAZORPAY_ACTIVE_PAYMENT_LINK_ID?: string;
+  RAZORPAY_ACTIVE_PAYMENT_PAGE_ID?: string;
   RAZORPAY_IGNORED_PAYMENT_PAGE_SLUG?: string;
   WORKSHOP_ALLOWED_AMOUNTS_PAISE?: string;
   WORKSHOP_AMOUNT_PAISE?: string;
@@ -239,6 +242,16 @@ async function handleRazorpayWebhook(request: Request, env: Env, url: URL) {
       event: webhook.event ?? "unknown",
       handled: false,
       ignored_reason: "Payment came from an ignored Razorpay payment page."
+    });
+  }
+
+  if (!isAcceptedPaymentSource(webhook, env)) {
+    return json({
+      ok: true,
+      event: webhook.event ?? "unknown",
+      handled: false,
+      ignored_reason: "Payment did not come from the active WHM101 Razorpay payment page.",
+      accepted_payment_source: getAcceptedPaymentSourceIdentifiers(env)
     });
   }
 
@@ -640,6 +653,35 @@ function isIgnoredPaymentSource(webhook: RazorpayWebhookPayload, env: Env) {
   collectStringValues(webhook.payload?.order?.entity?.notes, identifiers);
 
   return identifiers.some((identifier) => identifier.toLowerCase().includes(ignoredSlug));
+}
+
+function isAcceptedPaymentSource(webhook: RazorpayWebhookPayload, env: Env) {
+  const acceptedIdentifiers = getAcceptedPaymentSourceIdentifiers(env);
+
+  if (acceptedIdentifiers.length === 0) {
+    return true;
+  }
+
+  const webhookIdentifiers: string[] = [];
+  collectStringValues(webhook.payload?.payment_link?.entity, webhookIdentifiers);
+  collectStringValues(webhook.payload?.payment?.entity?.notes, webhookIdentifiers);
+  collectStringValues(webhook.payload?.order?.entity?.notes, webhookIdentifiers);
+
+  const haystack = webhookIdentifiers.map((identifier) => identifier.toLowerCase());
+  return acceptedIdentifiers.some((acceptedIdentifier) =>
+    haystack.some((identifier) => identifier.includes(acceptedIdentifier))
+  );
+}
+
+function getAcceptedPaymentSourceIdentifiers(env: Env) {
+  return [
+    env.RAZORPAY_ACTIVE_PAYMENT_PAGE_SLUG,
+    env.RAZORPAY_ACTIVE_PAYMENT_LINK_ID,
+    env.RAZORPAY_ACTIVE_PAYMENT_PAGE_ID
+  ]
+    .flatMap((value) => (value || "").split(","))
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
 }
 
 function collectStringValues(value: unknown, output: string[]) {
