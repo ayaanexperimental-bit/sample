@@ -13,6 +13,8 @@ type Env = {
   WORKSHOP_CURRENCY?: string;
   WHATSAPP_COMMUNITY_INVITE_URL?: string;
   N8N_WEBHOOK_URL?: string;
+  FAILURE_LOG_WEBHOOK_URL?: string;
+  FAILURE_LOG_WEBHOOK_SECRET?: string;
 };
 
 type PaidUserPayload = {
@@ -62,6 +64,24 @@ type AutomationEventRow = {
   status: "pending" | "sent" | "failed" | "dead";
   retry_count: number;
   last_error: string | null;
+};
+
+type FailureLogPayload = {
+  action: "upsert_failure" | "mark_resolved";
+  secret: string;
+  timestamp: string;
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  registration_id: string;
+  full_name: string;
+  email: string;
+  phone_number: string;
+  bot_status: "Offline" | "Online";
+  failure_status: "Active" | "Resolved";
+  retry_count: number;
+  last_error: string;
+  recovered_at: string;
+  manual_followup: string;
 };
 
 type RazorpayWebhookPayload = {
@@ -464,6 +484,7 @@ async function dispatchAutomationEvent(db: D1Database, event: AutomationEventRow
           updated_at = datetime('now')
       where id = ?
     `).bind(event.id).run();
+    await syncFailureLog(env, event, result, "mark_resolved");
     return result;
   }
 
@@ -489,6 +510,8 @@ async function dispatchAutomationEvent(db: D1Database, event: AutomationEventRow
     shouldDeadLetter ? 1 : 0,
     event.id
   ).run();
+
+  await syncFailureLog(env, event, { ...result, retry_count: retryCount, error: lastError }, "upsert_failure");
 
   return { ...result, retry_count: retryCount, dead: shouldDeadLetter };
 }
@@ -562,6 +585,49 @@ async function dispatchToN8n(payload: unknown, env: Env): Promise<AutomationDisp
       status: "failed",
       error: error instanceof Error ? error.message : "n8n dispatch failed."
     };
+  }
+}
+
+async function syncFailureLog(
+  env: Env,
+  event: AutomationEventRow,
+  result: AutomationDispatchResult & { retry_count?: number },
+  action: FailureLogPayload["action"]
+) {
+  if (!env.FAILURE_LOG_WEBHOOK_URL || !env.FAILURE_LOG_WEBHOOK_SECRET) {
+    return;
+  }
+
+  const payload = JSON.parse(event.payload_json) as PaidUserPayload;
+  const activeFailure = action === "upsert_failure";
+  const failurePayload: FailureLogPayload = {
+    action,
+    secret: env.FAILURE_LOG_WEBHOOK_SECRET,
+    timestamp: payload.lead_timestamp || formatLeadTimestamp(payload.created_at),
+    razorpay_payment_id: payload.razorpay_payment_id,
+    razorpay_order_id: payload.razorpay_order_id,
+    registration_id: payload.registration_id,
+    full_name: payload.full_name,
+    email: payload.email,
+    phone_number: payload.phone_number.replace(/^\+/, ""),
+    bot_status: activeFailure ? "Offline" : "Online",
+    failure_status: activeFailure ? "Active" : "Resolved",
+    retry_count: result.retry_count ?? event.retry_count,
+    last_error: activeFailure
+      ? result.error || result.reason || (result.statusCode ? `n8n returned HTTP ${result.statusCode}` : "n8n dispatch failed")
+      : "",
+    recovered_at: activeFailure ? "" : new Date().toISOString(),
+    manual_followup: activeFailure ? "Manual follow-up required until this row is resolved." : "Resolved by retry."
+  };
+
+  try {
+    await fetch(env.FAILURE_LOG_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(failurePayload)
+    });
+  } catch {
+    // D1 remains the source of truth. Failure-log sync must never break payment capture or retries.
   }
 }
 
