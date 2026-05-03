@@ -9,7 +9,7 @@ Current accepted identifiers:
 ```text
 RAZORPAY_ACTIVE_PAYMENT_PAGE_SLUG=xBIZzJHv
 RAZORPAY_ACTIVE_PAYMENT_LINK_ID=pl_SKURMJD4JJjdxO
-RAZORPAY_ACTIVE_PAYMENT_MARKERS=whatsapp_no,your_health_goal,2.0 HEAL YOUR HORMONES
+RAZORPAY_ACTIVE_PAYMENT_MARKERS=whatsapp_no,your_health_goal
 ```
 
 This prevents unrelated Razorpay payments from entering the WHM101 Google Sheet/n8n flow.
@@ -54,8 +54,10 @@ For a controlled transition, multiple accepted identifiers can be used temporari
 ```text
 RAZORPAY_ACTIVE_PAYMENT_PAGE_SLUG=xBIZzJHv,newSlugHere
 RAZORPAY_ACTIVE_PAYMENT_LINK_ID=pl_SKURMJD4JJjdxO,newPaymentLinkIdHere
-RAZORPAY_ACTIVE_PAYMENT_MARKERS=whatsapp_no,your_health_goal,newUniqueFieldOrTitle
+RAZORPAY_ACTIVE_PAYMENT_MARKERS=whatsapp_no,your_health_goal,newUniqueField
 ```
+
+All configured marker values must be present in the Razorpay webhook payload. This prevents generic fields like `whatsapp_no` from accepting unrelated payment pages by itself.
 
 After testing the new page, remove the old identifier.
 

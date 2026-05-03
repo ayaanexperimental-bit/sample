@@ -637,8 +637,9 @@ async function syncFailureLog(
 
 function isAcceptedPaymentSource(webhook: RazorpayWebhookPayload, env: Env) {
   const acceptedIdentifiers = getAcceptedPaymentSourceIdentifiers(env);
+  const requiredMarkers = getRequiredPaymentMarkers(env);
 
-  if (acceptedIdentifiers.length === 0) {
+  if (acceptedIdentifiers.length === 0 && requiredMarkers.length === 0) {
     return false;
   }
 
@@ -651,19 +652,32 @@ function isAcceptedPaymentSource(webhook: RazorpayWebhookPayload, env: Env) {
   collectKeyValueIdentifiers(webhook.payload?.payment_link?.entity?.notes, webhookIdentifiers);
 
   const haystack = webhookIdentifiers.map((identifier) => identifier.toLowerCase());
-  return acceptedIdentifiers.some((acceptedIdentifier) =>
+  const matchedKnownIdentifier = acceptedIdentifiers.some((acceptedIdentifier) =>
     haystack.some((identifier) => identifier.includes(acceptedIdentifier))
   );
+  const matchedRequiredMarkers =
+    requiredMarkers.length > 0 &&
+    requiredMarkers.every((requiredMarker) =>
+      haystack.some((identifier) => identifier.includes(requiredMarker))
+    );
+
+  return matchedKnownIdentifier || matchedRequiredMarkers;
 }
 
 function getAcceptedPaymentSourceIdentifiers(env: Env) {
   return [
     env.RAZORPAY_ACTIVE_PAYMENT_PAGE_SLUG,
     env.RAZORPAY_ACTIVE_PAYMENT_LINK_ID,
-    env.RAZORPAY_ACTIVE_PAYMENT_PAGE_ID,
-    env.RAZORPAY_ACTIVE_PAYMENT_MARKERS
+    env.RAZORPAY_ACTIVE_PAYMENT_PAGE_ID
   ]
     .flatMap((value) => (value || "").split(","))
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function getRequiredPaymentMarkers(env: Env) {
+  return (env.RAZORPAY_ACTIVE_PAYMENT_MARKERS || "")
+    .split(",")
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean);
 }
