@@ -173,7 +173,14 @@ export default {
     }
 
     if (url.pathname === "/api/health") {
-      return json({ ok: true, runtime: "cloudflare-worker", durable_capture: Boolean(env.WHM101_DB) });
+      return json({
+        ok: true,
+        runtime: "cloudflare-worker",
+        durable_capture: Boolean(env.WHM101_DB),
+        n8n_webhook_configured: Boolean(env.N8N_WEBHOOK_URL || DEFAULT_N8N_WEBHOOK_URL),
+        failure_log_configured: Boolean(env.FAILURE_LOG_WEBHOOK_URL && env.FAILURE_LOG_WEBHOOK_SECRET),
+        active_payment_source_configured: getAcceptedPaymentSourceIdentifiers(env).length > 0 || getRequiredPaymentMarkers(env).length > 0
+      });
     }
 
     if (url.pathname === "/api/checkout/session" && request.method === "POST") {
