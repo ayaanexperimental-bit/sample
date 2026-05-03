@@ -257,6 +257,29 @@ Payment source allowlist: unchanged
 15. active_member can only be set by a WhatsApp group_join webhook or manual admin confirmation.
 16. Keep INR 1 test amount only during testing.
 17. Before launch, allowed amount must become only 5100 paise.
+18. Razorpay webhook must point to Cloudflare, never directly to Pabbly.
+19. Pabbly webhook URL belongs only in Cloudflare provider config.
+```
+
+Correct webhook routing:
+
+```text
+Razorpay webhook URL:
+https://freedomfromdiabetes.in/api/payments/razorpay/webhook
+
+Cloudflare automation provider URL:
+PABBLY_WEBHOOK_URL=https://connect.pabbly.com/webhook-listener/...
+```
+
+Why direct Razorpay to Pabbly is forbidden:
+
+```text
+It bypasses D1 durable capture.
+It bypasses Razorpay signature verification in our Worker.
+It bypasses WHM101 payment-source allowlist.
+It bypasses duplicate protection by razorpay_payment_id.
+It bypasses retry and failure logging.
+It can mix old payment ecosystems into the WHM101 reporting sheet.
 ```
 
 ---
@@ -1216,3 +1239,4 @@ Then implement:
 | 03 May 2026 | 1.2 | Received Pabbly paid-user-created webhook URL and configured it for Cloudflare Pages and retry worker deployment. |
 | 03 May 2026 | 1.3 | Local Wrangler deploy attempted but blocked by expired/invalid Cloudflare token. Deployment still needs dashboard redeploy or refreshed CLOUDFLARE_API_TOKEN. |
 | 03 May 2026 | 1.4 | Wrangler OAuth login completed, Cloudflare Pages and retry worker deployed, and production health verified automation_provider = pabbly. |
+| 03 May 2026 | 1.5 | Added explicit rule that Razorpay webhooks must point to Cloudflare and Pabbly must remain downstream automation only. |
