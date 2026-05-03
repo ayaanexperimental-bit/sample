@@ -7,22 +7,8 @@
     "enabled": true
   },
   "vars": {
-    "RAZORPAY_HOSTED_CHECKOUT_URL": "https://rzp.io/rzp/xBIZzJHv",
-    "RAZORPAY_ACTIVE_PAYMENT_PAGE_SLUG": "xBIZzJHv",
-    "RAZORPAY_ACTIVE_PAYMENT_LINK_ID": "pl_SKURMJD4JJjdxO",
-    "RAZORPAY_ACTIVE_PAYMENT_MARKERS": "whatsapp_no,your_health_goal",
-    "WORKSHOP_ALLOWED_AMOUNTS_PAISE": "100,5100",
-    "WORKSHOP_AMOUNT_PAISE": "5100",
-    "WORKSHOP_CURRENCY": "INR",
-    "WHATSAPP_COMMUNITY_INVITE_URL": "https://chat.whatsapp.com/LYf1V55hDimAhfNVCghaN4",
-    "PABBLY_WEBHOOK_URL": "https://connect.pabbly.com/webhook-listener/webhook/IjU3NjcwNTY0MDYzNDA0Mzc1MjZhNTUzNCI_3D_pc/IjU3NjcwNTZlMDYzNTA0MzI1MjY5NTUzNzUxMzUi_pc",
-    "N8N_WEBHOOK_URL": "https://ayaantester.app.n8n.cloud/webhook/whm101-paid-user-created"
-  },
-  "d1_databases": [
-    {
-      "binding": "WHM101_DB",
-      "database_name": "whm101-db",
-      "database_id": "4c4a685f-1e36-46ec-a487-3e0c7a8b195c"
-    }
-  ]
+    "NEXT_PUBLIC_PAYMENT_ENABLED": "true",
+    "NEXT_PUBLIC_RAZORPAY_HOSTED_CHECKOUT_URL": "https://rzp.io/rzp/xBIZzJHv",
+    "NEXT_PUBLIC_WHATSAPP_COMMUNITY_INVITE_URL": "https://chat.whatsapp.com/LYf1V55hDimAhfNVCghaN4"
+  }
 }

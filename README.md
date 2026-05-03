@@ -1,45 +1,36 @@
-# PCOS Wellness Landing System
+# WHM101 Landing Page
 
-Production landing page and automation system for a PCOS / women's wellness / beauty brand.
+Production landing page for Women Health Masterclass 101.
 
 ## Current Status
 
-Phase 1, Micro-task 1.1: project scaffold only.
+Live site is a Cloudflare Pages landing page. Payment processing is handled by Razorpay hosted checkout. Automation and Google Sheets reporting are handled outside the app through Pabbly Connect.
 
-No public page, app layout, styling system, landing section, payment route, database integration, or automation logic has been implemented yet.
-
-## Planned Stack
+## Active Stack
 
 - Next.js App Router
 - TypeScript
-- Tailwind CSS or equivalent styling system
-- PostgreSQL as source of truth
+- Cloudflare Pages static output
 - Hosted Razorpay payment flow
-- Google Sheets reporting sink
-- Email confirmation automation
-- WhatsApp onboarding automation
+- Pabbly Connect for post-payment automation
+- Google Sheets as owner-facing reporting
 
 ## Development Scripts
 
 ```bash
-npm run dev
-npm run build
-npm run lint
-npm run typecheck
-npm run format:check
+pnpm dev
+pnpm build
+pnpm build:pages
+pnpm typecheck
+pnpm format:check
 ```
 
 ## Environment Setup
 
-Copy `.env.example` to `.env.local` and fill values when the relevant phase needs them.
+Copy `.env.example` to `.env.local` if local overrides are needed.
 
 Do not put secrets in `NEXT_PUBLIC_` variables unless the value is intentionally public.
 
-## Planning Documents
+## Source Of Truth
 
-- `phase_0_project_spec.md`
-- `phase_0_landing_page_ia.md`
-- `phase_0_technical_architecture.md`
-- `phase_0_prompt_refinement_module.md`
-- `consolidated_landing_page_automation_plan.md`
-- `action_items_only.md`
+Use `WHM101_SOURCE_OF_TRUTH_MIGRATION.md`.

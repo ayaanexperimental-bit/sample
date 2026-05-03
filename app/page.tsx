@@ -12,8 +12,6 @@ import { WhatYouLearn } from "@/components/landing/what-you-learn";
 import { WhoItsFor } from "@/components/landing/who-its-for";
 import { getNextWorkshopSchedule } from "@/lib/workshop-schedule";
 
-export const dynamic = "force-dynamic";
-
 export default function Home() {
   const schedule = getNextWorkshopSchedule();
 

@@ -14,18 +14,18 @@ export function Pricing() {
       <Container className="pricing-layout">
         <div className="pricing-copy">
           <Badge tone="accent">Registration</Badge>
-          <h2 id="pricing-title">Registration opens after payment tracking is connected.</h2>
+          <h2 id="pricing-title">Reserve your seat through secure Razorpay checkout.</h2>
           <p>
-            The live payment button will be enabled after Razorpay and n8n tracking are configured.
-            Confirmation will be sent only after verified payment.
+            Payment is handled by Razorpay. Paid registration reporting and follow-up are handled
+            through Pabbly and Google Sheets outside this website.
           </p>
         </div>
 
         <div className="pricing-card">
           <p className="pricing-label">Current price</p>
-          <div className="pricing-price">₹51</div>
+          <div className="pricing-price">Rs. 51</div>
           <p className="pricing-note">
-            The price is set. Payment access will open after final technical checks.
+            Hosted checkout keeps payment details off this site.
           </p>
           <CheckoutButton />
           <p className="pricing-security">

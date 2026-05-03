@@ -1,12 +1,10 @@
-"use client";
-
 import Link from "next/link";
-import { useMemo } from "react";
 
 const DEFAULT_WHATSAPP_COMMUNITY_URL = "https://chat.whatsapp.com/LYf1V55hDimAhfNVCghaN4";
 
 export default function SuccessPage() {
-  const whatsappJoinUrl = useMemo(() => buildWhatsappJoinUrl(), []);
+  const whatsappJoinUrl =
+    process.env.NEXT_PUBLIC_WHATSAPP_COMMUNITY_INVITE_URL || DEFAULT_WHATSAPP_COMMUNITY_URL;
 
   return (
     <main className="success-page">
@@ -14,8 +12,8 @@ export default function SuccessPage() {
         <p className="policy-kicker">Payment successful</p>
         <h1>Your registration is received.</h1>
         <p>
-          Razorpay has received your payment for Women Health Masterclass 101. Your registration is
-          confirmed after the verified Razorpay payment event reaches our system.
+          Razorpay has received your payment for Women Health Masterclass 101. Keep your payment ID
+          available for support if needed.
         </p>
 
         <section className="success-panel" aria-labelledby="success-next-step-title">
@@ -40,39 +38,11 @@ export default function SuccessPage() {
           Razorpay payment ID available if support asks for confirmation.
         </p>
         <p className="policy-warning">
-          This page is shown after payment redirect. Final registration records are still based on
-          the verified Razorpay webhook, not on the browser redirect alone.
+          Confirmation and follow-up messages are handled through the Razorpay and Pabbly automation
+          flow.
         </p>
         <Link href="/">Back to landing page</Link>
       </article>
     </main>
   );
-}
-
-function buildWhatsappJoinUrl() {
-  const trackingUrl =
-    process.env.NEXT_PUBLIC_WHATSAPP_CLICK_TRACKING_URL ||
-    process.env.NEXT_PUBLIC_N8N_WHATSAPP_CLICK_TRACKING_URL;
-  const fallbackUrl =
-    process.env.NEXT_PUBLIC_WHATSAPP_COMMUNITY_INVITE_URL || DEFAULT_WHATSAPP_COMMUNITY_URL;
-
-  if (!trackingUrl || typeof window === "undefined") {
-    return fallbackUrl;
-  }
-
-  const url = new URL(trackingUrl);
-  const currentParams = new URLSearchParams(window.location.search);
-
-  currentParams.forEach((value, key) => {
-    if (value) {
-      url.searchParams.set(key, value);
-    }
-  });
-
-  url.searchParams.set("event_type", "whatsapp_group_link_clicked");
-  url.searchParams.set("program_slug", "women-health-masterclass-101");
-  url.searchParams.set("payment_status", "success");
-  url.searchParams.set("member_status", "group_link_clicked");
-
-  return url.toString();
 }

@@ -2,13 +2,8 @@
 
 import { useState } from "react";
 
-type CheckoutResponse = {
-  ok: boolean;
-  error?: string;
-  checkoutUrl?: string;
-};
-
-const hostedCheckoutUrl = process.env.NEXT_PUBLIC_RAZORPAY_HOSTED_CHECKOUT_URL;
+const hostedCheckoutUrl =
+  process.env.NEXT_PUBLIC_RAZORPAY_HOSTED_CHECKOUT_URL ?? "https://rzp.io/rzp/xBIZzJHv";
 
 export function CheckoutButton() {
   const paymentDisabled = process.env.NEXT_PUBLIC_PAYMENT_ENABLED === "false";
@@ -19,7 +14,7 @@ export function CheckoutButton() {
       : ""
   );
 
-  async function startCheckout() {
+  function startCheckout() {
     if (paymentDisabled) {
       setStatus("error");
       setMessage(
@@ -30,37 +25,7 @@ export function CheckoutButton() {
 
     setStatus("loading");
     setMessage("");
-
-    if (hostedCheckoutUrl) {
-      window.location.href = hostedCheckoutUrl;
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/checkout/session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          amount: 5100,
-          currency: "INR"
-        })
-      });
-
-      const data = (await response.json()) as CheckoutResponse;
-
-      if (data.ok && data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
-        return;
-      }
-
-      setStatus("error");
-      setMessage(data.error ?? "Checkout is not available yet.");
-    } catch {
-      setStatus("error");
-      setMessage("Checkout could not be started. Please try again later.");
-    }
+    window.location.assign(hostedCheckoutUrl);
   }
 
   return (
@@ -71,7 +36,7 @@ export function CheckoutButton() {
         onClick={startCheckout}
         type="button"
       >
-        {status === "loading" ? "Starting Checkout..." : paymentDisabled ? "Notify Me" : "Pay ₹51"}
+        {status === "loading" ? "Opening Razorpay..." : paymentDisabled ? "Notify Me" : "Pay Rs. 51"}
       </button>
       {message ? <p className="checkout-message">{message}</p> : null}
     </div>
