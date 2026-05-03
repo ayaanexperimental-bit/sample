@@ -140,6 +140,23 @@ Current confirmed:
 Append paid participant to SUCCESSFUL PAYMENTS
 ```
 
+### 2A. Razorpay Page Change Safety
+
+Current automation is isolated to the active WHM101 Razorpay payment page/link:
+
+```text
+RAZORPAY_ACTIVE_PAYMENT_PAGE_SLUG=xBIZzJHv
+RAZORPAY_ACTIVE_PAYMENT_LINK_ID=pl_SKURMJD4JJjdxO
+```
+
+Editing copy, branding, fields, or redirect on the same Razorpay page should not break automation. Replacing the page/link requires updating the accepted identifiers first.
+
+Detailed maintenance checklist:
+
+```text
+razorpay_payment_page_change_safety.md
+```
+
 Still required:
 
 ```text
