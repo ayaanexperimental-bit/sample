@@ -101,6 +101,29 @@ safe 7-day cleanup for sent records
 
 This prevents paid registrations from being lost if n8n or Google Sheets is unavailable.
 
+### 1A. Automation Failure Visibility
+
+Added a recovered-failure logging path for the owner-facing Google Sheet:
+
+```text
+Tab name: AUTOMATION FAILURES
+Purpose: manual follow-up visibility when n8n was offline or unreachable
+Source of truth: Cloudflare D1
+Workflow template: n8n_paid_user_created_clean_sheet.json
+Setup doc: automation_failure_log_setup.md
+```
+
+Important behavior:
+
+```text
+n8n offline -> D1 captures the failed/pending event
+n8n recovers -> retry Worker sends the old event again
+n8n writes SUCCESSFUL PAYMENTS
+n8n writes AUTOMATION FAILURES with Bot Status = Offline
+```
+
+The failure sheet is not the failure source of truth because n8n cannot write to Google Sheets while n8n itself is offline.
+
 Safety rule:
 
 ```text

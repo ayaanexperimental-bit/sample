@@ -39,6 +39,12 @@ type PaidUserPayload = {
   utm_term: string;
   created_at: string;
   lead_timestamp: string;
+  automation_event_id?: string;
+  automation_delivery_status?: "first_attempt" | "recovered_after_failure";
+  automation_bot_status?: "online" | "offline";
+  automation_retry_count?: number;
+  automation_last_error?: string;
+  automation_recovered_at?: string;
 };
 
 type AutomationDispatchResult = {
@@ -446,7 +452,7 @@ async function getAutomationEvent(db: D1Database, eventId: string) {
 }
 
 async function dispatchAutomationEvent(db: D1Database, event: AutomationEventRow, env: Env) {
-  const payload = JSON.parse(event.payload_json) as PaidUserPayload;
+  const payload = buildAutomationDispatchPayload(event);
   const result = await dispatchToN8n(payload, env);
 
   if (result.status === "sent") {
@@ -485,6 +491,21 @@ async function dispatchAutomationEvent(db: D1Database, event: AutomationEventRow
   ).run();
 
   return { ...result, retry_count: retryCount, dead: shouldDeadLetter };
+}
+
+function buildAutomationDispatchPayload(event: AutomationEventRow): PaidUserPayload {
+  const payload = JSON.parse(event.payload_json) as PaidUserPayload;
+  const recoveredAfterFailure = event.status === "failed" || event.retry_count > 0;
+
+  return {
+    ...payload,
+    automation_event_id: event.id,
+    automation_delivery_status: recoveredAfterFailure ? "recovered_after_failure" : "first_attempt",
+    automation_bot_status: recoveredAfterFailure ? "offline" : "online",
+    automation_retry_count: event.retry_count,
+    automation_last_error: event.last_error || "",
+    automation_recovered_at: recoveredAfterFailure ? new Date().toISOString() : ""
+  };
 }
 
 async function retryPendingAutomationEvents(env: Env) {
