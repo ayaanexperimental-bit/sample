@@ -424,7 +424,8 @@ Current state:
 ```text
 Pabbly URL is configured in the repository Cloudflare vars.
 n8n remains as fallback until the INR 1 success test and failure/recovery test pass.
-Deployment from local Wrangler is blocked because the stored Cloudflare token is expired/invalid.
+Cloudflare Pages and retry worker are deployed with Pabbly provider config.
+Production health endpoint confirms automation_provider = pabbly.
 ```
 
 Target state:
@@ -1185,19 +1186,23 @@ Final test row cleanup decision
 Do this next:
 
 ```text
-Deploy the Pabbly-enabled Cloudflare config from Cloudflare dashboard or refresh CLOUDFLARE_API_TOKEN, then run the INR 1 end-to-end test.
+Run the INR 1 end-to-end payment test against the live site.
 ```
 
 Then implement:
 
 ```text
-1. Deploy.
-2. Run INR 1 payment test.
-3. Run broken-Pabbly failure test.
-4. Restore Pabbly URL.
-5. Confirm retry recovery.
-6. Decommission n8n.
-7. Update this file.
+1. Run INR 1 payment test.
+2. Confirm Razorpay captured.
+3. Confirm D1 registration and automation event captured.
+4. Confirm Pabbly execution ran.
+5. Confirm SUCCESSFUL PAYMENTS updated.
+6. Confirm AUTOMATION FAILURES stayed empty.
+7. Run broken-Pabbly failure test.
+8. Restore Pabbly URL.
+9. Confirm retry recovery.
+10. Decommission n8n.
+11. Update this file.
 ```
 
 ---
@@ -1210,3 +1215,4 @@ Then implement:
 | 03 May 2026 | 1.1 | Added code-level migration prep: generic automation webhook support, Pabbly env support, n8n fallback, generic WhatsApp click tracking env support. |
 | 03 May 2026 | 1.2 | Received Pabbly paid-user-created webhook URL and configured it for Cloudflare Pages and retry worker deployment. |
 | 03 May 2026 | 1.3 | Local Wrangler deploy attempted but blocked by expired/invalid Cloudflare token. Deployment still needs dashboard redeploy or refreshed CLOUDFLARE_API_TOKEN. |
+| 03 May 2026 | 1.4 | Wrangler OAuth login completed, Cloudflare Pages and retry worker deployed, and production health verified automation_provider = pabbly. |
