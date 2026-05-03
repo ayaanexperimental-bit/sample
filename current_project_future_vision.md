@@ -2,6 +2,15 @@
 
 Last updated: 03 May 2026
 
+Canonical update:
+
+```text
+The active source of truth and migration instruction is now:
+WHM101_SOURCE_OF_TRUTH_MIGRATION.md
+```
+
+This file remains useful background history, but if it conflicts with `WHM101_SOURCE_OF_TRUTH_MIGRATION.md`, the newer source-of-truth file wins.
+
 ## 1. Project Identity
 
 Project:
