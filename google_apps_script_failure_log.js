@@ -55,17 +55,10 @@ function doPost(event) {
 
     if (payload.action === "mark_resolved") {
       if (rowIndex > 1) {
-        sheet.getRange(rowIndex, 7, 1, 6).setValues([[
-          "Online",
-          "Resolved",
-          payload.retry_count || "",
-          payload.last_error || "",
-          payload.recovered_at || new Date().toISOString(),
-          payload.manual_followup || "Resolved by retry."
-        ]]);
+        sheet.deleteRow(rowIndex);
       }
 
-      return jsonResponse({ ok: true, action: "mark_resolved", found: rowIndex > 1 });
+      return jsonResponse({ ok: true, action: "mark_resolved", removed: rowIndex > 1 });
     }
 
     return jsonResponse({ ok: false, error: "Unknown action" }, 400);

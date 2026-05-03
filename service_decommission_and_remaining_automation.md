@@ -120,7 +120,7 @@ n8n offline -> D1 captures the failed/pending event
 n8n offline -> Cloudflare writes/updates AUTOMATION FAILURES directly through Apps Script
 n8n recovers -> retry Worker sends the old event again
 n8n writes SUCCESSFUL PAYMENTS
-Cloudflare marks AUTOMATION FAILURES row Resolved through Apps Script
+Cloudflare removes the matching row from AUTOMATION FAILURES through Apps Script
 ```
 
 The failure sheet is still not the failure source of truth. D1 remains the source of truth if n8n, Apps Script, or Google Sheets is unavailable.

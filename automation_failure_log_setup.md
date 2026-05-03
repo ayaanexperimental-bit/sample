@@ -50,7 +50,7 @@ automation_recovered_at = recovery timestamp
 ```
 
 8. n8n appends the normal lead to `SUCCESSFUL PAYMENTS`.
-9. Cloudflare directly marks the matching `AUTOMATION FAILURES` row as `Resolved`.
+9. Cloudflare directly removes the matching row from `AUTOMATION FAILURES`.
 
 ## Apps Script Setup
 
@@ -102,7 +102,7 @@ When n8n recovers:
 retry succeeds
 -> n8n writes SUCCESSFUL PAYMENTS
 -> Cloudflare calls Apps Script directly
--> AUTOMATION FAILURES row becomes Resolved
+-> AUTOMATION FAILURES row is removed
 ```
 
 ## Updated n8n Workflow File
@@ -137,5 +137,5 @@ After recovery:
 
 ```text
 SUCCESSFUL PAYMENTS gets the paid lead
-AUTOMATION FAILURES marks that lead Resolved
+AUTOMATION FAILURES removes that lead from the active failure list
 ```
