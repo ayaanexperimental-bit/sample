@@ -449,6 +449,7 @@ Pabbly URL is configured in the repository Cloudflare vars.
 n8n remains as fallback until the INR 1 success test and failure/recovery test pass.
 Cloudflare Pages and retry worker are deployed with Pabbly provider config.
 Production health endpoint confirms automation_provider = pabbly.
+Pabbly-to-Google-Sheets mapping is verified for SUCCESSFUL PAYMENTS.
 ```
 
 Target state:
@@ -1129,10 +1130,8 @@ Coach photo integration
 Current immediate work:
 
 ```text
-Pabbly migration
-Pabbly paid-user-created flow
-Cloudflare automation env update
-Pabbly failure and recovery verification
+Run clean INR 1 live payment test through Razorpay -> Cloudflare -> Pabbly -> Google Sheets.
+Pabbly failure and recovery verification.
 n8n decommission after Pabbly passes
 ```
 
@@ -1240,3 +1239,4 @@ Then implement:
 | 03 May 2026 | 1.3 | Local Wrangler deploy attempted but blocked by expired/invalid Cloudflare token. Deployment still needs dashboard redeploy or refreshed CLOUDFLARE_API_TOKEN. |
 | 03 May 2026 | 1.4 | Wrangler OAuth login completed, Cloudflare Pages and retry worker deployed, and production health verified automation_provider = pabbly. |
 | 03 May 2026 | 1.5 | Added explicit rule that Razorpay webhooks must point to Cloudflare and Pabbly must remain downstream automation only. |
+| 03 May 2026 | 1.6 | Verified Pabbly now writes mapped paid-user rows into SUCCESSFUL PAYMENTS and AUTOMATION FAILURES remains empty. |
