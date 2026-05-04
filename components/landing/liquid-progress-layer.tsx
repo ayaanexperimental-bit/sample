@@ -9,19 +9,27 @@ type LiquidStyle = CSSProperties & {
   "--liquid-wave-strength": string;
 };
 
-export function LiquidProgressLayer() {
+type LiquidProgressLayerProps = {
+  variant?: "default" | "nav";
+};
+
+export function LiquidProgressLayer({ variant = "default" }: LiquidProgressLayerProps) {
   const { smoothProgress, direction, velocity, percentage } = useScrollLiquidProgress();
-  const normalizedVelocity = Math.min(1, velocity / 90);
+  const isNav = variant === "nav";
+  const normalizedVelocity = Math.min(1, velocity / (isNav ? 34 : 90));
   const style: LiquidStyle = {
     "--scroll-progress": smoothProgress.toFixed(4),
     "--scroll-velocity": normalizedVelocity.toFixed(4),
-    "--liquid-wave-strength": `${Math.min(28, 7 + velocity * 0.22).toFixed(2)}px`
+    "--liquid-wave-strength": `${Math.min(
+      isNav ? 58 : 28,
+      7 + velocity * (isNav ? 0.72 : 0.22)
+    ).toFixed(2)}px`
   };
 
   return (
     <div
       aria-hidden="true"
-      className="liquid-progress-layer"
+      className={`liquid-progress-layer liquid-progress-layer--${variant}`}
       data-direction={direction}
       data-percentage={percentage}
       style={style}
@@ -32,8 +40,13 @@ export function LiquidProgressLayer() {
         <span />
         <span />
         <span />
+        <span />
+        <span />
+        <span />
       </div>
       <div className="liquid-bubbles">
+        <span />
+        <span />
         <span />
         <span />
         <span />

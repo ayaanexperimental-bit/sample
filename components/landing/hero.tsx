@@ -1,3 +1,4 @@
+import { LiquidProgressLayer } from "@/components/landing/liquid-progress-layer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -18,6 +19,7 @@ export function Hero({ schedule }: HeroProps) {
   return (
     <Section className="hero-section" aria-labelledby="hero-title">
       <header className="site-header" aria-label="Primary navigation">
+        <LiquidProgressLayer variant="nav" />
         <a className="site-brand" href="#top" aria-label="Heal Your Hormones Masterclass home">
           <span>HYH</span>
           Heal Your Hormones Masterclass

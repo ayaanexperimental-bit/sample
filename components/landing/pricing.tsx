@@ -1,5 +1,4 @@
 import { CheckoutButton } from "@/components/landing/checkout-button";
-import { LiquidProgressLayer } from "@/components/landing/liquid-progress-layer";
 import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
@@ -19,7 +18,6 @@ export function Pricing() {
         </div>
 
         <div className="pricing-card">
-          <LiquidProgressLayer />
           <div className="pricing-card-content">
             <p className="pricing-label">Current price</p>
             <div className="pricing-price">Rs. 51</div>

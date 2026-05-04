@@ -312,9 +312,13 @@ svg {
   box-shadow: 0 16px 50px rgb(37 24 34 / 0.1);
   backdrop-filter: blur(18px);
   transform: translateX(-50%);
+  isolation: isolate;
+  overflow: hidden;
 }
 
 .site-brand {
+  position: relative;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: 0.65rem;
@@ -337,6 +341,8 @@ svg {
 }
 
 .site-nav {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -1057,6 +1063,11 @@ svg {
   opacity: 0.84;
 }
 
+.liquid-progress-layer--nav {
+  opacity: 0.72;
+  mix-blend-mode: multiply;
+}
+
 .liquid-fill {
   position: absolute;
   inset: 0;
@@ -1070,6 +1081,17 @@ svg {
     0 0 38px rgb(34 211 238 / 0.36),
     inset 0 1px 18px rgb(255 255 255 / 0.5),
     inset 0 -24px 45px rgb(59 130 246 / 0.24);
+}
+
+.liquid-progress-layer--nav .liquid-fill {
+  background:
+    radial-gradient(circle at 16% 42%, rgb(255 255 255 / 0.76), transparent 6rem),
+    repeating-radial-gradient(circle at 58% 50%, rgb(255 255 255 / 0.2) 0 0.18rem, transparent 0.19rem 1.35rem),
+    linear-gradient(100deg, rgb(34 211 238 / 0.82), rgb(45 212 191 / 0.76) 24%, rgb(59 130 246 / 0.78) 52%, rgb(168 85 247 / 0.76) 74%, rgb(244 114 182 / 0.82));
+  box-shadow:
+    0 0 30px rgb(34 211 238 / 0.5),
+    inset 0 0 26px rgb(255 255 255 / 0.72),
+    inset 0 -12px 24px rgb(168 85 247 / 0.32);
 }
 
 .liquid-wave {
@@ -1090,6 +1112,18 @@ svg {
 
 .liquid-progress-layer[data-direction="up"] .liquid-wave {
   transform: translateX(calc(var(--scroll-velocity) * var(--liquid-wave-strength) * -0.45));
+}
+
+.liquid-progress-layer--nav .liquid-wave {
+  width: 7.5rem;
+  left: calc((var(--scroll-progress) * 100%) - 3.6rem);
+  background:
+    radial-gradient(circle at 34% 18%, rgb(255 255 255 / 0.86), transparent 1.1rem),
+    linear-gradient(180deg, rgb(255 255 255 / 0.46), rgb(34 211 238 / 0.34), rgb(236 72 153 / 0.28));
+  filter: blur(0.35px) drop-shadow(0 0 20px rgb(34 211 238 / 0.72));
+  animation:
+    liquid-edge 980ms ease-in-out infinite,
+    liquid-nav-slosh 720ms ease-in-out infinite;
 }
 
 .liquid-droplets,
@@ -1129,6 +1163,29 @@ svg {
   animation-delay: 560ms;
 }
 
+.liquid-droplets span:nth-child(4) {
+  top: 34%;
+  animation-delay: 160ms;
+}
+
+.liquid-droplets span:nth-child(5) {
+  top: 63%;
+  animation-delay: 420ms;
+}
+
+.liquid-droplets span:nth-child(6) {
+  top: 82%;
+  animation-delay: 700ms;
+}
+
+.liquid-progress-layer--nav .liquid-droplets span {
+  width: calc(0.22rem + var(--scroll-velocity) * 0.85rem);
+  height: calc(0.22rem + var(--scroll-velocity) * 0.85rem);
+  left: calc((var(--scroll-progress) * 100%) + 0.12rem);
+  opacity: calc(0.2 + var(--scroll-velocity) * 0.8);
+  animation-duration: 760ms;
+}
+
 .liquid-bubbles span {
   width: 0.38rem;
   height: 0.38rem;
@@ -1153,6 +1210,21 @@ svg {
 .liquid-bubbles span:nth-child(4) {
   left: 78%;
   top: 46%;
+}
+
+.liquid-bubbles span:nth-child(5) {
+  left: 24%;
+  top: 44%;
+}
+
+.liquid-bubbles span:nth-child(6) {
+  left: 88%;
+  top: 72%;
+}
+
+.liquid-progress-layer--nav .liquid-bubbles span {
+  opacity: calc(0.18 + var(--scroll-velocity) * 0.55);
+  animation: liquid-bubble-jitter 900ms ease-in-out infinite;
 }
 
 .pricing-label {
@@ -1388,6 +1460,30 @@ svg {
   70%,
   100% {
     transform: translateX(-0.6rem) scale(0.18);
+  }
+}
+
+@keyframes liquid-nav-slosh {
+  0%,
+  100% {
+    translate: 0 0;
+    scale: 1 1.02;
+  }
+
+  50% {
+    translate: calc(var(--scroll-velocity) * 0.75rem) 0;
+    scale: calc(1 + var(--scroll-velocity) * 0.16) 0.94;
+  }
+}
+
+@keyframes liquid-bubble-jitter {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate(calc(var(--scroll-velocity) * 0.9rem), -0.18rem) scale(1.28);
   }
 }
 
