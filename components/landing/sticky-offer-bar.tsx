@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { MicroCelebration } from "@/components/landing/micro-celebration";
+import { useClickBurst } from "@/components/landing/use-click-burst";
 
 const OFFER_SECONDS = 5 * 60;
 
@@ -12,6 +14,7 @@ function formatTime(seconds: number) {
 
 export function StickyOfferBar() {
   const [secondsLeft, setSecondsLeft] = useState(OFFER_SECONDS);
+  const { burstKey, triggerBurst } = useClickBurst();
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -22,6 +25,7 @@ export function StickyOfferBar() {
   }, []);
 
   function scrollToRegistration() {
+    triggerBurst();
     document.getElementById("registration")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -34,6 +38,7 @@ export function StickyOfferBar() {
       </div>
       <button className="sticky-offer-button" type="button" onClick={scrollToRegistration}>
         Register Now
+        <MicroCelebration burstKey={burstKey} />
       </button>
     </aside>
   );

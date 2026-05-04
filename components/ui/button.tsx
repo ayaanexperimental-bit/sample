@@ -1,13 +1,34 @@
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/class-names";
 
-type ButtonVariant = "primary" | "secondary" | "ghost";
+type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "ghost"
+  | "glass"
+  | "outline"
+  | "success"
+  | "danger"
+  | "soft"
+  | "neon"
+  | "stickyCTA"
+  | "icon"
+  | "tab";
 type ButtonSize = "sm" | "md" | "lg";
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary: "ui-button--primary",
   secondary: "ui-button--secondary",
-  ghost: "ui-button--ghost"
+  ghost: "ui-button--ghost",
+  glass: "ui-button--glass",
+  outline: "ui-button--outline",
+  success: "ui-button--success",
+  danger: "ui-button--danger",
+  soft: "ui-button--soft",
+  neon: "ui-button--neon",
+  stickyCTA: "ui-button--sticky-cta",
+  icon: "ui-button--icon",
+  tab: "ui-button--tab"
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

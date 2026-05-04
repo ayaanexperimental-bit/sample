@@ -1,3 +1,4 @@
+import { AmbientBackground } from "@/components/landing/ambient-background";
 import { Bonuses } from "@/components/landing/bonuses";
 import { CredibilityStrip } from "@/components/landing/credibility-strip";
 import { FAQ } from "@/components/landing/faq";
@@ -18,6 +19,7 @@ export default function Home() {
 
   return (
     <main id="top">
+      <AmbientBackground />
       <Hero schedule={schedule} />
       <CredibilityStrip />
       <WhoItsFor />
