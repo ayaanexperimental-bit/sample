@@ -1,10 +1,10 @@
 # WHM101 Source Of Truth
 
-Status: hard reset approved
+Status: hard reset approved, hosted payment link removed from website
 
-Last updated: 03 May 2026
+Last updated: 04 May 2026
 
-Project: Women Health Masterclass 101
+Project: Heal Your Hormones Masterclass
 
 Domain: https://freedomfromdiabetes.in
 
@@ -22,7 +22,8 @@ Payment data belongs to Razorpay. Automation belongs to Pabbly Connect. Reportin
 
 ```text
 Landing page
--> Razorpay hosted checkout
+-> Payment button stays paused on the website
+-> Owner-managed Razorpay/Pabbly payment flow runs outside this website when enabled externally
 -> Razorpay captures payment
 -> Pabbly native Razorpay trigger receives payment captured event
 -> Pabbly writes SUCCESSFUL PAYMENTS row in Google Sheets
@@ -39,7 +40,6 @@ DNS/CDN: Cloudflare
 Hosting: Cloudflare Pages
 Landing page frontend
 Thank You / success page frontend
-Razorpay hosted checkout URL
 WhatsApp community URL
 Google Sheets reporting through Pabbly
 ```
@@ -67,7 +67,7 @@ Custom backend registration model
 
 ```text
 Website: https://freedomfromdiabetes.in
-Razorpay hosted checkout: https://rzp.io/rzp/xBIZzJHv
+Razorpay hosted checkout: removed from website code and config
 WhatsApp community: https://chat.whatsapp.com/LYf1V55hDimAhfNVCghaN4
 ```
 
@@ -79,8 +79,7 @@ Only public frontend values are needed by the website:
 
 ```env
 NEXT_PUBLIC_SITE_URL=https://freedomfromdiabetes.in
-NEXT_PUBLIC_PAYMENT_ENABLED=true
-NEXT_PUBLIC_RAZORPAY_HOSTED_CHECKOUT_URL=https://rzp.io/rzp/xBIZzJHv
+NEXT_PUBLIC_PAYMENT_ENABLED=false
 NEXT_PUBLIC_WHATSAPP_COMMUNITY_INVITE_URL=https://chat.whatsapp.com/LYf1V55hDimAhfNVCghaN4
 ENABLE_PROMPT_LAB=false
 ```
@@ -169,9 +168,9 @@ These actions happen in external dashboards and must be completed by the owner:
 
 ```text
 1. Open https://freedomfromdiabetes.in.
-2. Click Pay Rs. 51.
-3. Confirm Razorpay hosted checkout opens.
-4. Complete a small test payment only if the Razorpay page is temporarily set to INR 1.
+2. Click the registration button.
+3. Confirm no Razorpay hosted checkout opens from the website.
+4. Complete payment only through the externally managed Razorpay/Pabbly flow when the owner enables it.
 5. Confirm Razorpay shows payment captured.
 6. Confirm Pabbly execution ran from native Razorpay trigger.
 7. Confirm SUCCESSFUL PAYMENTS row appears in Google Sheets.
@@ -184,7 +183,7 @@ If the sheet does not update:
 Check Pabbly execution history first.
 Then check Razorpay captured payment details.
 Then check Pabbly Google Sheets field mapping.
-Do not debug this in the website code unless the Pay button itself fails to open Razorpay.
+Do not debug this in the website code unless the owner explicitly reconnects a payment CTA.
 ```
 
 ---
@@ -206,7 +205,7 @@ Website changes should stay limited to:
 
 ```text
 Landing page copy/design
-Razorpay hosted checkout URL
+Payment CTA wording and availability
 Success page copy
 WhatsApp community link
 Legal pages
@@ -219,3 +218,4 @@ Legal pages
 | Date | Version | Change |
 | --- | --- | --- |
 | 03 May 2026 | 2.0 | Hard reset approved. Active build moved to landing page + Razorpay hosted checkout only. Custom Worker, D1, retry, Apps Script failure logging, and n8n fallback removed from active app direction. |
+| 04 May 2026 | 2.1 | Live Razorpay hosted checkout URL removed from website button, public env, Wrangler config, and active website documentation. |

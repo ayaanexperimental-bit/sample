@@ -7,6 +7,7 @@ import { Logistics } from "@/components/landing/logistics";
 import { MethodPillars } from "@/components/landing/method-pillars";
 import { Outcomes } from "@/components/landing/outcomes";
 import { Pricing } from "@/components/landing/pricing";
+import { StickyOfferBar } from "@/components/landing/sticky-offer-bar";
 import { Testimonials } from "@/components/landing/testimonials";
 import { WhatYouLearn } from "@/components/landing/what-you-learn";
 import { WhoItsFor } from "@/components/landing/who-its-for";
@@ -29,6 +30,7 @@ export default function Home() {
       <Pricing />
       <FAQ />
       <FooterCompliance />
+      <StickyOfferBar />
     </main>
   );
 }

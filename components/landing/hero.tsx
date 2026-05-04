@@ -18,20 +18,20 @@ export function Hero({ schedule }: HeroProps) {
   return (
     <Section className="hero-section" aria-labelledby="hero-title">
       <header className="site-header" aria-label="Primary navigation">
-        <a className="site-brand" href="#top" aria-label="Women Health Masterclass 101 home">
-          <span>WHM</span>
-          Women Health Masterclass 101
+        <a className="site-brand" href="#top" aria-label="Heal Your Hormones Masterclass home">
+          <span>HYH</span>
+          Heal Your Hormones Masterclass
         </a>
         <nav className="site-nav" aria-label="Page sections">
           <a href="#details">Details</a>
-          <a href="#registration">₹51</a>
+          <a href="#registration">{"\u20B951"}</a>
         </nav>
       </header>
       <Container className="hero-layout" size="wide">
         <div className="hero-copy">
-          <Badge tone="accent">Women Health Masterclass 101</Badge>
+          <Badge tone="accent">HEAL YOUR HORMONES Masterclass</Badge>
           <h1 id="hero-title">
-            An integrated and holistic approach for <span className="gradient-text">PCOS/PCOD</span>
+            Practical <span className="gradient-text">PCOS/PCOD</span> lifestyle guidance for women
           </h1>
           <p className="hero-lede">
             A guided masterclass for women who want practical, symptom-aware routines for wellness,
@@ -43,7 +43,7 @@ export function Hero({ schedule }: HeroProps) {
             <Button href="#registration" size="lg">
               Reserve My Seat
             </Button>
-            <Button href="#details" variant="secondary" size="lg">
+            <Button href="#registration" variant="secondary" size="lg">
               View Details
             </Button>
           </div>
@@ -58,14 +58,11 @@ export function Hero({ schedule }: HeroProps) {
           </ul>
         </div>
 
-        <div className="hero-media" aria-label="Coach photo placeholder">
+        <div className="hero-media" aria-label="Coach photo">
           <div className="hero-orbit hero-orbit--one" aria-hidden="true" />
           <div className="hero-orbit hero-orbit--two" aria-hidden="true" />
           <figure className="hero-photo-slot">
-            <img
-              src="/images/coach-hero.jpg"
-              alt="Coach portrait for Women Health Masterclass 101"
-            />
+            <img src="/images/coach-hero.jpg" alt="Coach portrait for Heal Your Hormones Masterclass" />
           </figure>
           <div className="hero-media-caption">
             <strong>Guided live session</strong>

@@ -35,7 +35,9 @@ export function FAQ() {
       <Container className="faq-layout">
         <div className="section-heading">
           <p>Questions</p>
-          <h2 id="faq-title">Important answers before registration.</h2>
+          <h2 id="faq-title">
+            Frequently <span>Asked</span> Questions
+          </h2>
         </div>
 
         <div className="faq-list">

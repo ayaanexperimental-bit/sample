@@ -13,10 +13,6 @@ const credibilityItems = [
   {
     label: "Approach",
     value: "Integrated and holistic"
-  },
-  {
-    label: "Proof",
-    value: "Credentials pending"
   }
 ];
 

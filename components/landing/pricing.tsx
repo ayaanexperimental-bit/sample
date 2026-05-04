@@ -1,4 +1,5 @@
 import { CheckoutButton } from "@/components/landing/checkout-button";
+import { LiquidProgressLayer } from "@/components/landing/liquid-progress-layer";
 import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
@@ -14,24 +15,21 @@ export function Pricing() {
       <Container className="pricing-layout">
         <div className="pricing-copy">
           <Badge tone="accent">Registration</Badge>
-          <h2 id="pricing-title">Reserve your seat through secure Razorpay checkout.</h2>
-          <p>
-            Payment is handled by Razorpay. Paid registration reporting and follow-up are handled
-            through Pabbly and Google Sheets outside this website.
-          </p>
+          <h2 id="pricing-title">Reserve before this limited seat offer resets.</h2>
         </div>
 
         <div className="pricing-card">
-          <p className="pricing-label">Current price</p>
-          <div className="pricing-price">Rs. 51</div>
-          <p className="pricing-note">
-            Hosted checkout keeps payment details off this site.
-          </p>
-          <CheckoutButton />
-          <p className="pricing-security">
-            <span aria-hidden="true">*</span>
-            Hosted payment. No card details are collected on this site.
-          </p>
+          <LiquidProgressLayer />
+          <div className="pricing-card-content">
+            <p className="pricing-label">Current price</p>
+            <div className="pricing-price">Rs. 51</div>
+            <p className="pricing-note">Checkout access is currently paused for final setup.</p>
+            <CheckoutButton />
+            <p className="pricing-security">
+              <span aria-hidden="true">*</span>
+              No card details are collected on this site.
+            </p>
+          </div>
         </div>
       </Container>
     </Section>
