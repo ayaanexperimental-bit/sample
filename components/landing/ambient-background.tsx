@@ -1,24 +1,35 @@
 "use client";
 
-import type { CSSProperties } from "react";
-
-type AmbientStyle = CSSProperties & {
-  "--pointer-x": string;
-  "--pointer-y": string;
-};
+import Grainient from "@/components/react-bits/grainient/grainient";
 
 export function AmbientBackground() {
-  const style: AmbientStyle = {
-    "--pointer-x": "52%",
-    "--pointer-y": "18%"
-  };
-
   return (
-    <div className="ambient-background" aria-hidden="true" style={style}>
-      <span className="ambient-background__veil ambient-background__veil--rose" />
-      <span className="ambient-background__veil ambient-background__veil--aqua" />
-      <span className="ambient-background__veil ambient-background__veil--peach" />
-      <span className="ambient-background__glow" />
+    <div className="ambient-background ambient-background--grainient" aria-hidden="true">
+      <Grainient
+        color1="#fdaefa"
+        color2="#d040e9"
+        color3="#B497CF"
+        timeSpeed={1.05}
+        colorBalance={0}
+        warpStrength={1}
+        warpFrequency={5}
+        warpSpeed={2}
+        warpAmplitude={50}
+        blendAngle={0}
+        blendSoftness={0.05}
+        rotationAmount={500}
+        noiseScale={2}
+        grainAmount={0.1}
+        grainScale={2}
+        grainAnimated={false}
+        contrast={1.5}
+        gamma={1}
+        saturation={1}
+        centerX={0}
+        centerY={0}
+        zoom={0.9}
+      />
+      <span className="ambient-background__readability-veil" />
     </div>
   );
 }
