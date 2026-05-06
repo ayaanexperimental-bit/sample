@@ -1,5 +1,20 @@
 import type { Metadata } from "next";
+import { Fraunces, Nunito_Sans } from "next/font/google";
 import "./globals.css";
+
+const displayFont = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-display",
+  weight: ["600", "700", "800", "900"],
+  display: "swap"
+});
+
+const bodyFont = Nunito_Sans({
+  subsets: ["latin"],
+  variable: "--font-body",
+  weight: ["400", "600", "700", "800", "900"],
+  display: "swap"
+});
 
 export const metadata: Metadata = {
   title: "WOMEN HEALTH MASTERCLASS 101",
@@ -27,7 +42,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={`${displayFont.variable} ${bodyFont.variable}`}>{children}</body>
     </html>
   );
 }

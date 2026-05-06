@@ -20,7 +20,9 @@
   --color-success: #be185d;
 
   --font-sans:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    var(--font-body), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-serif-display:
+    var(--font-display), Georgia, Cambria, "Times New Roman", serif;
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -43,6 +45,9 @@
   --shadow-soft: 0 18px 60px rgb(80 28 54 / 0.09);
   --shadow-lift: 0 22px 80px rgb(159 23 77 / 0.16);
   --shadow-glow: 0 18px 48px rgb(244 114 182 / 0.22), 0 0 0 1px rgb(255 255 255 / 0.5);
+  --shadow-card-bloom: 0 18px 54px rgb(159 23 77 / 0.11), 0 0 0 1px rgb(255 255 255 / 0.58);
+  --gradient-feminine-cta: linear-gradient(135deg, #fb84bd, #df3b8b 48%, #a855f7 100%);
+  --gradient-glass: linear-gradient(145deg, rgb(255 255 255 / 0.88), rgb(255 240 246 / 0.68));
   --container-max-width: 72rem;
 }
 
@@ -126,9 +131,7 @@ main#top {
   width: 42rem;
   height: 42rem;
   border-radius: 44% 56% 52% 48% / 48% 42% 58% 52%;
-  filter: blur(1px);
-  opacity: 0.28;
-  animation: ambient-veil-drift 26s ease-in-out infinite;
+  opacity: 0.16;
 }
 
 .ambient-background__veil--rose {
@@ -167,23 +170,18 @@ main#top {
   border-radius: 999px;
   background:
     radial-gradient(circle, rgb(255 255 255 / 0.38), rgb(244 114 182 / 0.12) 28%, rgb(94 234 212 / 0.08) 44%, transparent 68%);
-  opacity: 0.64;
-  transition:
-    left 220ms ease-out,
-    top 220ms ease-out,
-    opacity 180ms ease;
+  opacity: 0.34;
 }
 
 .ambient-background__dust {
   inset: 0;
-  opacity: 0.22;
+  opacity: 0.12;
   background-image:
     radial-gradient(circle at 12% 24%, rgb(244 114 182 / 0.36) 0 0.08rem, transparent 0.1rem),
     radial-gradient(circle at 68% 18%, rgb(94 234 212 / 0.34) 0 0.07rem, transparent 0.09rem),
     radial-gradient(circle at 86% 58%, rgb(196 181 253 / 0.34) 0 0.08rem, transparent 0.1rem),
     radial-gradient(circle at 24% 76%, rgb(215 154 80 / 0.28) 0 0.07rem, transparent 0.09rem);
   background-size: 18rem 18rem, 22rem 22rem, 20rem 20rem, 24rem 24rem;
-  animation: ambient-dust-float 18s linear infinite;
 }
 
 button,
@@ -231,6 +229,7 @@ svg {
 .scaffold-status h1 {
   margin: 0;
   color: var(--color-text);
+  font-family: var(--font-serif-display);
   font-size: clamp(2rem, 6vw, 3.5rem);
   line-height: 1;
   letter-spacing: 0;
@@ -318,6 +317,12 @@ svg {
     box-shadow 220ms ease,
     transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
   will-change: transform;
+  touch-action: manipulation;
+}
+
+.ui-button > svg,
+.ui-button > [aria-hidden="true"]:last-child:not(.micro-celebration) {
+  transition: transform 180ms ease;
 }
 
 .ui-button::before {
@@ -386,7 +391,7 @@ svg {
   border-color: rgb(255 255 255 / 0.34);
   background:
     linear-gradient(135deg, rgb(255 255 255 / 0.18), transparent 34%),
-    linear-gradient(135deg, #f472b6, #db2777 52%, #b91c7d);
+    var(--gradient-feminine-cta);
   color: #ffffff;
   box-shadow: 0 14px 30px rgb(244 114 182 / 0.26), inset 0 1px 0 rgb(255 255 255 / 0.34);
   animation: cta-breathe 3.6s ease-in-out infinite;
@@ -428,7 +433,7 @@ svg {
 .ui-button--tab {
   border-color: rgb(242 201 218 / 0.82);
   background:
-    linear-gradient(135deg, rgb(255 255 255 / 0.74), rgb(255 240 246 / 0.58)),
+    var(--gradient-glass),
     rgb(255 250 253 / 0.72);
   color: var(--color-text);
   box-shadow: 0 10px 28px rgb(80 28 54 / 0.07), inset 0 1px 0 rgb(255 255 255 / 0.8);
@@ -467,9 +472,20 @@ svg {
   border-color: rgb(255 255 255 / 0.28);
   background:
     linear-gradient(135deg, rgb(255 255 255 / 0.22), transparent 34%),
-    linear-gradient(135deg, #f472b6, #db2777 56%, #a21caf);
+    var(--gradient-feminine-cta);
   color: #ffffff;
   box-shadow: 0 18px 44px rgb(219 39 119 / 0.28), inset 0 1px 0 rgb(255 255 255 / 0.32);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ui-button:hover {
+    translate: 0 -1px;
+  }
+
+  .ui-button:hover > svg,
+  .ui-button:hover > [aria-hidden="true"]:last-child:not(.micro-celebration) {
+    transform: translateX(0.12rem);
+  }
 }
 
 .ui-button--success {
@@ -717,8 +733,10 @@ svg {
 .hero-copy h1 {
   margin: var(--space-5) 0 0;
   color: var(--color-text);
+  font-family: var(--font-serif-display);
+  font-weight: 900;
   font-size: clamp(2.6rem, 5.4vw, 5rem);
-  line-height: 1;
+  line-height: 0.94;
   letter-spacing: 0;
   overflow-wrap: anywhere;
 }
@@ -912,6 +930,8 @@ svg {
 .section-heading h2 {
   margin: 0;
   color: var(--color-text);
+  font-family: var(--font-serif-display);
+  font-weight: 800;
   font-size: clamp(2.25rem, 5vw, 4.25rem);
   line-height: 1;
   letter-spacing: 0;
@@ -1010,8 +1030,8 @@ svg {
 .faq-item:hover,
 .method-pillar:hover {
   border-color: rgb(217 70 132 / 0.24);
-  box-shadow: 0 20px 60px rgb(37 24 34 / 0.12);
-  transform: translateY(-4px);
+  box-shadow: var(--shadow-card-bloom);
+  transform: translateY(-4px) rotateX(0.35deg);
 }
 
 .audience-panel,
@@ -1206,6 +1226,9 @@ svg {
 }
 
 .outcomes-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.7);
   border-radius: var(--radius-xl);
   background:
     linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(253 226 239 / 0.5)),
@@ -1464,6 +1487,19 @@ svg {
   box-shadow: 0 26px 90px rgb(0 0 0 / 0.28);
 }
 
+.pricing-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 18%, rgb(94 234 212 / 0.18), transparent 12rem),
+    radial-gradient(circle at 84% 18%, rgb(215 154 80 / 0.16), transparent 14rem),
+    linear-gradient(120deg, transparent, rgb(255 255 255 / 0.42), transparent);
+  opacity: 0.72;
+}
+
 .pricing-card-content {
   position: relative;
   z-index: 2;
@@ -1481,6 +1517,7 @@ svg {
     linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(255 240 246 / 0.72)),
     var(--color-pearl);
   box-shadow: var(--shadow-soft);
+  color: var(--color-text);
 }
 
 .scroll-liquid-course-panel__content {
@@ -1490,7 +1527,7 @@ svg {
 
 .scroll-liquid-course-panel .liquid-progress-layer {
   z-index: 1;
-  opacity: 0.7;
+  opacity: 0.76;
 }
 
 .scroll-liquid-course-panel .liquid-fill {
@@ -1553,14 +1590,19 @@ svg {
   background:
     radial-gradient(circle at 38% 18%, rgb(255 255 255 / 0.64), transparent 1.35rem),
     linear-gradient(180deg, rgb(255 255 255 / 0.32), rgb(34 211 238 / 0.16), rgb(244 114 182 / 0.18));
-  filter: blur(0.2px) drop-shadow(0 0 16px rgb(34 211 238 / 0.56));
+  filter: none;
   transform: translateX(calc(var(--scroll-velocity) * var(--liquid-wave-strength) * 0.35));
   will-change: left, transform;
-  animation: liquid-edge 2.8s ease-in-out infinite;
+  animation: liquid-edge 3.8s ease-in-out infinite;
 }
 
 .liquid-progress-layer[data-direction="up"] .liquid-wave {
   transform: translateX(calc(var(--scroll-velocity) * var(--liquid-wave-strength) * -0.45));
+}
+
+.liquid-progress-layer[data-direction="up"] .liquid-droplets span {
+  transform-origin: right center;
+  animation-name: droplet-retract;
 }
 
 .liquid-progress-layer--nav .liquid-wave {
@@ -1569,10 +1611,10 @@ svg {
   background:
     radial-gradient(circle at 34% 18%, rgb(255 255 255 / 0.86), transparent 1.1rem),
     linear-gradient(180deg, rgb(255 255 255 / 0.46), rgb(34 211 238 / 0.34), rgb(236 72 153 / 0.28));
-  filter: blur(0.35px) drop-shadow(0 0 20px rgb(34 211 238 / 0.72));
+  filter: none;
   animation:
-    liquid-edge 980ms ease-in-out infinite,
-    liquid-nav-slosh 720ms ease-in-out infinite;
+    liquid-edge 1.8s ease-in-out infinite,
+    liquid-nav-slosh 1.4s ease-in-out infinite;
 }
 
 .liquid-droplets,
@@ -1595,7 +1637,7 @@ svg {
   height: calc(0.32rem + var(--scroll-velocity) * 0.55rem);
   left: calc((var(--scroll-progress) * 100%) + 0.5rem);
   opacity: calc(0.18 + var(--scroll-velocity) * 0.72);
-  animation: droplet-merge 1.6s ease-in-out infinite;
+  animation: droplet-merge 2.4s ease-in-out infinite;
 }
 
 .liquid-droplets span:nth-child(1) {
@@ -1673,7 +1715,7 @@ svg {
 
 .liquid-progress-layer--nav .liquid-bubbles span {
   opacity: calc(0.18 + var(--scroll-velocity) * 0.55);
-  animation: liquid-bubble-jitter 900ms ease-in-out infinite;
+  animation: liquid-bubble-jitter 1.8s ease-in-out infinite;
 }
 
 .pricing-label {
@@ -1760,12 +1802,17 @@ svg {
 }
 
 .faq-item {
-  border: 0;
-  border-inline: 2px solid var(--color-text);
-  border-radius: 0;
-  background: rgb(240 247 250 / 0.88);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgb(242 201 218 / 0.74);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.88), rgb(255 240 246 / 0.64)),
+    var(--color-pearl);
   padding: 0;
+  box-shadow: 0 10px 32px rgb(80 28 54 / 0.06);
   transition:
+    border-color 180ms ease,
     background-color 180ms ease,
     box-shadow 180ms ease,
     transform 180ms ease;
@@ -1791,15 +1838,26 @@ svg {
 
 .faq-item summary::after {
   content: "+";
+  width: 1.8rem;
+  height: 1.8rem;
+  display: grid;
+  place-items: center;
   flex: 0 0 auto;
-  color: var(--color-text);
-  font-size: 1.35rem;
+  border-radius: 999px;
+  background: rgb(217 70 132 / 0.1);
+  color: var(--color-accent-strong);
+  font-size: 1.15rem;
   font-weight: 900;
   line-height: 1;
+  transition:
+    background-color 180ms ease,
+    transform 180ms ease;
 }
 
 .faq-item[open] summary::after {
   content: "-";
+  background: rgb(94 234 212 / 0.18);
+  transform: rotate(180deg);
 }
 
 .faq-item p {
@@ -1824,7 +1882,7 @@ svg {
 }
 
 .faq-section .section-heading h2 span {
-  color: #14b8a6;
+  color: var(--color-accent-strong);
 }
 
 .sticky-offer-bar {
@@ -1837,11 +1895,12 @@ svg {
   align-items: center;
   justify-content: center;
   gap: clamp(1rem, 6vw, 7rem);
-  border: 1px solid rgb(20 184 166 / 0.58);
+  border: 1px solid rgb(255 255 255 / 0.72);
   border-bottom: 0;
   border-radius: 1rem 1rem 0 0;
   background:
-    linear-gradient(135deg, rgb(255 255 255 / 0.96), rgb(255 250 253 / 0.92)),
+    radial-gradient(circle at 22% 0%, rgb(94 234 212 / 0.16), transparent 18rem),
+    linear-gradient(135deg, rgb(255 255 255 / 0.96), rgb(255 240 246 / 0.9)),
     rgb(255 255 255 / 0.97);
   padding: 0.55rem max(1rem, env(safe-area-inset-left)) calc(0.55rem + env(safe-area-inset-bottom));
   box-shadow: 0 -18px 48px rgb(37 24 34 / 0.16);
@@ -1866,7 +1925,7 @@ svg {
 }
 
 .sticky-offer-price del {
-  color: #dc2626;
+  color: var(--color-accent-strong);
   font-size: clamp(1rem, 2.2vw, 1.25rem);
   font-weight: 850;
 }
@@ -1880,50 +1939,10 @@ svg {
 }
 
 .sticky-offer-button {
-  border: 0;
-  border-radius: 0.55rem;
-  position: relative;
-  overflow: hidden;
-  background:
-    linear-gradient(135deg, rgb(255 255 255 / 0.18), transparent 35%),
-    linear-gradient(135deg, #ec4899, #db2777 58%, #b91c7d);
-  color: #ffffff;
-  padding: 0.76rem 1.9rem;
-  font: inherit;
+  border-radius: 0.7rem;
   font-size: 0.92rem;
   font-weight: 900;
-  cursor: pointer;
-  box-shadow: 0 12px 28px rgb(219 39 119 / 0.26), inset 0 1px 0 rgb(255 255 255 / 0.28);
-  transition:
-    box-shadow 180ms ease,
-    transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.sticky-offer-button::before {
-  content: "";
-  position: absolute;
-  inset: -55% -30%;
-  background: linear-gradient(110deg, transparent 28%, rgb(255 255 255 / 0.42) 48%, transparent 66%);
-  transform: translateX(-82%) rotate(8deg);
-  transition: transform 520ms ease;
-}
-
-.sticky-offer-button:hover {
-  box-shadow: 0 16px 34px rgb(219 39 119 / 0.34), 0 0 0 1px rgb(215 154 80 / 0.22);
-  transform: translateY(-2px) scale(1.012);
-}
-
-.sticky-offer-button:hover::before {
-  transform: translateX(82%) rotate(8deg);
-}
-
-.sticky-offer-button:active {
-  transform: translateY(1px) scale(0.98);
-}
-
-.sticky-offer-button:focus-visible {
-  outline: 3px solid rgb(94 234 212 / 0.48);
-  outline-offset: 3px;
+  padding-inline: 1.9rem;
 }
 
 @keyframes ambient-veil-drift {
@@ -1982,6 +2001,17 @@ svg {
   70%,
   100% {
     transform: translateX(-0.6rem) scale(0.18);
+  }
+}
+
+@keyframes droplet-retract {
+  0% {
+    transform: translateX(calc(var(--scroll-velocity) * -1.25rem)) scale(0.82);
+  }
+
+  70%,
+  100% {
+    transform: translateX(0.45rem) scale(0.18);
   }
 }
 

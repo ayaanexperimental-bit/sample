@@ -36,7 +36,11 @@ export function StickyOfferBar() {
         <del>{"\u20B9599"}</del>
         <span>Offer expires in {formatTime(secondsLeft)} Minutes</span>
       </div>
-      <button className="sticky-offer-button" type="button" onClick={scrollToRegistration}>
+      <button
+        className="ui-button ui-button--sticky-cta ui-button--lg sticky-offer-button"
+        type="button"
+        onClick={scrollToRegistration}
+      >
         Register Now
         <MicroCelebration burstKey={burstKey} />
       </button>
