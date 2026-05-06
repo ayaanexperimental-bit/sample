@@ -9,12 +9,12 @@ export function AmbientBackground() {
         color1="#fdaefa"
         color2="#d040e9"
         color3="#B497CF"
-        timeSpeed={1.05}
+        timeSpeed={1.85}
         colorBalance={0}
         warpStrength={1}
         warpFrequency={5}
-        warpSpeed={2}
-        warpAmplitude={50}
+        warpSpeed={3.15}
+        warpAmplitude={42}
         blendAngle={0}
         blendSoftness={0.05}
         rotationAmount={500}
@@ -22,9 +22,9 @@ export function AmbientBackground() {
         grainAmount={0.1}
         grainScale={2}
         grainAnimated={false}
-        contrast={1.5}
+        contrast={1.7}
         gamma={1}
-        saturation={1}
+        saturation={1.12}
         centerX={0}
         centerY={0}
         zoom={0.9}
