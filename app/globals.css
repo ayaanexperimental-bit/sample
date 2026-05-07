@@ -5848,8 +5848,8 @@ main#top {
 }
 
 .funnel-status__live {
-  background: linear-gradient(90deg, rgb(238 251 239 / 0.96), rgb(255 244 250 / 0.94));
-  color: #243226;
+  background: linear-gradient(90deg, rgb(224 248 245 / 0.98), rgb(255 246 251 / 0.96));
+  color: #123f45;
   box-shadow: 0 1px 0 rgb(118 37 78 / 0.08), 0 10px 28px rgb(116 24 67 / 0.08);
 }
 
@@ -5918,11 +5918,20 @@ main#top {
   max-width: 54rem !important;
   margin-inline: auto !important;
   font-size: clamp(2.8rem, 7.1vw, 5.75rem) !important;
+  color: #34132a !important;
+  font-family: var(--font-display), var(--font-editorial), Georgia, Cambria, "Times New Roman", serif !important;
+  font-weight: 800 !important;
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.52);
 }
 
 .hero-lede {
   max-width: 48rem !important;
   margin-inline: auto !important;
+  color: #27454f !important;
+  font-family: var(--font-conversion-stack) !important;
+  font-size: clamp(1.05rem, 2.15vw, 1.34rem) !important;
+  font-weight: 600 !important;
+  line-height: 1.72 !important;
 }
 
 .hero-media {
@@ -5953,51 +5962,10 @@ main#top {
   text-align: left !important;
 }
 
-.hero-funnel-offer {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: clamp(0.75rem, 2vw, 1.35rem);
-  width: min(100%, 44rem);
-  margin-top: clamp(2.2rem, 5vw, 3rem);
-  padding: clamp(0.85rem, 2vw, 1.05rem) clamp(1rem, 3vw, 1.4rem);
-  border: 1px solid rgb(255 255 255 / 0.68);
-  border-radius: 999px;
-  background:
-    linear-gradient(135deg, rgb(255 255 255 / 0.72), rgb(255 230 244 / 0.46) 52%, rgb(224 249 252 / 0.34)),
-    radial-gradient(circle at 20% 0%, rgb(255 255 255 / 0.76), transparent 10rem);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.92),
-    inset 0 -18px 36px rgb(221 64 149 / 0.08),
-    0 22px 48px rgb(104 30 73 / 0.12);
-  color: #4a2a3c;
-  font-family: var(--font-conversion-stack);
-}
-
-.hero-funnel-offer span,
-.hero-funnel-offer small {
-  font-size: clamp(0.76rem, 2vw, 0.9rem);
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.hero-funnel-offer small {
-  color: rgb(74 42 60 / 0.72);
-  text-transform: none;
-}
-
-.hero-funnel-offer strong {
-  color: #e91e8c;
-  font-family: var(--font-editorial-stack);
-  font-size: clamp(1.9rem, 5vw, 2.65rem);
-  line-height: 1;
-}
-
 .hero-actions {
   width: min(100%, 46rem) !important;
   justify-content: center !important;
-  margin-top: 0 !important;
+  margin-top: clamp(2.2rem, 5vw, 3rem) !important;
 }
 
 .hero-actions .ui-button {
@@ -6013,6 +5981,70 @@ main#top {
 
 .hero-details li {
   text-align: left !important;
+  color: #24313d !important;
+  font-family: var(--font-conversion-stack) !important;
+  font-weight: 750 !important;
+}
+
+.gradient-text {
+  background:
+    linear-gradient(100deg, #9d174d 0%, #581c87 32%, #065f46 64%, #713f12 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-stroke: 0.35px rgb(28 22 32 / 0.3);
+  filter: drop-shadow(0 1px 0 rgb(255 255 255 / 0.5));
+}
+
+.section-heading p,
+.credibility-item dd,
+.audience-list li,
+.audience-note,
+.learning-card p,
+.method-pillar p,
+.outcomes-card p,
+.outcomes-list li,
+.testimonial-card blockquote,
+.logistics-item p,
+.bonus-item p,
+.pricing-card p,
+.faq-item p,
+.footer-compliance,
+.hero-media-caption span {
+  color: #24313d !important;
+  font-family: var(--font-conversion-stack) !important;
+  font-weight: 600 !important;
+}
+
+.credibility-item dt,
+.learning-card h3,
+.method-pillar h3,
+.outcomes-card h3,
+.logistics-item h3,
+.bonus-item h3,
+.faq-item h3,
+.hero-media-caption strong {
+  color: #17202a !important;
+  font-family: var(--font-conversion-stack) !important;
+  font-weight: 850 !important;
+}
+
+.section-heading h2 {
+  color: #35142b !important;
+  font-family: var(--font-display), var(--font-editorial), Georgia, Cambria, "Times New Roman", serif !important;
+  font-weight: 800 !important;
+}
+
+.ui-badge--accent {
+  background: rgb(255 255 255 / 0.82) !important;
+  color: #0f766e !important;
+  border-color: rgb(15 118 110 / 0.24) !important;
+  box-shadow: 0 10px 24px rgb(15 118 110 / 0.1) !important;
+}
+
+.site-brand,
+.site-nav a {
+  color: #201824 !important;
+  font-weight: 850 !important;
 }
 
 @keyframes funnel-live-pulse {
@@ -6088,16 +6120,6 @@ main#top {
     width: min(92%, 32rem) !important;
     margin: -1.15rem auto 0 !important;
     transform: none !important;
-  }
-
-  .hero-funnel-offer {
-    grid-template-columns: 1fr auto;
-    border-radius: 1.25rem;
-    text-align: left;
-  }
-
-  .hero-funnel-offer small {
-    grid-column: 1 / -1;
   }
 
   .hero-actions {

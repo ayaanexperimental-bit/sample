@@ -13,7 +13,7 @@ export function FunnelStatusBars() {
       <div className="funnel-status__live">
         <span className="funnel-status__dot funnel-status__dot--live" aria-hidden="true" />
         <span className="funnel-status__copy">
-          <strong>144</strong> women are viewing this page right now
+          Live masterclass registrations are open now
         </span>
       </div>
     </div>

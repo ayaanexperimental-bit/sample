@@ -62,12 +62,6 @@ export function Hero({ schedule }: HeroProps) {
           </div>
         </div>
 
-        <div className="hero-funnel-offer" aria-label="Limited registration offer">
-          <span>Limited registration offer</span>
-          <strong>{"\u20B951"}</strong>
-          <small>Next session: {schedule.dateLabel}, {schedule.timeLabel}</small>
-        </div>
-
         <div className="hero-actions" aria-label="Primary actions">
           <Button href="#registration" size="lg">
             Reserve My Seat
