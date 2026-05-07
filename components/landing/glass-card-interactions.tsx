@@ -11,6 +11,27 @@ const LIQUID_RIPPLE_SELECTOR = [
   "a[data-ripple='liquid']"
 ].join(",");
 
+const GLASS_TOUCH_SELECTOR = [
+  ".glass-card",
+  "[data-slot='card']",
+  ".audience-panel",
+  ".learning-card",
+  ".method-pillar",
+  ".outcomes-card",
+  ".testimonial-card",
+  ".bonus-item",
+  ".logistics-item",
+  ".pricing-card",
+  ".faq-item",
+  ".hero-details li",
+  ".hero-photo-slot",
+  ".hero-media-caption",
+  ".credibility-item",
+  ".success-panel",
+  ".policy-document",
+  ".prompt-example-card"
+].join(",");
+
 function ensureWaterSurface(control: HTMLElement) {
   if (control.querySelector(":scope > .liquid-button-pool")) {
     return;
@@ -84,6 +105,35 @@ export function ButtonRippleInteractions() {
       const target = event.target;
       if (!(target instanceof Element)) {
         return;
+      }
+
+      if (coarsePointer) {
+        const touchedCard = target.closest<HTMLElement>(GLASS_TOUCH_SELECTOR);
+
+        if (touchedCard && !target.closest(LIQUID_RIPPLE_SELECTOR)) {
+          const rect = touchedCard.getBoundingClientRect();
+          const originX = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+          const originY = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
+          const rippleSize = Math.min(Math.max(rect.width, rect.height) * 1.25, 260);
+          const ripple = document.createElement("span");
+
+          ripple.className = "glass-card-ripple";
+          ripple.style.width = `${rippleSize}px`;
+          ripple.style.height = `${rippleSize}px`;
+          ripple.style.left = `${originX - rippleSize / 2}px`;
+          ripple.style.top = `${originY - rippleSize / 2}px`;
+
+          touchedCard.classList.remove("is-touch-releasing");
+          touchedCard.classList.add("is-touch-active");
+          touchedCard.append(ripple);
+
+          window.setTimeout(() => ripple.remove(), 700);
+          window.setTimeout(() => {
+            touchedCard.classList.remove("is-touch-active");
+            touchedCard.classList.add("is-touch-releasing");
+            window.setTimeout(() => touchedCard.classList.remove("is-touch-releasing"), 240);
+          }, 260);
+        }
       }
 
       const control = target.closest<HTMLElement>(LIQUID_RIPPLE_SELECTOR);
