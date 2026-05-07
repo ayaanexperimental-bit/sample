@@ -6,28 +6,28 @@ export function AmbientBackground() {
   return (
     <div className="ambient-background ambient-background--grainient" aria-hidden="true">
       <Grainient
-        color1="#fdaefa"
-        color2="#d040e9"
-        color3="#B497CF"
-        timeSpeed={1.85}
+        color1="#ffd7ed"
+        color2="#e991d5"
+        color3="#cdb9df"
+        timeSpeed={1.15}
         colorBalance={0}
-        warpStrength={1}
-        warpFrequency={5}
-        warpSpeed={2.65}
-        warpAmplitude={44}
+        warpStrength={0.62}
+        warpFrequency={3.8}
+        warpSpeed={1.55}
+        warpAmplitude={26}
         blendAngle={0}
-        blendSoftness={0.05}
-        rotationAmount={500}
+        blendSoftness={0.18}
+        rotationAmount={260}
         noiseScale={2}
-        grainAmount={0.1}
+        grainAmount={0.055}
         grainScale={2}
         grainAnimated={false}
-        contrast={1.58}
-        gamma={1}
-        saturation={1.12}
+        contrast={1.18}
+        gamma={1.04}
+        saturation={0.82}
         centerX={0}
         centerY={0}
-        zoom={0.9}
+        zoom={0.82}
       />
       <span className="ambient-background__readability-veil" />
     </div>

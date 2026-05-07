@@ -4553,3 +4553,180 @@ main#top {
     padding: 1rem 1.08rem !important;
   }
 }
+
+/* Device consistency pass: calm background, readable credibility rows, stable sticky CTA. */
+.ambient-background--grainient {
+  background:
+    radial-gradient(circle at 18% 18%, rgb(255 214 237 / 0.24), transparent 28rem),
+    radial-gradient(circle at 76% 20%, rgb(233 145 213 / 0.22), transparent 30rem),
+    radial-gradient(circle at 60% 78%, rgb(205 185 223 / 0.2), transparent 32rem),
+    linear-gradient(135deg, #fff9fc, #fff3f8),
+    var(--color-background) !important;
+}
+
+.ambient-background--grainient::before {
+  background:
+    radial-gradient(circle at 14% 28%, rgb(255 215 237 / 0.42), transparent 20rem),
+    radial-gradient(circle at 82% 20%, rgb(233 145 213 / 0.24), transparent 22rem),
+    radial-gradient(circle at 54% 78%, rgb(205 185 223 / 0.3), transparent 24rem),
+    linear-gradient(110deg, rgb(255 215 237 / 0.18), rgb(233 145 213 / 0.12), rgb(205 185 223 / 0.18)) !important;
+  opacity: 0.48 !important;
+  filter: saturate(0.9) !important;
+}
+
+.ambient-background--grainient .grainient-container {
+  opacity: 0.42 !important;
+}
+
+.ambient-background__readability-veil {
+  background:
+    radial-gradient(circle at 16% 10%, rgb(255 255 255 / 0.32), transparent 24rem),
+    linear-gradient(180deg, rgb(255 251 254 / 0.58), rgb(255 247 251 / 0.68) 48%, rgb(255 251 254 / 0.62)) !important;
+}
+
+.credibility-section {
+  padding-block: clamp(2rem, 5vw, 3.25rem) !important;
+  overflow: visible !important;
+}
+
+.credibility-grid {
+  width: 100% !important;
+  display: grid !important;
+  align-items: stretch !important;
+  gap: clamp(0.75rem, 1.8vw, 1rem) !important;
+  overflow: visible !important;
+}
+
+.credibility-item {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  display: grid !important;
+  align-content: center !important;
+  gap: 0.38rem !important;
+  border-radius: 1.05rem !important;
+  padding: 1rem 1.15rem !important;
+  overflow: visible !important;
+}
+
+.credibility-item::before,
+.credibility-item::after {
+  border-radius: inherit !important;
+}
+
+.credibility-item dt,
+.credibility-item dd {
+  margin: 0 !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+  transform: none !important;
+}
+
+.credibility-item dt {
+  font-size: clamp(0.72rem, 1.8vw, 0.82rem) !important;
+  line-height: 1.1 !important;
+}
+
+.credibility-item dd {
+  font-size: clamp(0.98rem, 2.8vw, 1.08rem) !important;
+  line-height: 1.2 !important;
+}
+
+.sticky-offer-bar {
+  display: grid !important;
+  grid-template-columns: minmax(7.6rem, max-content) minmax(9.5rem, 24rem) !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: clamp(0.65rem, 2.6vw, 1.6rem) !important;
+  min-height: calc(4.75rem + env(safe-area-inset-bottom)) !important;
+  max-height: none !important;
+  padding: 0.72rem clamp(0.85rem, 3vw, 1.6rem) calc(0.72rem + env(safe-area-inset-bottom)) !important;
+}
+
+.sticky-offer-price {
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: max-content max-content !important;
+  align-items: baseline !important;
+  justify-content: start !important;
+  justify-items: start !important;
+  column-gap: 0.45rem !important;
+  row-gap: 0.12rem !important;
+}
+
+.sticky-offer-price strong {
+  font-size: clamp(1.1rem, 3.2vw, 1.42rem) !important;
+}
+
+.sticky-offer-price del {
+  font-size: clamp(0.98rem, 2.7vw, 1.18rem) !important;
+}
+
+.sticky-offer-price span {
+  grid-column: 1 / -1 !important;
+  max-width: 9.8rem !important;
+  font-size: clamp(0.68rem, 1.9vw, 0.78rem) !important;
+  line-height: 1.15 !important;
+  white-space: normal !important;
+}
+
+.sticky-offer-button {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 24rem !important;
+  height: clamp(3rem, 8vw, 3.2rem) !important;
+  min-height: clamp(3rem, 8vw, 3.2rem) !important;
+  max-height: 3.2rem !important;
+  padding-inline: clamp(0.85rem, 3vw, 1.35rem) !important;
+}
+
+@media (max-width: 760px) {
+  .ambient-background--grainient .grainient-container {
+    opacity: 0.32 !important;
+  }
+
+  .hero-section,
+  .ui-section--soft,
+  .ui-section--default {
+    background-color: rgb(255 247 251 / 0.72) !important;
+  }
+
+  .credibility-section .ui-container {
+    width: min(100% - 2rem, var(--container-max-width)) !important;
+  }
+
+  .credibility-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .credibility-item {
+    min-height: 4.65rem !important;
+    padding: 0.95rem 1rem !important;
+  }
+
+  .sticky-offer-bar {
+    grid-template-columns: minmax(6.8rem, 8.8rem) minmax(9rem, 1fr) !important;
+    justify-content: stretch !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .sticky-offer-bar {
+    grid-template-columns: minmax(6.35rem, 7.6rem) minmax(8.5rem, 1fr) !important;
+    gap: 0.55rem !important;
+    padding-inline: 0.7rem !important;
+  }
+
+  .sticky-offer-price span {
+    max-width: 7.4rem !important;
+    font-size: 0.64rem !important;
+  }
+
+  .sticky-offer-button {
+    font-size: 0.86rem !important;
+  }
+}
