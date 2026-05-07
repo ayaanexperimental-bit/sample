@@ -1,18 +1,25 @@
 import type { Metadata } from "next";
-import { Fraunces, Nunito_Sans } from "next/font/google";
+import { Bodoni_Moda, Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
 
-const displayFont = Fraunces({
+const displayFont = Bodoni_Moda({
   subsets: ["latin"],
   variable: "--font-display",
   weight: ["600", "700", "800", "900"],
   display: "swap"
 });
 
-const bodyFont = Nunito_Sans({
+const accentFont = Cormorant_Garamond({
+  subsets: ["latin"],
+  variable: "--font-accent",
+  weight: ["500", "600", "700"],
+  display: "swap"
+});
+
+const bodyFont = Manrope({
   subsets: ["latin"],
   variable: "--font-body",
-  weight: ["400", "600", "700", "800", "900"],
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap"
 });
 
@@ -42,7 +49,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${displayFont.variable} ${bodyFont.variable}`}>{children}</body>
+      <body className={`${displayFont.variable} ${accentFont.variable} ${bodyFont.variable}`}>
+        {children}
+      </body>
     </html>
   );
 }
