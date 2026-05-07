@@ -104,12 +104,15 @@ body::after {
 main#top {
   position: relative;
   isolation: isolate;
+  background:
+    linear-gradient(180deg, rgb(255 250 253 / 0.18), rgb(255 247 251 / 0.1)),
+    transparent;
 }
 
 .ambient-background {
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: -1;
   overflow: hidden;
   pointer-events: none;
 }
@@ -156,9 +159,9 @@ main#top {
   z-index: 2;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgb(255 250 253 / 0.1), rgb(255 247 251 / 0.16) 46%, rgb(255 250 253 / 0.24)),
-    radial-gradient(circle at 18% 10%, rgb(255 255 255 / 0.12), transparent 28rem),
-    radial-gradient(circle at 82% 82%, rgb(255 255 255 / 0.08), transparent 30rem);
+    linear-gradient(180deg, rgb(255 250 253 / 0.18), rgb(255 247 251 / 0.24) 46%, rgb(255 250 253 / 0.34)),
+    radial-gradient(circle at 18% 10%, rgb(255 255 255 / 0.18), transparent 28rem),
+    radial-gradient(circle at 82% 82%, rgb(255 255 255 / 0.14), transparent 30rem);
 }
 
 button,
@@ -259,11 +262,11 @@ svg {
 }
 
 .ui-section--default {
-  background: rgb(255 247 251 / 0.24);
+  background: rgb(255 247 251 / 0.5);
 }
 
 .ui-section--soft {
-  background: rgb(255 240 246 / 0.3);
+  background: rgb(255 240 246 / 0.54);
 }
 
 .ui-section--strong {
@@ -697,6 +700,399 @@ svg {
 .site-nav a:hover {
   background: rgb(217 70 132 / 0.1);
   color: var(--color-accent-strong);
+}
+
+.glass-card,
+[data-slot="card"],
+.audience-panel,
+.learning-card,
+.method-pillar,
+.outcomes-card,
+.testimonial-card,
+.bonus-item,
+.logistics-item,
+.pricing-card,
+.faq-item,
+.hero-details li,
+.hero-photo-slot,
+.hero-media-caption,
+.policy-document,
+.success-document,
+.success-panel,
+.prompt-example-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.72), rgb(255 241 248 / 0.46) 48%, rgb(255 250 253 / 0.62)),
+    radial-gradient(circle at 16% 8%, rgb(255 255 255 / 0.92), transparent 11rem),
+    radial-gradient(circle at 86% 0%, rgb(253 174 250 / 0.22), transparent 14rem),
+    rgb(255 250 253 / 0.54);
+  border-color: rgb(255 255 255 / 0.76);
+  box-shadow:
+    0 18px 54px rgb(80 28 54 / 0.08),
+    0 4px 18px rgb(217 70 132 / 0.06),
+    inset 0 1px 0 rgb(255 255 255 / 0.82),
+    inset 0 -1px 0 rgb(255 255 255 / 0.42);
+  backdrop-filter: blur(18px) saturate(1.18);
+  -webkit-backdrop-filter: blur(18px) saturate(1.18);
+  transform: translateZ(0);
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 220ms ease,
+    background-color 220ms ease;
+}
+
+.glass-card::before,
+[data-slot="card"]::before,
+.audience-panel::before,
+.learning-card::before,
+.method-pillar::before,
+.outcomes-card::before,
+.testimonial-card::before,
+.bonus-item::before,
+.logistics-item::before,
+.pricing-card::before,
+.faq-item::before,
+.hero-details li::before,
+.hero-photo-slot::before,
+.hero-media-caption::before,
+.policy-document::before,
+.success-document::before,
+.success-panel::before,
+.prompt-example-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(118deg, rgb(255 255 255 / 0.52), transparent 34%, rgb(94 234 212 / 0.1) 62%, transparent 76%),
+    radial-gradient(circle at 16% 8%, rgb(255 255 255 / 0.64), transparent 7rem);
+  opacity: 0.58;
+  transform: translateX(-8%);
+  transition:
+    opacity 220ms ease,
+    transform 260ms ease;
+}
+
+.glass-card::after,
+[data-slot="card"]::after,
+.audience-panel::after,
+.learning-card::after,
+.method-pillar::after,
+.outcomes-card::after,
+.testimonial-card::after,
+.bonus-item::after,
+.logistics-item::after,
+.pricing-card::after,
+.faq-item::after,
+.hero-details li::after,
+.hero-photo-slot::after,
+.hero-media-caption::after,
+.policy-document::after,
+.success-document::after,
+.success-panel::after,
+.prompt-example-card::after {
+  content: "";
+  position: absolute;
+  inset: 0.08rem;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  border: 1px solid rgb(255 255 255 / 0.46);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.18),
+    inset 0 16px 32px rgb(255 255 255 / 0.18);
+  opacity: 0.92;
+}
+
+.glass-card > *,
+[data-slot="card"] > *,
+.audience-panel > *,
+.learning-card > *,
+.method-pillar > *,
+.outcomes-card > *,
+.testimonial-card > *,
+.bonus-item > *,
+.logistics-item > *,
+.pricing-card > *,
+.faq-item > *,
+.hero-details li > *,
+.hero-photo-slot > *,
+.hero-media-caption > *,
+.policy-document > *,
+.success-document > *,
+.success-panel > *,
+.prompt-example-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.glass-card-ripple {
+  position: absolute;
+  z-index: 2;
+  border-radius: 999px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle, rgb(255 255 255 / 0.68) 0%, rgb(94 234 212 / 0.3) 28%, rgb(253 174 250 / 0.2) 52%, transparent 72%);
+  filter: blur(0.5px);
+  mix-blend-mode: screen;
+  transform: scale(0);
+  opacity: 0.72;
+  animation: glass-card-ripple 680ms cubic-bezier(0.2, 0.72, 0.18, 1) forwards;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .glass-card:hover,
+  [data-slot="card"]:hover,
+  .audience-panel:hover,
+  .learning-card:hover,
+  .method-pillar:hover,
+  .outcomes-card:hover,
+  .testimonial-card:hover,
+  .bonus-item:hover,
+  .logistics-item:hover,
+  .pricing-card:hover,
+  .faq-item:hover,
+  .hero-details li:hover,
+  .hero-photo-slot:hover,
+  .hero-media-caption:hover,
+  .policy-document:hover,
+  .success-document:hover,
+  .success-panel:hover,
+  .prompt-example-card:hover {
+    border-color: rgb(94 234 212 / 0.44);
+    box-shadow:
+      0 24px 68px rgb(80 28 54 / 0.11),
+      0 8px 28px rgb(217 70 132 / 0.1),
+      0 0 0 1px rgb(255 255 255 / 0.62),
+      0 0 32px rgb(94 234 212 / 0.16),
+      inset 0 1px 0 rgb(255 255 255 / 0.9);
+    transform: translateY(-3px);
+  }
+
+  .glass-card:hover::before,
+  [data-slot="card"]:hover::before,
+  .audience-panel:hover::before,
+  .learning-card:hover::before,
+  .method-pillar:hover::before,
+  .outcomes-card:hover::before,
+  .testimonial-card:hover::before,
+  .bonus-item:hover::before,
+  .logistics-item:hover::before,
+  .pricing-card:hover::before,
+  .faq-item:hover::before,
+  .hero-details li:hover::before,
+  .hero-photo-slot:hover::before,
+  .hero-media-caption:hover::before,
+  .policy-document:hover::before,
+  .success-document:hover::before,
+  .success-panel:hover::before,
+  .prompt-example-card:hover::before {
+    opacity: 0.86;
+    transform: translateX(7%);
+  }
+}
+
+.glass-card:active,
+[data-slot="card"]:active,
+.audience-panel:active,
+.learning-card:active,
+.method-pillar:active,
+.outcomes-card:active,
+.testimonial-card:active,
+.bonus-item:active,
+.logistics-item:active,
+.pricing-card:active,
+.faq-item:active,
+.hero-details li:active,
+.hero-photo-slot:active,
+.hero-media-caption:active,
+.policy-document:active,
+.success-document:active,
+.success-panel:active,
+.prompt-example-card:active {
+  transform: translateY(1px) scale(0.992);
+}
+
+.fluid-glass-nav {
+  --fluid-progress: 0;
+  --fluid-velocity: 0;
+  --fluid-wave: 10px;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.48), rgb(255 255 255 / 0.18)),
+    radial-gradient(circle at 8% 38%, rgb(255 255 255 / 0.82), transparent 4.5rem),
+    linear-gradient(100deg, rgb(253 174 250 / 0.25), rgb(180 151 207 / 0.17), rgb(34 211 238 / 0.2));
+  backdrop-filter: blur(22px) saturate(1.28);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.86),
+    inset 0 -18px 34px rgb(208 64 233 / 0.12),
+    0 0 26px rgb(34 211 238 / 0.14);
+}
+
+.fluid-glass-nav__semantic-progress {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  clip-path: inset(50%) !important;
+}
+
+.fluid-glass-nav__glass-base,
+.fluid-glass-nav__liquid-fill,
+.fluid-glass-nav__surface,
+.fluid-glass-nav__caustics {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.fluid-glass-nav__glass-base {
+  z-index: 1;
+  background:
+    linear-gradient(90deg, rgb(255 255 255 / 0.2) 1px, transparent 1px),
+    radial-gradient(circle at 18% 50%, rgb(255 255 255 / 0.32), transparent 8rem),
+    radial-gradient(circle at 76% 42%, rgb(255 255 255 / 0.16), transparent 10rem);
+  background-size:
+    7.2rem 100%,
+    auto,
+    auto;
+  opacity: 0.72;
+}
+
+.fluid-glass-nav__liquid-fill {
+  z-index: 2;
+  width: 100%;
+  transform-origin: left center;
+  will-change: transform;
+  background:
+    radial-gradient(circle at 18% 38%, rgb(255 255 255 / 0.58), transparent 6rem),
+    radial-gradient(circle at 74% 62%, rgb(255 214 246 / 0.4), transparent 7rem),
+    linear-gradient(100deg, rgb(253 174 250 / 0.92), rgb(208 64 233 / 0.78) 30%, rgb(78 190 255 / 0.78) 66%, rgb(180 151 207 / 0.8));
+  box-shadow:
+    inset 0 0 22px rgb(255 255 255 / 0.46),
+    inset 0 -14px 28px rgb(53 43 135 / 0.18),
+    0 0 24px rgb(34 211 238 / 0.28);
+}
+
+.fluid-glass-nav__surface {
+  z-index: 3;
+  left: calc((var(--fluid-progress) * 100%) - 5.6rem);
+  width: clamp(8rem, 20vw, 14rem);
+  height: 100%;
+  overflow: visible;
+  color: #ffffff;
+  transform-origin: center;
+  filter: drop-shadow(0 0 16px rgb(34 211 238 / 0.34));
+  will-change: transform, left;
+}
+
+.fluid-glass-nav__caustics {
+  z-index: 4;
+  background:
+    repeating-linear-gradient(100deg, transparent 0 1.3rem, rgb(255 255 255 / 0.16) 1.35rem 1.48rem, transparent 1.55rem 3.1rem),
+    radial-gradient(circle at calc(18% + var(--fluid-progress) * 68%) 25%, rgb(255 255 255 / 0.6), transparent 3.2rem);
+  opacity: calc(0.22 + var(--fluid-velocity) * 0.4);
+  mix-blend-mode: screen;
+  transform: translateX(calc(var(--fluid-velocity) * 1.3rem));
+  animation: liquid-glass-caustics 3.8s ease-in-out infinite alternate;
+}
+
+.fluid-glass-nav__shine,
+.fluid-glass-nav__rim {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.fluid-glass-nav__shine {
+  z-index: 5;
+  background:
+    linear-gradient(112deg, transparent 12%, rgb(255 255 255 / 0.66) 28%, transparent 40%),
+    radial-gradient(circle at calc(10% + var(--fluid-progress) * 78%) 16%, rgb(255 255 255 / 0.72), transparent 3.5rem);
+  opacity: 0.42;
+  transform: translateX(calc(var(--fluid-velocity) * 1.15rem));
+  mix-blend-mode: screen;
+}
+
+.fluid-glass-nav__rim {
+  z-index: 7;
+  border: 1px solid rgb(255 255 255 / 0.7);
+  box-shadow:
+    inset 0 0 0 1px rgb(34 211 238 / 0.22),
+    inset 0 14px 26px rgb(255 255 255 / 0.2),
+    0 0 20px rgb(34 211 238 / 0.2);
+}
+
+.fluid-glass-nav__bubble,
+.fluid-glass-nav__droplet {
+  position: absolute;
+  z-index: 6;
+  display: block;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.fluid-glass-nav__bubble {
+  width: 0.42rem;
+  height: 0.42rem;
+  background: rgb(255 255 255 / 0.44);
+  box-shadow: 0 0 12px rgb(255 255 255 / 0.35);
+  opacity: calc(0.24 + var(--fluid-velocity) * 0.36);
+  animation: liquid-glass-bubble 3.4s ease-in-out infinite;
+}
+
+.fluid-glass-nav__bubble--one {
+  left: calc(9% + var(--fluid-progress) * 42%);
+  top: 24%;
+}
+
+.fluid-glass-nav__bubble--two {
+  left: calc(19% + var(--fluid-progress) * 48%);
+  top: 58%;
+  animation-delay: 420ms;
+}
+
+.fluid-glass-nav__bubble--three {
+  left: calc(34% + var(--fluid-progress) * 36%);
+  top: 36%;
+  animation-delay: 760ms;
+}
+
+.fluid-glass-nav__droplet {
+  width: calc(0.36rem + var(--fluid-velocity) * 0.72rem);
+  height: calc(0.36rem + var(--fluid-velocity) * 0.72rem);
+  left: calc(4% + var(--fluid-progress) * 88%);
+  background: radial-gradient(circle at 34% 30%, #ffffff, rgb(34 211 238 / 0.72) 48%, rgb(208 64 233 / 0.44));
+  box-shadow: 0 0 16px rgb(34 211 238 / 0.52);
+  opacity: calc(0.22 + var(--fluid-velocity) * 0.68);
+  animation: fluid-glass-droplet 1.25s ease-in-out infinite;
+}
+
+.fluid-glass-nav__droplet--one {
+  top: 23%;
+}
+
+.fluid-glass-nav__droplet--two {
+  top: 58%;
+  animation-delay: 260ms;
+}
+
+.fluid-glass-nav__droplet--three {
+  top: 39%;
+  animation-delay: 520ms;
 }
 
 .hero-layout {
@@ -1485,309 +1881,6 @@ svg {
   z-index: 2;
 }
 
-.scroll-liquid-course-panel {
-  --scroll-progress: 0;
-  --scroll-velocity: 0;
-  --liquid-wave-strength: 8px;
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  border-radius: var(--radius-xl);
-  background:
-    linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(255 240 246 / 0.72)),
-    var(--color-pearl);
-  box-shadow: var(--shadow-soft);
-  color: var(--color-text);
-}
-
-.scroll-liquid-course-panel__content {
-  position: relative;
-  z-index: 3;
-}
-
-.scroll-liquid-course-panel .liquid-progress-layer {
-  z-index: 1;
-  opacity: 0.76;
-}
-
-.scroll-liquid-course-panel .liquid-fill {
-  background:
-    radial-gradient(circle at 18% 28%, rgb(255 255 255 / 0.58), transparent 13rem),
-    linear-gradient(100deg, rgb(94 234 212 / 0.62), rgb(34 211 238 / 0.58) 28%, rgb(168 85 247 / 0.5) 64%, rgb(244 114 182 / 0.58));
-}
-
-.liquid-progress-layer {
-  --scroll-progress: 0;
-  --scroll-velocity: 0;
-  --liquid-wave-strength: 8px;
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  overflow: hidden;
-  pointer-events: none;
-  border-radius: inherit;
-  opacity: 0.84;
-}
-
-.liquid-progress-layer--nav {
-  opacity: 0.98;
-  mix-blend-mode: normal;
-}
-
-.liquid-progress-layer--nav::before {
-  content: "";
-  position: absolute;
-  inset: -24%;
-  z-index: 0;
-  background:
-    radial-gradient(circle at 0% 50%, rgb(34 211 238 / 0.72), transparent 18%),
-    radial-gradient(circle at 26% 42%, rgb(236 72 153 / 0.48), transparent 20%),
-    radial-gradient(circle at 58% 60%, rgb(168 85 247 / 0.46), transparent 23%),
-    radial-gradient(circle at 92% 45%, rgb(45 212 191 / 0.48), transparent 19%),
-    linear-gradient(100deg, rgb(236 72 153 / 0.22), rgb(34 211 238 / 0.26), rgb(168 85 247 / 0.24));
-  opacity: 0.98;
-  filter: saturate(1.3);
-  transform: translateX(calc((var(--scroll-progress) - 0.5) * 16%));
-  animation: nav-liquid-idle-flow 4.2s ease-in-out infinite;
-}
-
-.liquid-glass-shell,
-.liquid-inner-depth {
-  position: absolute;
-  pointer-events: none;
-  border-radius: inherit;
-}
-
-.liquid-glass-shell {
-  inset: 0;
-  z-index: 1;
-  background: rgb(255 255 255 / 0.1);
-  border: 1px solid rgb(255 255 255 / 0.26);
-  box-shadow:
-    0 0 45px rgb(129 140 248 / 0.22),
-    inset 0 1px 0 rgb(255 255 255 / 0.5);
-  backdrop-filter: blur(18px);
-}
-
-.liquid-inner-depth {
-  inset: 5px;
-  z-index: 2;
-  background: rgb(15 23 42 / 0.18);
-  box-shadow: inset 0 12px 28px rgb(15 23 42 / 0.12);
-}
-
-.liquid-progress-layer--nav .liquid-glass-shell {
-  background: rgb(255 255 255 / 0.06);
-  box-shadow:
-    0 0 42px rgb(34 211 238 / 0.26),
-    inset 0 1px 0 rgb(255 255 255 / 0.62);
-}
-
-.liquid-progress-layer--nav .liquid-inner-depth {
-  background:
-    linear-gradient(100deg, rgb(34 211 238 / 0.2), rgb(236 72 153 / 0.16), rgb(168 85 247 / 0.18)),
-    rgb(255 255 255 / 0.04);
-}
-
-.liquid-fill {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  overflow: hidden;
-  transform: scaleX(var(--scroll-progress));
-  transform-origin: left center;
-  will-change: transform;
-  background:
-    radial-gradient(circle at 12% 22%, rgb(255 255 255 / 0.44), transparent 14rem),
-    linear-gradient(100deg, rgb(34 211 238 / 0.72), rgb(20 184 166 / 0.62) 31%, rgb(59 130 246 / 0.6) 56%, rgb(168 85 247 / 0.58) 77%, rgb(244 114 182 / 0.62));
-  box-shadow:
-    0 0 38px rgb(34 211 238 / 0.36),
-    inset 0 1px 18px rgb(255 255 255 / 0.5),
-    inset 0 -24px 45px rgb(59 130 246 / 0.24);
-}
-
-.liquid-progress-layer--nav .liquid-fill {
-  inset: 6px;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at 16% 42%, rgb(255 255 255 / 0.76), transparent 6rem),
-    repeating-radial-gradient(circle at 58% 50%, rgb(255 255 255 / 0.2) 0 0.18rem, transparent 0.19rem 1.35rem),
-    linear-gradient(100deg, rgb(236 72 153 / 0.92), rgb(168 85 247 / 0.88) 29%, rgb(59 130 246 / 0.86) 53%, rgb(34 211 238 / 0.9) 76%, rgb(251 146 60 / 0.82));
-  box-shadow:
-    0 0 36px rgb(34 211 238 / 0.62),
-    inset 0 0 26px rgb(255 255 255 / 0.72),
-    inset 0 -12px 24px rgb(168 85 247 / 0.32);
-}
-
-.liquid-surface {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0.95;
-}
-
-.liquid-surface-fill,
-.liquid-surface-shine {
-  animation: liquid-surface-wave 1.9s ease-in-out infinite;
-}
-
-.liquid-surface-shine {
-  opacity: 0.86;
-  animation-duration: 1.55s;
-}
-
-.liquid-sparkle-texture {
-  position: absolute;
-  inset: 0;
-  opacity: 0.38;
-  background-image:
-    radial-gradient(circle at 20% 45%, rgb(255 255 255 / 0.75) 0 1px, transparent 2px),
-    radial-gradient(circle at 55% 65%, rgb(255 255 255 / 0.55) 0 1px, transparent 2px),
-    radial-gradient(circle at 80% 35%, rgb(255 255 255 / 0.65) 0 1px, transparent 2px);
-  background-size: 13rem 100%, 17rem 100%, 19rem 100%;
-}
-
-.liquid-wave {
-  position: absolute;
-  z-index: 4;
-  top: -8%;
-  bottom: -8%;
-  left: calc((var(--scroll-progress) * 100%) - 2.4rem);
-  width: 5.4rem;
-  border-radius: 52% 48% 45% 55% / 36% 66% 34% 64%;
-  background:
-    radial-gradient(circle at 38% 18%, rgb(255 255 255 / 0.64), transparent 1.35rem),
-    linear-gradient(180deg, rgb(255 255 255 / 0.32), rgb(34 211 238 / 0.16), rgb(244 114 182 / 0.18));
-  filter: none;
-  transform: translateX(calc(var(--scroll-velocity) * var(--liquid-wave-strength) * 0.35));
-  will-change: left, transform;
-  animation: liquid-edge 3.8s ease-in-out infinite;
-}
-
-.liquid-progress-layer[data-direction="up"] .liquid-wave {
-  transform: translateX(calc(var(--scroll-velocity) * var(--liquid-wave-strength) * -0.45));
-}
-
-.liquid-progress-layer[data-direction="up"] .liquid-droplets span {
-  transform-origin: right center;
-  animation-name: droplet-retract;
-}
-
-.liquid-progress-layer--nav .liquid-wave {
-  width: 7.5rem;
-  left: calc((var(--scroll-progress) * 100%) - 3.6rem);
-  background:
-    radial-gradient(circle at 34% 18%, rgb(255 255 255 / 0.86), transparent 1.1rem),
-    linear-gradient(180deg, rgb(255 255 255 / 0.46), rgb(34 211 238 / 0.34), rgb(236 72 153 / 0.28));
-  filter: none;
-  animation:
-    liquid-edge 1.8s ease-in-out infinite,
-    liquid-nav-slosh 1.4s ease-in-out infinite;
-}
-
-.liquid-droplets,
-.liquid-bubbles {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-}
-
-.liquid-droplets span,
-.liquid-bubbles span {
-  position: absolute;
-  display: block;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 0.74);
-  box-shadow: 0 0 14px rgb(34 211 238 / 0.52);
-}
-
-.liquid-droplets span {
-  width: calc(0.32rem + var(--scroll-velocity) * 0.55rem);
-  height: calc(0.32rem + var(--scroll-velocity) * 0.55rem);
-  left: calc((var(--scroll-progress) * 100%) + 0.5rem);
-  opacity: calc(0.18 + var(--scroll-velocity) * 0.72);
-  animation: droplet-merge 2.4s ease-in-out infinite;
-}
-
-.liquid-droplets span:nth-child(1) {
-  top: 22%;
-}
-
-.liquid-droplets span:nth-child(2) {
-  top: 50%;
-  animation-delay: 280ms;
-}
-
-.liquid-droplets span:nth-child(3) {
-  top: 74%;
-  animation-delay: 560ms;
-}
-
-.liquid-droplets span:nth-child(4) {
-  top: 34%;
-  animation-delay: 160ms;
-}
-
-.liquid-droplets span:nth-child(5) {
-  top: 63%;
-  animation-delay: 420ms;
-}
-
-.liquid-droplets span:nth-child(6) {
-  top: 82%;
-  animation-delay: 700ms;
-}
-
-.liquid-progress-layer--nav .liquid-droplets span {
-  width: calc(0.22rem + var(--scroll-velocity) * 0.85rem);
-  height: calc(0.22rem + var(--scroll-velocity) * 0.85rem);
-  left: calc((var(--scroll-progress) * 100%) + 0.12rem);
-  opacity: calc(0.2 + var(--scroll-velocity) * 0.8);
-  animation-duration: 760ms;
-}
-
-.liquid-bubbles span {
-  width: 0.38rem;
-  height: 0.38rem;
-  opacity: 0.42;
-}
-
-.liquid-bubbles span:nth-child(1) {
-  left: 16%;
-  top: 70%;
-}
-
-.liquid-bubbles span:nth-child(2) {
-  left: 38%;
-  top: 34%;
-}
-
-.liquid-bubbles span:nth-child(3) {
-  left: 58%;
-  top: 76%;
-}
-
-.liquid-bubbles span:nth-child(4) {
-  left: 78%;
-  top: 46%;
-}
-
-.liquid-bubbles span:nth-child(5) {
-  left: 24%;
-  top: 44%;
-}
-
-.liquid-bubbles span:nth-child(6) {
-  left: 88%;
-  top: 72%;
-}
-
-.liquid-progress-layer--nav .liquid-bubbles span {
-  opacity: calc(0.18 + var(--scroll-velocity) * 0.55);
-  animation: liquid-bubble-jitter 1.8s ease-in-out infinite;
-}
-
 .pricing-label {
   margin: 0 0 var(--space-3);
   color: var(--color-text-muted);
@@ -2031,25 +2124,35 @@ svg {
   }
 }
 
-@keyframes liquid-edge {
+@keyframes fluid-glass-droplet {
   0%,
   100% {
-    border-radius: 52% 48% 45% 55% / 36% 66% 34% 64%;
+    transform: translate3d(calc(var(--fluid-velocity) * -1rem), 0, 0) scale(0.72);
   }
 
   50% {
-    border-radius: 41% 59% 55% 45% / 58% 39% 61% 42%;
+    transform: translate3d(calc(0.55rem + var(--fluid-velocity) * var(--fluid-wave)), -0.18rem, 0) scale(1.2);
   }
 }
 
-@keyframes nav-liquid-idle-flow {
+@keyframes liquid-glass-bubble {
   0%,
   100% {
-    transform: translateX(calc((var(--scroll-progress) - 0.5) * 16%)) scale(1);
+    transform: translate3d(0, 0.22rem, 0) scale(0.85);
   }
 
   50% {
-    transform: translateX(calc((var(--scroll-progress) - 0.5) * 16% + 1.5rem)) scale(1.04);
+    transform: translate3d(calc(var(--fluid-velocity) * 0.8rem), -0.28rem, 0) scale(1.14);
+  }
+}
+
+@keyframes liquid-glass-caustics {
+  0% {
+    transform: translateX(calc(var(--fluid-velocity) * -0.8rem));
+  }
+
+  100% {
+    transform: translateX(calc(0.9rem + var(--fluid-velocity) * 1.4rem));
   }
 }
 
@@ -2067,39 +2170,19 @@ svg {
   }
 }
 
-@keyframes liquid-surface-wave {
+@keyframes glass-card-ripple {
   0% {
-    d: path("M0,43 C120,20 220,58 340,37 C470,13 560,67 700,40 C830,18 940,58 1060,38 C1130,27 1170,30 1200,36 L1200,120 L0,120 Z");
+    transform: scale(0);
+    opacity: 0.72;
   }
 
-  50% {
-    d: path("M0,37 C120,58 220,22 350,42 C470,64 570,18 700,42 C830,68 930,24 1060,45 C1130,56 1170,44 1200,38 L1200,120 L0,120 Z");
+  62% {
+    opacity: 0.28;
   }
 
   100% {
-    d: path("M0,44 C130,30 210,53 340,36 C470,19 565,63 700,39 C820,20 955,64 1070,35 C1140,18 1170,28 1200,34 L1200,120 L0,120 Z");
-  }
-}
-
-@keyframes droplet-merge {
-  0% {
-    transform: translateX(calc(var(--scroll-velocity) * 1.4rem)) scale(0.78);
-  }
-
-  70%,
-  100% {
-    transform: translateX(-0.6rem) scale(0.18);
-  }
-}
-
-@keyframes droplet-retract {
-  0% {
-    transform: translateX(calc(var(--scroll-velocity) * -1.25rem)) scale(0.82);
-  }
-
-  70%,
-  100% {
-    transform: translateX(0.45rem) scale(0.18);
+    transform: scale(1);
+    opacity: 0;
   }
 }
 
@@ -2124,19 +2207,6 @@ svg {
   50% {
     opacity: 0.82;
     transform: translateX(1.5%);
-  }
-}
-
-@keyframes liquid-nav-slosh {
-  0%,
-  100% {
-    translate: 0 0;
-    scale: 1 1.02;
-  }
-
-  50% {
-    translate: calc(var(--scroll-velocity) * 0.75rem) 0;
-    scale: calc(1 + var(--scroll-velocity) * 0.16) 0.94;
   }
 }
 
@@ -2470,6 +2540,136 @@ svg {
   line-height: 1.6;
 }
 
+.glass-card,
+[data-slot="card"],
+.audience-panel,
+.learning-card,
+.method-pillar,
+.outcomes-card,
+.testimonial-card,
+.bonus-item,
+.logistics-item,
+.pricing-card,
+.faq-item,
+.hero-details li,
+.hero-photo-slot,
+.hero-media-caption,
+.policy-document,
+.success-document,
+.success-panel,
+.prompt-example-card {
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.72), rgb(255 241 248 / 0.46) 48%, rgb(255 250 253 / 0.62)),
+    radial-gradient(circle at 16% 8%, rgb(255 255 255 / 0.92), transparent 11rem),
+    radial-gradient(circle at 86% 0%, rgb(253 174 250 / 0.22), transparent 14rem),
+    rgb(255 250 253 / 0.54);
+  border-color: rgb(255 255 255 / 0.76);
+  box-shadow:
+    0 18px 54px rgb(80 28 54 / 0.08),
+    0 4px 18px rgb(217 70 132 / 0.06),
+    inset 0 1px 0 rgb(255 255 255 / 0.82),
+    inset 0 -1px 0 rgb(255 255 255 / 0.42);
+  backdrop-filter: blur(18px) saturate(1.18);
+  -webkit-backdrop-filter: blur(18px) saturate(1.18);
+}
+
+.glass-card::before,
+[data-slot="card"]::before,
+.audience-panel::before,
+.learning-card::before,
+.method-pillar::before,
+.outcomes-card::before,
+.testimonial-card::before,
+.bonus-item::before,
+.logistics-item::before,
+.pricing-card::before,
+.faq-item::before,
+.hero-details li::before,
+.hero-photo-slot::before,
+.hero-media-caption::before,
+.policy-document::before,
+.success-document::before,
+.success-panel::before,
+.prompt-example-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(118deg, rgb(255 255 255 / 0.52), transparent 34%, rgb(94 234 212 / 0.1) 62%, transparent 76%),
+    radial-gradient(circle at 16% 8%, rgb(255 255 255 / 0.64), transparent 7rem);
+  opacity: 0.58;
+  transform: translateX(-8%);
+  transition:
+    opacity 220ms ease,
+    transform 260ms ease;
+}
+
+.glass-card::after,
+[data-slot="card"]::after,
+.audience-panel::after,
+.learning-card::after,
+.method-pillar::after,
+.outcomes-card::after,
+.testimonial-card::after,
+.bonus-item::after,
+.logistics-item::after,
+.pricing-card::after,
+.faq-item::after,
+.hero-details li::after,
+.hero-photo-slot::after,
+.hero-media-caption::after,
+.policy-document::after,
+.success-document::after,
+.success-panel::after,
+.prompt-example-card::after {
+  content: "";
+  position: absolute;
+  inset: 0.08rem;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  border: 1px solid rgb(255 255 255 / 0.46);
+  background: none;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.18),
+    inset 0 16px 32px rgb(255 255 255 / 0.18);
+  opacity: 0.92;
+  transform: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .glass-card:hover,
+  [data-slot="card"]:hover,
+  .audience-panel:hover,
+  .learning-card:hover,
+  .method-pillar:hover,
+  .outcomes-card:hover,
+  .testimonial-card:hover,
+  .bonus-item:hover,
+  .logistics-item:hover,
+  .pricing-card:hover,
+  .faq-item:hover,
+  .hero-details li:hover,
+  .hero-photo-slot:hover,
+  .hero-media-caption:hover,
+  .policy-document:hover,
+  .success-document:hover,
+  .success-panel:hover,
+  .prompt-example-card:hover {
+    border-color: rgb(94 234 212 / 0.44);
+    box-shadow:
+      0 24px 68px rgb(80 28 54 / 0.11),
+      0 8px 28px rgb(217 70 132 / 0.1),
+      0 0 0 1px rgb(255 255 255 / 0.62),
+      0 0 32px rgb(94 234 212 / 0.16),
+      inset 0 1px 0 rgb(255 255 255 / 0.9);
+    transform: translateY(-3px);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .hero-copy,
   .hero-media,
@@ -2520,15 +2720,6 @@ svg {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
-  }
-
-  .liquid-wave,
-  .liquid-droplets span {
-    animation: none;
-  }
-
-  .liquid-fill {
-    transition: none;
   }
 
   .micro-celebration {
@@ -2720,15 +2911,19 @@ svg {
     animation-duration: 5.8s;
   }
 
-  .liquid-progress-layer--nav::before {
-    opacity: 1;
-    filter: saturate(1.55) contrast(1.08);
+  .fluid-glass-nav {
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.2)),
+      radial-gradient(circle at 8% 38%, rgb(255 255 255 / 0.72), transparent 4.2rem),
+      linear-gradient(100deg, rgb(253 174 250 / 0.27), rgb(180 151 207 / 0.18), rgb(34 211 238 / 0.22));
   }
 
-  .liquid-progress-layer--nav .liquid-inner-depth {
-    background:
-      linear-gradient(100deg, rgb(34 211 238 / 0.32), rgb(236 72 153 / 0.24), rgb(168 85 247 / 0.26)),
-      rgb(255 255 255 / 0.04);
+  .fluid-glass-nav__surface {
+    width: 8.2rem;
+  }
+
+  .fluid-glass-nav__caustics {
+    opacity: calc(0.18 + var(--fluid-velocity) * 0.28);
   }
 
   .pricing-layout,
@@ -2771,5 +2966,1450 @@ svg {
 
   .prompt-example-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Final liquid-glass visual system inspired by the supplied Apple glass references.
+   Kept as an override layer so routing, payment state, and component logic remain untouched. */
+:root {
+  --glass-blue-core: rgb(26 128 220 / 0.18);
+  --glass-blue-soft: rgb(130 210 255 / 0.11);
+  --glass-white: rgb(255 255 255 / 0.14);
+  --glass-rim: rgb(232 250 255 / 0.46);
+  --glass-shadow-deep: 0 24px 72px rgb(2 48 100 / 0.13);
+  --glass-shadow-float: 0 12px 38px rgb(14 88 160 / 0.1);
+}
+
+main#top {
+  background:
+    radial-gradient(circle at 7% 18%, rgb(255 255 255 / 0.2), transparent 20rem),
+    linear-gradient(180deg, rgb(250 253 255 / 0.08), rgb(255 247 251 / 0.2)),
+    transparent;
+}
+
+.ui-section--default,
+.ui-section--soft,
+.ui-section--strong {
+  background: transparent;
+}
+
+.site-header,
+.hero-details li,
+.hero-photo-slot,
+.hero-media-caption,
+.credibility-item,
+.audience-panel,
+.learning-card,
+.method-pillar,
+.outcomes-card,
+.outcomes-list li,
+.testimonial-card,
+.logistics-item,
+.bonus-item,
+.pricing-card,
+.faq-item,
+.success-panel,
+.success-document,
+.policy-document,
+.prompt-example-card,
+[data-slot="card"],
+.glass-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--glass-rim) !important;
+  border-radius: 1.35rem !important;
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.2), rgb(255 255 255 / 0.055) 42%, rgb(120 197 255 / 0.095)),
+    radial-gradient(circle at 16% 12%, rgb(255 255 255 / 0.28), transparent 10rem),
+    radial-gradient(circle at 88% 24%, rgb(75 169 255 / 0.12), transparent 16rem),
+    linear-gradient(145deg, var(--glass-blue-soft), rgb(255 246 252 / 0.1)) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.58),
+    inset 0 -16px 32px rgb(255 255 255 / 0.07),
+    inset 0 0 0 1px rgb(255 255 255 / 0.11),
+    var(--glass-shadow-float) !important;
+  backdrop-filter: blur(18px) saturate(1.22) contrast(1.01);
+  -webkit-backdrop-filter: blur(18px) saturate(1.22) contrast(1.01);
+}
+
+.site-header::before,
+.hero-details li::before,
+.hero-photo-slot::before,
+.hero-media-caption::before,
+.credibility-item::before,
+.audience-panel::before,
+.learning-card::before,
+.method-pillar::before,
+.outcomes-card::before,
+.outcomes-list li::before,
+.testimonial-card::before,
+.logistics-item::before,
+.bonus-item::before,
+.pricing-card::before,
+.faq-item::before,
+.success-panel::before,
+.success-document::before,
+.policy-document::before,
+.prompt-example-card::before,
+[data-slot="card"]::before,
+.glass-card::before {
+  content: "";
+  position: absolute;
+  inset: 0.08rem;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(110deg, transparent 5%, rgb(255 255 255 / 0.24) 18%, transparent 34%),
+    radial-gradient(circle at 22% 18%, rgb(255 255 255 / 0.2), transparent 5.4rem),
+    radial-gradient(circle at 76% 78%, rgb(155 220 255 / 0.11), transparent 9rem);
+  opacity: 0.44;
+  mix-blend-mode: screen;
+}
+
+.site-header::after,
+.hero-photo-slot::after,
+.pricing-card::after,
+.audience-panel::after,
+.learning-card::after,
+.method-pillar::after,
+.outcomes-card::after,
+.testimonial-card::after,
+.logistics-item::after,
+.bonus-item::after,
+.faq-item::after,
+[data-slot="card"]::after,
+.glass-card::after {
+  content: "";
+  position: absolute;
+  inset: auto 8% 0.35rem;
+  z-index: 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgb(214 243 255 / 0.44), transparent);
+  filter: blur(0.4px);
+  opacity: 0.58;
+}
+
+.site-header > *,
+.hero-details li > *,
+.hero-photo-slot > *,
+.hero-media-caption > *,
+.credibility-item > *,
+.audience-panel > *,
+.learning-card > *,
+.method-pillar > *,
+.outcomes-card > *,
+.outcomes-list li > *,
+.testimonial-card > *,
+.logistics-item > *,
+.bonus-item > *,
+.pricing-card > *,
+.faq-item > *,
+.success-panel > *,
+.success-document > *,
+.policy-document > *,
+.prompt-example-card > *,
+[data-slot="card"] > *,
+.glass-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.site-header {
+  position: fixed;
+  z-index: 20;
+  top: 1rem;
+  left: 50%;
+  width: min(calc(100% - 2rem), 82rem);
+  min-height: 3.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0.5rem 0.75rem;
+  transform: translateX(-50%);
+  isolation: isolate;
+  border-radius: 999px !important;
+  background:
+    linear-gradient(95deg, rgb(255 255 255 / 0.22), rgb(160 218 255 / 0.12), rgb(255 255 255 / 0.1)) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.62),
+    inset 0 -10px 20px rgb(44 134 217 / 0.07),
+    0 14px 40px rgb(3 61 122 / 0.1) !important;
+}
+
+.site-header > .fluid-glass-nav {
+  position: absolute !important;
+  inset: 0;
+  width: auto;
+  height: auto;
+  flex: none;
+}
+
+.hero-photo-slot {
+  border-radius: clamp(1.6rem, 3vw, 2.4rem) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.54),
+    inset 0 0 0 1px rgb(255 255 255 / 0.1),
+    0 22px 64px rgb(9 64 118 / 0.12) !important;
+}
+
+.hero-photo-slot img {
+  border-radius: inherit;
+}
+
+.pricing-card {
+  background:
+    linear-gradient(135deg, rgb(104 205 246 / 0.22), rgb(133 170 255 / 0.14) 48%, rgb(255 192 230 / 0.13)),
+    radial-gradient(circle at 12% 18%, rgb(255 255 255 / 0.32), transparent 9rem) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.62),
+    inset 0 -18px 38px rgb(255 255 255 / 0.08),
+    var(--glass-shadow-deep) !important;
+}
+
+.ui-button,
+.sticky-offer-button,
+.checkout-button {
+  border: 1px solid rgb(232 249 255 / 0.38) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.46),
+    inset 0 -10px 20px rgb(65 111 200 / 0.07),
+    0 10px 28px rgb(13 93 170 / 0.1) !important;
+}
+
+.sticky-offer-button,
+.checkout-button,
+.ui-button--primary {
+  border-radius: 999px !important;
+}
+
+.ui-button--primary,
+.sticky-offer-button {
+  background:
+    linear-gradient(135deg, rgb(255 134 193 / 0.95), rgb(215 48 136 / 0.92) 48%, rgb(151 86 244 / 0.9)) !important;
+}
+
+.sticky-offer-bar {
+  border: 1px solid rgb(214 243 255 / 0.46);
+  background:
+    linear-gradient(110deg, rgb(255 255 255 / 0.46), rgb(226 251 255 / 0.25), rgb(255 244 250 / 0.38)) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.62),
+    0 -14px 44px rgb(6 65 120 / 0.1) !important;
+  backdrop-filter: blur(18px) saturate(1.18);
+  -webkit-backdrop-filter: blur(18px) saturate(1.18);
+}
+
+.sticky-offer-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem 0.7rem;
+  max-width: none;
+}
+
+.sticky-offer-price strong,
+.sticky-offer-price del {
+  display: inline-block;
+}
+
+.sticky-offer-price span {
+  flex-basis: 100%;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .site-header:hover,
+  .hero-details li:hover,
+  .hero-photo-slot:hover,
+  .hero-media-caption:hover,
+  .credibility-item:hover,
+  .audience-panel:hover,
+  .learning-card:hover,
+  .method-pillar:hover,
+  .outcomes-card:hover,
+  .outcomes-list li:hover,
+  .testimonial-card:hover,
+  .logistics-item:hover,
+  .bonus-item:hover,
+  .pricing-card:hover,
+  .faq-item:hover,
+  [data-slot="card"]:hover,
+  .glass-card:hover {
+    transform: none !important;
+    border-color: rgb(231 250 255 / 0.66) !important;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.7),
+      inset 0 -18px 34px rgb(255 255 255 / 0.08),
+      0 18px 52px rgb(3 61 122 / 0.12),
+      0 0 24px rgb(130 210 255 / 0.12) !important;
+  }
+}
+
+.hero-details li:active,
+.hero-photo-slot:active,
+.hero-media-caption:active,
+.credibility-item:active,
+.audience-panel:active,
+.learning-card:active,
+.method-pillar:active,
+.outcomes-card:active,
+.outcomes-list li:active,
+.testimonial-card:active,
+.logistics-item:active,
+.bonus-item:active,
+.pricing-card:active,
+.faq-item:active,
+[data-slot="card"]:active,
+.glass-card:active {
+  transform: none !important;
+}
+
+.method-rail {
+  background: rgb(255 255 255 / 0.1) !important;
+  border-color: rgb(255 255 255 / 0.2) !important;
+  box-shadow: none !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+@media (max-width: 640px) {
+  .hero-section {
+    display: block;
+    min-height: auto;
+    align-items: flex-start;
+    padding-top: 5.75rem;
+  }
+
+  .hero-section .ui-container--wide {
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding-inline: var(--space-4);
+    overflow: hidden;
+  }
+
+  .hero-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: var(--space-6);
+    width: 100vw;
+    max-width: 100vw;
+  }
+
+  .hero-copy {
+    max-width: none;
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+    padding-inline: 0;
+  }
+
+  .hero-copy h1 {
+    max-width: 100%;
+    font-size: clamp(2.55rem, 13.2vw, 4rem);
+    line-height: 0.94;
+    overflow-wrap: break-word;
+  }
+
+  .hero-lede {
+    max-width: 100%;
+    font-size: 1.05rem;
+  }
+
+  .hero-media {
+    width: 100%;
+    margin-left: 0;
+    padding-inline: 0;
+    min-width: 0;
+  }
+
+  .site-header,
+  .hero-details li,
+  .hero-photo-slot,
+  .audience-panel,
+  .learning-card,
+  .method-pillar,
+  .outcomes-card,
+  .testimonial-card,
+  .logistics-item,
+  .bonus-item,
+  .pricing-card,
+  .faq-item {
+    border-radius: 1.45rem !important;
+    backdrop-filter: blur(16px) saturate(1.28);
+    -webkit-backdrop-filter: blur(16px) saturate(1.28);
+  }
+
+  .site-header {
+    top: 0.5rem;
+    width: min(calc(100% - 1rem), 82rem);
+    border-radius: 1rem !important;
+  }
+
+  .sticky-offer-price {
+    gap: 0.25rem 0.45rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header,
+  .hero-details li,
+  .hero-photo-slot,
+  .audience-panel,
+  .learning-card,
+  .method-pillar,
+  .outcomes-card,
+  .testimonial-card,
+  .logistics-item,
+  .bonus-item,
+  .pricing-card,
+  .faq-item,
+  [data-slot="card"],
+  .glass-card {
+    transition: none !important;
+  }
+}
+
+/* Liquid-glass stabilization pass: keep the premium glass look without layout drift. */
+.fluid-glass-nav {
+  display: none !important;
+}
+
+.ambient-background--grainient .grainient-container {
+  opacity: 0.76 !important;
+}
+
+.ambient-background__readability-veil {
+  background:
+    radial-gradient(circle at 18% 12%, rgb(255 255 255 / 0.34), transparent 24rem),
+    radial-gradient(circle at 82% 10%, rgb(255 229 244 / 0.26), transparent 22rem),
+    linear-gradient(180deg, rgb(255 251 254 / 0.32), rgb(255 246 251 / 0.5) 52%, rgb(255 250 253 / 0.42)) !important;
+}
+
+.site-header {
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.5), rgb(255 238 249 / 0.34) 46%, rgb(225 248 255 / 0.28)) !important;
+  border: 1px solid rgb(255 255 255 / 0.68) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.82),
+    inset 0 -14px 34px rgb(255 255 255 / 0.16),
+    0 16px 48px rgb(91 35 78 / 0.13) !important;
+  backdrop-filter: blur(18px) saturate(1.2) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.2) !important;
+}
+
+.site-header::before,
+.site-header::after {
+  opacity: 0 !important;
+  transform: none !important;
+}
+
+.hero-details li,
+.hero-photo-slot,
+.hero-media-caption,
+.credibility-item,
+.audience-panel,
+.learning-card,
+.method-pillar,
+.outcomes-card,
+.outcomes-list li,
+.testimonial-card,
+.logistics-item,
+.bonus-item,
+.pricing-card,
+.faq-item,
+[data-slot="card"],
+.glass-card,
+.success-panel,
+.policy-document,
+.prompt-example-card {
+  overflow: hidden;
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.46), rgb(255 248 252 / 0.28) 50%, rgb(221 248 255 / 0.18)) !important;
+  border-color: rgb(255 255 255 / 0.66) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.78),
+    inset 0 -16px 30px rgb(255 255 255 / 0.1),
+    0 18px 54px rgb(87 32 70 / 0.12),
+    0 2px 10px rgb(255 255 255 / 0.16) !important;
+  backdrop-filter: blur(18px) saturate(1.18) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.18) !important;
+}
+
+.pricing-card {
+  background:
+    radial-gradient(circle at 12% 18%, rgb(255 255 255 / 0.28), transparent 9rem),
+    linear-gradient(145deg, rgb(255 255 255 / 0.4), rgb(252 226 242 / 0.2) 46%, rgb(193 244 255 / 0.18)) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hero-details li:hover,
+  .hero-photo-slot:hover,
+  .hero-media-caption:hover,
+  .credibility-item:hover,
+  .audience-panel:hover,
+  .learning-card:hover,
+  .method-pillar:hover,
+  .outcomes-card:hover,
+  .outcomes-list li:hover,
+  .testimonial-card:hover,
+  .logistics-item:hover,
+  .bonus-item:hover,
+  .pricing-card:hover,
+  .faq-item:hover,
+  [data-slot="card"]:hover,
+  .glass-card:hover,
+  .success-panel:hover,
+  .policy-document:hover,
+  .prompt-example-card:hover {
+    transform: none !important;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.82),
+      inset 0 -16px 30px rgb(255 255 255 / 0.1),
+      0 20px 58px rgb(87 32 70 / 0.14),
+      0 0 24px rgb(255 155 210 / 0.08) !important;
+  }
+
+  .hero-details li:hover::before,
+  .hero-photo-slot:hover::before,
+  .hero-media-caption:hover::before,
+  .credibility-item:hover::before,
+  .audience-panel:hover::before,
+  .learning-card:hover::before,
+  .method-pillar:hover::before,
+  .outcomes-card:hover::before,
+  .outcomes-list li:hover::before,
+  .testimonial-card:hover::before,
+  .logistics-item:hover::before,
+  .bonus-item:hover::before,
+  .pricing-card:hover::before,
+  .faq-item:hover::before,
+  [data-slot="card"]:hover::before,
+  .glass-card:hover::before {
+    opacity: 0.08 !important;
+    transform: none !important;
+  }
+}
+
+.ui-button,
+.checkout-button,
+.sticky-offer-button,
+.pricing-button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transform: translateZ(0);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    filter 180ms ease;
+}
+
+.ui-button::before,
+.checkout-button::before,
+.sticky-offer-button::before,
+.pricing-button::before {
+  display: none !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ui-button:hover,
+  .checkout-button:hover,
+  .sticky-offer-button:hover,
+  .pricing-button:hover {
+    transform: translateY(-1px) !important;
+    filter: saturate(1.06);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.56),
+      inset 0 -14px 28px rgb(88 45 135 / 0.12),
+      0 14px 34px rgb(180 38 124 / 0.22),
+      0 0 28px rgb(255 146 205 / 0.16) !important;
+  }
+}
+
+.ui-button:active,
+.checkout-button:active,
+.sticky-offer-button:active,
+.pricing-button:active {
+  transform: translateY(1px) scale(0.992) !important;
+}
+
+.liquid-cta-ripple {
+  position: absolute;
+  z-index: 0;
+  border-radius: 999px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle, rgb(255 255 255 / 0.58) 0 10%, rgb(175 242 255 / 0.36) 26%, rgb(255 135 213 / 0.22) 42%, transparent 70%);
+  mix-blend-mode: screen;
+  transform: scale(0);
+  opacity: 0.86;
+  filter: blur(0.2px);
+  animation: liquid-cta-ripple 760ms cubic-bezier(0.16, 0.82, 0.24, 1) forwards;
+}
+
+.liquid-cta-ripple--ring {
+  z-index: 0;
+  background:
+    radial-gradient(circle, transparent 0 42%, rgb(255 255 255 / 0.55) 44%, rgb(157 236 255 / 0.32) 54%, transparent 68%);
+  animation-duration: 860ms;
+}
+
+.ui-button > *,
+.checkout-button > *,
+.sticky-offer-button > *,
+.pricing-button > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes liquid-cta-ripple {
+  0% {
+    opacity: 0.82;
+    transform: scale(0);
+  }
+
+  42% {
+    opacity: 0.58;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+.sticky-offer-price {
+  display: grid !important;
+  grid-template-columns: auto auto;
+  column-gap: 0.38rem;
+  row-gap: 0.08rem;
+  align-items: baseline;
+  justify-content: start;
+}
+
+.sticky-offer-price span {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .ambient-background--grainient .grainient-container {
+    opacity: 0.82 !important;
+  }
+
+  .ambient-background__readability-veil {
+    background:
+      radial-gradient(circle at 15% 10%, rgb(255 255 255 / 0.22), transparent 18rem),
+      linear-gradient(180deg, rgb(255 248 253 / 0.2), rgb(255 245 251 / 0.34)) !important;
+  }
+
+  .sticky-offer-price {
+    column-gap: 0.3rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-cta-ripple {
+    display: none !important;
+  }
+
+  .ui-button,
+  .checkout-button,
+  .sticky-offer-button,
+  .pricing-button {
+    transition: none !important;
+  }
+}
+
+/* Final interaction stabilization: keep glass style, remove layout drift. */
+.site-header,
+.site-header:hover,
+.site-header:focus-within {
+  transform: translateX(-50%) !important;
+}
+
+.site-header {
+  transition:
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease !important;
+}
+
+.site-header::before,
+.site-header::after {
+  transform: none !important;
+}
+
+.hero-details li::after,
+.hero-photo-slot::after,
+.hero-media-caption::after,
+.credibility-item::after,
+.audience-panel::after,
+.learning-card::after,
+.method-pillar::after,
+.outcomes-card::after,
+.outcomes-list li::after,
+.testimonial-card::after,
+.logistics-item::after,
+.bonus-item::after,
+.pricing-card::after,
+.faq-item::after,
+[data-slot="card"]::after,
+.glass-card::after,
+.success-panel::after,
+.policy-document::after,
+.prompt-example-card::after {
+  content: none !important;
+  display: none !important;
+}
+
+.hero-details li,
+.hero-photo-slot,
+.hero-media-caption,
+.credibility-item,
+.audience-panel,
+.learning-card,
+.method-pillar,
+.outcomes-card,
+.outcomes-list li,
+.testimonial-card,
+.logistics-item,
+.bonus-item,
+.pricing-card,
+.faq-item,
+[data-slot="card"],
+.glass-card,
+.success-panel,
+.policy-document,
+.prompt-example-card {
+  transform: none !important;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease,
+    opacity 180ms ease !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hero-details li:hover,
+  .hero-photo-slot:hover,
+  .hero-media-caption:hover,
+  .credibility-item:hover,
+  .audience-panel:hover,
+  .learning-card:hover,
+  .method-pillar:hover,
+  .outcomes-card:hover,
+  .outcomes-list li:hover,
+  .testimonial-card:hover,
+  .logistics-item:hover,
+  .bonus-item:hover,
+  .pricing-card:hover,
+  .faq-item:hover,
+  [data-slot="card"]:hover,
+  .glass-card:hover,
+  .success-panel:hover,
+  .policy-document:hover,
+  .prompt-example-card:hover {
+    transform: none !important;
+    border-color: rgb(255 255 255 / 0.66) !important;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.72),
+      inset 0 -18px 34px rgb(255 255 255 / 0.08),
+      0 18px 48px rgb(88 38 96 / 0.13) !important;
+  }
+
+  .hero-details li:hover::before,
+  .hero-photo-slot:hover::before,
+  .hero-media-caption:hover::before,
+  .credibility-item:hover::before,
+  .audience-panel:hover::before,
+  .learning-card:hover::before,
+  .method-pillar:hover::before,
+  .outcomes-card:hover::before,
+  .outcomes-list li:hover::before,
+  .testimonial-card:hover::before,
+  .logistics-item:hover::before,
+  .bonus-item:hover::before,
+  .pricing-card:hover::before,
+  .faq-item:hover::before,
+  [data-slot="card"]:hover::before,
+  .glass-card:hover::before {
+    opacity: 0.1 !important;
+    transform: none !important;
+  }
+}
+
+.ui-button,
+.checkout-button,
+.sticky-offer-button,
+.pricing-button {
+  contain: paint;
+  transform: translate3d(0, 0, 0) !important;
+}
+
+.ui-button__content {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  pointer-events: none;
+}
+
+.ui-button > .ui-button__content > .ui-button__content {
+  display: contents;
+}
+
+.liquid-cta-ripple {
+  z-index: 1 !important;
+  background:
+    radial-gradient(circle, rgb(255 255 255 / 0.76) 0 8%, rgb(187 244 255 / 0.48) 22%, rgb(252 150 222 / 0.3) 43%, transparent 70%) !important;
+  opacity: 0.78 !important;
+  animation-duration: 780ms !important;
+}
+
+.liquid-cta-ripple--ring {
+  z-index: 2 !important;
+  background:
+    radial-gradient(circle, transparent 0 40%, rgb(255 255 255 / 0.72) 43%, rgb(136 232 255 / 0.42) 53%, transparent 69%) !important;
+}
+
+.ui-button.liquid-cta-rippling,
+.checkout-button.liquid-cta-rippling,
+.sticky-offer-button.liquid-cta-rippling,
+.pricing-button.liquid-cta-rippling {
+  transform: translateY(0) scale(0.996) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ui-button:hover,
+  .checkout-button:hover,
+  .sticky-offer-button:hover,
+  .pricing-button:hover {
+    transform: translateY(-1px) scale(1) !important;
+  }
+}
+
+.ui-button:active,
+.checkout-button:active,
+.sticky-offer-button:active,
+.pricing-button:active {
+  transform: translateY(0) scale(0.996) !important;
+}
+
+#registration .pricing-layout {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid rgb(255 255 255 / 0.64);
+  border-radius: clamp(1.6rem, 3vw, 2.6rem);
+  padding: clamp(1rem, 2.4vw, 2rem);
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.42), rgb(255 225 247 / 0.16) 42%, rgb(205 234 255 / 0.18)),
+    rgb(255 255 255 / 0.12);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.78),
+    inset 0 -26px 48px rgb(255 255 255 / 0.1),
+    0 24px 70px rgb(91 36 93 / 0.14);
+  backdrop-filter: blur(22px) saturate(1.35);
+}
+
+.method-rail {
+  gap: clamp(0.55rem, 1vw, 0.9rem) !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.method-pillar {
+  min-height: clamp(15rem, 25vw, 18rem) !important;
+  padding: clamp(1.15rem, 2vw, 1.65rem) !important;
+}
+
+.method-pillar h3 {
+  margin-bottom: 0.8rem !important;
+  font-size: clamp(1.35rem, 2vw, 1.85rem) !important;
+  line-height: 1.02 !important;
+}
+
+.method-pillar p {
+  max-width: 18rem;
+  font-size: clamp(0.98rem, 1.15vw, 1.1rem) !important;
+  line-height: 1.48 !important;
+}
+
+.hero-details li span {
+  position: relative;
+  animation: live-detail-dot 1.9s ease-in-out infinite;
+}
+
+.hero-details li span::after {
+  content: "";
+  position: absolute;
+  inset: -0.48rem;
+  border-radius: 999px;
+  border: 1px solid rgb(236 72 153 / 0.38);
+  opacity: 0;
+  animation: live-detail-ring 1.9s ease-out infinite;
+}
+
+@keyframes live-detail-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgb(236 72 153 / 0);
+    transform: scale(1);
+  }
+
+  45% {
+    box-shadow: 0 0 22px rgb(236 72 153 / 0.42);
+    transform: scale(1.18);
+  }
+}
+
+@keyframes live-detail-ring {
+  0% {
+    opacity: 0.62;
+    transform: scale(0.48);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.32);
+  }
+}
+
+@media (max-width: 768px) {
+  #registration .pricing-layout {
+    padding: 0.8rem;
+    border-radius: 1.55rem;
+  }
+
+  .method-rail {
+    grid-template-columns: 1fr !important;
+  }
+
+  .method-pillar {
+    min-height: auto !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-details li span,
+  .hero-details li span::after {
+    animation: none !important;
+  }
+}
+
+.sticky-offer-bar {
+  min-height: auto !important;
+  max-height: none !important;
+  align-items: center !important;
+  overflow: hidden;
+}
+
+.sticky-offer-button {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: min(14.5rem, 44vw) !important;
+  max-width: min(16rem, 48vw) !important;
+  min-height: 3.1rem !important;
+  padding: 0.78rem 1.3rem !important;
+  border-radius: 1.15rem !important;
+}
+
+.sticky-offer-button .liquid-cta-ripple {
+  opacity: 0.54 !important;
+}
+
+@media (max-width: 640px) {
+  .sticky-offer-bar {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem !important;
+    padding: 0.62rem 1rem calc(0.62rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  .sticky-offer-button {
+    min-width: min(13.25rem, 42vw) !important;
+    max-width: 42vw !important;
+    min-height: 3rem !important;
+    padding: 0.7rem 0.9rem !important;
+    font-size: 0.92rem !important;
+  }
+}
+
+/* Final pass: lock liquid-glass interactions so cards and CTAs never drift or resize. */
+.site-header,
+.site-header:hover,
+.site-header:focus-within {
+  transform: translateX(-50%) !important;
+}
+
+.site-header {
+  min-height: 3.85rem;
+  contain: paint;
+}
+
+.hero-details li,
+.hero-photo-slot,
+.hero-media-caption,
+.credibility-item,
+.audience-panel,
+.learning-card,
+.method-pillar,
+.outcomes-card,
+.outcomes-list li,
+.testimonial-card,
+.logistics-item,
+.bonus-item,
+.pricing-card,
+.faq-item,
+[data-slot="card"],
+.glass-card,
+.success-panel,
+.policy-document,
+.prompt-example-card {
+  transform: none !important;
+}
+
+.hero-details li::after,
+.hero-photo-slot::after,
+.hero-media-caption::after,
+.credibility-item::after,
+.audience-panel::after,
+.learning-card::after,
+.method-pillar::after,
+.outcomes-card::after,
+.outcomes-list li::after,
+.testimonial-card::after,
+.logistics-item::after,
+.bonus-item::after,
+.pricing-card::after,
+.faq-item::after,
+[data-slot="card"]::after,
+.glass-card::after,
+.success-panel::after,
+.policy-document::after,
+.prompt-example-card::after {
+  display: none !important;
+  opacity: 0 !important;
+  transform: none !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hero-details li:hover,
+  .hero-photo-slot:hover,
+  .hero-media-caption:hover,
+  .credibility-item:hover,
+  .audience-panel:hover,
+  .learning-card:hover,
+  .method-pillar:hover,
+  .outcomes-card:hover,
+  .outcomes-list li:hover,
+  .testimonial-card:hover,
+  .logistics-item:hover,
+  .bonus-item:hover,
+  .pricing-card:hover,
+  .faq-item:hover,
+  [data-slot="card"]:hover,
+  .glass-card:hover,
+  .success-panel:hover,
+  .policy-document:hover,
+  .prompt-example-card:hover {
+    transform: none !important;
+  }
+}
+
+.ui-button,
+.checkout-button,
+.sticky-offer-button,
+.pricing-button {
+  contain: layout paint !important;
+  transform: none !important;
+}
+
+.ui-button:hover,
+.checkout-button:hover,
+.sticky-offer-button:hover,
+.pricing-button:hover,
+.ui-button:active,
+.checkout-button:active,
+.sticky-offer-button:active,
+.pricing-button:active,
+.ui-button.liquid-cta-rippling,
+.checkout-button.liquid-cta-rippling,
+.sticky-offer-button.liquid-cta-rippling,
+.pricing-button.liquid-cta-rippling {
+  transform: none !important;
+}
+
+.liquid-cta-ripple {
+  z-index: 1 !important;
+  pointer-events: none !important;
+  mix-blend-mode: screen;
+  opacity: 0.62 !important;
+}
+
+.sticky-offer-bar {
+  max-height: 5.6rem !important;
+  background:
+    linear-gradient(110deg, rgb(255 255 255 / 0.82), rgb(242 253 255 / 0.58), rgb(255 236 250 / 0.72)) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.86),
+    0 -16px 46px rgb(68 25 74 / 0.16) !important;
+}
+
+.sticky-offer-button {
+  height: auto !important;
+  max-height: 3.25rem !important;
+  overflow: hidden !important;
+}
+
+.sticky-offer-button .liquid-cta-ripple {
+  opacity: 0.38 !important;
+}
+
+#registration .pricing-layout {
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.56), rgb(255 225 247 / 0.22) 44%, rgb(215 240 255 / 0.24)),
+    rgb(255 255 255 / 0.2) !important;
+  border-color: rgb(255 255 255 / 0.74) !important;
+}
+
+/* Hard stabilization: the glass look stays, but no component may move or resize from hover/click effects. */
+.site-header,
+.hero-details li,
+.hero-photo-slot,
+.hero-media-caption,
+.credibility-item,
+.audience-panel,
+.learning-card,
+.method-pillar,
+.outcomes-card,
+.outcomes-list li,
+.testimonial-card,
+.logistics-item,
+.bonus-item,
+.pricing-card,
+.faq-item,
+[data-slot="card"],
+.glass-card,
+.success-panel,
+.policy-document,
+.prompt-example-card,
+.ui-button,
+.checkout-button,
+.sticky-offer-button,
+.pricing-button {
+  translate: none !important;
+  scale: none !important;
+}
+
+.site-header:hover,
+.site-header:active,
+.site-header:focus-within {
+  translate: none !important;
+  scale: none !important;
+  transform: translateX(-50%) !important;
+}
+
+.hero-details li::before,
+.hero-photo-slot::before,
+.hero-media-caption::before,
+.credibility-item::before,
+.audience-panel::before,
+.learning-card::before,
+.method-pillar::before,
+.outcomes-card::before,
+.outcomes-list li::before,
+.testimonial-card::before,
+.logistics-item::before,
+.bonus-item::before,
+.pricing-card::before,
+.faq-item::before,
+[data-slot="card"]::before,
+.glass-card::before,
+.success-panel::before,
+.policy-document::before,
+.prompt-example-card::before {
+  transform: none !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hero-details li:hover,
+  .hero-photo-slot:hover,
+  .hero-media-caption:hover,
+  .credibility-item:hover,
+  .audience-panel:hover,
+  .learning-card:hover,
+  .method-pillar:hover,
+  .outcomes-card:hover,
+  .outcomes-list li:hover,
+  .testimonial-card:hover,
+  .logistics-item:hover,
+  .bonus-item:hover,
+  .pricing-card:hover,
+  .faq-item:hover,
+  [data-slot="card"]:hover,
+  .glass-card:hover,
+  .success-panel:hover,
+  .policy-document:hover,
+  .prompt-example-card:hover {
+    translate: none !important;
+    scale: none !important;
+    transform: none !important;
+  }
+}
+
+.ui-button,
+.checkout-button,
+.sticky-offer-button,
+.pricing-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  contain: paint !important;
+}
+
+.pricing-button {
+  width: 100% !important;
+  min-height: 3.35rem !important;
+  height: 3.35rem !important;
+  max-height: 3.35rem !important;
+}
+
+.sticky-offer-button {
+  min-height: 3.1rem !important;
+  height: 3.1rem !important;
+  max-height: 3.1rem !important;
+}
+
+.hero-actions .ui-button {
+  min-height: 3.25rem !important;
+  height: 3.25rem !important;
+  max-height: 3.25rem !important;
+}
+
+.ui-button:hover,
+.checkout-button:hover,
+.sticky-offer-button:hover,
+.pricing-button:hover,
+.ui-button:active,
+.checkout-button:active,
+.sticky-offer-button:active,
+.pricing-button:active,
+.ui-button.liquid-cta-rippling,
+.checkout-button.liquid-cta-rippling,
+.sticky-offer-button.liquid-cta-rippling,
+.pricing-button.liquid-cta-rippling {
+  translate: none !important;
+  scale: none !important;
+  transform: none !important;
+}
+
+.liquid-cta-ripple,
+.liquid-cta-ripple--ring {
+  position: absolute !important;
+  display: block !important;
+  max-width: none !important;
+  max-height: none !important;
+  contain: strict !important;
+}
+
+.checkout-action,
+.pricing-card-content {
+  min-width: 0;
+}
+
+.faq-item summary {
+  transform: none !important;
+  translate: none !important;
+}
+
+.method-rail {
+  align-items: stretch !important;
+}
+
+/* Mobile polish pass: realistic glossy controls, stable ripple, and safer compact cards. */
+.ui-button,
+.checkout-button,
+.sticky-offer-button,
+.pricing-button {
+  border-color: rgb(255 255 255 / 0.62) !important;
+  background-clip: padding-box !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.72),
+    inset 0 -1px 0 rgb(88 24 90 / 0.2),
+    inset 0 -18px 28px rgb(88 24 130 / 0.16),
+    0 12px 28px rgb(146 44 130 / 0.22) !important;
+}
+
+.ui-button--primary,
+.ui-button--sticky-cta,
+.sticky-offer-button,
+.pricing-button {
+  background:
+    radial-gradient(circle at 18% 18%, rgb(255 255 255 / 0.42), transparent 28%),
+    linear-gradient(180deg, rgb(255 142 199 / 0.98), rgb(222 56 143 / 0.96) 48%, rgb(135 80 231 / 0.98)) !important;
+}
+
+.ui-button--secondary,
+.ui-button--glass,
+.ui-button--outline,
+.ui-button--soft,
+.ui-button--tab {
+  background:
+    radial-gradient(circle at 18% 12%, rgb(255 255 255 / 0.9), transparent 34%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.86), rgb(255 232 247 / 0.72) 52%, rgb(238 246 255 / 0.78)) !important;
+  color: var(--color-text) !important;
+}
+
+.ui-button::before,
+.checkout-button::before,
+.sticky-offer-button::before,
+.pricing-button::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 1px 1px auto !important;
+  z-index: 2 !important;
+  display: block !important;
+  height: 48% !important;
+  border-radius: inherit !important;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.48), rgb(255 255 255 / 0.08) 72%, transparent) !important;
+  opacity: 0.88 !important;
+  transform: none !important;
+  pointer-events: none !important;
+}
+
+.ui-button__content {
+  text-shadow: 0 1px 1px rgb(75 20 80 / 0.22);
+}
+
+.ui-button--secondary .ui-button__content,
+.ui-button--glass .ui-button__content,
+.ui-button--outline .ui-button__content,
+.ui-button--soft .ui-button__content,
+.ui-button--tab .ui-button__content {
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.62);
+}
+
+.liquid-cta-ripple {
+  background:
+    radial-gradient(circle, rgb(255 255 255 / 0.82) 0 9%, rgb(255 220 246 / 0.48) 24%, rgb(148 214 255 / 0.34) 43%, transparent 70%) !important;
+  filter: blur(1px) saturate(1.2) !important;
+  mix-blend-mode: soft-light !important;
+  opacity: 0.72 !important;
+}
+
+.liquid-cta-ripple--ring {
+  background:
+    radial-gradient(circle, transparent 0 42%, rgb(255 255 255 / 0.72) 44%, rgb(255 240 252 / 0.34) 56%, transparent 70%) !important;
+  filter: blur(0.5px) !important;
+  mix-blend-mode: screen !important;
+}
+
+.sticky-offer-bar {
+  grid-template-columns: max-content minmax(10.75rem, 24rem) !important;
+}
+
+.sticky-offer-price {
+  width: max-content !important;
+  max-width: min(12rem, 46vw) !important;
+  display: grid !important;
+  grid-template-columns: max-content max-content !important;
+  column-gap: 0.5rem !important;
+  row-gap: 0.14rem !important;
+  justify-content: start !important;
+  justify-items: start !important;
+}
+
+.sticky-offer-price strong,
+.sticky-offer-price del {
+  line-height: 1 !important;
+}
+
+.sticky-offer-price span {
+  grid-column: 1 / -1 !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  line-height: 1.12 !important;
+}
+
+.credibility-grid {
+  overflow: visible !important;
+}
+
+.credibility-item {
+  min-height: 5.25rem !important;
+  padding: clamp(1rem, 2.8vw, 1.25rem) !important;
+  overflow: visible !important;
+}
+
+.credibility-item dt,
+.credibility-item dd {
+  position: relative;
+  z-index: 2;
+  overflow: visible !important;
+  text-wrap: balance;
+}
+
+.credibility-item dt {
+  line-height: 1.15 !important;
+}
+
+.credibility-item dd {
+  line-height: 1.28 !important;
+}
+
+@media (max-width: 640px) {
+  .sticky-offer-bar {
+    grid-template-columns: max-content minmax(9.5rem, 1fr) !important;
+    gap: 0.65rem !important;
+  }
+
+  .sticky-offer-price {
+    max-width: 8.75rem !important;
+    column-gap: 0.42rem !important;
+  }
+
+  .sticky-offer-price strong {
+    font-size: 1.28rem !important;
+  }
+
+  .sticky-offer-price del {
+    font-size: 1.06rem !important;
+  }
+
+  .sticky-offer-price span {
+    font-size: 0.68rem !important;
+  }
+
+  .sticky-offer-button {
+    min-width: 10.25rem !important;
+    max-width: none !important;
+    padding-inline: 0.92rem !important;
+  }
+
+  .credibility-section {
+    padding-block: 2rem !important;
+  }
+
+  .credibility-grid {
+    gap: 0.7rem !important;
+  }
+
+  .credibility-item {
+    min-height: 5.65rem !important;
+    padding: 1rem 1.08rem !important;
   }
 }

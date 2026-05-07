@@ -20,9 +20,10 @@ export function CheckoutButton() {
       <button
         className="ui-button ui-button--primary ui-button--lg pricing-button"
         onClick={startCheckout}
+        data-ripple="liquid"
         type="button"
       >
-        Registration Paused
+        <span className="ui-button__content">Registration Paused</span>
         <MicroCelebration burstKey={burstKey} />
       </button>
       {message ? <p className="checkout-message">{message}</p> : null}

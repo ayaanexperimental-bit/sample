@@ -40,8 +40,9 @@ export function StickyOfferBar() {
         className="ui-button ui-button--sticky-cta ui-button--lg sticky-offer-button"
         type="button"
         onClick={scrollToRegistration}
+        data-ripple="liquid"
       >
-        Register Now
+        <span className="ui-button__content">Register Now</span>
         <MicroCelebration burstKey={burstKey} />
       </button>
     </aside>

@@ -1,4 +1,4 @@
-import { LiquidProgressLayer } from "@/components/landing/liquid-progress-layer";
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -19,7 +19,6 @@ export function Hero({ schedule }: HeroProps) {
   return (
     <Section className="hero-section" aria-labelledby="hero-title">
       <header className="site-header" aria-label="Primary navigation">
-        <LiquidProgressLayer variant="nav" />
         <a className="site-brand" href="#top" aria-label="Heal Your Hormones Masterclass home">
           <span>HYH</span>
           Heal Your Hormones Masterclass
@@ -64,7 +63,13 @@ export function Hero({ schedule }: HeroProps) {
           <div className="hero-orbit hero-orbit--one" aria-hidden="true" />
           <div className="hero-orbit hero-orbit--two" aria-hidden="true" />
           <figure className="hero-photo-slot">
-            <img src="/images/coach-hero.jpg" alt="Coach portrait for Heal Your Hormones Masterclass" />
+            <Image
+              src="/images/coach-hero.jpg"
+              alt="Coach portrait for Heal Your Hormones Masterclass"
+              width={900}
+              height={1200}
+              priority
+            />
           </figure>
           <div className="hero-media-caption">
             <strong>Guided live session</strong>

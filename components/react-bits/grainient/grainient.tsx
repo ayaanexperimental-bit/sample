@@ -246,10 +246,17 @@ export default function Grainient({
 
     let animationFrame = 0;
     const start = performance.now();
+    let lastRender = 0;
+    const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
+    const frameInterval = isCoarsePointer ? 66 : 50;
 
     const loop = (time: number) => {
-      program.uniforms.iTime.value = (time - start) * 0.001;
-      renderer.render({ scene: mesh });
+      if (document.visibilityState === "visible" && time - lastRender >= frameInterval) {
+        program.uniforms.iTime.value = (time - start) * 0.001;
+        renderer.render({ scene: mesh });
+        lastRender = time;
+      }
+
       animationFrame = requestAnimationFrame(loop);
     };
 

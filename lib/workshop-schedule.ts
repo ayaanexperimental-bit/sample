@@ -2,7 +2,6 @@ const IST_TIME_ZONE = "Asia/Kolkata";
 const SESSION_WEEKDAY = 0;
 const SESSION_HOUR = 17;
 const SESSION_MINUTE = 45;
-const SESSION_DURATION_MINUTES = 120;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export type WorkshopSchedule = {

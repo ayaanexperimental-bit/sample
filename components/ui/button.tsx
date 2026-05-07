@@ -61,32 +61,28 @@ export function Button(props: ButtonProps) {
   const classes = cn("ui-button", variantClasses[variant], sizeClasses[size], className);
 
   if ("href" in props && props.href) {
-    const {
-      children: _children,
-      variant: _variant,
-      size: _size,
-      className: _className,
-      ...anchorProps
-    } = props as AnchorButtonProps;
+    const anchorProps = { ...(props as AnchorButtonProps) };
+    delete anchorProps.children;
+    delete anchorProps.variant;
+    delete anchorProps.size;
+    delete anchorProps.className;
 
     return (
       <a className={classes} {...anchorProps}>
-        {children}
+        <span className="ui-button__content">{children}</span>
       </a>
     );
   }
 
-  const {
-    children: _children,
-    variant: _variant,
-    size: _size,
-    className: _className,
-    ...buttonProps
-  } = props as NativeButtonProps;
+  const buttonProps = { ...(props as NativeButtonProps) };
+  delete buttonProps.children;
+  delete buttonProps.variant;
+  delete buttonProps.size;
+  delete buttonProps.className;
 
   return (
     <button className={classes} {...buttonProps}>
-      {children}
+      <span className="ui-button__content">{children}</span>
     </button>
   );
 }
