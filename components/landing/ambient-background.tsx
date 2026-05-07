@@ -12,6 +12,14 @@ export function AmbientBackground() {
   const [canRenderGrainient, setCanRenderGrainient] = useState(false);
 
   useEffect(() => {
+    const isSmallOrTouchDevice =
+      window.matchMedia("(max-width: 760px)").matches ||
+      window.matchMedia("(pointer: coarse)").matches;
+
+    if (isSmallOrTouchDevice) {
+      return;
+    }
+
     const idleWindow = window as Window & {
       requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
       cancelIdleCallback?: (handle: number) => void;
@@ -31,7 +39,10 @@ export function AmbientBackground() {
   }, []);
 
   return (
-    <div className="ambient-background ambient-background--grainient" aria-hidden="true">
+    <div
+      className={`ambient-background ambient-background--grainient${canRenderGrainient ? "" : " ambient-background--css-only"}`}
+      aria-hidden="true"
+    >
       {!canRenderGrainient && <span className="grainient-skeleton" />}
       {canRenderGrainient ? (
         <DeferredGrainient

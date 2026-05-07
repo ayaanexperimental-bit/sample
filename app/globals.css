@@ -5525,3 +5525,90 @@ main#top {
     width: 5rem;
   }
 }
+
+/* Mobile performance pass: visible CSS Grainient, no phone WebGL, faster touch ripples. */
+.ambient-background--css-only .grainient-container {
+  display: none !important;
+}
+
+@media (max-width: 760px), (pointer: coarse) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  .ambient-background--grainient {
+    background:
+      radial-gradient(circle at 12% 16%, rgb(255 98 185 / 0.34), transparent 16rem),
+      radial-gradient(circle at 82% 18%, rgb(169 216 223 / 0.32), transparent 18rem),
+      radial-gradient(circle at 56% 82%, rgb(216 108 196 / 0.28), transparent 20rem),
+      linear-gradient(135deg, #fff7fc 0%, #ffe4f5 48%, #e9fbff 100%) !important;
+  }
+
+  .ambient-background--grainient::before,
+  .grainient-skeleton {
+    background:
+      radial-gradient(circle at 16% 22%, rgb(255 104 190 / 0.48), transparent 13rem),
+      radial-gradient(circle at 86% 18%, rgb(90 210 224 / 0.3), transparent 15rem),
+      radial-gradient(circle at 54% 78%, rgb(176 105 228 / 0.26), transparent 17rem),
+      linear-gradient(118deg, rgb(255 180 224 / 0.28), rgb(122 218 229 / 0.18), rgb(255 235 248 / 0.24)) !important;
+    opacity: 0.9 !important;
+    filter: saturate(1.12) !important;
+    animation: none !important;
+  }
+
+  .ambient-background__readability-veil {
+    background:
+      radial-gradient(circle at 18% 8%, rgb(255 255 255 / 0.18), transparent 18rem),
+      linear-gradient(180deg, rgb(255 251 254 / 0.22), rgb(255 247 251 / 0.32) 48%, rgb(247 253 255 / 0.24)) !important;
+  }
+
+  .hero-section,
+  .ui-section--soft,
+  .ui-section--default {
+    background-color: rgb(255 247 251 / 0.3) !important;
+  }
+
+  .ui-section::after {
+    opacity: 0.28 !important;
+  }
+
+  .ui-button,
+  .checkout-button,
+  .sticky-offer-button,
+  .pricing-button {
+    transition:
+      background-color 80ms ease,
+      border-color 80ms ease,
+      opacity 80ms ease !important;
+    will-change: auto !important;
+  }
+
+  .liquid-button-pool__depth,
+  .liquid-button-pool__pressure,
+  .liquid-water-ripple,
+  .liquid-water-lens,
+  .liquid-water-impact,
+  .liquid-cta-ripple,
+  .liquid-cta-ripple--ring,
+  .liquid-button-wave {
+    filter: none !important;
+  }
+
+  .liquid-button-pool__caustics {
+    animation-duration: 2.8s !important;
+    opacity: 0.36 !important;
+  }
+
+  .liquid-cta-rippling .liquid-button-pool__depth,
+  .liquid-cta-rippling .liquid-button-pool__caustics {
+    animation-duration: 720ms !important;
+  }
+
+  .liquid-water-ripple {
+    animation-duration: 760ms !important;
+  }
+
+  .liquid-button-filter {
+    display: none !important;
+  }
+}

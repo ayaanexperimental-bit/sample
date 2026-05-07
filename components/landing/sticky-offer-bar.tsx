@@ -26,7 +26,10 @@ export function StickyOfferBar() {
 
   function scrollToRegistration() {
     triggerBurst();
-    document.getElementById("registration")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const prefersDirectScroll = window.matchMedia("(pointer: coarse)").matches;
+    document
+      .getElementById("registration")
+      ?.scrollIntoView({ behavior: prefersDirectScroll ? "auto" : "smooth", block: "start" });
   }
 
   return (

@@ -60,9 +60,10 @@ export function ButtonRippleInteractions() {
       });
     };
 
-    const idleHandle =
-      idleWindow.requestIdleCallback?.(hydrateVisibleControls, { timeout: 1400 }) ??
-      window.setTimeout(hydrateVisibleControls, 1000);
+    const idleHandle = coarsePointer
+      ? 0
+      : (idleWindow.requestIdleCallback?.(hydrateVisibleControls, { timeout: 1400 }) ??
+        window.setTimeout(hydrateVisibleControls, 1000));
 
     function updateWaterOrigin(control: HTMLElement, event: PointerEvent) {
       const rect = control.getBoundingClientRect();
@@ -96,9 +97,9 @@ export function ButtonRippleInteractions() {
       const baseSize = Math.max(rect.width, rect.height);
       const size = Math.min(baseSize * 1.86, control.classList.contains("sticky-offer-button") ? 180 : 340);
       const pool = control.querySelector<HTMLElement>(":scope > .liquid-button-pool");
-      const rippleCount = coarsePointer ? 6 : 9;
-      const counterCount = coarsePointer ? 2 : 3;
-      const dropletCount = coarsePointer ? 5 : 8;
+      const rippleCount = coarsePointer ? 3 : 9;
+      const counterCount = coarsePointer ? 0 : 3;
+      const dropletCount = coarsePointer ? 0 : 8;
       const ripples = Array.from({ length: rippleCount }, (_, index) => {
         const ripple = document.createElement("span");
         const rippleSize = size * (0.28 + index * 0.105);
@@ -156,11 +157,17 @@ export function ButtonRippleInteractions() {
       impact.style.left = `${originX - (size * 0.44) / 2}px`;
       impact.style.top = `${originY - (size * 0.2) / 2}px`;
 
-      control.setPointerCapture?.(event.pointerId);
+      if (!coarsePointer) {
+        control.setPointerCapture?.(event.pointerId);
+      }
       control.classList.remove("liquid-cta-releasing");
       control.classList.add("liquid-cta-pressed");
       control.classList.add("liquid-cta-rippling");
-      pool?.append(impact, lens, ...ripples, ...counterRipples, ...droplets);
+      if (coarsePointer) {
+        pool?.append(...ripples);
+      } else {
+        pool?.append(impact, lens, ...ripples, ...counterRipples, ...droplets);
+      }
       window.setTimeout(() => {
         impact.remove();
         lens.remove();
@@ -200,9 +207,9 @@ export function ButtonRippleInteractions() {
     document.addEventListener("pointercancel", releasePressedControls, { passive: true });
 
     return () => {
-      if (idleWindow.cancelIdleCallback && typeof idleHandle === "number") {
+      if (idleHandle && idleWindow.cancelIdleCallback && typeof idleHandle === "number") {
         idleWindow.cancelIdleCallback(idleHandle);
-      } else {
+      } else if (idleHandle) {
         window.clearTimeout(idleHandle);
       }
 
