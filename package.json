@@ -45,5 +45,10 @@
     "prettier": "latest",
     "typescript": "latest",
     "wrangler": "latest"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": "8.5.10"
+    }
   }
 }

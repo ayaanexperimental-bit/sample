@@ -68,7 +68,7 @@ Custom backend registration model
 ```text
 Website: https://freedomfromdiabetes.in
 Razorpay hosted checkout: removed from website code and config
-WhatsApp community: https://chat.whatsapp.com/LYf1V55hDimAhfNVCghaN4
+WhatsApp community: not stored in website code, public env, or repo docs
 ```
 
 ---
@@ -80,7 +80,6 @@ Only public frontend values are needed by the website:
 ```env
 NEXT_PUBLIC_SITE_URL=https://freedomfromdiabetes.in
 NEXT_PUBLIC_PAYMENT_ENABLED=false
-NEXT_PUBLIC_WHATSAPP_COMMUNITY_INVITE_URL=https://chat.whatsapp.com/LYf1V55hDimAhfNVCghaN4
 ENABLE_PROMPT_LAB=false
 ```
 
