@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bodoni_Moda, Cormorant_Garamond, Manrope } from "next/font/google";
+import { Bodoni_Moda, Cormorant_Garamond, Libre_Baskerville, Manrope, Montserrat } from "next/font/google";
 import "./globals.css";
 
 const displayFont = Bodoni_Moda({
@@ -16,10 +16,24 @@ const accentFont = Cormorant_Garamond({
   display: "swap"
 });
 
+const editorialFont = Libre_Baskerville({
+  subsets: ["latin"],
+  variable: "--font-editorial",
+  weight: ["400", "700"],
+  display: "swap"
+});
+
 const bodyFont = Manrope({
   subsets: ["latin"],
   variable: "--font-body",
   weight: ["400", "500", "600", "700", "800"],
+  display: "swap"
+});
+
+const conversionFont = Montserrat({
+  subsets: ["latin"],
+  variable: "--font-conversion",
+  weight: ["400", "500", "600", "700", "800", "900"],
   display: "swap"
 });
 
@@ -49,7 +63,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${displayFont.variable} ${accentFont.variable} ${bodyFont.variable}`}>
+      <body
+        className={`${displayFont.variable} ${accentFont.variable} ${editorialFont.variable} ${bodyFont.variable} ${conversionFont.variable}`}
+      >
         {children}
       </body>
     </html>
