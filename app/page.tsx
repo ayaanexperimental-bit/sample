@@ -3,6 +3,7 @@ import { Bonuses } from "@/components/landing/bonuses";
 import { CredibilityStrip } from "@/components/landing/credibility-strip";
 import { FAQ } from "@/components/landing/faq";
 import { FooterCompliance } from "@/components/landing/footer-compliance";
+import { FunnelStatusBars } from "@/components/landing/funnel-status-bars";
 import { GlassCardInteractions } from "@/components/landing/glass-card-interactions";
 import { Hero } from "@/components/landing/hero";
 import { Logistics } from "@/components/landing/logistics";
@@ -22,6 +23,7 @@ export default function Home() {
     <main id="top">
       <AmbientBackground />
       <GlassCardInteractions />
+      <FunnelStatusBars />
       <Hero schedule={schedule} />
       <CredibilityStrip />
       <WhoItsFor />

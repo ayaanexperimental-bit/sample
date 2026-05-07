@@ -39,24 +39,6 @@ export function Hero({ schedule }: HeroProps) {
             confidence, and everyday self-care. This is education and support, not a replacement for
             medical advice.
           </p>
-
-          <div className="hero-actions" aria-label="Primary actions">
-            <Button href="#registration" size="lg">
-              Reserve My Seat
-            </Button>
-            <Button href="#registration" variant="secondary" size="lg">
-              View Details
-            </Button>
-          </div>
-
-          <ul className="hero-details" aria-label="Masterclass details">
-            {workshopDetails.map((detail) => (
-              <li key={detail}>
-                <span aria-hidden="true" />
-                {detail}
-              </li>
-            ))}
-          </ul>
         </div>
 
         <div className="hero-media" aria-label="Coach photo">
@@ -79,6 +61,30 @@ export function Hero({ schedule }: HeroProps) {
             <span>Education-first, symptom-aware, and supportive.</span>
           </div>
         </div>
+
+        <div className="hero-funnel-offer" aria-label="Limited registration offer">
+          <span>Limited registration offer</span>
+          <strong>{"\u20B951"}</strong>
+          <small>Next session: {schedule.dateLabel}, {schedule.timeLabel}</small>
+        </div>
+
+        <div className="hero-actions" aria-label="Primary actions">
+          <Button href="#registration" size="lg">
+            Reserve My Seat
+          </Button>
+          <Button href="#details" variant="secondary" size="lg">
+            View Details
+          </Button>
+        </div>
+
+        <ul className="hero-details" aria-label="Masterclass details">
+          {workshopDetails.map((detail) => (
+            <li key={detail}>
+              <span aria-hidden="true" />
+              {detail}
+            </li>
+          ))}
+        </ul>
       </Container>
     </Section>
   );
