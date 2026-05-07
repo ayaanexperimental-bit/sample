@@ -4318,6 +4318,146 @@ main#top {
   mix-blend-mode: screen !important;
 }
 
+.liquid-button-filter {
+  position: fixed;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.ui-button::after,
+.checkout-button::after,
+.sticky-offer-button::after,
+.pricing-button::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2 !important;
+  border-radius: inherit !important;
+  pointer-events: none !important;
+  background:
+    radial-gradient(ellipse at 20% 18%, rgb(255 255 255 / 0.42), transparent 34%),
+    radial-gradient(ellipse at 78% 84%, rgb(111 220 255 / 0.18), transparent 38%),
+    repeating-linear-gradient(104deg, transparent 0 0.72rem, rgb(255 255 255 / 0.09) 0.78rem 0.86rem, transparent 0.94rem 1.52rem) !important;
+  opacity: 0.58 !important;
+  mix-blend-mode: screen;
+  transform: translate3d(0, 0, 0) !important;
+}
+
+.ui-button.liquid-cta-rippling::after,
+.checkout-button.liquid-cta-rippling::after,
+.sticky-offer-button.liquid-cta-rippling::after,
+.pricing-button.liquid-cta-rippling::after {
+  animation: liquid-button-surface-slosh 980ms ease-out;
+}
+
+.liquid-button-wave {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at var(--wave-x) var(--wave-y), rgb(255 255 255 / 0.36), rgb(192 238 255 / 0.2) 10%, transparent 34%),
+    radial-gradient(circle at calc(var(--wave-x) + 2.1rem) calc(var(--wave-y) - 0.65rem), rgb(255 245 252 / 0.32), transparent 24%),
+    radial-gradient(circle at calc(var(--wave-x) - 2rem) calc(var(--wave-y) + 0.8rem), rgb(126 219 255 / 0.18), transparent 28%);
+  filter: url("#liquid-button-water-filter") saturate(1.24);
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: liquid-button-wave 980ms cubic-bezier(0.14, 0.76, 0.24, 1) forwards;
+  contain: strict;
+}
+
+.liquid-cta-ripple {
+  filter: url("#liquid-button-water-filter") blur(0.35px) saturate(1.22) !important;
+  mix-blend-mode: screen !important;
+  animation-duration: 980ms !important;
+}
+
+.liquid-cta-ripple--ring {
+  filter: url("#liquid-button-water-filter") blur(0.25px) !important;
+  animation: liquid-cta-water-ring 980ms cubic-bezier(0.14, 0.76, 0.24, 1) forwards !important;
+}
+
+.liquid-cta-ripple--glint {
+  z-index: 3 !important;
+  border-radius: 999px !important;
+  background:
+    linear-gradient(100deg, transparent 0 12%, rgb(255 255 255 / 0.88) 38%, rgb(255 255 255 / 0.34) 52%, transparent 76%) !important;
+  filter: blur(0.45px) !important;
+  mix-blend-mode: screen !important;
+  opacity: 0;
+  transform: rotate(-13deg) scale(0.42);
+  animation: liquid-cta-glint 720ms ease-out forwards !important;
+}
+
+@keyframes liquid-button-wave {
+  0% {
+    opacity: 0.86;
+    transform: scale(0.86);
+  }
+
+  46% {
+    opacity: 0.56;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes liquid-cta-water-ring {
+  0% {
+    opacity: 0.82;
+    transform: scale(0.18);
+  }
+
+  58% {
+    opacity: 0.48;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.46);
+  }
+}
+
+@keyframes liquid-cta-glint {
+  0% {
+    opacity: 0;
+    transform: rotate(-13deg) scale(0.42) translateX(-0.45rem);
+  }
+
+  32% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+    transform: rotate(-13deg) scale(1.36) translateX(0.72rem);
+  }
+}
+
+@keyframes liquid-button-surface-slosh {
+  0% {
+    opacity: 0.78;
+    background-position: 0 0;
+  }
+
+  42% {
+    opacity: 0.92;
+    background-position: 0.9rem -0.2rem;
+  }
+
+  100% {
+    opacity: 0.58;
+    background-position: 0 0;
+  }
+}
+
 .sticky-offer-bar {
   grid-template-columns: max-content minmax(10.75rem, 24rem) !important;
 }
