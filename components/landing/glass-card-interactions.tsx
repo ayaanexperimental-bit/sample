@@ -11,6 +11,28 @@ const LIQUID_RIPPLE_SELECTOR = [
   "a[data-ripple='liquid']"
 ].join(",");
 
+function ensureWaterSurface(control: HTMLElement) {
+  if (control.querySelector(":scope > .liquid-button-pool")) {
+    return;
+  }
+
+  const pool = document.createElement("span");
+  pool.className = "liquid-button-pool";
+  pool.setAttribute("aria-hidden", "true");
+
+  const depth = document.createElement("span");
+  depth.className = "liquid-button-pool__depth";
+
+  const caustics = document.createElement("span");
+  caustics.className = "liquid-button-pool__caustics";
+
+  const meniscus = document.createElement("span");
+  meniscus.className = "liquid-button-pool__meniscus";
+
+  pool.append(depth, caustics, meniscus);
+  control.prepend(pool);
+}
+
 export function ButtonRippleInteractions() {
   useEffect(() => {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -18,6 +40,8 @@ export function ButtonRippleInteractions() {
     if (reduceMotion) {
       return;
     }
+
+    document.querySelectorAll<HTMLElement>(LIQUID_RIPPLE_SELECTOR).forEach(ensureWaterSurface);
 
     function handlePointerDown(event: PointerEvent) {
       if (event.button !== 0 && event.pointerType === "mouse") {
@@ -34,48 +58,44 @@ export function ButtonRippleInteractions() {
         return;
       }
 
+      ensureWaterSurface(control);
+
       const rect = control.getBoundingClientRect();
       const baseSize = Math.max(rect.width, rect.height);
-      const isStickyControl = control.classList.contains("sticky-offer-button");
-      const size = isStickyControl ? Math.min(baseSize * 0.95, 112) : Math.min(baseSize * 1.18, 220);
+      const size = Math.min(baseSize * 1.55, control.classList.contains("sticky-offer-button") ? 150 : 280);
       const originX = event.clientX - rect.left;
       const originY = event.clientY - rect.top;
-      const ripple = document.createElement("span");
-      const ring = document.createElement("span");
-      const glint = document.createElement("span");
-      const wave = document.createElement("span");
+      const pool = control.querySelector<HTMLElement>(":scope > .liquid-button-pool");
+      const ripples = Array.from({ length: 5 }, (_, index) => {
+        const ripple = document.createElement("span");
+        const rippleSize = size * (0.42 + index * 0.16);
 
-      ripple.className = "liquid-cta-ripple";
-      ripple.style.width = `${size}px`;
-      ripple.style.height = `${size}px`;
-      ripple.style.left = `${originX - size / 2}px`;
-      ripple.style.top = `${originY - size / 2}px`;
+        ripple.className = `liquid-water-ripple liquid-water-ripple--${index + 1}`;
+        ripple.style.width = `${rippleSize}px`;
+        ripple.style.height = `${rippleSize}px`;
+        ripple.style.left = `${originX - rippleSize / 2}px`;
+        ripple.style.top = `${originY - rippleSize / 2}px`;
+        ripple.style.animationDelay = `${index * 72}ms`;
 
-      ring.className = "liquid-cta-ripple liquid-cta-ripple--ring";
-      ring.style.width = `${size * 0.72}px`;
-      ring.style.height = `${size * 0.72}px`;
-      ring.style.left = `${originX - (size * 0.72) / 2}px`;
-      ring.style.top = `${originY - (size * 0.72) / 2}px`;
+        return ripple;
+      });
 
-      glint.className = "liquid-cta-ripple liquid-cta-ripple--glint";
-      glint.style.width = `${Math.max(size * 0.34, 34)}px`;
-      glint.style.height = `${Math.max(size * 0.16, 18)}px`;
-      glint.style.left = `${originX - Math.max(size * 0.34, 34) / 2}px`;
-      glint.style.top = `${originY - Math.max(size * 0.16, 18) / 2}px`;
+      const lens = document.createElement("span");
+      lens.className = "liquid-water-lens";
+      lens.style.width = `${size * 0.72}px`;
+      lens.style.height = `${size * 0.36}px`;
+      lens.style.left = `${originX - (size * 0.72) / 2}px`;
+      lens.style.top = `${originY - (size * 0.36) / 2}px`;
 
-      wave.className = "liquid-button-wave";
-      wave.style.setProperty("--wave-x", `${originX}px`);
-      wave.style.setProperty("--wave-y", `${originY}px`);
-
+      control.style.setProperty("--water-x", `${originX}px`);
+      control.style.setProperty("--water-y", `${originY}px`);
       control.classList.add("liquid-cta-rippling");
-      control.append(wave, ripple, ring, glint);
+      pool?.append(lens, ...ripples);
       window.setTimeout(() => {
-        wave.remove();
-        ripple.remove();
-        ring.remove();
-        glint.remove();
+        lens.remove();
+        ripples.forEach((ripple) => ripple.remove());
         control.classList.remove("liquid-cta-rippling");
-      }, 980);
+      }, 1450);
     }
 
     document.addEventListener("pointerdown", handlePointerDown, { passive: true });
@@ -96,20 +116,20 @@ export function ButtonRippleInteractions() {
       <filter id="liquid-button-water-filter" x="-25%" y="-25%" width="150%" height="150%">
         <feTurbulence
           type="fractalNoise"
-          baseFrequency="0.018 0.052"
-          numOctaves="2"
-          seed="7"
+          baseFrequency="0.012 0.038"
+          numOctaves="3"
+          seed="11"
           result="waterNoise"
         >
           <animate
             attributeName="baseFrequency"
-            dur="1.6s"
-            values="0.018 0.052;0.028 0.038;0.018 0.052"
+            dur="2.4s"
+            values="0.012 0.038;0.018 0.028;0.012 0.038"
             repeatCount="indefinite"
           />
         </feTurbulence>
-        <feDisplacementMap in="SourceGraphic" in2="waterNoise" scale="8" xChannelSelector="R" yChannelSelector="G">
-          <animate attributeName="scale" dur="0.9s" values="11;4;0" repeatCount="1" fill="freeze" />
+        <feDisplacementMap in="SourceGraphic" in2="waterNoise" scale="10" xChannelSelector="R" yChannelSelector="G">
+          <animate attributeName="scale" dur="1.35s" values="12;7;3;0" repeatCount="1" fill="freeze" />
         </feDisplacementMap>
       </filter>
     </svg>
