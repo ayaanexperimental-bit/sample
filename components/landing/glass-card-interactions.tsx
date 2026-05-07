@@ -39,12 +39,30 @@ function ensureWaterSurface(control: HTMLElement) {
 export function ButtonRippleInteractions() {
   useEffect(() => {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
 
     if (reduceMotion) {
       return;
     }
 
-    document.querySelectorAll<HTMLElement>(LIQUID_RIPPLE_SELECTOR).forEach(ensureWaterSurface);
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    const hydrateVisibleControls = () => {
+      document.querySelectorAll<HTMLElement>(LIQUID_RIPPLE_SELECTOR).forEach((control) => {
+        const rect = control.getBoundingClientRect();
+
+        if (rect.bottom >= 0 && rect.top <= window.innerHeight + 160) {
+          ensureWaterSurface(control);
+        }
+      });
+    };
+
+    const idleHandle =
+      idleWindow.requestIdleCallback?.(hydrateVisibleControls, { timeout: 1400 }) ??
+      window.setTimeout(hydrateVisibleControls, 1000);
 
     function updateWaterOrigin(control: HTMLElement, event: PointerEvent) {
       const rect = control.getBoundingClientRect();
@@ -78,7 +96,10 @@ export function ButtonRippleInteractions() {
       const baseSize = Math.max(rect.width, rect.height);
       const size = Math.min(baseSize * 1.86, control.classList.contains("sticky-offer-button") ? 180 : 340);
       const pool = control.querySelector<HTMLElement>(":scope > .liquid-button-pool");
-      const ripples = Array.from({ length: 9 }, (_, index) => {
+      const rippleCount = coarsePointer ? 6 : 9;
+      const counterCount = coarsePointer ? 2 : 3;
+      const dropletCount = coarsePointer ? 5 : 8;
+      const ripples = Array.from({ length: rippleCount }, (_, index) => {
         const ripple = document.createElement("span");
         const rippleSize = size * (0.28 + index * 0.105);
 
@@ -92,7 +113,7 @@ export function ButtonRippleInteractions() {
         return ripple;
       });
 
-      const counterRipples = Array.from({ length: 3 }, (_, index) => {
+      const counterRipples = Array.from({ length: counterCount }, (_, index) => {
         const ripple = document.createElement("span");
         const rippleSize = size * (0.5 + index * 0.18);
 
@@ -106,9 +127,9 @@ export function ButtonRippleInteractions() {
         return ripple;
       });
 
-      const droplets = Array.from({ length: 8 }, (_, index) => {
+      const droplets = Array.from({ length: dropletCount }, (_, index) => {
         const droplet = document.createElement("span");
-        const angle = (Math.PI * 2 * index) / 8 + (index % 2 ? 0.22 : -0.18);
+        const angle = (Math.PI * 2 * index) / dropletCount + (index % 2 ? 0.22 : -0.18);
         const distance = Math.min(baseSize * (0.18 + (index % 3) * 0.07), 58);
 
         droplet.className = "liquid-water-droplet";
@@ -179,6 +200,12 @@ export function ButtonRippleInteractions() {
     document.addEventListener("pointercancel", releasePressedControls, { passive: true });
 
     return () => {
+      if (idleWindow.cancelIdleCallback && typeof idleHandle === "number") {
+        idleWindow.cancelIdleCallback(idleHandle);
+      } else {
+        window.clearTimeout(idleHandle);
+      }
+
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("pointermove", handlePointerMove);
       document.removeEventListener("pointerup", releasePressedControls);

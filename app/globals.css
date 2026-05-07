@@ -5192,6 +5192,7 @@ main#top {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  white-space: nowrap;
 }
 
 .ui-badge--accent,
@@ -5338,5 +5339,189 @@ main#top {
 
   .hero-lede {
     font-size: 1.08rem !important;
+  }
+}
+
+/* Progressive loading and responsiveness pass. */
+.grainient-skeleton {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  background:
+    linear-gradient(100deg, transparent 24%, rgb(255 255 255 / 0.18) 42%, transparent 60%) 0 0 / 220% 100%,
+    radial-gradient(circle at 18% 22%, rgb(255 193 227 / 0.44), transparent 23rem),
+    radial-gradient(circle at 78% 18%, rgb(216 108 196 / 0.24), transparent 25rem),
+    radial-gradient(circle at 58% 78%, rgb(109 203 209 / 0.2), transparent 26rem),
+    linear-gradient(135deg, #fff8fc, #fff1f8);
+  opacity: 0.72;
+  animation: skeleton-sheen 1.6s ease-in-out infinite;
+}
+
+.hero-photo-slot img {
+  background:
+    linear-gradient(100deg, transparent 24%, rgb(255 255 255 / 0.22) 42%, transparent 60%) 0 0 / 220% 100%,
+    linear-gradient(135deg, rgb(255 230 243 / 0.92), rgb(208 247 251 / 0.62));
+}
+
+.page-skeleton {
+  min-height: 100svh;
+  padding: 1rem clamp(1rem, 3vw, 2rem);
+  background:
+    radial-gradient(circle at 16% 18%, rgb(255 193 227 / 0.44), transparent 24rem),
+    radial-gradient(circle at 84% 16%, rgb(109 203 209 / 0.22), transparent 26rem),
+    linear-gradient(135deg, #fff8fc, #fff1f8);
+  color: transparent;
+}
+
+.page-skeleton__nav {
+  width: min(100%, 82rem);
+  min-height: 4rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-inline: auto;
+  border: 1px solid rgb(255 255 255 / 0.72);
+  border-radius: 999px;
+  padding: 0.7rem;
+  background: rgb(255 255 255 / 0.44);
+  box-shadow: 0 16px 44px rgb(91 33 72 / 0.1);
+}
+
+.page-skeleton__nav span:first-child {
+  width: 12rem;
+}
+
+.page-skeleton__nav span:last-child {
+  width: 7rem;
+}
+
+.page-skeleton__hero {
+  width: min(100%, 88rem);
+  min-height: calc(100svh - 6rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.7fr);
+  align-items: center;
+  gap: clamp(2rem, 5vw, 5rem);
+  margin-inline: auto;
+  padding-block: clamp(3rem, 8vw, 6rem);
+}
+
+.page-skeleton__copy {
+  display: grid;
+  gap: 1rem;
+}
+
+.page-skeleton__pill,
+.page-skeleton__title,
+.page-skeleton__line,
+.page-skeleton__button,
+.page-skeleton__media,
+.page-skeleton__nav span {
+  display: block;
+  border-radius: 999px;
+  background:
+    linear-gradient(100deg, transparent 26%, rgb(255 255 255 / 0.5) 44%, transparent 62%) 0 0 / 220% 100%,
+    rgb(255 255 255 / 0.56);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.82), 0 16px 40px rgb(91 33 72 / 0.08);
+  animation: skeleton-sheen 1.45s ease-in-out infinite;
+}
+
+.page-skeleton__pill {
+  width: min(70%, 28rem);
+  height: 2.1rem;
+}
+
+.page-skeleton__title {
+  width: 100%;
+  height: clamp(4.2rem, 12vw, 7.4rem);
+  border-radius: 1.2rem;
+}
+
+.page-skeleton__title--short {
+  width: 72%;
+}
+
+.page-skeleton__line {
+  width: 86%;
+  height: 1.35rem;
+}
+
+.page-skeleton__line--short {
+  width: 64%;
+}
+
+.page-skeleton__button {
+  width: min(100%, 28rem);
+  height: 3.6rem;
+  margin-top: 1rem;
+}
+
+.page-skeleton__media {
+  aspect-ratio: 3 / 4;
+  border-radius: 1.6rem;
+}
+
+@keyframes skeleton-sheen {
+  0% {
+    background-position: 160% 0, 0 0, 0 0, 0 0, 0 0;
+  }
+
+  100% {
+    background-position: -60% 0, 0 0, 0 0, 0 0, 0 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .hero-section {
+    min-height: auto !important;
+    padding-top: 5.5rem !important;
+  }
+
+  .hero-layout {
+    gap: clamp(1.5rem, 5vw, 2.5rem) !important;
+  }
+
+  .page-skeleton__hero {
+    grid-template-columns: 1fr;
+    align-content: start;
+  }
+
+  .page-skeleton__media {
+    width: min(100%, 24rem);
+    justify-self: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .ui-container {
+    width: min(100% - 1.35rem, var(--container-max-width)) !important;
+  }
+
+  .hero-copy h1 {
+    font-size: clamp(2.82rem, 14.2vw, 4.35rem) !important;
+    line-height: 0.92 !important;
+  }
+
+  .hero-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  .hero-media {
+    width: min(100%, 25rem) !important;
+    margin-inline: auto !important;
+  }
+
+  .page-skeleton {
+    padding-inline: 0.75rem;
+  }
+
+  .page-skeleton__nav span:first-child {
+    width: 4rem;
+  }
+
+  .page-skeleton__nav span:last-child {
+    width: 5rem;
   }
 }
