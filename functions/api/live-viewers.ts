@@ -10,7 +10,8 @@ type PagesContext = {
 };
 
 const ACTIVE_TTL_SECONDS = 120;
-const SESSION_PREFIX = "viewer:";
+const ACTIVE_TTL_MS = ACTIVE_TTL_SECONDS * 1000;
+const VIEWER_INDEX_KEY = "viewer:index";
 const MAX_COUNTED_SESSIONS = 1000;
 
 const jsonHeaders = {
@@ -42,22 +43,75 @@ export async function onRequest({ request, env }: PagesContext) {
     return json({ error: "Invalid session" }, 400);
   }
 
-  const key = `${SESSION_PREFIX}${body.sessionId}`;
-
-  if (body.active === false) {
-    await env.LIVE_VIEWERS.delete(key);
-  } else {
-    await env.LIVE_VIEWERS.put(key, String(Date.now()), {
-      expirationTtl: ACTIVE_TTL_SECONDS
-    });
-  }
-
-  return json({ viewers: await countActiveViewers(env.LIVE_VIEWERS) });
+  return json({
+    viewers: await updateActiveViewers(env.LIVE_VIEWERS, body.sessionId, body.active !== false)
+  });
 }
 
 async function countActiveViewers(store: KVNamespace) {
-  const sessions = await store.list({ prefix: SESSION_PREFIX, limit: MAX_COUNTED_SESSIONS });
-  return Math.max(1, sessions.keys.length);
+  const sessions = await readSessionIndex(store);
+  return Math.max(1, pruneExpiredSessions(sessions, Date.now()).size);
+}
+
+async function updateActiveViewers(store: KVNamespace, sessionId: string, active: boolean) {
+  const now = Date.now();
+  const sessions = pruneExpiredSessions(await readSessionIndex(store), now);
+
+  if (active) {
+    sessions.set(sessionId, now + ACTIVE_TTL_MS);
+  } else {
+    sessions.delete(sessionId);
+  }
+
+  const compactSessions = Array.from(sessions.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, MAX_COUNTED_SESSIONS);
+
+  await store.put(VIEWER_INDEX_KEY, JSON.stringify(compactSessions), {
+    expirationTtl: ACTIVE_TTL_SECONDS * 2
+  });
+
+  return Math.max(1, compactSessions.length);
+}
+
+async function readSessionIndex(store: KVNamespace) {
+  const raw = await store.get(VIEWER_INDEX_KEY);
+  if (!raw) {
+    return new Map<string, number>();
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return new Map<string, number>();
+    }
+
+    const sessions = new Map<string, number>();
+    for (const entry of parsed) {
+      if (
+        Array.isArray(entry) &&
+        typeof entry[0] === "string" &&
+        typeof entry[1] === "number" &&
+        isValidSessionId(entry[0])
+      ) {
+        sessions.set(entry[0], entry[1]);
+      }
+    }
+
+    return sessions;
+  } catch {
+    return new Map<string, number>();
+  }
+}
+
+function pruneExpiredSessions(sessions: Map<string, number>, now: number) {
+  for (const [sessionId, expiresAt] of sessions) {
+    if (expiresAt <= now) {
+      sessions.delete(sessionId);
+    }
+  }
+
+  return sessions;
 }
 
 function isValidSessionId(sessionId: string) {
