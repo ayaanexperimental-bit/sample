@@ -20,8 +20,11 @@ export default function LiquidLabPage() {
             <CssWaterButton />
           </article>
           <article>
-            <h2>Canvas jelly prototype</h2>
-            <p>Uses a local canvas spring surface inspired by the TypeGPU jelly slider behavior.</p>
+            <h2>TypeGPU-style canvas jelly</h2>
+            <p>
+              Uses a persistent spring surface with touch pressure, rebound, rim lighting,
+              absorption shading, and caustic highlights.
+            </p>
             <JellyCanvasButton />
           </article>
         </div>

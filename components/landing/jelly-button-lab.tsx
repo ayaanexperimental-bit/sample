@@ -8,6 +8,7 @@ type Point = {
   y: number;
   baseY: number;
   velocity: number;
+  phase: number;
 };
 
 function drawRoundedRect(ctx: CanvasRenderingContext2D, width: number, height: number, radius: number) {
@@ -55,7 +56,7 @@ export function JellyCanvasButton() {
       pointsRef.current = Array.from({ length: pointCount }, (_, index) => {
         const x = (rect.width * index) / (pointCount - 1);
         const baseY = rect.height * 0.48;
-        return { x, y: baseY, baseY, velocity: 0 };
+        return { x, y: baseY, baseY, velocity: 0, phase: index * 0.48 };
       });
     }
 
@@ -65,6 +66,8 @@ export function JellyCanvasButton() {
       const height = rect.height;
       const pointer = pointerRef.current;
       frame += 1;
+      context.globalCompositeOperation = "source-over";
+      context.fillStyle = "rgba(255, 255, 255, 0.08)";
       context.clearRect(0, 0, width, height);
 
       const points = pointsRef.current;
@@ -73,11 +76,12 @@ export function JellyCanvasButton() {
         const pressure = pointer.active ? Math.max(0, 1 - distance * 4.8) * pointer.impact : 0;
         const neighbour =
           ((points[index - 1]?.y ?? point.baseY) + (points[index + 1]?.y ?? point.baseY)) / 2;
-        const spring = (point.baseY - point.y) * 0.08;
+        const ambient = Math.sin(frame / 18 + point.phase) * 0.18;
+        const spring = (point.baseY + ambient - point.y) * 0.08;
         const spread = (neighbour - point.y) * 0.035;
 
-        point.velocity += spring + spread + pressure * 2.2;
-        point.velocity *= 0.82;
+        point.velocity += spring + spread + pressure * 3.05;
+        point.velocity *= pointer.active ? 0.78 : 0.86;
         point.y += point.velocity;
       });
 
@@ -95,10 +99,10 @@ export function JellyCanvasButton() {
       context.fillRect(0, 0, width, height);
 
       const water = context.createLinearGradient(0, 0, width, height);
-      water.addColorStop(0, "rgba(255,255,255,0.76)");
-      water.addColorStop(0.38, "rgba(176,236,255,0.28)");
-      water.addColorStop(0.7, "rgba(255,160,220,0.24)");
-      water.addColorStop(1, "rgba(69,39,170,0.34)");
+      water.addColorStop(0, "rgba(255,255,255,0.82)");
+      water.addColorStop(0.24, "rgba(218,251,255,0.42)");
+      water.addColorStop(0.56, "rgba(255,151,214,0.26)");
+      water.addColorStop(1, "rgba(54,22,138,0.5)");
 
       context.beginPath();
       context.moveTo(0, height);
@@ -116,17 +120,46 @@ export function JellyCanvasButton() {
       context.fillStyle = water;
       context.fill();
 
-      for (let i = 0; i < 4; i += 1) {
+      const absorption = context.createLinearGradient(0, height * 0.18, 0, height);
+      absorption.addColorStop(0, "rgba(255,255,255,0)");
+      absorption.addColorStop(0.48, "rgba(28,15,86,0.08)");
+      absorption.addColorStop(1, "rgba(22,12,76,0.34)");
+      context.fillStyle = absorption;
+      context.fillRect(0, 0, width, height);
+
+      const depression = context.createRadialGradient(
+        pointer.x * width,
+        pointer.y * height,
+        0,
+        pointer.x * width,
+        pointer.y * height,
+        width * 0.34
+      );
+      depression.addColorStop(0, `rgba(255,255,255,${0.34 + pointer.impact * 0.28})`);
+      depression.addColorStop(0.24, `rgba(155,235,255,${0.16 + pointer.impact * 0.18})`);
+      depression.addColorStop(0.48, `rgba(43,19,121,${0.06 + pointer.impact * 0.14})`);
+      depression.addColorStop(1, "rgba(255,255,255,0)");
+      context.fillStyle = depression;
+      context.fillRect(0, 0, width, height);
+
+      for (let i = 0; i < 6; i += 1) {
         const y = height * (0.24 + i * 0.16) + Math.sin(frame / 18 + i) * 3;
         const caustic = context.createLinearGradient(0, y, width, y + 18);
         caustic.addColorStop(0, "rgba(255,255,255,0)");
-        caustic.addColorStop(0.5, "rgba(255,255,255,0.22)");
+        caustic.addColorStop(0.5, "rgba(255,255,255,0.2)");
         caustic.addColorStop(1, "rgba(255,255,255,0)");
         context.strokeStyle = caustic;
-        context.lineWidth = 1.4;
+        context.lineWidth = i % 2 === 0 ? 1.25 : 0.8;
         context.beginPath();
         context.moveTo(-20, y);
-        context.bezierCurveTo(width * 0.25, y - 14, width * 0.62, y + 22, width + 20, y - 6);
+        context.bezierCurveTo(
+          width * 0.22,
+          y - 12 - pointer.impact * 6,
+          width * 0.62,
+          y + 20 + pointer.impact * 9,
+          width + 20,
+          y - 6
+        );
         context.stroke();
       }
 
@@ -143,6 +176,18 @@ export function JellyCanvasButton() {
       highlight.addColorStop(1, "rgba(255,255,255,0)");
       context.fillStyle = highlight;
       context.fillRect(0, 0, width, height);
+
+      const rim = context.createLinearGradient(0, 0, width, height);
+      rim.addColorStop(0, "rgba(255,255,255,0.88)");
+      rim.addColorStop(0.35, "rgba(210,251,255,0.46)");
+      rim.addColorStop(0.78, "rgba(255,183,230,0.38)");
+      rim.addColorStop(1, "rgba(41,21,110,0.36)");
+      context.strokeStyle = rim;
+      context.lineWidth = 4.2;
+      context.globalCompositeOperation = "screen";
+      drawRoundedRect(context, width - 4, height - 4, height / 2 - 2);
+      context.stroke();
+      context.globalCompositeOperation = "source-over";
 
       context.strokeStyle = "rgba(255,255,255,0.72)";
       context.lineWidth = 1.5;

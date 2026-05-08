@@ -6524,6 +6524,20 @@ main#top {
   z-index: 1;
 }
 
+.glass-card-ripple {
+  position: absolute !important;
+  z-index: 2 !important;
+  display: block !important;
+  flex: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  inset: auto !important;
+  contain: paint !important;
+}
+
 @media (max-width: 760px) {
   .liquid-lab-grid {
     grid-template-columns: 1fr;
