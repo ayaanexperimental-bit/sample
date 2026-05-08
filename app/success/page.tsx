@@ -1,38 +1,47 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+  title: "Payment Verification Required",
+};
 
 export default function SuccessPage() {
   return (
     <main className="success-page">
       <article className="success-document">
-        <p className="policy-kicker">Payment successful</p>
-        <h1>Your registration is received.</h1>
+        <p className="policy-kicker">Verification required</p>
+        <h1>This confirmation page is protected.</h1>
         <p>
-          Razorpay has received your payment for Women Health Masterclass 101. Keep your payment ID
-          available for support if needed.
+          A direct browser visit to this page does not confirm payment or registration. Payment
+          status is accepted only after verification through the approved Razorpay and automation
+          flow.
         </p>
 
         <section className="success-panel" aria-labelledby="success-next-step-title">
-          <h2 id="success-next-step-title">Next step: check your verified payment updates</h2>
+          <h2 id="success-next-step-title">No payment status is shown here</h2>
           <p>
-            Class access, reminders, and community details are shared only after the payment is
-            verified through the approved automation flow.
+            Class access, reminders, and community details are shared only after the backend
+            confirms a genuine successful payment. This page cannot be used as proof of purchase.
           </p>
 
           <span
             className="ui-button ui-button--secondary ui-button--lg success-action"
             aria-disabled="true"
           >
-            Community Link Sent After Verification
+            Confirmation Locked Until Verification
           </span>
         </section>
 
         <p>
-          Keep your Razorpay payment ID available if support asks for confirmation. Do not share
-          private class or community links publicly.
+          If you completed payment, keep your Razorpay payment ID available and wait for the official
+          confirmation message from the approved follow-up channel.
         </p>
         <p className="policy-warning">
-          Confirmation and follow-up messages are handled through the Razorpay and Pabbly automation
-          flow.
+          No payment, class, or community access is granted from this public URL.
         </p>
         <Link href="/">Back to landing page</Link>
       </article>

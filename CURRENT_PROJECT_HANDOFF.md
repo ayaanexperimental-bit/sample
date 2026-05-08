@@ -6,7 +6,7 @@ Use this file as the source-of-truth handoff when starting a new Codex chat.
 
 - Workspace: `C:\Users\Yours Wellness\Documents\Codex`
 - Live domain: `https://freedomfromdiabetes.in`
-- Latest Cloudflare preview deployment: `https://34f82ac9.freedomfromdiabetes.pages.dev`
+- Latest Cloudflare preview deployment: `https://a27d298d.freedomfromdiabetes.pages.dev`
 - Product: Heal Your Hormones / Women Health Masterclass 101 landing page
 - Current checkout state: Website checkout button is intentionally paused. The old live Razorpay payment-page link was removed from the site button.
 
@@ -28,6 +28,13 @@ Important rule:
 - Do not reconnect the old Razorpay/Pabbly ecosystem into the new website flow unless explicitly requested.
 - Do not add the raw Razorpay payment link back behind the website CTA unless explicitly requested.
 - Preserve all routing, API routes, legal pages, success page, and existing automation assumptions.
+
+## Latest Security Fix
+
+- `/success` no longer displays a public payment-success or thank-you confirmation when accessed directly.
+- Direct visits now show a verification-required state with `noindex, nofollow` metadata.
+- No Razorpay/payment links were reconnected.
+- A real future success state still needs backend payment verification before showing confirmation content.
 
 ## Latest UI Work Completed
 
