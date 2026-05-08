@@ -7098,3 +7098,101 @@ main#top {
       100% 50%;
   }
 }
+
+/* Final shine pass: solid typography color with a clipped light sweep, no gradient-colored font. */
+#pricing-title,
+.pricing-price {
+  background: none !important;
+  -webkit-background-clip: border-box !important;
+  background-clip: border-box !important;
+  -webkit-text-fill-color: currentColor !important;
+  animation: none !important;
+}
+
+#pricing-title {
+  color: #065f5b !important;
+  filter:
+    drop-shadow(0 1px 0 rgb(255 255 255 / 0.74))
+    drop-shadow(0 0 18px rgb(20 184 166 / 0.18)) !important;
+}
+
+.pricing-price {
+  color: #5c173f !important;
+  filter:
+    drop-shadow(0 1px 0 rgb(255 255 255 / 0.82))
+    drop-shadow(0 0 18px rgb(236 72 153 / 0.22)) !important;
+}
+
+.shine-text {
+  position: relative;
+  display: inline-block;
+  color: currentColor;
+  overflow: hidden;
+}
+
+.shine-text::after {
+  content: attr(data-shine-text);
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  color: transparent;
+  background:
+    linear-gradient(104deg, transparent 0 32%, rgb(255 255 255 / 0.92) 44%, rgb(180 255 247 / 0.76) 50%, transparent 62% 100%);
+  background-size: 240% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine-text-sweep 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.pricing-price .shine-text::after {
+  background:
+    linear-gradient(104deg, transparent 0 32%, rgb(255 255 255 / 0.95) 44%, rgb(255 196 226 / 0.82) 50%, transparent 62% 100%);
+  background-size: 240% 100%;
+  animation-duration: 2.35s;
+}
+
+.hero-details li > span {
+  position: relative !important;
+  overflow: visible !important;
+  contain: none !important;
+  background: #ec4899 !important;
+  box-shadow:
+    0 0 0 0 rgb(236 72 153 / 0.3),
+    0 0 12px rgb(236 72 153 / 0.32) !important;
+  animation: hero-detail-dot-breathe 1.45s ease-in-out infinite !important;
+}
+
+.hero-details li > span::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 50% auto auto 50% !important;
+  width: 2.1rem !important;
+  height: 2.1rem !important;
+  margin: -1.05rem 0 0 -1.05rem !important;
+  border: 1px solid rgb(236 72 153 / 0.5) !important;
+  border-radius: 999px !important;
+  opacity: 0;
+  transform-origin: center;
+  animation: hero-detail-dot-ring 1.45s ease-out infinite !important;
+  pointer-events: none !important;
+}
+
+@keyframes shine-text-sweep {
+  0%,
+  28% {
+    background-position: 160% 50%;
+    opacity: 0;
+  }
+
+  46% {
+    opacity: 0.95;
+  }
+
+  72%,
+  100% {
+    background-position: -60% 50%;
+    opacity: 0;
+  }
+}

@@ -6,7 +6,7 @@ Use this file as the source-of-truth handoff when starting a new Codex chat.
 
 - Workspace: `C:\Users\Yours Wellness\Documents\Codex`
 - Live domain: `https://freedomfromdiabetes.in`
-- Latest Cloudflare preview deployment: `https://60b301e0.freedomfromdiabetes.pages.dev`
+- Latest Cloudflare preview deployment: `https://1ad19b12.freedomfromdiabetes.pages.dev`
 - Product: Heal Your Hormones / Women Health Masterclass 101 landing page
 - Current checkout state: Website checkout button is intentionally paused. The old live Razorpay payment-page link was removed from the site button.
 
@@ -41,6 +41,8 @@ Important rule:
 - Replaced the delayed WebGL/React Bits Grainient page background with a CSS-only full-viewport gradient mesh.
 - The background no longer mounts a canvas, which avoids platform-specific blinking/corner-only rendering.
 - Verified mobile and desktop render with `.ambient-background--mesh`, `stable-mesh-drift`, and zero ambient canvas elements.
+- Pricing heading and `Rs. 51` use solid text colors with a separate clipped shine sweep.
+- Hero detail dots below View Details pulse again without changing card dimensions.
 
 ## Latest UI Work Completed
 

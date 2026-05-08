@@ -14,13 +14,24 @@ export function Pricing() {
       <Container className="pricing-layout">
         <div className="pricing-copy">
           <Badge tone="accent">Registration</Badge>
-          <h2 id="pricing-title">Reserve before this limited seat offer resets.</h2>
+          <h2 id="pricing-title">
+            <span
+              className="shine-text"
+              data-shine-text="Reserve before this limited seat offer resets."
+            >
+              Reserve before this limited seat offer resets.
+            </span>
+          </h2>
         </div>
 
         <div className="pricing-card">
           <div className="pricing-card-content">
             <p className="pricing-label">Current price</p>
-            <div className="pricing-price">Rs. 51</div>
+            <div className="pricing-price">
+              <span className="shine-text" data-shine-text="Rs. 51">
+                Rs. 51
+              </span>
+            </div>
             <p className="pricing-note">Checkout access is currently paused for final setup.</p>
             <CheckoutButton />
             <p className="pricing-security">
