@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 
 const exportWorkspace = ".cloudflare-pages-build";
 const copiedItems = [
@@ -46,6 +46,7 @@ try {
   });
   rmSync("out", { recursive: true, force: true });
   cpSync(join(exportWorkspace, "out"), "out", { recursive: true });
+  removeNestedNextTextPayloads("out");
 } finally {
   rmSync(exportWorkspace, { recursive: true, force: true });
 }
@@ -60,4 +61,33 @@ function removeForceDynamicFromStaticHome() {
   const pagePath = join(exportWorkspace, "app", "page.tsx");
   const source = readFileSync(pagePath, "utf8");
   writeFileSync(pagePath, source.replace('export const dynamic = "force-dynamic";', ""));
+}
+
+function removeNestedNextTextPayloads(outputDir) {
+  for (const filePath of listFiles(outputDir)) {
+    if (!filePath.endsWith(".txt")) {
+      continue;
+    }
+
+    const parent = relative(outputDir, dirname(filePath));
+    if (parent && parent !== ".") {
+      rmSync(filePath, { force: true });
+    }
+  }
+}
+
+function listFiles(dir) {
+  const entries = readdirSync(dir);
+  const files = [];
+
+  for (const entry of entries) {
+    const entryPath = join(dir, entry);
+    if (statSync(entryPath).isDirectory()) {
+      files.push(...listFiles(entryPath));
+    } else {
+      files.push(entryPath);
+    }
+  }
+
+  return files;
 }
