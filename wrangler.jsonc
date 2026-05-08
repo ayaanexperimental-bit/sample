@@ -8,5 +8,11 @@
   },
   "vars": {
     "NEXT_PUBLIC_PAYMENT_ENABLED": "false"
-  }
+  },
+  "kv_namespaces": [
+    {
+      "binding": "LIVE_VIEWERS",
+      "id": "3b04df319e2f49bebb9286c5f7758630"
+    }
+  ]
 }

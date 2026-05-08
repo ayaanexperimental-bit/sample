@@ -6538,6 +6538,103 @@ main#top {
   contain: paint !important;
 }
 
+/* Sticky header and hero detail stability pass. */
+.site-header,
+.site-header:hover,
+.site-header:active,
+.site-header:focus-within {
+  position: sticky !important;
+  top: max(0.65rem, env(safe-area-inset-top)) !important;
+  left: auto !important;
+  right: auto !important;
+  width: min(calc(100% - 2rem), 82rem) !important;
+  max-width: 82rem !important;
+  margin: clamp(0.85rem, 2vw, 1.15rem) auto clamp(-5rem, -7vw, -4.25rem) !important;
+  transform: none !important;
+  translate: none !important;
+  scale: none !important;
+  will-change: auto !important;
+  contain: layout paint !important;
+}
+
+.site-header::before,
+.site-header::after,
+.site-header:hover::before,
+.site-header:hover::after,
+.site-header:active::before,
+.site-header:active::after,
+.site-header:focus-within::before,
+.site-header:focus-within::after {
+  transform: none !important;
+  translate: none !important;
+  scale: none !important;
+}
+
+.hero-details li,
+.hero-details li:hover,
+.hero-details li:active,
+.hero-details li:focus-within,
+.hero-details li.is-touch-active {
+  width: 100% !important;
+  min-height: 4.85rem !important;
+  max-height: none !important;
+  transform: none !important;
+  translate: none !important;
+  scale: none !important;
+  contain: layout paint !important;
+}
+
+.hero-details li > span {
+  flex: 0 0 0.74rem !important;
+  width: 0.74rem !important;
+  height: 0.74rem !important;
+  min-width: 0.74rem !important;
+  min-height: 0.74rem !important;
+  max-width: 0.74rem !important;
+  max-height: 0.74rem !important;
+  transform: none !important;
+  translate: none !important;
+  scale: none !important;
+  contain: paint !important;
+}
+
+.hero-details li > span::before,
+.hero-details li > span::after {
+  position: absolute !important;
+  inset: 50% auto auto 50% !important;
+  width: 2.1rem !important;
+  height: 2.1rem !important;
+  margin: -1.05rem 0 0 -1.05rem !important;
+  pointer-events: none !important;
+  contain: paint !important;
+}
+
+.hero-details .glass-card-ripple {
+  pointer-events: none !important;
+}
+
+@media (max-width: 760px) {
+  .site-header,
+  .site-header:hover,
+  .site-header:active,
+  .site-header:focus-within {
+    width: min(calc(100% - 1rem), 82rem) !important;
+    margin: 0.6rem auto -4.6rem !important;
+  }
+
+  .hero-section {
+    padding-top: 6.7rem !important;
+  }
+
+  .hero-details li,
+  .hero-details li:hover,
+  .hero-details li:active,
+  .hero-details li:focus-within,
+  .hero-details li.is-touch-active {
+    min-height: 4.72rem !important;
+  }
+}
+
 @media (max-width: 760px) {
   .liquid-lab-grid {
     grid-template-columns: 1fr;

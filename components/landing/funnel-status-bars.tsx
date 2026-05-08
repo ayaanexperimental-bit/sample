@@ -1,3 +1,5 @@
+import { LiveViewerCount } from "@/components/landing/live-viewer-count";
+
 export function FunnelStatusBars() {
   return (
     <div className="funnel-status" aria-label="Workshop availability and activity">
@@ -13,7 +15,7 @@ export function FunnelStatusBars() {
       <div className="funnel-status__live">
         <span className="funnel-status__dot funnel-status__dot--live" aria-hidden="true" />
         <span className="funnel-status__copy">
-          Live masterclass registrations are open now
+          <LiveViewerCount />
         </span>
       </div>
     </div>

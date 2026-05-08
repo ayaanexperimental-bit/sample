@@ -10,6 +10,7 @@ import { Logistics } from "@/components/landing/logistics";
 import { MethodPillars } from "@/components/landing/method-pillars";
 import { Outcomes } from "@/components/landing/outcomes";
 import { Pricing } from "@/components/landing/pricing";
+import { SiteHeader } from "@/components/landing/site-header";
 import { StickyOfferBar } from "@/components/landing/sticky-offer-bar";
 import { Testimonials } from "@/components/landing/testimonials";
 import { WhatYouLearn } from "@/components/landing/what-you-learn";
@@ -24,6 +25,7 @@ export default function Home() {
       <AmbientBackground />
       <GlassCardInteractions />
       <FunnelStatusBars />
+      <SiteHeader />
       <Hero schedule={schedule} />
       <CredibilityStrip />
       <WhoItsFor />
