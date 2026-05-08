@@ -6869,3 +6869,110 @@ main#top {
       drop-shadow(0 0 22px rgb(45 212 191 / 0.3));
   }
 }
+
+/* Requested final Grainient and text-shine pass. */
+.ambient-background--webgl-ready .grainient-container {
+  opacity: 0.34 !important;
+  mix-blend-mode: soft-light;
+}
+
+.hero-details li > span {
+  background: #ec4899 !important;
+  box-shadow:
+    0 0 0 0 rgb(236 72 153 / 0.3),
+    0 0 12px rgb(236 72 153 / 0.32) !important;
+  animation: hero-detail-dot-breathe 1.45s ease-in-out infinite !important;
+}
+
+.hero-details li > span::after {
+  content: "" !important;
+  border: 1px solid rgb(236 72 153 / 0.48) !important;
+  border-radius: 999px !important;
+  opacity: 0;
+  animation: hero-detail-dot-ring 1.45s ease-out infinite !important;
+}
+
+.hero-details li:nth-child(2) > span,
+.hero-details li:nth-child(2) > span::after {
+  animation-delay: 160ms !important;
+}
+
+.hero-details li:nth-child(3) > span,
+.hero-details li:nth-child(3) > span::after {
+  animation-delay: 320ms !important;
+}
+
+#pricing-title,
+.pricing-price {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  background-size: 220% 100% !important;
+  animation:
+    pricing-title-glow 3.2s ease-in-out infinite,
+    text-shine-pan 2.9s ease-in-out infinite !important;
+}
+
+.pricing-price {
+  overflow: hidden;
+  color: #4b1738 !important;
+  background:
+    linear-gradient(100deg, #4b1738 0%, #8c1d5b 28%, #ffffff 46%, #0f766e 54%, #4b1738 78%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  filter:
+    drop-shadow(0 1px 0 rgb(255 255 255 / 0.82))
+    drop-shadow(0 0 18px rgb(236 72 153 / 0.22)) !important;
+}
+
+#pricing-title {
+  background:
+    linear-gradient(100deg, #062f35 0%, #00796f 24%, #ffffff 44%, #8a5a00 54%, #7f1028 82%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+@keyframes hero-detail-dot-breathe {
+  0%,
+  100% {
+    background-color: #ec4899;
+    box-shadow:
+      0 0 0 0 rgb(236 72 153 / 0.28),
+      0 0 10px rgb(236 72 153 / 0.28);
+    opacity: 0.9;
+  }
+
+  50% {
+    background-color: #f472b6;
+    box-shadow:
+      0 0 0 0.42rem rgb(236 72 153 / 0),
+      0 0 22px rgb(236 72 153 / 0.48);
+    opacity: 1;
+  }
+}
+
+@keyframes hero-detail-dot-ring {
+  0% {
+    opacity: 0.58;
+    transform: scale(0.5);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.28);
+  }
+}
+
+@keyframes text-shine-pan {
+  0%,
+  28% {
+    background-position: 0% 50%;
+  }
+
+  58%,
+  100% {
+    background-position: 100% 50%;
+  }
+}
