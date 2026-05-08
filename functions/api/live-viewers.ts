@@ -9,7 +9,7 @@ type PagesContext = {
   env: Env;
 };
 
-const ACTIVE_TTL_SECONDS = 120;
+const ACTIVE_TTL_SECONDS = 45;
 const ACTIVE_TTL_MS = ACTIVE_TTL_SECONDS * 1000;
 const VIEWER_INDEX_KEY = "viewer:index";
 const MAX_COUNTED_SESSIONS = 1000;
