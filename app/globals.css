@@ -6976,3 +6976,125 @@ main#top {
     background-position: 100% 50%;
   }
 }
+
+/* Stable site-wide gradient mesh: CSS-only, full viewport, no delayed canvas/WebGL. */
+.ambient-background--mesh {
+  width: 100vw;
+  height: 100vh;
+  background:
+    linear-gradient(135deg, #fff6fc 0%, #f4fcff 46%, #fff4fb 100%),
+    var(--color-background) !important;
+  contain: strict;
+  isolation: isolate;
+}
+
+.ambient-background--mesh > span {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+
+.ambient-background__wash {
+  z-index: 0;
+  background:
+    radial-gradient(circle at 16% 18%, rgb(244 114 182 / 0.34), transparent 27rem),
+    radial-gradient(circle at 82% 16%, rgb(20 184 166 / 0.33), transparent 28rem),
+    radial-gradient(circle at 68% 76%, rgb(234 179 8 / 0.16), transparent 30rem),
+    radial-gradient(circle at 18% 82%, rgb(99 102 241 / 0.14), transparent 29rem);
+}
+
+.ambient-background__motion {
+  inset: -14vmax;
+  z-index: 1;
+  background:
+    radial-gradient(circle at 24% 28%, rgb(236 72 153 / 0.28), transparent 22rem),
+    radial-gradient(circle at 74% 28%, rgb(14 165 163 / 0.3), transparent 25rem),
+    radial-gradient(circle at 55% 76%, rgb(245 158 11 / 0.16), transparent 24rem),
+    linear-gradient(120deg, rgb(255 255 255 / 0.04), rgb(20 184 166 / 0.14), rgb(244 114 182 / 0.12));
+  background-size: 132% 132%;
+  opacity: 0.82;
+  animation: stable-mesh-drift 16s ease-in-out infinite alternate;
+}
+
+.ambient-background__texture {
+  z-index: 2;
+  background:
+    linear-gradient(90deg, rgb(37 24 34 / 0.032) 1px, transparent 1px),
+    linear-gradient(rgb(37 24 34 / 0.028) 1px, transparent 1px),
+    radial-gradient(circle at 50% 50%, rgb(255 255 255 / 0.2), transparent 34rem);
+  background-size:
+    96px 96px,
+    96px 96px,
+    100% 100%;
+  opacity: 0.42;
+}
+
+.ambient-background--mesh .ambient-background__readability-veil {
+  z-index: 3;
+  background:
+    linear-gradient(180deg, rgb(255 251 254 / 0.18), rgb(255 247 251 / 0.24) 48%, rgb(247 253 255 / 0.18)),
+    radial-gradient(circle at 50% 12%, rgb(255 255 255 / 0.26), transparent 34rem) !important;
+}
+
+@media (max-width: 760px) {
+  .ambient-background__wash {
+    background:
+      radial-gradient(circle at 12% 16%, rgb(244 114 182 / 0.42), transparent 17rem),
+      radial-gradient(circle at 88% 18%, rgb(20 184 166 / 0.38), transparent 18rem),
+      radial-gradient(circle at 64% 82%, rgb(234 179 8 / 0.18), transparent 19rem),
+      linear-gradient(135deg, rgb(255 246 252 / 0.78), rgb(236 253 255 / 0.54));
+  }
+
+  .ambient-background__motion {
+    inset: -18vmax;
+    opacity: 0.76;
+    animation-duration: 13s;
+  }
+
+  .ambient-background__texture {
+    background-size:
+      74px 74px,
+      74px 74px,
+      100% 100%;
+    opacity: 0.34;
+  }
+
+  .ambient-background--mesh .ambient-background__readability-veil {
+    background:
+      linear-gradient(180deg, rgb(255 251 254 / 0.12), rgb(255 247 251 / 0.2) 48%, rgb(247 253 255 / 0.14)),
+      radial-gradient(circle at 50% 10%, rgb(255 255 255 / 0.18), transparent 20rem) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-background__motion {
+    animation: none !important;
+  }
+}
+
+@keyframes stable-mesh-drift {
+  0% {
+    background-position:
+      0% 0%,
+      100% 0%,
+      50% 100%,
+      0% 50%;
+  }
+
+  50% {
+    background-position:
+      10% 8%,
+      88% 14%,
+      55% 86%,
+      40% 50%;
+  }
+
+  100% {
+    background-position:
+      16% 4%,
+      78% 20%,
+      45% 92%,
+      100% 50%;
+  }
+}
