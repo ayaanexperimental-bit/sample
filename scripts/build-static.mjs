@@ -11,7 +11,6 @@ const copiedItems = [
   "next-env.d.ts",
   "next.config.ts",
   "package.json",
-  "pnpm-lock.yaml",
   "postcss.config.mjs",
   "tsconfig.json"
 ];
