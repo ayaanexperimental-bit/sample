@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Mesh, Program, Renderer, Triangle } from "ogl";
 import "./grainient.css";
 
@@ -134,6 +134,19 @@ void main(){
 }
 `;
 
+const ctxMap = new WeakMap<
+  HTMLDivElement,
+  {
+    renderer: Renderer;
+    program: Program;
+    mesh: Mesh;
+  }
+>();
+
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+const LOW_POWER_VISUAL_QUERY = "(max-width: 760px), (pointer: coarse)";
+const TARGET_FRAME_INTERVAL_MS = 1000 / 24;
+
 export default function Grainient({
   timeSpeed = 0.25,
   colorBalance = 0,
@@ -160,40 +173,40 @@ export default function Grainient({
   className = ""
 }: GrainientProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-    function updatePreference() {
-      setReducedMotion(media.matches);
-    }
-
-    updatePreference();
-    media.addEventListener("change", updatePreference);
-
-    return () => media.removeEventListener("change", updatePreference);
-  }, []);
-
-  useEffect(() => {
-    if (!containerRef.current || reducedMotion) {
+    const container = containerRef.current;
+    if (!container) {
       return;
     }
 
-    const renderer = new Renderer({
-      webgl: 2,
-      alpha: true,
-      antialias: false,
-      dpr: Math.min(window.devicePixelRatio || 1, 1.5)
-    });
+    const reducedMotion = window.matchMedia(REDUCED_MOTION_QUERY);
+    const lowPowerVisuals = window.matchMedia(LOW_POWER_VISUAL_QUERY);
+
+    if (reducedMotion.matches || lowPowerVisuals.matches) {
+      return;
+    }
+
+    let renderer: Renderer;
+
+    try {
+      renderer = new Renderer({
+        webgl: 2,
+        alpha: true,
+        antialias: false,
+        preserveDrawingBuffer: false,
+        powerPreference: "low-power",
+        dpr: Math.min(window.devicePixelRatio || 1, window.innerWidth >= 1280 ? 1.25 : 1)
+      });
+    } catch {
+      return;
+    }
 
     const gl = renderer.gl;
     const canvas = gl.canvas;
     canvas.style.width = "100%";
     canvas.style.height = "100%";
     canvas.style.display = "block";
-
-    const container = containerRef.current;
     container.appendChild(canvas);
 
     const geometry = new Triangle(gl);
@@ -203,31 +216,32 @@ export default function Grainient({
       uniforms: {
         iTime: { value: 0 },
         iResolution: { value: new Float32Array([1, 1]) },
-        uTimeSpeed: { value: timeSpeed },
-        uColorBalance: { value: colorBalance },
-        uWarpStrength: { value: warpStrength },
-        uWarpFrequency: { value: warpFrequency },
-        uWarpSpeed: { value: warpSpeed },
-        uWarpAmplitude: { value: warpAmplitude },
-        uBlendAngle: { value: blendAngle },
-        uBlendSoftness: { value: blendSoftness },
-        uRotationAmount: { value: rotationAmount },
-        uNoiseScale: { value: noiseScale },
-        uGrainAmount: { value: grainAmount },
-        uGrainScale: { value: grainScale },
-        uGrainAnimated: { value: grainAnimated ? 1 : 0 },
-        uContrast: { value: contrast },
-        uGamma: { value: gamma },
-        uSaturation: { value: saturation },
-        uCenterOffset: { value: new Float32Array([centerX, centerY]) },
-        uZoom: { value: zoom },
-        uColor1: { value: new Float32Array(hexToRgb(color1)) },
-        uColor2: { value: new Float32Array(hexToRgb(color2)) },
-        uColor3: { value: new Float32Array(hexToRgb(color3)) }
+        uTimeSpeed: { value: 0.25 },
+        uColorBalance: { value: 0 },
+        uWarpStrength: { value: 1 },
+        uWarpFrequency: { value: 5 },
+        uWarpSpeed: { value: 2 },
+        uWarpAmplitude: { value: 50 },
+        uBlendAngle: { value: 0 },
+        uBlendSoftness: { value: 0.05 },
+        uRotationAmount: { value: 500 },
+        uNoiseScale: { value: 2 },
+        uGrainAmount: { value: 0.1 },
+        uGrainScale: { value: 2 },
+        uGrainAnimated: { value: 0 },
+        uContrast: { value: 1.5 },
+        uGamma: { value: 1 },
+        uSaturation: { value: 1 },
+        uCenterOffset: { value: new Float32Array([0, 0]) },
+        uZoom: { value: 0.9 },
+        uColor1: { value: new Float32Array([1, 1, 1]) },
+        uColor2: { value: new Float32Array([1, 1, 1]) },
+        uColor3: { value: new Float32Array([1, 1, 1]) }
       }
     });
 
     const mesh = new Mesh(gl, { geometry, program });
+    ctxMap.set(container, { renderer, program, mesh });
 
     const setSize = () => {
       const rect = container.getBoundingClientRect();
@@ -245,14 +259,14 @@ export default function Grainient({
     setSize();
 
     let animationFrame = 0;
-    const start = performance.now();
+    let isPageVisible = !document.hidden;
+    let isVisualAllowed = !reducedMotion.matches && !lowPowerVisuals.matches;
     let lastRender = 0;
-    const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
-    const frameInterval = isCoarsePointer ? 66 : 50;
+    const startTime = performance.now();
 
     const loop = (time: number) => {
-      if (document.visibilityState === "visible" && time - lastRender >= frameInterval) {
-        program.uniforms.iTime.value = (time - start) * 0.001;
+      if (time - lastRender >= TARGET_FRAME_INTERVAL_MS) {
+        program.uniforms.iTime.value = (time - startTime) * 0.001;
         renderer.render({ scene: mesh });
         lastRender = time;
       }
@@ -260,13 +274,82 @@ export default function Grainient({
       animationFrame = requestAnimationFrame(loop);
     };
 
-    animationFrame = requestAnimationFrame(loop);
+    const tryStart = () => {
+      if (isPageVisible && isVisualAllowed && animationFrame === 0) {
+        animationFrame = requestAnimationFrame(loop);
+      }
+    };
+
+    const tryStop = () => {
+      if (animationFrame !== 0) {
+        cancelAnimationFrame(animationFrame);
+        animationFrame = 0;
+      }
+    };
+
+    const syncPlayback = () => {
+      isPageVisible = !document.hidden;
+      isVisualAllowed = !reducedMotion.matches && !lowPowerVisuals.matches;
+
+      if (isPageVisible && isVisualAllowed) {
+        tryStart();
+      } else {
+        tryStop();
+      }
+    };
+
+    document.addEventListener("visibilitychange", syncPlayback);
+    reducedMotion.addEventListener("change", syncPlayback);
+    lowPowerVisuals.addEventListener("change", syncPlayback);
+    tryStart();
 
     return () => {
-      cancelAnimationFrame(animationFrame);
+      tryStop();
       resizeObserver.disconnect();
+      document.removeEventListener("visibilitychange", syncPlayback);
+      reducedMotion.removeEventListener("change", syncPlayback);
+      lowPowerVisuals.removeEventListener("change", syncPlayback);
+      ctxMap.delete(container);
       canvas.remove();
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
     };
+  }, []);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const ctx = ctxMap.get(container);
+    if (!ctx) {
+      return;
+    }
+
+    const uniforms = ctx.program.uniforms;
+
+    uniforms.uTimeSpeed.value = timeSpeed;
+    uniforms.uColorBalance.value = colorBalance;
+    uniforms.uWarpStrength.value = warpStrength;
+    uniforms.uWarpFrequency.value = warpFrequency;
+    uniforms.uWarpSpeed.value = warpSpeed;
+    uniforms.uWarpAmplitude.value = warpAmplitude;
+    uniforms.uBlendAngle.value = blendAngle;
+    uniforms.uBlendSoftness.value = blendSoftness;
+    uniforms.uRotationAmount.value = rotationAmount;
+    uniforms.uNoiseScale.value = noiseScale;
+    uniforms.uGrainAmount.value = grainAmount;
+    uniforms.uGrainScale.value = grainScale;
+    uniforms.uGrainAnimated.value = grainAnimated ? 1 : 0;
+    uniforms.uContrast.value = contrast;
+    uniforms.uGamma.value = gamma;
+    uniforms.uSaturation.value = saturation;
+    uniforms.uCenterOffset.value = new Float32Array([centerX, centerY]);
+    uniforms.uZoom.value = zoom;
+    uniforms.uColor1.value = new Float32Array(hexToRgb(color1));
+    uniforms.uColor2.value = new Float32Array(hexToRgb(color2));
+    uniforms.uColor3.value = new Float32Array(hexToRgb(color3));
+    ctx.renderer.render({ scene: ctx.mesh });
   }, [
     blendAngle,
     blendSoftness,
@@ -282,7 +365,6 @@ export default function Grainient({
     grainAnimated,
     grainScale,
     noiseScale,
-    reducedMotion,
     rotationAmount,
     saturation,
     timeSpeed,

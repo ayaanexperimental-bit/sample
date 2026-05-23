@@ -2,24 +2,38 @@
 
 import { useEffect, useState } from "react";
 
-const SESSION_KEY = "hyh_live_viewer_session";
-const HEARTBEAT_INTERVAL_MS = 15000;
-const COUNT_REFRESH_INTERVAL_MS = 4000;
+const INITIAL_RECONNECT_DELAY_MS = 5000;
+const MAX_RECONNECT_DELAY_MS = 30000;
 
-function getSessionId() {
+type ViewerCountMessage = {
+  type?: unknown;
+  viewers?: unknown;
+};
+
+function getLiveViewerUrl() {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.host}/api/live-viewers`;
+}
+
+function parseViewerPayload(payload: ViewerCountMessage) {
+  if (
+    payload.type === "viewer_count" &&
+    typeof payload.viewers === "number" &&
+    Number.isInteger(payload.viewers) &&
+    payload.viewers >= 0
+  ) {
+    return payload.viewers;
+  }
+
+  return null;
+}
+
+function parseViewerCountMessage(message: string) {
   try {
-    const existing = window.sessionStorage.getItem(SESSION_KEY);
-    if (existing) {
-      return existing;
-    }
-
-    const next =
-      window.crypto?.randomUUID?.() ??
-      `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-    window.sessionStorage.setItem(SESSION_KEY, next);
-    return next;
+    const payload = JSON.parse(message) as ViewerCountMessage;
+    return parseViewerPayload(payload);
   } catch {
-    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    return null;
   }
 }
 
@@ -27,92 +41,151 @@ export function LiveViewerCount() {
   const [viewerCount, setViewerCount] = useState<number | null>(null);
 
   useEffect(() => {
-    const sessionId = getSessionId();
+    let socket: WebSocket | null = null;
+    let reconnectTimer: number | undefined;
+    let reconnectDelay = INITIAL_RECONNECT_DELAY_MS;
+    let connecting = false;
     let disposed = false;
 
-    function updateViewerCount(viewers: unknown) {
-      if (!disposed && typeof viewers === "number" && Number.isFinite(viewers)) {
-        setViewerCount(Math.max(1, viewers));
+    function setViewerCountIfChanged(count: number) {
+      setViewerCount((current) => (current === count ? current : count));
+    }
+
+    function clearReconnectTimer() {
+      if (reconnectTimer !== undefined) {
+        window.clearTimeout(reconnectTimer);
+        reconnectTimer = undefined;
       }
     }
 
-    async function refreshCount() {
-      try {
-        const response = await fetch("/api/live-viewers", {
-          method: "GET",
-          cache: "no-store"
-        });
+    function scheduleReconnect() {
+      clearReconnectTimer();
 
-        if (!response.ok) {
+      if (disposed || document.visibilityState !== "visible") {
+        return;
+      }
+
+      const delay = reconnectDelay;
+      reconnectDelay = Math.min(Math.round(reconnectDelay * 1.6), MAX_RECONNECT_DELAY_MS);
+      reconnectTimer = window.setTimeout(connect, delay);
+    }
+
+    function closeSocket() {
+      clearReconnectTimer();
+
+      if (socket) {
+        socket.onclose = null;
+        socket.onerror = null;
+        socket.onmessage = null;
+
+        if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+          socket.close(1000, "Viewer left page");
+        }
+      }
+
+      socket = null;
+    }
+
+    async function fetchViewerCountSnapshot() {
+      const response = await fetch("/api/live-viewers", {
+        method: "GET",
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const payload = (await response.json()) as { viewers?: unknown };
+      if (typeof payload.viewers === "number" && Number.isInteger(payload.viewers) && payload.viewers >= 0) {
+        setViewerCountIfChanged(payload.viewers);
+      }
+
+      return true;
+    }
+
+    async function connectSocket() {
+      if (
+        disposed ||
+        connecting ||
+        document.visibilityState !== "visible" ||
+        socket?.readyState === WebSocket.OPEN ||
+        socket?.readyState === WebSocket.CONNECTING
+      ) {
+        return;
+      }
+
+      connecting = true;
+
+      try {
+        const isEndpointReady = await fetchViewerCountSnapshot();
+
+        if (!isEndpointReady || disposed || document.visibilityState !== "visible") {
+          scheduleReconnect();
           return;
         }
 
-        const payload = (await response.json()) as { viewers?: unknown };
-        updateViewerCount(payload.viewers);
+        socket = new WebSocket(getLiveViewerUrl());
       } catch {
-        // Keep the most recent visible count if the endpoint is temporarily unavailable.
+        scheduleReconnect();
+        return;
+      } finally {
+        connecting = false;
       }
-    }
 
-    async function heartbeat(active = true) {
-      try {
-        const response = await fetch("/api/live-viewers", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ sessionId, active }),
-          cache: "no-store",
-          keepalive: !active
-        });
+      reconnectDelay = INITIAL_RECONNECT_DELAY_MS;
 
-        if (!response.ok || disposed) {
+      socket.onmessage = (event) => {
+        if (typeof event.data !== "string") {
           return;
         }
 
-        const payload = (await response.json()) as { viewers?: unknown };
-        updateViewerCount(payload.viewers);
-      } catch {
-        // Keep the static fallback copy if the live endpoint is unavailable.
-      }
+        const count = parseViewerCountMessage(event.data);
+
+        if (count !== null) {
+          setViewerCountIfChanged(count);
+        }
+      };
+
+      socket.onclose = () => {
+        socket = null;
+        scheduleReconnect();
+      };
+
+      socket.onerror = () => {
+        socket?.close(3001, "Viewer connection error");
+      };
     }
 
-    heartbeat();
-    const heartbeatInterval = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        heartbeat();
-      }
-    }, HEARTBEAT_INTERVAL_MS);
-    const refreshInterval = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        refreshCount();
-      }
-    }, COUNT_REFRESH_INTERVAL_MS);
+    function connect() {
+      void connectSocket();
+    }
 
     function handleVisibilityChange() {
       if (document.visibilityState === "visible") {
-        heartbeat();
-        refreshCount();
+        connect();
+      } else {
+        closeSocket();
       }
     }
 
-    function handlePageHide() {
-      heartbeat(false);
-    }
-
+    connect();
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("pagehide", handlePageHide);
+    window.addEventListener("pageshow", connect);
+    window.addEventListener("pagehide", closeSocket);
 
     return () => {
       disposed = true;
-      window.clearInterval(heartbeatInterval);
-      window.clearInterval(refreshInterval);
+      connecting = false;
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("pagehide", handlePageHide);
-      heartbeat(false);
+      window.removeEventListener("pageshow", connect);
+      window.removeEventListener("pagehide", closeSocket);
+      closeSocket();
     };
   }, []);
 
   if (viewerCount === null) {
-    return <span>Live viewers are updating now</span>;
+    return <span>Live viewer count is connecting</span>;
   }
 
   return (

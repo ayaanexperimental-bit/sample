@@ -12,6 +12,18 @@ const LIQUID_RIPPLE_SELECTOR = [
 ].join(",");
 
 const GLASS_TOUCH_SELECTOR = [
+  ".ui-button",
+  ".checkout-button",
+  ".sticky-offer-button",
+  ".pricing-button",
+  "button[data-ripple='liquid']",
+  "a[data-ripple='liquid']",
+  ".site-header",
+  ".site-nav a",
+  ".ui-badge",
+  ".funnel-status__urgency",
+  ".funnel-status__live",
+  ".sticky-offer-bar",
   ".glass-card",
   "[data-slot='card']",
   ".audience-panel",
@@ -28,9 +40,40 @@ const GLASS_TOUCH_SELECTOR = [
   ".hero-media-caption",
   ".credibility-item",
   ".success-panel",
+  ".success-document",
   ".policy-document",
-  ".prompt-example-card"
+  ".prompt-lab-shell",
+  ".prompt-example-card",
+  ".liquid-lab-panel",
+  ".liquid-lab-grid article"
 ].join(",");
+
+const MOBILE_GLASS_FILTER = "brightness(1.001) saturate(1.001)";
+const DISABLED_CONTROL_SELECTOR = "[disabled], [aria-disabled='true'], [data-loading='true'], .is-loading";
+const DESKTOP_RIPPLE_COUNT = 5;
+const DESKTOP_COUNTER_RIPPLE_COUNT = 1;
+const DESKTOP_DROPLET_COUNT = 4;
+
+function stabilizeMobileGlassSurfaces() {
+  const isMobileViewport = window.matchMedia("(max-width: 760px)").matches;
+
+  document.querySelectorAll<HTMLElement>(GLASS_TOUCH_SELECTOR).forEach((surface) => {
+    if (!isMobileViewport) {
+      surface.style.removeProperty("backdrop-filter");
+      surface.style.removeProperty("-webkit-backdrop-filter");
+      surface.style.removeProperty("background-clip");
+      surface.style.removeProperty("outline");
+      surface.style.removeProperty("overflow");
+      return;
+    }
+
+    surface.style.setProperty("backdrop-filter", MOBILE_GLASS_FILTER, "important");
+    surface.style.setProperty("-webkit-backdrop-filter", MOBILE_GLASS_FILTER, "important");
+    surface.style.setProperty("background-clip", "padding-box", "important");
+    surface.style.setProperty("overflow", "hidden", "important");
+    surface.style.setProperty("outline", "0", "important");
+  });
+}
 
 function ensureWaterSurface(control: HTMLElement) {
   if (control.querySelector(":scope > .liquid-button-pool")) {
@@ -57,10 +100,21 @@ function ensureWaterSurface(control: HTMLElement) {
   control.prepend(pool);
 }
 
+function isUnavailableControl(control: HTMLElement) {
+  return control.matches(DISABLED_CONTROL_SELECTOR);
+}
+
 export function ButtonRippleInteractions() {
   useEffect(() => {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+    const managedTimeouts = new Set<number>();
+    let activeControl: HTMLElement | null = null;
+    let pendingMove: { control: HTMLElement; clientX: number; clientY: number } | null = null;
+    let pointerMoveFrame = 0;
+    let stabilizeFrame = 0;
+
+    stabilizeMobileGlassSurfaces();
 
     if (reduceMotion) {
       return;
@@ -86,10 +140,31 @@ export function ButtonRippleInteractions() {
       : (idleWindow.requestIdleCallback?.(hydrateVisibleControls, { timeout: 1400 }) ??
         window.setTimeout(hydrateVisibleControls, 1000));
 
-    function updateWaterOrigin(control: HTMLElement, event: PointerEvent) {
+    function scheduleManagedTimeout(callback: () => void, delay: number) {
+      const timeoutId = window.setTimeout(() => {
+        managedTimeouts.delete(timeoutId);
+        callback();
+      }, delay);
+
+      managedTimeouts.add(timeoutId);
+      return timeoutId;
+    }
+
+    function scheduleMobileGlassStabilization() {
+      if (stabilizeFrame !== 0) {
+        return;
+      }
+
+      stabilizeFrame = window.requestAnimationFrame(() => {
+        stabilizeFrame = 0;
+        stabilizeMobileGlassSurfaces();
+      });
+    }
+
+    function updateWaterOrigin(control: HTMLElement, clientX: number, clientY: number) {
       const rect = control.getBoundingClientRect();
-      const originX = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
-      const originY = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
+      const originX = Math.max(0, Math.min(rect.width, clientX - rect.left));
+      const originY = Math.max(0, Math.min(rect.height, clientY - rect.top));
 
       control.style.setProperty("--water-x", `${originX}px`);
       control.style.setProperty("--water-y", `${originY}px`);
@@ -127,39 +202,39 @@ export function ButtonRippleInteractions() {
           touchedCard.classList.add("is-touch-active");
           touchedCard.append(ripple);
 
-          window.setTimeout(() => ripple.remove(), 700);
-          window.setTimeout(() => {
+          scheduleManagedTimeout(() => ripple.remove(), 700);
+          scheduleManagedTimeout(() => {
             touchedCard.classList.remove("is-touch-active");
             touchedCard.classList.add("is-touch-releasing");
-            window.setTimeout(() => touchedCard.classList.remove("is-touch-releasing"), 240);
+            scheduleManagedTimeout(() => touchedCard.classList.remove("is-touch-releasing"), 240);
           }, 260);
         }
       }
 
       const control = target.closest<HTMLElement>(LIQUID_RIPPLE_SELECTOR);
-      if (!control || control.matches("[disabled]")) {
+      if (!control || isUnavailableControl(control)) {
         return;
       }
 
       ensureWaterSurface(control);
 
-      const { rect, originX, originY } = updateWaterOrigin(control, event);
+      const { rect, originX, originY } = updateWaterOrigin(control, event.clientX, event.clientY);
       const baseSize = Math.max(rect.width, rect.height);
       const size = Math.min(baseSize * 1.86, control.classList.contains("sticky-offer-button") ? 180 : 340);
       const pool = control.querySelector<HTMLElement>(":scope > .liquid-button-pool");
-      const rippleCount = coarsePointer ? 3 : 9;
-      const counterCount = coarsePointer ? 0 : 3;
-      const dropletCount = coarsePointer ? 0 : 8;
+      const rippleCount = coarsePointer ? 3 : DESKTOP_RIPPLE_COUNT;
+      const counterCount = coarsePointer ? 0 : DESKTOP_COUNTER_RIPPLE_COUNT;
+      const dropletCount = coarsePointer ? 0 : DESKTOP_DROPLET_COUNT;
       const ripples = Array.from({ length: rippleCount }, (_, index) => {
         const ripple = document.createElement("span");
-        const rippleSize = size * (0.28 + index * 0.105);
+        const rippleSize = size * (0.32 + index * 0.14);
 
         ripple.className = `liquid-water-ripple liquid-water-ripple--${index + 1}`;
         ripple.style.width = `${rippleSize}px`;
         ripple.style.height = `${rippleSize}px`;
         ripple.style.left = `${originX - rippleSize / 2}px`;
         ripple.style.top = `${originY - rippleSize / 2}px`;
-        ripple.style.animationDelay = `${index * 58}ms`;
+        ripple.style.animationDelay = `${index * 46}ms`;
 
         return ripple;
       });
@@ -210,6 +285,7 @@ export function ButtonRippleInteractions() {
       if (!coarsePointer) {
         control.setPointerCapture?.(event.pointerId);
       }
+      activeControl = control;
       control.classList.remove("liquid-cta-releasing");
       control.classList.add("liquid-cta-pressed");
       control.classList.add("liquid-cta-rippling");
@@ -218,43 +294,66 @@ export function ButtonRippleInteractions() {
       } else {
         pool?.append(impact, lens, ...ripples, ...counterRipples, ...droplets);
       }
-      window.setTimeout(() => {
+      scheduleManagedTimeout(() => {
         impact.remove();
         lens.remove();
         ripples.forEach((ripple) => ripple.remove());
         counterRipples.forEach((ripple) => ripple.remove());
         droplets.forEach((droplet) => droplet.remove());
         control.classList.remove("liquid-cta-rippling");
-      }, 1800);
+      }, coarsePointer ? 900 : 1100);
     }
 
     function handlePointerMove(event: PointerEvent) {
-      const target = event.target;
-      if (!(target instanceof Element)) {
+      if (!activeControl) {
         return;
       }
 
-      const control = target.closest<HTMLElement>(LIQUID_RIPPLE_SELECTOR);
+      pendingMove = {
+        control: activeControl,
+        clientX: event.clientX,
+        clientY: event.clientY
+      };
+
+      if (pointerMoveFrame !== 0) {
+        return;
+      }
+
+      pointerMoveFrame = window.requestAnimationFrame(() => {
+        pointerMoveFrame = 0;
+
+        if (!pendingMove) {
+          return;
+        }
+
+        updateWaterOrigin(pendingMove.control, pendingMove.clientX, pendingMove.clientY);
+        pendingMove = null;
+      });
+    }
+
+    function releasePressedControls(event: PointerEvent) {
+      const control = activeControl;
+      activeControl = null;
+      pendingMove = null;
+
       if (!control) {
         return;
       }
 
-      updateWaterOrigin(control, event);
-    }
-
-    function releasePressedControls(event: PointerEvent) {
-      document.querySelectorAll<HTMLElement>(".liquid-cta-pressed").forEach((control) => {
-        control.releasePointerCapture?.(event.pointerId);
-        control.classList.remove("liquid-cta-pressed");
-        control.classList.add("liquid-cta-releasing");
-        window.setTimeout(() => control.classList.remove("liquid-cta-releasing"), 520);
-      });
+      control.releasePointerCapture?.(event.pointerId);
+      control.classList.remove("liquid-cta-pressed");
+      control.classList.add("liquid-cta-releasing");
+      scheduleManagedTimeout(() => control.classList.remove("liquid-cta-releasing"), 420);
     }
 
     document.addEventListener("pointerdown", handlePointerDown, { passive: true });
-    document.addEventListener("pointermove", handlePointerMove, { passive: true });
+    if (!coarsePointer) {
+      document.addEventListener("pointermove", handlePointerMove, { passive: true });
+    }
     document.addEventListener("pointerup", releasePressedControls, { passive: true });
     document.addEventListener("pointercancel", releasePressedControls, { passive: true });
+    window.addEventListener("resize", scheduleMobileGlassStabilization, { passive: true });
+    window.addEventListener("orientationchange", scheduleMobileGlassStabilization, { passive: true });
 
     return () => {
       if (idleHandle && idleWindow.cancelIdleCallback && typeof idleHandle === "number") {
@@ -263,10 +362,21 @@ export function ButtonRippleInteractions() {
         window.clearTimeout(idleHandle);
       }
 
+      managedTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      managedTimeouts.clear();
+      if (pointerMoveFrame !== 0) {
+        window.cancelAnimationFrame(pointerMoveFrame);
+      }
+      if (stabilizeFrame !== 0) {
+        window.cancelAnimationFrame(stabilizeFrame);
+      }
+
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("pointermove", handlePointerMove);
       document.removeEventListener("pointerup", releasePressedControls);
       document.removeEventListener("pointercancel", releasePressedControls);
+      window.removeEventListener("resize", scheduleMobileGlassStabilization);
+      window.removeEventListener("orientationchange", scheduleMobileGlassStabilization);
     };
   }, []);
 
@@ -282,20 +392,11 @@ export function ButtonRippleInteractions() {
         <feTurbulence
           type="fractalNoise"
           baseFrequency="0.012 0.038"
-          numOctaves="3"
+          numOctaves="1"
           seed="11"
           result="waterNoise"
-        >
-          <animate
-            attributeName="baseFrequency"
-            dur="2.4s"
-            values="0.012 0.038;0.018 0.028;0.012 0.038"
-            repeatCount="indefinite"
-          />
-        </feTurbulence>
-        <feDisplacementMap in="SourceGraphic" in2="waterNoise" scale="10" xChannelSelector="R" yChannelSelector="G">
-          <animate attributeName="scale" dur="1.35s" values="12;7;3;0" repeatCount="1" fill="freeze" />
-        </feDisplacementMap>
+        />
+        <feDisplacementMap in="SourceGraphic" in2="waterNoise" scale="4" xChannelSelector="R" yChannelSelector="G" />
       </filter>
     </svg>
   );

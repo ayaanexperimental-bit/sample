@@ -1,3 +1,4 @@
+import { DisplaySlotCycle } from "@/components/landing/display-slot-cycle";
 import { LiveViewerCount } from "@/components/landing/live-viewer-count";
 
 export function FunnelStatusBars() {
@@ -5,8 +6,8 @@ export function FunnelStatusBars() {
     <div className="funnel-status" aria-label="Workshop availability and activity">
       <div className="funnel-status__urgency">
         <span className="funnel-status__dot" aria-hidden="true" />
-        <span className="funnel-status__copy">
-          Only <strong>7 slots</strong> left this week
+        <span className="funnel-status__copy funnel-status__copy--display-only">
+          Slots left: <DisplaySlotCycle />
         </span>
         <span className="funnel-status__proof">
           <strong>50,000+</strong> women already consulted

@@ -6,7 +6,7 @@ Use this file as the source-of-truth handoff when starting a new Codex chat.
 
 - Workspace: `C:\Users\Yours Wellness\Documents\Codex`
 - Live domain: `https://freedomfromdiabetes.in`
-- Latest Cloudflare preview deployment: `https://1ad19b12.freedomfromdiabetes.pages.dev`
+- Latest Cloudflare production deployment: `https://7ae65b4f.freedomfromdiabetes.pages.dev`
 - Product: Heal Your Hormones / Women Health Masterclass 101 landing page
 - Current checkout state: Website checkout button is intentionally paused. The old live Razorpay payment-page link was removed from the site button.
 
@@ -43,6 +43,11 @@ Important rule:
 - Verified mobile and desktop render with `.ambient-background--mesh`, `stable-mesh-drift`, and zero ambient canvas elements.
 - Pricing heading and `Rs. 51` use solid text colors with a separate clipped shine sweep.
 - Hero detail dots below View Details pulse again without changing card dimensions.
+- Gradient was rebuilt as a single CSS-only aqua/emerald/cyan mesh (`ambient-background--aqua-mesh`) expanded beyond the viewport so zoomed-out states do not expose blank edges.
+- Section backgrounds are transparent so the gradient carries through the full site instead of only corners.
+- Scroll reveal motion is added with `ScrollReveal`; it toggles reveal classes as users scroll up/down.
+- The old fake fixed slot count was replaced with a visibly labeled display-only slot preview that randomizes down from 17-20 to 1, then resets.
+- Latest performance pass caps desktop Grainient WebGL to 24fps, disables it on mobile/reduced-motion, removes unused fluid progress/legacy CTA ripple CSS, and validates the live Durable Object viewer endpoint over HTTP and WebSocket.
 
 ## Latest UI Work Completed
 

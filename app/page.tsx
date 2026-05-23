@@ -10,6 +10,7 @@ import { Logistics } from "@/components/landing/logistics";
 import { MethodPillars } from "@/components/landing/method-pillars";
 import { Outcomes } from "@/components/landing/outcomes";
 import { Pricing } from "@/components/landing/pricing";
+import { ScrollReveal } from "@/components/landing/scroll-reveal";
 import { SiteHeader } from "@/components/landing/site-header";
 import { StickyOfferBar } from "@/components/landing/sticky-offer-bar";
 import { Testimonials } from "@/components/landing/testimonials";
@@ -24,6 +25,7 @@ export default function Home() {
     <main id="top">
       <AmbientBackground />
       <GlassCardInteractions />
+      <ScrollReveal />
       <FunnelStatusBars />
       <SiteHeader />
       <Hero schedule={schedule} />

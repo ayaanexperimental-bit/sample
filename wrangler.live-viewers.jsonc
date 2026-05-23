@@ -1,21 +1,23 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "freedomfromdiabetes",
-  "pages_build_output_dir": "out",
+  "name": "freedomfromdiabetes-live-viewers",
+  "main": "workers/live-viewers.ts",
   "compatibility_date": "2026-05-02",
   "observability": {
     "enabled": true
-  },
-  "vars": {
-    "NEXT_PUBLIC_PAYMENT_ENABLED": "false"
   },
   "durable_objects": {
     "bindings": [
       {
         "name": "LIVE_VIEWERS",
-        "class_name": "LiveViewerRoom",
-        "script_name": "freedomfromdiabetes-live-viewers"
+        "class_name": "LiveViewerRoom"
       }
     ]
-  }
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["LiveViewerRoom"]
+    }
+  ]
 }
