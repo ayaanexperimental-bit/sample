@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Container } from "@/components/ui/container";
 
 const footerLinks = [
@@ -25,9 +24,9 @@ export function FooterCompliance() {
 
         <nav className="footer-links" aria-label="Legal links">
           {footerLinks.map((link) => (
-            <Link href={link.href} key={link.href}>
+            <a href={link.href} key={link.href}>
               {link.label}
-            </Link>
+            </a>
           ))}
           <a href="mailto:[Support Email]">Contact Support</a>
         </nav>
