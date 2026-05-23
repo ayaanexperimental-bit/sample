@@ -183,7 +183,7 @@ export default function Grainient({
     const reducedMotion = window.matchMedia(REDUCED_MOTION_QUERY);
     const lowPowerVisuals = window.matchMedia(LOW_POWER_VISUAL_QUERY);
 
-    if (reducedMotion.matches || lowPowerVisuals.matches) {
+    if (reducedMotion.matches) {
       return;
     }
 
@@ -196,7 +196,10 @@ export default function Grainient({
         antialias: false,
         preserveDrawingBuffer: false,
         powerPreference: "low-power",
-        dpr: Math.min(window.devicePixelRatio || 1, window.innerWidth >= 1280 ? 1.25 : 1)
+        dpr: Math.min(
+          window.devicePixelRatio || 1,
+          lowPowerVisuals.matches ? 1 : window.innerWidth >= 1280 ? 1.25 : 1
+        )
       });
     } catch {
       return;
@@ -260,12 +263,14 @@ export default function Grainient({
 
     let animationFrame = 0;
     let isPageVisible = !document.hidden;
-    let isVisualAllowed = !reducedMotion.matches && !lowPowerVisuals.matches;
+    let isVisualAllowed = !reducedMotion.matches;
     let lastRender = 0;
     const startTime = performance.now();
 
     const loop = (time: number) => {
-      if (time - lastRender >= TARGET_FRAME_INTERVAL_MS) {
+      const frameInterval = lowPowerVisuals.matches ? 1000 / 20 : TARGET_FRAME_INTERVAL_MS;
+
+      if (time - lastRender >= frameInterval) {
         program.uniforms.iTime.value = (time - startTime) * 0.001;
         renderer.render({ scene: mesh });
         lastRender = time;
@@ -289,7 +294,7 @@ export default function Grainient({
 
     const syncPlayback = () => {
       isPageVisible = !document.hidden;
-      isVisualAllowed = !reducedMotion.matches && !lowPowerVisuals.matches;
+      isVisualAllowed = !reducedMotion.matches;
 
       if (isPageVisible && isVisualAllowed) {
         tryStart();

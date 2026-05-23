@@ -48,7 +48,7 @@ const GLASS_TOUCH_SELECTOR = [
   ".liquid-lab-grid article"
 ].join(",");
 
-const MOBILE_GLASS_FILTER = "brightness(1.001) saturate(1.001)";
+const MOBILE_GLASS_FILTER = "blur(2px) brightness(1.01) saturate(1.02)";
 const DISABLED_CONTROL_SELECTOR = "[disabled], [aria-disabled='true'], [data-loading='true'], .is-loading";
 const DESKTOP_RIPPLE_COUNT = 5;
 const DESKTOP_COUNTER_RIPPLE_COUNT = 1;
