@@ -10838,3 +10838,94 @@ body:has(.levelup-clone) {
     background-position: 8% 34%, 92% 18%, 70% 86%, 34% 76%, 100% 50%;
   }
 }
+
+/* Mobile performance pass: remove hidden GPU work and keep motion cheap. */
+.levelup-video__placeholder {
+  display: grid;
+  place-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background:
+    radial-gradient(circle at 50% 35%, rgb(255 255 255 / 0.22), transparent 12rem),
+    linear-gradient(135deg, rgb(32 22 32 / 0.72), rgb(120 18 76 / 0.74));
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: clamp(1rem, 2.6vw, 1.18rem);
+  font-weight: 800;
+  text-align: center;
+}
+
+.levelup-video__placeholder span {
+  display: grid;
+  width: 4rem;
+  height: 4rem;
+  place-items: center;
+  border-radius: 999px;
+  background: #e91e8c;
+  box-shadow: 0 16px 42px rgb(233 30 140 / 0.34);
+  font-size: 1.45rem;
+}
+
+@media (max-width: 760px), (pointer: coarse) {
+  .levelup-clone .ambient-background__webgl,
+  .levelup-clone .ambient-background__flow,
+  .levelup-clone .ambient-background__counterflow,
+  .glass-card-ripple,
+  .liquid-water-ripple,
+  .liquid-button-pool {
+    display: none !important;
+  }
+
+  .levelup-clone .ambient-background--aqua-mesh,
+  .levelup-clone .ambient-background__field {
+    animation-duration: 28s !important;
+    background-size: 132% 132%, 136% 136%, 132% 132%, 130% 130%, 155% 155% !important;
+  }
+
+  .levelup-clone .glass-card,
+  .levelup-sticky-cta.glass-card,
+  .levelup-video.glass-card,
+  .levelup-form.glass-card,
+  .levelup-whatsapp-testimonial.glass-card,
+  .levelup-image-frame.glass-card,
+  .levelup-text-card.glass-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .levelup-topbar::before,
+  .levelup-cta::before,
+  .levelup-order-button::before,
+  .levelup-masterclass-progress__line,
+  .levelup-masterclass-progress__dot,
+  .levelup-masterclass-card::before,
+  .levelup-masterclass-card--bonus {
+    animation: none !important;
+  }
+
+  .levelup-cta,
+  .levelup-order-button,
+  .levelup-sticky-cta .levelup-cta {
+    box-shadow: 0 8px 20px rgb(233 30 140 / 0.2) !important;
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .levelup-section,
+  .levelup-testimonials,
+  .levelup-faq,
+  .levelup-footer {
+    content-visibility: auto;
+    contain-intrinsic-size: 900px;
+  }
+
+  .levelup-video {
+    aspect-ratio: 16 / 9;
+    min-height: auto !important;
+  }
+}

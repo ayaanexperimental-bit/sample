@@ -49,7 +49,8 @@ const GLASS_TOUCH_SELECTOR = [
 ].join(",");
 
 const MOBILE_GLASS_FILTER = "none";
-const DISABLED_CONTROL_SELECTOR = "[disabled], [aria-disabled='true'], [data-loading='true'], .is-loading";
+const DISABLED_CONTROL_SELECTOR =
+  "[disabled], [aria-disabled='true'], [data-loading='true'], .is-loading";
 const NON_RIPPLE_GLASS_SELECTOR = ".hero-details li";
 const DESKTOP_RIPPLE_COUNT = 2;
 
@@ -127,7 +128,7 @@ export function ButtonRippleInteractions() {
 
     stabilizeMobileGlassSurfaces();
 
-    if (reduceMotion) {
+    if (reduceMotion || coarsePointer) {
       return;
     }
 
@@ -216,7 +217,9 @@ export function ButtonRippleInteractions() {
 
           touchedCard.classList.remove("is-touch-releasing");
           touchedCard.classList.add("is-touch-active");
-          touchedCard.querySelectorAll(":scope > .glass-card-ripple").forEach((activeRipple) => activeRipple.remove());
+          touchedCard
+            .querySelectorAll(":scope > .glass-card-ripple")
+            .forEach((activeRipple) => activeRipple.remove());
           touchedCard.append(ripple);
 
           scheduleManagedTimeout(() => ripple.remove(), 700);
@@ -238,7 +241,10 @@ export function ButtonRippleInteractions() {
 
       const { rect, originX, originY } = updateWaterOrigin(control, event.clientX, event.clientY);
       const baseSize = Math.max(rect.width, rect.height);
-      const size = Math.min(baseSize * 1.32, control.classList.contains("sticky-offer-button") ? 140 : 240);
+      const size = Math.min(
+        baseSize * 1.32,
+        control.classList.contains("sticky-offer-button") ? 140 : 240
+      );
       const pool = control.querySelector<HTMLElement>(":scope > .liquid-button-pool");
       const rippleCount = coarsePointer ? 1 : DESKTOP_RIPPLE_COUNT;
       const ripples = Array.from({ length: rippleCount }, (_, index) => {
@@ -262,10 +268,13 @@ export function ButtonRippleInteractions() {
       control.classList.add("liquid-cta-pressed");
       control.classList.add("liquid-cta-rippling");
       pool?.append(...ripples);
-      scheduleManagedTimeout(() => {
-        ripples.forEach((ripple) => ripple.remove());
-        resetLiquidControl(control);
-      }, coarsePointer ? 520 : 620);
+      scheduleManagedTimeout(
+        () => {
+          ripples.forEach((ripple) => ripple.remove());
+          resetLiquidControl(control);
+        },
+        coarsePointer ? 520 : 620
+      );
     }
 
     function handlePointerMove(event: PointerEvent) {
@@ -317,7 +326,9 @@ export function ButtonRippleInteractions() {
     document.addEventListener("pointerup", releasePressedControls, { passive: true });
     document.addEventListener("pointercancel", releasePressedControls, { passive: true });
     window.addEventListener("resize", scheduleMobileGlassStabilization, { passive: true });
-    window.addEventListener("orientationchange", scheduleMobileGlassStabilization, { passive: true });
+    window.addEventListener("orientationchange", scheduleMobileGlassStabilization, {
+      passive: true
+    });
 
     return () => {
       if (idleHandle && idleWindow.cancelIdleCallback && typeof idleHandle === "number") {
