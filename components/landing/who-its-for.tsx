@@ -2,7 +2,7 @@ import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 
 const audienceItems = [
-  "Women looking for structured PCOS/PCOD lifestyle education.",
+  "Women looking for structured PMOS/PCOD lifestyle education.",
   "Women who feel overwhelmed by scattered advice and want a guided routine.",
   "Women interested in food, movement, rest, beauty, and self-care habits that work together.",
   "Women who want support while continuing appropriate medical care when needed."

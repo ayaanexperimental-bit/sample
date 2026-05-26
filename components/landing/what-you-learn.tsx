@@ -3,8 +3,8 @@ import { Section } from "@/components/ui/section";
 
 const learningItems = [
   {
-    title: "PCOS/PCOD foundations",
-    description: "Understand the lifestyle basics commonly discussed around PCOS/PCOD support."
+    title: "PMOS/PCOD foundations",
+    description: "Understand the lifestyle basics commonly discussed around PMOS/PCOD support."
   },
   {
     title: "Daily routine design",

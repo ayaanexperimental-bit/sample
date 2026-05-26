@@ -1,7 +1,12 @@
+import { notFound } from "next/navigation";
 import { GlassCardInteractions } from "@/components/landing/glass-card-interactions";
 import { CssWaterButton, JellyCanvasButton } from "@/components/landing/jelly-button-lab";
 
 export default function LiquidLabPage() {
+  if (process.env.ENABLE_INTERNAL_TOOLS !== "true") {
+    notFound();
+  }
+
   return (
     <main className="liquid-lab-page">
       <GlassCardInteractions />

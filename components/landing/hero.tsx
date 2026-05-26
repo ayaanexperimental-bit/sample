@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -12,7 +11,7 @@ type HeroProps = {
 export function Hero({ schedule }: HeroProps) {
   const workshopDetails = [
     "Live online masterclass",
-    "PCOS/PCOD lifestyle education",
+    "PMOS/PCOD lifestyle education",
     `Next session: ${schedule.dateLabel}, ${schedule.timeLabel}`
   ];
 
@@ -22,7 +21,7 @@ export function Hero({ schedule }: HeroProps) {
         <div className="hero-copy">
           <Badge tone="accent">HEAL YOUR HORMONES Masterclass</Badge>
           <h1 id="hero-title">
-            Practical <span className="gradient-text">PCOS/PCOD</span> lifestyle guidance for women
+            Practical <span className="gradient-text">PMOS/PCOD</span> lifestyle guidance for women
           </h1>
           <p className="hero-lede">
             A guided masterclass for women who want practical, symptom-aware routines for wellness,
@@ -31,19 +30,17 @@ export function Hero({ schedule }: HeroProps) {
           </p>
         </div>
 
-        <div className="hero-media" aria-label="Coach photo">
+        <div className="hero-media" aria-label="Masterclass preview video">
           <div className="hero-orbit hero-orbit--one" aria-hidden="true" />
           <div className="hero-orbit hero-orbit--two" aria-hidden="true" />
           <figure className="hero-photo-slot">
-            <Image
-              src="/images/coach-hero.jpg"
-              alt="Coach portrait for Heal Your Hormones Masterclass"
-              width={900}
-              height={1200}
-              priority
-              sizes="(max-width: 760px) 88vw, (max-width: 1180px) 38vw, 440px"
-              placeholder="blur"
-              blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAyNCAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB4Mj0iMSIgeTE9IjAiIHkyPSIxIj48c3RvcCBzdG9wLWNvbG9yPSIjZmZlNmYzIi8+PHN0b3Agb2Zmc2V0PSIwLjU1IiBzdG9wLWNvbG9yPSIjZjhhYmQyIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZDBmN2ZiIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3QgZmlsbD0idXJsKCNnKSIgd2lkdGg9IjI0IiBoZWlnaHQ9IjMyIi8+PC9zdmc+"
+            <iframe
+              className="hero-video-frame"
+              src="https://www.youtube-nocookie.com/embed/4jKkT3d8gdI"
+              title="Heal Your Hormones Masterclass preview"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
             />
           </figure>
           <div className="hero-media-caption">

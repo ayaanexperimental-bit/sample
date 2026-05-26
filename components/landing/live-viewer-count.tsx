@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 const INITIAL_RECONNECT_DELAY_MS = 5000;
 const MAX_RECONNECT_DELAY_MS = 30000;
+const LOCAL_PREVIEW_VIEWER_COUNT = 43;
 
 type ViewerCountMessage = {
   type?: unknown;
@@ -13,6 +14,13 @@ type ViewerCountMessage = {
 function getLiveViewerUrl() {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${window.location.host}/api/live-viewers`;
+}
+
+function isLocalNextPreview() {
+  return (
+    process.env.NODE_ENV === "development" &&
+    ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)
+  );
 }
 
 function parseViewerPayload(payload: ViewerCountMessage) {
@@ -49,6 +57,11 @@ export function LiveViewerCount() {
 
     function setViewerCountIfChanged(count: number) {
       setViewerCount((current) => (current === count ? current : count));
+    }
+
+    if (isLocalNextPreview()) {
+      setViewerCountIfChanged(LOCAL_PREVIEW_VIEWER_COUNT);
+      return;
     }
 
     function clearReconnectTimer() {

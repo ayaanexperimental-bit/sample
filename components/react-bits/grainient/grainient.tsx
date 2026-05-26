@@ -27,6 +27,8 @@ type GrainientProps = {
   color1?: string;
   color2?: string;
   color3?: string;
+  frameRate?: number;
+  lowPowerFrameRate?: number;
   className?: string;
 };
 
@@ -145,7 +147,8 @@ const ctxMap = new WeakMap<
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const LOW_POWER_VISUAL_QUERY = "(max-width: 760px), (pointer: coarse)";
-const TARGET_FRAME_INTERVAL_MS = 1000 / 24;
+const DEFAULT_FRAME_RATE = 18;
+const DEFAULT_LOW_POWER_FRAME_RATE = 12;
 
 export default function Grainient({
   timeSpeed = 0.25,
@@ -170,9 +173,12 @@ export default function Grainient({
   color1 = "#FF9FFC",
   color2 = "#5227FF",
   color3 = "#B497CF",
+  frameRate = DEFAULT_FRAME_RATE,
+  lowPowerFrameRate = DEFAULT_LOW_POWER_FRAME_RATE,
   className = ""
 }: GrainientProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const frameRatesRef = useRef({ frameRate, lowPowerFrameRate });
 
   useEffect(() => {
     const container = containerRef.current;
@@ -268,7 +274,10 @@ export default function Grainient({
     const startTime = performance.now();
 
     const loop = (time: number) => {
-      const frameInterval = lowPowerVisuals.matches ? 1000 / 20 : TARGET_FRAME_INTERVAL_MS;
+      const requestedFrameRate = lowPowerVisuals.matches
+        ? frameRatesRef.current.lowPowerFrameRate
+        : frameRatesRef.current.frameRate;
+      const frameInterval = 1000 / Math.max(1, requestedFrameRate);
 
       if (time - lastRender >= frameInterval) {
         program.uniforms.iTime.value = (time - startTime) * 0.001;
@@ -318,7 +327,7 @@ export default function Grainient({
       canvas.remove();
       gl.getExtension("WEBGL_lose_context")?.loseContext();
     };
-  }, []);
+  }, [frameRate, lowPowerFrameRate]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -332,7 +341,7 @@ export default function Grainient({
     }
 
     const uniforms = ctx.program.uniforms;
-
+    frameRatesRef.current = { frameRate, lowPowerFrameRate };
     uniforms.uTimeSpeed.value = timeSpeed;
     uniforms.uColorBalance.value = colorBalance;
     uniforms.uWarpStrength.value = warpStrength;
@@ -365,10 +374,12 @@ export default function Grainient({
     color3,
     colorBalance,
     contrast,
+    frameRate,
     gamma,
     grainAmount,
     grainAnimated,
     grainScale,
+    lowPowerFrameRate,
     noiseScale,
     rotationAmount,
     saturation,

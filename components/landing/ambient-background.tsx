@@ -8,28 +8,30 @@ export function AmbientBackground() {
       <span className="ambient-background__counterflow" />
       <Grainient
         className="ambient-background__webgl"
-        timeSpeed={1.36}
-        colorBalance={-0.08}
-        warpStrength={1.46}
-        warpFrequency={5.8}
-        warpSpeed={2.35}
-        warpAmplitude={22}
-        blendAngle={28}
+        timeSpeed={2.18}
+        colorBalance={0.06}
+        warpStrength={1.05}
+        warpFrequency={4.15}
+        warpSpeed={1.08}
+        warpAmplitude={24}
+        blendAngle={24}
         blendSoftness={0.14}
-        rotationAmount={520}
-        noiseScale={1.9}
-        grainAmount={0.045}
-        grainScale={2.2}
-        grainAnimated={false}
-        contrast={1.22}
-        gamma={1.02}
-        saturation={1.28}
-        centerX={0.02}
-        centerY={-0.04}
-        zoom={0.88}
-        color1="#ffb5df"
-        color2="#70eadf"
-        color3="#fff0a6"
+        rotationAmount={320}
+        noiseScale={1.7}
+        grainAmount={0.018}
+        grainScale={2}
+        grainAnimated
+        contrast={1.2}
+        gamma={1}
+        saturation={1.32}
+        centerX={0}
+        centerY={-0.01}
+        zoom={0.92}
+        color1="#f5a7bd"
+        color2="#ffe78f"
+        color3="#b8d89a"
+        frameRate={26}
+        lowPowerFrameRate={16}
       />
       <span className="ambient-background__readability-veil" />
     </div>

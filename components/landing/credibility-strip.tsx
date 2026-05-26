@@ -8,7 +8,7 @@ const credibilityItems = [
   },
   {
     label: "Focus",
-    value: "PCOS/PCOD lifestyle education"
+    value: "PMOS/PCOD lifestyle education"
   },
   {
     label: "Approach",

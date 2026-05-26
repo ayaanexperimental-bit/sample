@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
-import { Bodoni_Moda, Cormorant_Garamond, Libre_Baskerville, Manrope, Montserrat } from "next/font/google";
+import {
+  Bodoni_Moda,
+  Cormorant_Garamond,
+  Libre_Baskerville,
+  Manrope,
+  Montserrat
+} from "next/font/google";
 import "./globals.css";
 
 const displayFont = Bodoni_Moda({
@@ -39,12 +45,12 @@ const conversionFont = Montserrat({
 
 export const metadata: Metadata = {
   title: "WOMEN HEALTH MASTERCLASS 101",
-  description: "AN INTEGRATED AND HOLISTIC APPROACH FOR PCOS/PCOD",
+  description: "AN INTEGRATED AND HOLISTIC APPROACH FOR PMOS/PCOD",
   applicationName: "WOMEN HEALTH MASTERCLASS 101",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://freedomfromdiabetes.in"),
   openGraph: {
     title: "WOMEN HEALTH MASTERCLASS 101",
-    description: "AN INTEGRATED AND HOLISTIC APPROACH FOR PCOS/PCOD",
+    description: "AN INTEGRATED AND HOLISTIC APPROACH FOR PMOS/PCOD",
     type: "website"
   },
   robots: {

@@ -48,11 +48,10 @@ const GLASS_TOUCH_SELECTOR = [
   ".liquid-lab-grid article"
 ].join(",");
 
-const MOBILE_GLASS_FILTER = "blur(2px) brightness(1.01) saturate(1.02)";
+const MOBILE_GLASS_FILTER = "none";
 const DISABLED_CONTROL_SELECTOR = "[disabled], [aria-disabled='true'], [data-loading='true'], .is-loading";
-const DESKTOP_RIPPLE_COUNT = 5;
-const DESKTOP_COUNTER_RIPPLE_COUNT = 1;
-const DESKTOP_DROPLET_COUNT = 4;
+const NON_RIPPLE_GLASS_SELECTOR = ".hero-details li";
+const DESKTOP_RIPPLE_COUNT = 2;
 
 function stabilizeMobileGlassSurfaces() {
   const isMobileViewport = window.matchMedia("(max-width: 760px)").matches;
@@ -102,6 +101,18 @@ function ensureWaterSurface(control: HTMLElement) {
 
 function isUnavailableControl(control: HTMLElement) {
   return control.matches(DISABLED_CONTROL_SELECTOR);
+}
+
+function resetLiquidControl(control: HTMLElement) {
+  control.classList.remove(
+    "liquid-cta-pressed",
+    "liquid-cta-rippling",
+    "liquid-cta-releasing",
+    "liquid-cta-settling"
+  );
+  control.style.removeProperty("--water-x");
+  control.style.removeProperty("--water-y");
+  control.querySelectorAll(":scope .liquid-water-ripple").forEach((effect) => effect.remove());
 }
 
 export function ButtonRippleInteractions() {
@@ -185,14 +196,19 @@ export function ButtonRippleInteractions() {
       if (coarsePointer) {
         const touchedCard = target.closest<HTMLElement>(GLASS_TOUCH_SELECTOR);
 
-        if (touchedCard && !target.closest(LIQUID_RIPPLE_SELECTOR)) {
+        if (
+          touchedCard &&
+          !touchedCard.matches(NON_RIPPLE_GLASS_SELECTOR) &&
+          !target.closest(LIQUID_RIPPLE_SELECTOR)
+        ) {
           const rect = touchedCard.getBoundingClientRect();
           const originX = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
           const originY = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
           const rippleSize = Math.min(Math.max(rect.width, rect.height) * 1.25, 260);
-          const ripple = document.createElement("span");
+          const ripple = document.createElement("i");
 
           ripple.className = "glass-card-ripple";
+          ripple.setAttribute("aria-hidden", "true");
           ripple.style.width = `${rippleSize}px`;
           ripple.style.height = `${rippleSize}px`;
           ripple.style.left = `${originX - rippleSize / 2}px`;
@@ -200,6 +216,7 @@ export function ButtonRippleInteractions() {
 
           touchedCard.classList.remove("is-touch-releasing");
           touchedCard.classList.add("is-touch-active");
+          touchedCard.querySelectorAll(":scope > .glass-card-ripple").forEach((activeRipple) => activeRipple.remove());
           touchedCard.append(ripple);
 
           scheduleManagedTimeout(() => ripple.remove(), 700);
@@ -217,14 +234,13 @@ export function ButtonRippleInteractions() {
       }
 
       ensureWaterSurface(control);
+      resetLiquidControl(control);
 
       const { rect, originX, originY } = updateWaterOrigin(control, event.clientX, event.clientY);
       const baseSize = Math.max(rect.width, rect.height);
-      const size = Math.min(baseSize * 1.86, control.classList.contains("sticky-offer-button") ? 180 : 340);
+      const size = Math.min(baseSize * 1.32, control.classList.contains("sticky-offer-button") ? 140 : 240);
       const pool = control.querySelector<HTMLElement>(":scope > .liquid-button-pool");
-      const rippleCount = coarsePointer ? 3 : DESKTOP_RIPPLE_COUNT;
-      const counterCount = coarsePointer ? 0 : DESKTOP_COUNTER_RIPPLE_COUNT;
-      const dropletCount = coarsePointer ? 0 : DESKTOP_DROPLET_COUNT;
+      const rippleCount = coarsePointer ? 1 : DESKTOP_RIPPLE_COUNT;
       const ripples = Array.from({ length: rippleCount }, (_, index) => {
         const ripple = document.createElement("span");
         const rippleSize = size * (0.32 + index * 0.14);
@@ -239,69 +255,17 @@ export function ButtonRippleInteractions() {
         return ripple;
       });
 
-      const counterRipples = Array.from({ length: counterCount }, (_, index) => {
-        const ripple = document.createElement("span");
-        const rippleSize = size * (0.5 + index * 0.18);
-
-        ripple.className = `liquid-water-ripple liquid-water-ripple--counter liquid-water-ripple--counter-${index + 1}`;
-        ripple.style.width = `${rippleSize}px`;
-        ripple.style.height = `${rippleSize}px`;
-        ripple.style.left = `${originX - rippleSize / 2}px`;
-        ripple.style.top = `${originY - rippleSize / 2}px`;
-        ripple.style.animationDelay = `${260 + index * 92}ms`;
-
-        return ripple;
-      });
-
-      const droplets = Array.from({ length: dropletCount }, (_, index) => {
-        const droplet = document.createElement("span");
-        const angle = (Math.PI * 2 * index) / dropletCount + (index % 2 ? 0.22 : -0.18);
-        const distance = Math.min(baseSize * (0.18 + (index % 3) * 0.07), 58);
-
-        droplet.className = "liquid-water-droplet";
-        droplet.style.left = `${originX}px`;
-        droplet.style.top = `${originY}px`;
-        droplet.style.setProperty("--drop-x", `${Math.cos(angle) * distance}px`);
-        droplet.style.setProperty("--drop-y", `${Math.sin(angle) * distance * 0.42}px`);
-        droplet.style.animationDelay = `${80 + index * 28}ms`;
-
-        return droplet;
-      });
-
-      const lens = document.createElement("span");
-      lens.className = "liquid-water-lens";
-      lens.style.width = `${size * 0.72}px`;
-      lens.style.height = `${size * 0.36}px`;
-      lens.style.left = `${originX - (size * 0.72) / 2}px`;
-      lens.style.top = `${originY - (size * 0.36) / 2}px`;
-
-      const impact = document.createElement("span");
-      impact.className = "liquid-water-impact";
-      impact.style.width = `${size * 0.44}px`;
-      impact.style.height = `${size * 0.2}px`;
-      impact.style.left = `${originX - (size * 0.44) / 2}px`;
-      impact.style.top = `${originY - (size * 0.2) / 2}px`;
-
       if (!coarsePointer) {
         control.setPointerCapture?.(event.pointerId);
       }
       activeControl = control;
-      control.classList.remove("liquid-cta-releasing");
       control.classList.add("liquid-cta-pressed");
       control.classList.add("liquid-cta-rippling");
-      if (coarsePointer) {
-        pool?.append(...ripples);
-      } else {
-        pool?.append(impact, lens, ...ripples, ...counterRipples, ...droplets);
-      }
+      pool?.append(...ripples);
       scheduleManagedTimeout(() => {
-        impact.remove();
-        lens.remove();
         ripples.forEach((ripple) => ripple.remove());
-        counterRipples.forEach((ripple) => ripple.remove());
-        droplets.forEach((droplet) => droplet.remove());
-        control.classList.remove("liquid-cta-rippling");
-      }, coarsePointer ? 900 : 1100);
+        resetLiquidControl(control);
+      }, coarsePointer ? 520 : 620);
     }
 
     function handlePointerMove(event: PointerEvent) {
@@ -343,7 +307,7 @@ export function ButtonRippleInteractions() {
       control.releasePointerCapture?.(event.pointerId);
       control.classList.remove("liquid-cta-pressed");
       control.classList.add("liquid-cta-releasing");
-      scheduleManagedTimeout(() => control.classList.remove("liquid-cta-releasing"), 420);
+      scheduleManagedTimeout(() => control.classList.remove("liquid-cta-releasing"), 220);
     }
 
     document.addEventListener("pointerdown", handlePointerDown, { passive: true });
@@ -380,26 +344,7 @@ export function ButtonRippleInteractions() {
     };
   }, []);
 
-  return (
-    <svg
-      className="liquid-button-filter"
-      aria-hidden="true"
-      focusable="false"
-      width="0"
-      height="0"
-    >
-      <filter id="liquid-button-water-filter" x="-25%" y="-25%" width="150%" height="150%">
-        <feTurbulence
-          type="fractalNoise"
-          baseFrequency="0.012 0.038"
-          numOctaves="1"
-          seed="11"
-          result="waterNoise"
-        />
-        <feDisplacementMap in="SourceGraphic" in2="waterNoise" scale="4" xChannelSelector="R" yChannelSelector="G" />
-      </filter>
-    </svg>
-  );
+  return null;
 }
 
 export { ButtonRippleInteractions as GlassCardInteractions };

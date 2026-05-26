@@ -2,7 +2,7 @@ import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 
 const outcomes = [
-  "A clearer understanding of PCOS/PCOD lifestyle foundations.",
+  "A clearer understanding of PMOS/PCOD lifestyle foundations.",
   "A simple routine structure you can adapt to your day.",
   "A better way to track patterns and prepare questions for your clinician.",
   "A practical self-care direction for confidence, wellness, and consistency."

@@ -3994,13 +3994,6 @@ main#top {
   text-shadow: 0 1px 0 rgb(255 255 255 / 0.62);
 }
 
-.liquid-button-filter {
-  position: fixed;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-
 .ui-button::after,
 .checkout-button::after,
 .sticky-offer-button::after,
@@ -4317,7 +4310,7 @@ main#top {
   }
 }
 
-/* Real water-skin button effect: persistent surface plus reverberating touch waves. */
+/* Lightweight liquid button surface: structural pool plus a short transform-only ripple. */
 .ui-button,
 .checkout-button,
 .sticky-offer-button,
@@ -4336,6 +4329,7 @@ main#top {
   pointer-events: none;
   contain: paint;
   isolation: isolate;
+  opacity: 0.78;
 }
 
 .liquid-button-pool__depth,
@@ -4347,153 +4341,83 @@ main#top {
   display: block;
   border-radius: inherit;
   pointer-events: none;
+  filter: none;
 }
 
 .liquid-button-pool__depth {
   z-index: 1;
+  opacity: 0.58;
   background:
-    radial-gradient(ellipse at 18% 18%, rgb(255 255 255 / 0.46), transparent 36%),
-    radial-gradient(ellipse at 82% 80%, rgb(126 223 255 / 0.22), transparent 42%),
-    linear-gradient(180deg, rgb(255 255 255 / 0.2), rgb(255 255 255 / 0.03) 42%, rgb(71 30 128 / 0.18));
-  filter: url("#liquid-button-water-filter") saturate(1.18);
-  opacity: 0.9;
+    radial-gradient(ellipse at 18% 20%, rgb(255 255 255 / 0.34), transparent 34%),
+    radial-gradient(ellipse at 82% 80%, rgb(126 223 255 / 0.13), transparent 42%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0.02) 48%, rgb(71 30 128 / 0.08));
   mix-blend-mode: screen;
 }
 
 .liquid-button-pool__caustics {
   z-index: 2;
+  opacity: 0.2;
   background:
-    radial-gradient(circle at var(--water-x) var(--water-y), rgb(255 255 255 / 0.34), transparent 18%),
-    repeating-radial-gradient(circle at 42% 52%, transparent 0 0.52rem, rgb(255 255 255 / 0.12) 0.58rem 0.66rem, transparent 0.74rem 1.36rem),
-    repeating-linear-gradient(112deg, transparent 0 0.72rem, rgb(255 255 255 / 0.12) 0.78rem 0.88rem, transparent 0.96rem 1.5rem);
-  opacity: 0.46;
-  filter: blur(0.25px);
+    radial-gradient(circle at var(--water-x) var(--water-y), rgb(255 255 255 / 0.22), transparent 20%),
+    repeating-linear-gradient(112deg, transparent 0 1.4rem, rgb(255 255 255 / 0.08) 1.48rem 1.56rem, transparent 1.66rem 2.4rem);
   mix-blend-mode: screen;
-  animation: liquid-water-caustics 5.2s ease-in-out infinite alternate;
 }
 
 .liquid-button-pool__pressure {
   z-index: 4;
   background:
-    radial-gradient(ellipse at var(--water-x) var(--water-y), rgb(255 255 255 / 0.64), rgb(255 255 255 / 0.22) 14%, rgb(77 34 128 / 0.18) 28%, transparent 52%);
-  filter: url("#liquid-button-water-filter") blur(0.35px);
-  mix-blend-mode: screen;
+    radial-gradient(ellipse at var(--water-x) var(--water-y), rgb(255 255 255 / 0.34), rgb(255 255 255 / 0.12) 18%, transparent 46%);
   opacity: 0;
-  transform: scale(0.82);
+  transform: scale(0.92);
   transform-origin: var(--water-x) var(--water-y);
+  mix-blend-mode: screen;
 }
 
 .liquid-button-pool__meniscus {
   z-index: 5;
   border: 1px solid rgb(255 255 255 / 0.42);
+  opacity: 0.72;
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.64),
-    inset 0 -1px 0 rgb(76 32 132 / 0.18),
-    inset 0 0 14px rgb(255 255 255 / 0.18);
-  opacity: 0.9;
+    inset 0 1px 0 rgb(255 255 255 / 0.52),
+    inset 0 -1px 0 rgb(76 32 132 / 0.1),
+    inset 0 0 10px rgb(255 255 255 / 0.12);
 }
 
 .liquid-cta-pressed .liquid-button-pool__pressure {
-  opacity: 0.82;
-  animation: liquid-water-pressure-hold 680ms ease-out both;
+  opacity: 0.34;
+  animation: light-liquid-pressure 220ms ease-out both;
 }
 
-.liquid-cta-releasing .liquid-button-pool__pressure {
-  animation: liquid-water-rebound 520ms cubic-bezier(0.14, 0.78, 0.2, 1) both;
+.liquid-cta-releasing .liquid-button-pool__pressure,
+.liquid-cta-settling .liquid-button-pool__pressure {
+  opacity: 0;
+  animation: none;
+  transform: scale(1);
 }
 
 .liquid-cta-rippling .liquid-button-pool__depth {
-  animation: liquid-water-depth-slosh 1680ms cubic-bezier(0.15, 0.8, 0.2, 1);
+  animation: light-liquid-depth 420ms cubic-bezier(0.2, 0.72, 0.18, 1) both;
 }
 
 .liquid-cta-rippling .liquid-button-pool__caustics {
-  animation:
-    liquid-water-caustics 5.2s ease-in-out infinite alternate,
-    liquid-water-touch-shimmer 1680ms cubic-bezier(0.15, 0.8, 0.2, 1);
-}
-
-.liquid-water-ripple,
-.liquid-water-lens,
-.liquid-water-impact,
-.liquid-water-droplet {
-  position: absolute;
-  display: block;
-  border-radius: 999px;
-  pointer-events: none;
-  transform-origin: center;
-  contain: strict;
+  animation: light-liquid-caustics 420ms cubic-bezier(0.2, 0.72, 0.18, 1) both;
 }
 
 .liquid-water-ripple {
+  position: absolute;
   z-index: 4;
-  border: 1px solid rgb(255 255 255 / 0.68);
+  display: block;
+  border: 1px solid rgb(255 255 255 / 0.48);
+  border-radius: 999px;
   background:
-    radial-gradient(circle, transparent 0 37%, rgb(255 255 255 / 0.5) 39%, rgb(190 238 255 / 0.28) 48%, transparent 61%),
-    radial-gradient(circle, rgb(255 255 255 / 0.26), transparent 34%);
-  box-shadow:
-    0 0 11px rgb(255 255 255 / 0.42),
-    inset 0 0 12px rgb(145 227 255 / 0.24);
-  filter: url("#liquid-button-water-filter") blur(0.1px);
-  mix-blend-mode: screen;
+    radial-gradient(circle, transparent 0 42%, rgb(255 255 255 / 0.34) 45%, rgb(210 244 255 / 0.16) 55%, transparent 66%),
+    radial-gradient(circle, rgb(255 255 255 / 0.14), transparent 38%);
+  box-shadow: 0 0 5px rgb(255 255 255 / 0.24);
   opacity: 0;
-  animation: liquid-water-reverberation 1520ms cubic-bezier(0.11, 0.74, 0.22, 1) forwards;
-}
-
-.liquid-water-ripple--2,
-.liquid-water-ripple--4,
-.liquid-water-ripple--6,
-.liquid-water-ripple--8 {
-  border-color: rgb(180 236 255 / 0.56);
-}
-
-.liquid-water-ripple--3,
-.liquid-water-ripple--5,
-.liquid-water-ripple--7,
-.liquid-water-ripple--9 {
-  border-color: rgb(255 228 249 / 0.54);
-}
-
-.liquid-water-ripple--counter {
-  border-style: dashed;
-  border-color: rgb(255 255 255 / 0.42);
-  animation-name: liquid-water-counterwave;
-  animation-duration: 1180ms;
-}
-
-.liquid-water-lens {
-  z-index: 3;
-  background:
-    radial-gradient(ellipse, rgb(255 255 255 / 0.52), rgb(196 238 255 / 0.18) 44%, transparent 72%);
-  filter: url("#liquid-button-water-filter") blur(0.55px);
-  mix-blend-mode: screen;
-  opacity: 0;
-  transform: rotate(-8deg) scale(0.42);
-  animation: liquid-water-lens 860ms ease-out forwards;
-}
-
-.liquid-water-impact {
-  z-index: 5;
-  background:
-    radial-gradient(ellipse, rgb(255 255 255 / 0.82), rgb(205 243 255 / 0.32) 42%, transparent 72%);
-  filter: blur(0.5px);
-  mix-blend-mode: screen;
-  opacity: 0;
-  transform: rotate(-4deg) scale(0.18);
-  animation: liquid-water-impact 540ms cubic-bezier(0.1, 0.82, 0.2, 1) forwards;
-}
-
-.liquid-water-droplet {
-  z-index: 5;
-  width: 0.28rem;
-  height: 0.28rem;
-  background:
-    radial-gradient(circle at 34% 24%, rgb(255 255 255 / 0.98), rgb(209 244 255 / 0.62) 48%, transparent 74%);
-  box-shadow: 0 0 10px rgb(255 255 255 / 0.5);
-  filter: blur(0.08px);
-  mix-blend-mode: screen;
-  opacity: 0;
-  transform: translate3d(0, 0, 0) scale(0.3);
-  animation: liquid-water-droplet 860ms cubic-bezier(0.15, 0.76, 0.28, 1) forwards;
+  pointer-events: none;
+  transform-origin: center;
+  contain: strict;
+  animation: light-liquid-ripple 560ms cubic-bezier(0.16, 0.74, 0.22, 1) forwards;
 }
 
 .ui-button > .liquid-button-pool + .ui-button__content,
@@ -4503,189 +4427,59 @@ main#top {
   z-index: 6;
 }
 
-@keyframes liquid-water-caustics {
-  0% {
-    background-position: 0 0, 0 0, 0 0;
-    transform: translate3d(-0.2rem, 0, 0);
-  }
-
-  100% {
-    background-position: 0 0, 1.25rem -0.4rem, -1.1rem 0.3rem;
-    transform: translate3d(0.24rem, 0, 0);
-  }
-}
-
-@keyframes liquid-water-pressure-hold {
+@keyframes light-liquid-pressure {
   0% {
     opacity: 0;
-    transform: scale(0.56);
-  }
-
-  42% {
-    opacity: 0.92;
-    transform: scale(0.92);
+    transform: scale(0.72);
   }
 
   100% {
-    opacity: 0.76;
+    opacity: 0.28;
     transform: scale(1);
   }
 }
 
-@keyframes liquid-water-rebound {
-  0% {
-    opacity: 0.76;
-    transform: scale(0.96);
-  }
-
-  36% {
-    opacity: 0.98;
-    transform: scale(1.18);
-  }
-
-  100% {
-    opacity: 0;
-    transform: scale(1.55);
-  }
-}
-
-@keyframes liquid-water-depth-slosh {
+@keyframes light-liquid-depth {
   0% {
     transform: translate3d(0, 0, 0) scale(1);
-    opacity: 0.92;
-  }
-
-  18% {
-    transform: translate3d(0.16rem, -0.08rem, 0) scale(1.012);
-    opacity: 1;
   }
 
   42% {
-    transform: translate3d(-0.12rem, 0.05rem, 0) scale(1.006);
-  }
-
-  70% {
-    transform: translate3d(0.06rem, -0.03rem, 0) scale(1.002);
+    transform: translate3d(0.05rem, -0.02rem, 0) scale(1.003);
   }
 
   100% {
     transform: translate3d(0, 0, 0) scale(1);
-    opacity: 0.9;
   }
 }
 
-@keyframes liquid-water-touch-shimmer {
+@keyframes light-liquid-caustics {
   0% {
-    opacity: 0.62;
-    filter: blur(0.25px) brightness(1.08);
+    opacity: 0.2;
   }
 
-  34% {
-    opacity: 0.9;
-    filter: blur(0.1px) brightness(1.22);
+  44% {
+    opacity: 0.32;
   }
 
   100% {
-    opacity: 0.46;
-    filter: blur(0.25px) brightness(1);
+    opacity: 0.2;
   }
 }
 
-@keyframes liquid-water-reverberation {
+@keyframes light-liquid-ripple {
   0% {
     opacity: 0;
-    transform: scale(0.05);
+    transform: scale(0.12);
   }
 
-  9% {
-    opacity: 0.88;
-  }
-
-  45% {
+  18% {
     opacity: 0.5;
   }
 
-  72% {
-    opacity: 0.18;
-  }
-
   100% {
     opacity: 0;
-    transform: scale(1.42);
-  }
-}
-
-@keyframes liquid-water-counterwave {
-  0% {
-    opacity: 0;
-    transform: scale(0.34);
-  }
-
-  16% {
-    opacity: 0.46;
-  }
-
-  58% {
-    opacity: 0.22;
-    transform: scale(0.82);
-  }
-
-  100% {
-    opacity: 0;
-    transform: scale(0.16);
-  }
-}
-
-@keyframes liquid-water-lens {
-  0% {
-    opacity: 0;
-    transform: rotate(-8deg) scale(0.42);
-  }
-
-  28% {
-    opacity: 0.74;
-  }
-
-  100% {
-    opacity: 0;
-    transform: rotate(-8deg) scale(1.2);
-  }
-}
-
-@keyframes liquid-water-impact {
-  0% {
-    opacity: 0;
-    transform: rotate(-4deg) scale(0.18);
-  }
-
-  24% {
-    opacity: 0.95;
-    transform: rotate(-4deg) scale(0.82);
-  }
-
-  100% {
-    opacity: 0;
-    transform: rotate(-4deg) scale(1.52);
-  }
-}
-
-@keyframes liquid-water-droplet {
-  0% {
-    opacity: 0;
-    transform: translate3d(0, 0, 0) scale(0.3);
-  }
-
-  20% {
-    opacity: 0.9;
-  }
-
-  72% {
-    opacity: 0.38;
-  }
-
-  100% {
-    opacity: 0;
-    transform: translate3d(var(--drop-x), var(--drop-y), 0) scale(0.92);
+    transform: scale(1.16);
   }
 }
 
@@ -4694,14 +4488,10 @@ main#top {
   .liquid-button-pool__pressure,
   .liquid-cta-rippling .liquid-button-pool__depth,
   .liquid-cta-rippling .liquid-button-pool__caustics,
-  .liquid-water-ripple,
-  .liquid-water-lens,
-  .liquid-water-impact,
-  .liquid-water-droplet {
+  .liquid-water-ripple {
     animation: none !important;
   }
 }
-
 /* Editorial polish: visible soft Grainient, feminine typography, restored stable liquid-glass cards. */
 .ambient-background--grainient {
   background:
@@ -5178,9 +4968,6 @@ main#top {
     animation-duration: 760ms !important;
   }
 
-  .liquid-button-filter {
-    display: none !important;
-  }
 }
 
 .hero-details li.is-touch-active,
@@ -7675,38 +7462,6 @@ main#top::after,
   }
 }
 
-.liquid-button-pool__caustics {
-  animation: none !important;
-}
-
-.liquid-button-pool__depth,
-.liquid-button-pool__pressure,
-.liquid-water-ripple,
-.liquid-water-lens {
-  filter: blur(0.12px) saturate(1.08) !important;
-}
-
-.liquid-cta-rippling .liquid-button-pool__depth {
-  animation-duration: 760ms !important;
-}
-
-.liquid-cta-rippling .liquid-button-pool__caustics {
-  animation: liquid-water-touch-shimmer 760ms cubic-bezier(0.15, 0.8, 0.2, 1) !important;
-}
-
-.liquid-water-ripple {
-  animation-duration: 880ms !important;
-  box-shadow:
-    0 0 7px rgb(255 255 255 / 0.3),
-    inset 0 0 8px rgb(145 227 255 / 0.18) !important;
-}
-
-.liquid-water-lens,
-.liquid-water-impact,
-.liquid-water-droplet {
-  animation-duration: 680ms !important;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .grainient-skeleton,
   .micro-celebration,
@@ -7715,10 +7470,7 @@ main#top::after,
   .hero-details li > span::after,
   .liquid-button-pool__caustics,
   .liquid-button-pool__pressure,
-  .liquid-water-ripple,
-  .liquid-water-lens,
-  .liquid-water-impact,
-  .liquid-water-droplet {
+  .liquid-water-ripple {
     animation: none !important;
     transition: none !important;
   }
@@ -7893,7 +7645,7 @@ main#top::after,
    - WebGL Grainient stays enabled on mobile/tablet with capped runtime quality.
    - Sticky/top glass is opaque enough that scrolled content cannot visually bleed through it.
    - Hero caption, CTAs, and detail pills keep dedicated layout bands on desktop.
-   - Cards use JS-driven scroll morph variables, avoiding layout-changing scroll timelines. */
+   - Cards use observer-driven reveal classes, avoiding layout-changing scroll timelines. */
 .ambient-background__webgl.grainient-container {
   display: block !important;
 }
@@ -8080,56 +7832,6 @@ main#top::after,
   }
 }
 
-.scroll-reveal.scroll-morph {
-  --morph-y: 0px;
-  --morph-scale: 1;
-  --morph-blur: 0px;
-  --morph-opacity: 1;
-  --morph-rotate: 0deg;
-  opacity: var(--morph-opacity) !important;
-  transform: translate3d(0, var(--morph-y), 0) scale(var(--morph-scale)) rotate(var(--morph-rotate)) !important;
-  transform-origin: center top;
-  filter: blur(var(--morph-blur)) saturate(0.98) !important;
-  clip-path: none !important;
-  transition:
-    box-shadow 180ms ease,
-    background-color 180ms ease,
-    border-color 180ms ease !important;
-  will-change: opacity, transform, filter;
-}
-
-.scroll-reveal.scroll-morph.is-revealed {
-  opacity: var(--morph-opacity, 1) !important;
-}
-
-:is(
-  .hero-actions,
-  .hero-details li,
-  .site-header,
-  .funnel-status__urgency,
-  .funnel-status__live
-).scroll-reveal.scroll-morph {
-  clip-path: none !important;
-}
-
-@media (max-width: 760px) {
-  .scroll-reveal.scroll-morph {
-    --morph-y: 10px;
-    --morph-blur: 2.4px;
-    --morph-rotate: 0.18deg;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .scroll-reveal.scroll-morph {
-    opacity: 1 !important;
-    transform: none !important;
-    filter: none !important;
-    transition: none !important;
-    will-change: auto !important;
-  }
-}
-
 main#top .site-header,
 main#top .site-header:hover,
 main#top .site-header:active,
@@ -8148,4 +7850,2768 @@ main#top .site-header:focus-within {
       radial-gradient(circle at 12% 8%, rgb(255 255 255 / 0.99), transparent 8rem),
       linear-gradient(145deg, rgb(255 255 255 / 0.96), rgb(255 246 251 / 0.92) 54%, rgb(238 253 255 / 0.9)) !important;
   }
+}
+
+/* Production cleanup: keep reveal motion transform-only after removing the old
+   per-frame scroll animation surface. */
+.scroll-reveal {
+  opacity: 0.001 !important;
+  transform: translate3d(0, 18px, 0) !important;
+  filter: none !important;
+  clip-path: none !important;
+  transition:
+    opacity 520ms cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms),
+    transform 560ms cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms),
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease !important;
+  will-change: auto !important;
+}
+
+.scroll-reveal.is-revealed {
+  opacity: 1 !important;
+  transform: translate3d(0, 0, 0) !important;
+  filter: none !important;
+  clip-path: none !important;
+  will-change: auto !important;
+}
+
+.hero-details li > .glass-card-ripple {
+  display: none !important;
+  animation: none !important;
+}
+
+@media (max-width: 760px), (pointer: coarse) {
+  .scroll-reveal {
+    transform: translate3d(0, 12px, 0) !important;
+    transition-duration: 380ms, 420ms, 120ms, 120ms, 120ms !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    transition: none !important;
+  }
+}
+
+/* Production section dividers: keep each landing-page segment visually separate
+   after the ambient blush layer removes the original section backgrounds. */
+main#top > .ui-section + .ui-section {
+  border-top: 2px solid rgb(190 24 93 / 0.32) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.72),
+    inset 0 14px 28px rgb(190 24 93 / 0.08) !important;
+}
+
+main#top > .ui-section + .ui-section::before {
+  content: "" !important;
+  position: absolute !important;
+  top: -2px !important;
+  left: 50% !important;
+  z-index: 1 !important;
+  width: min(calc(100% - 2rem), 88rem) !important;
+  height: 2px !important;
+  border: 0 !important;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgb(190 24 93 / 0.6) 14%,
+      rgb(255 255 255 / 0.88) 50%,
+      rgb(190 24 93 / 0.48) 86%,
+      transparent
+    ) !important;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.72),
+    0 12px 30px rgb(190 24 93 / 0.16) !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+  transform: translateX(-50%) !important;
+}
+
+@media (max-width: 760px) {
+  main#top > .ui-section + .ui-section::before {
+    width: calc(100% - 1.25rem) !important;
+  }
+}
+
+html:has(.levelup-clone),
+body:has(.levelup-clone) {
+  background: #fdf3fa !important;
+}
+
+body:has(.levelup-clone)::before,
+body:has(.levelup-clone)::after {
+  content: none !important;
+  display: none !important;
+}
+
+.levelup-clone {
+  --levelup-pink: #e91e8c;
+  --levelup-pink-dark: #c4147a;
+  --levelup-cream: #fdf3fa;
+  --levelup-ink: #1a1210;
+  --levelup-muted: #7a706a;
+  --levelup-green: #059669;
+  --levelup-red: #8b1a2b;
+  min-width: 320px;
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: var(--levelup-cream);
+  color: #000000;
+  font-family: var(--font-conversion), "DM Sans", Montserrat, Arial, sans-serif;
+  text-align: center;
+}
+
+.levelup-clone *,
+.levelup-clone *::before,
+.levelup-clone *::after {
+  box-sizing: border-box;
+  letter-spacing: 0;
+}
+
+.levelup-clone button,
+.levelup-clone input {
+  font: inherit;
+}
+
+.levelup-clone button {
+  border: 0;
+}
+
+.levelup-wrap {
+  width: min(100%, 1140px);
+  max-width: 100%;
+  margin-inline: auto;
+  padding: 10px 15px;
+}
+
+.levelup-wrap--narrow {
+  width: min(100%, 900px);
+}
+
+.levelup-wrap--text {
+  width: min(100%, 980px);
+}
+
+.levelup-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  overflow: hidden;
+  padding: 10px 16px;
+  background: linear-gradient(90deg, #6b0f1a, #8b1a2b, #6b0f1a);
+  background-size: 200% 100%;
+  color: #ffffff;
+  font-family: var(--font-conversion), "DM Sans", sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  animation: levelup-topbar-pulse 3s ease-in-out infinite;
+}
+
+.levelup-topbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.08), transparent);
+  animation: levelup-shimmer 3s ease-in-out infinite;
+}
+
+.levelup-topbar > * {
+  position: relative;
+  z-index: 1;
+}
+
+.levelup-topbar strong {
+  color: #ffd666;
+  font-weight: 800;
+}
+
+.levelup-livebar {
+  border-bottom: 1px solid rgb(39 174 96 / 0.12);
+  background: rgb(39 174 96 / 0.08);
+  padding: 8px 16px;
+  color: #3d3530;
+  font-size: 13px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.levelup-livebar strong {
+  color: #27ae60;
+  font-weight: 800;
+}
+
+.levelup-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+.levelup-dot--urgent {
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  background: #ff4757;
+  box-shadow: 0 0 6px rgb(255 71 87 / 0.6);
+  animation: levelup-blink 1s ease-in-out infinite;
+}
+
+.levelup-dot--live {
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  background: #27ae60;
+  animation: levelup-pulse-dot 1.5s ease-in-out infinite;
+}
+
+.levelup-dot--pink {
+  width: 8px;
+  height: 8px;
+  background: var(--levelup-pink);
+  animation: levelup-blink 1s ease-in-out infinite;
+}
+
+.levelup-hero {
+  background: var(--levelup-cream);
+  padding: 0 0 18px;
+}
+
+.levelup-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px auto 14px;
+  border: 1px solid rgb(233 30 140 / 0.2);
+  border-radius: 999px;
+  background: rgb(233 30 140 / 0.08);
+  padding: 10px 24px;
+  color: var(--levelup-pink);
+  font-family: var(--font-conversion), "DM Sans", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  animation: levelup-fade-up 0.6s ease both;
+}
+
+.levelup-badge svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.levelup-title {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  color: #000000;
+  font-family: var(--font-editorial), "Libre Baskerville", Georgia, serif;
+  font-size: clamp(2.25rem, 4.2vw, 3rem);
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: break-word;
+}
+
+.levelup-title span {
+  color: #e50f7b;
+}
+
+.levelup-subtitle {
+  width: 100%;
+  max-width: 1000px;
+  margin: 48px auto 22px;
+  color: #000000;
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.28;
+  overflow-wrap: break-word;
+}
+
+.levelup-video {
+  position: relative;
+  width: min(100%, 798px);
+  margin: 0 auto 10px;
+  overflow: hidden;
+  border-radius: 5px;
+  box-shadow: 0 0 10px 1px #98b4c6;
+  background: #000000;
+}
+
+.levelup-video::before {
+  content: "";
+  display: block;
+  padding-top: 56.25%;
+}
+
+.levelup-video iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.levelup-countdown {
+  width: min(100%, 500px);
+  margin: 0 auto;
+  padding: 20px 10px;
+}
+
+.levelup-countdown__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  color: #c0392b;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.levelup-countdown__label svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  animation: levelup-blink 1.2s ease-in-out infinite;
+}
+
+.levelup-countdown__units {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.levelup-countdown__units div {
+  min-width: 72px;
+  border-radius: 10px;
+  background: #1a1210;
+  padding: 14px 18px;
+  color: #ffffff;
+}
+
+.levelup-countdown__units strong {
+  display: block;
+  font-family: var(--font-editorial), "Libre Baskerville", Georgia, serif;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.levelup-countdown__units span {
+  display: block;
+  margin-top: 4px;
+  color: rgb(255 255 255 / 0.5);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.levelup-cta {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  width: 41%;
+  min-width: 280px;
+  max-width: 520px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 60px;
+  background: var(--levelup-pink);
+  color: #ffffff;
+  cursor: pointer;
+  margin: 0 auto 15px;
+  padding: 18px 40px;
+  font-family: var(--font-conversion), "DM Sans", sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-decoration: none;
+  transition:
+    transform 0.3s ease,
+    background-color 0.3s ease,
+    box-shadow 0.3s ease;
+  animation: levelup-cta-glow 2.5s ease-in-out infinite;
+}
+
+.levelup-cta::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(135deg, transparent 40%, rgb(255 255 255 / 0.18) 50%, transparent 60%);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.levelup-cta:hover {
+  background: var(--levelup-pink-dark);
+  box-shadow: 0 12px 35px rgb(233 30 140 / 0.4);
+  transform: translateY(-2px);
+}
+
+.levelup-cta:hover::before {
+  transform: translateX(100%);
+}
+
+.levelup-note,
+.levelup-spots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-conversion), "DM Sans", sans-serif;
+}
+
+.levelup-note {
+  gap: 5px;
+  padding: 10px 10px 0;
+  color: var(--levelup-muted);
+  font-size: 13px;
+}
+
+.levelup-note svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: var(--levelup-pink);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.levelup-spots {
+  display: inline-flex;
+  gap: 8px;
+  margin: 12px auto;
+  border: 1px solid rgb(233 30 140 / 0.15);
+  border-radius: 999px;
+  background: rgb(233 30 140 / 0.06);
+  padding: 10px 22px;
+  color: var(--levelup-pink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.levelup-section {
+  position: relative;
+  padding-block: 0;
+}
+
+.levelup-section--black {
+  background: #000000;
+  color: #ffffff;
+}
+
+.levelup-section--pink-note {
+  background: var(--levelup-cream);
+  padding: 12px 0 22px;
+}
+
+.levelup-image {
+  display: inline-block;
+  width: min(100%, 1200px);
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto 15px;
+  vertical-align: top;
+}
+
+.levelup-image--narrow {
+  width: min(60%, 720px);
+}
+
+.levelup-logo-mark {
+  width: min(50%, 236px);
+  margin-bottom: 12px;
+}
+
+.levelup-guarantee {
+  margin: 0 auto;
+  color: #000000;
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.levelup-guarantee strong {
+  text-decoration: underline;
+}
+
+.levelup-guarantee--dark {
+  color: #ffffff;
+  margin-top: 8px;
+}
+
+.levelup-testimonials {
+  background: #ffffff;
+  color: #000000;
+  padding: 22px 0 36px;
+}
+
+.levelup-testimonials h2,
+.levelup-faq h2 {
+  margin: 0 auto 20px;
+  font-family: var(--font-editorial), "Libre Baskerville", Georgia, serif;
+  font-size: clamp(1.75rem, 4vw, 2.85rem);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.levelup-testimonials .senja-embed {
+  width: 100%;
+  min-height: 320px;
+}
+
+.levelup-whatsapp-testimonial-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(1rem, 2.4vw, 1.6rem);
+  align-items: start;
+  width: min(100%, 1120px);
+  margin: 0 auto;
+}
+
+.levelup-whatsapp-testimonial {
+  margin: 0;
+  border-radius: 24px;
+  padding: clamp(0.45rem, 1vw, 0.7rem);
+  overflow: hidden;
+}
+
+.levelup-whatsapp-testimonial img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 18px;
+  background: #f6eee8;
+  box-shadow:
+    0 12px 28px rgb(80 28 54 / 0.12),
+    inset 0 1px 0 rgb(255 255 255 / 0.8);
+}
+
+.levelup-refund {
+  background: #000000;
+  color: #ffffff;
+  padding: 28px 0;
+}
+
+.levelup-refund h2 {
+  margin: 0 auto 10px;
+  color: #e50f7b;
+  font-family: var(--font-editorial), "Libre Baskerville", Georgia, serif;
+  font-size: clamp(1.7rem, 4vw, 2.75rem);
+  line-height: 1.2;
+}
+
+.levelup-refund p {
+  margin: 0 auto 12px;
+  color: #ffffff;
+  font-size: 19px;
+}
+
+.levelup-refund ul,
+.levelup-difference ul {
+  width: min(100%, 820px);
+  margin: 18px auto;
+  padding: 0;
+  list-style: none;
+}
+
+.levelup-refund li,
+.levelup-difference li {
+  display: flex;
+  gap: 10px;
+  text-align: left;
+}
+
+.levelup-refund li {
+  margin-bottom: 15px;
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.levelup-refund li span {
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.levelup-refund__notice {
+  max-width: 920px;
+  margin: 24px auto 30px;
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.levelup-difference {
+  background: #ffffff;
+  color: #000000;
+  padding: 28px 0 34px;
+}
+
+.levelup-difference h2 {
+  margin: 0 auto 18px;
+  font-family: var(--font-editorial), "Libre Baskerville", Georgia, serif;
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  line-height: 1.2;
+}
+
+.levelup-difference p {
+  margin: 0 auto 8px;
+  font-size: 20px;
+  line-height: 1.8;
+  text-align: left;
+}
+
+.levelup-difference li {
+  margin-bottom: 14px;
+  color: var(--levelup-pink);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.levelup-difference li > span {
+  flex: 0 0 auto;
+  color: #000000;
+  font-size: 23px;
+  line-height: 1.1;
+}
+
+.levelup-checkout-section {
+  background: #000000;
+  padding: 22px 0 36px;
+}
+
+.levelup-form {
+  position: relative;
+  width: min(100%, 480px);
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid #e8f5ee;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 12px 48px rgb(5 150 105 / 0.06);
+  font-family: var(--font-conversion), "DM Sans", sans-serif;
+}
+
+.levelup-form__secure {
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  z-index: 2;
+  border-radius: 0 0 10px 10px;
+  background: #065f46;
+  padding: 5px 20px;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.levelup-form__inner {
+  display: grid;
+  gap: 10px;
+  padding: 44px 24px 24px;
+}
+
+.levelup-savings {
+  margin-bottom: 10px;
+  border: 1px dashed #059669;
+  border-radius: 10px;
+  background: #ecfdf5;
+  padding: 10px 16px;
+  color: #059669;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.levelup-savings s {
+  color: #999999;
+  font-weight: 500;
+}
+
+.levelup-form input {
+  width: 100%;
+  height: 48px;
+  border: 1.5px solid #e8e5e2;
+  border-radius: 10px;
+  outline: none;
+  background: #fafaf9;
+  padding: 13px 16px;
+  color: var(--levelup-ink);
+  font-size: 14px;
+  transition:
+    border-color 0.25s ease,
+    background-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.levelup-form input:focus {
+  border-color: #059669;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgb(5 150 105 / 0.08);
+}
+
+.levelup-product-table {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid #f0eceb;
+  border-radius: 10px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fafaf9;
+  color: #3d3530;
+  text-align: left;
+}
+
+.levelup-product-table th {
+  border-bottom: 1px solid #f0eceb;
+  background: #ffffff;
+  padding: 10px 14px 8px;
+  color: #b8b0ab;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.levelup-product-table th:last-child,
+.levelup-product-table td:last-child {
+  text-align: right;
+}
+
+.levelup-product-table td {
+  padding: 14px;
+  color: #1a1210;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.levelup-product-table td:last-child {
+  color: #059669;
+  font-size: 16px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.levelup-order-button {
+  position: relative;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #ffffff;
+  cursor: pointer;
+  padding: 16px 24px;
+  font-size: 16px;
+  font-weight: 800;
+  animation: levelup-order-glow 2.5s ease-in-out infinite;
+}
+
+.levelup-order-button span {
+  margin-left: 8px;
+  font-size: 23px;
+  line-height: 0;
+}
+
+.levelup-trust-row,
+.levelup-form-viewers {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #b8b0ab;
+}
+
+.levelup-trust-row {
+  flex-wrap: wrap;
+  gap: 6px;
+  border-top: 1px solid #f0eceb;
+  margin-top: 6px;
+  padding-top: 14px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.levelup-trust-row i {
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: #d5d0cc;
+}
+
+.levelup-form-viewers {
+  gap: 5px;
+  color: var(--levelup-muted);
+  font-size: 11px;
+}
+
+.levelup-faq {
+  background: #ffffff;
+  color: #000000;
+  padding: 34px 0 44px;
+}
+
+.levelup-faq h2 {
+  font-family: var(--font-conversion), "DM Sans", sans-serif;
+  font-size: clamp(1.65rem, 4vw, 2.8rem);
+  font-weight: 900;
+}
+
+.levelup-divider {
+  width: min(30%, 320px);
+  margin: 5px auto 20px;
+  border-top: 5px solid #000000;
+}
+
+.levelup-faq-list {
+  width: min(100%, 940px);
+  margin: 0 auto;
+}
+
+.levelup-faq-item {
+  width: 82%;
+  margin: 0 auto 10px;
+  overflow: hidden;
+  border-radius: 0;
+  background: #ffffff;
+  box-shadow: 0 8px 9px -3px #dadada;
+}
+
+.levelup-faq-item summary {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  cursor: pointer;
+  background: #fde5f0;
+  padding: 10px;
+  color: #212529;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: left;
+  list-style: none;
+}
+
+.levelup-faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.levelup-faq-item summary::before {
+  content: "⌄";
+  display: inline-flex;
+  width: 1.35rem;
+  flex: 0 0 auto;
+  color: #212529;
+  font-size: 1.15rem;
+  font-weight: 900;
+  transform: rotate(-90deg);
+  transition: transform 0.2s ease;
+}
+
+.levelup-faq-item[open] summary::before {
+  transform: rotate(0deg);
+}
+
+.levelup-faq-item p {
+  margin: 0;
+  padding: 10px 14px 14px 34px;
+  color: #000000;
+  font-size: 16px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.levelup-sticky-cta {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  border-top: 2px solid rgb(233 30 140 / 0.12);
+  background: rgb(255 255 255 / 0.97);
+  box-shadow: 0 -4px 20px rgb(0 0 0 / 0.08);
+  padding: 10px 24px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(calc(100% + 24px));
+  transition:
+    transform 0.4s ease,
+    opacity 0.25s ease,
+    visibility 0s linear 0.4s;
+  visibility: hidden;
+  backdrop-filter: blur(12px);
+}
+
+.levelup-sticky-cta.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+  transition:
+    transform 0.4s ease,
+    opacity 0.25s ease;
+  visibility: visible;
+}
+
+.levelup-sticky-cta .levelup-cta {
+  width: auto;
+  min-width: 270px;
+  margin: 0;
+  padding: 15px 30px;
+}
+
+.levelup-sticky-offer {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 4px;
+  justify-items: start;
+  white-space: nowrap;
+}
+
+.levelup-sticky-price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.levelup-sticky-price del {
+  color: #999999;
+  font-size: 14px;
+}
+
+.levelup-sticky-price strong {
+  color: var(--levelup-ink);
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.levelup-sticky-price small {
+  color: var(--levelup-pink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.levelup-sticky-countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgb(233 30 140 / 0.16);
+  border-radius: 999px;
+  background: rgb(233 30 140 / 0.08);
+  padding: 4px 9px;
+  color: #9f174d;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.levelup-sticky-countdown svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.levelup-sticky-countdown strong {
+  color: var(--levelup-ink);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.levelup-sticky-divider {
+  width: 1px;
+  height: 28px;
+  background: rgb(0 0 0 / 0.1);
+}
+
+.levelup-sticky-spots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--levelup-pink);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.levelup-footer {
+  background: #e50f7b;
+  padding: 0;
+  color: #ffffff;
+  font-family: var(--font-conversion), Montserrat, sans-serif;
+}
+
+.levelup-footer p {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 8px 22px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.levelup-mobile-only {
+  display: none;
+}
+
+@keyframes levelup-topbar-pulse {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes levelup-shimmer {
+  0%,
+  100% {
+    transform: translateX(-100%);
+  }
+
+  50% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes levelup-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes levelup-pulse-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(39 174 96 / 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px rgb(39 174 96 / 0);
+  }
+}
+
+@keyframes levelup-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes levelup-cta-glow {
+  0%,
+  100% {
+    box-shadow: 0 4px 20px rgb(233 30 140 / 0.25);
+  }
+
+  50% {
+    box-shadow: 0 4px 35px rgb(233 30 140 / 0.5);
+  }
+}
+
+@keyframes levelup-order-glow {
+  0%,
+  100% {
+    box-shadow: 0 4px 16px rgb(5 150 105 / 0.2);
+  }
+
+  50% {
+    box-shadow: 0 6px 28px rgb(5 150 105 / 0.4);
+  }
+}
+
+@media (max-width: 991.98px) {
+  .levelup-video {
+    width: 100%;
+  }
+
+  .levelup-cta {
+    width: min(100%, 400px);
+  }
+}
+
+@media (max-width: 768px) {
+  .levelup-topbar,
+  .levelup-livebar {
+    font-size: 12px;
+  }
+
+  .levelup-badge {
+    padding: 8px 18px;
+    font-size: 11px;
+  }
+
+  .levelup-countdown__units {
+    gap: 8px;
+  }
+
+  .levelup-countdown__units div {
+    min-width: 58px;
+    padding: 12px 10px;
+  }
+
+  .levelup-countdown__units strong {
+    font-size: 24px;
+  }
+
+  .levelup-desktop-only {
+    display: none !important;
+  }
+
+  .levelup-mobile-only {
+    display: block;
+  }
+
+  .levelup-image--narrow {
+    width: 100%;
+  }
+
+  .levelup-faq-item {
+    width: 100%;
+  }
+
+  .levelup-form__inner {
+    padding: 40px 16px 18px;
+  }
+
+  .levelup-sticky-cta {
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 14px 14px;
+  }
+
+  .levelup-sticky-offer {
+    justify-items: center;
+  }
+
+  .levelup-sticky-divider {
+    display: none;
+  }
+
+  .levelup-sticky-cta .levelup-cta {
+    width: 100%;
+    max-width: 400px;
+  }
+}
+
+@media (max-width: 480px) {
+  .levelup-clone,
+  .levelup-clone > *,
+  .levelup-section,
+  .levelup-hero,
+  .levelup-wrap {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  .levelup-wrap {
+    padding-inline: 10px;
+  }
+
+  .levelup-topbar {
+    display: block;
+    width: 100vw;
+    max-width: 100vw;
+    padding-inline: 8px;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .levelup-livebar {
+    display: block;
+    width: 100vw;
+    max-width: 100vw;
+    padding-inline: 8px;
+    font-size: 12px;
+  }
+
+  .levelup-title {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 1.28;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .levelup-subtitle {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    margin-top: 24px;
+    font-size: 13px;
+    font-weight: 400;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .levelup-video,
+  .levelup-image {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+  }
+
+  .levelup-cta {
+    width: 92%;
+    min-width: 0;
+    padding: 16px 24px;
+    font-size: 14px;
+  }
+
+  .levelup-guarantee {
+    font-size: 8px;
+    font-weight: 600;
+  }
+
+  .levelup-testimonials h2,
+  .levelup-refund h2,
+  .levelup-difference h2,
+  .levelup-faq h2 {
+    font-size: 25px;
+  }
+
+  .levelup-refund p,
+  .levelup-refund li,
+  .levelup-refund__notice {
+    font-size: 14px;
+  }
+
+  .levelup-difference p {
+    font-size: 17px;
+    line-height: 1.45;
+  }
+
+  .levelup-faq-item summary {
+    font-size: 18px;
+  }
+
+  .levelup-faq-item p {
+    font-size: 15px;
+  }
+
+  .levelup-footer p {
+    font-size: 9px;
+  }
+}
+
+body:has(.levelup-clone) {
+  background: #fff7fb !important;
+}
+
+.levelup-clone {
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+}
+
+.levelup-clone .ambient-background {
+  z-index: 0;
+  opacity: 1;
+}
+
+.levelup-clone > :not(.ambient-background):not(.levelup-topbar):not(.levelup-livebar):not(.levelup-sticky-cta) {
+  position: relative;
+  z-index: 1;
+}
+
+.levelup-topbar {
+  z-index: 200;
+}
+
+.levelup-livebar {
+  position: relative;
+  z-index: 2;
+}
+
+.levelup-sticky-cta {
+  z-index: 9999;
+}
+
+.levelup-clone .ambient-background--aqua-mesh .ambient-background__readability-veil {
+  background:
+    linear-gradient(180deg, rgb(255 247 251 / 0.52), rgb(255 247 251 / 0.36) 42%, rgb(255 247 251 / 0.54)),
+    radial-gradient(circle at 18% 8%, rgb(255 255 255 / 0.3), transparent 30rem),
+    radial-gradient(circle at 88% 74%, rgb(255 255 255 / 0.18), transparent 32rem) !important;
+}
+
+.levelup-topbar {
+  background:
+    linear-gradient(90deg, rgb(107 15 26 / 0.94), rgb(139 26 43 / 0.9), rgb(107 15 26 / 0.94)),
+    rgb(107 15 26 / 0.88);
+  backdrop-filter: blur(14px) saturate(1.08);
+}
+
+.levelup-livebar {
+  background: rgb(255 255 255 / 0.68);
+  backdrop-filter: blur(14px) saturate(1.06);
+}
+
+.levelup-hero {
+  background: transparent;
+  padding: clamp(1rem, 2.4vw, 2rem) 0 clamp(1.25rem, 3vw, 2.35rem);
+}
+
+.levelup-hero-panel {
+  width: min(calc(100% - 2rem), 1140px);
+  border-radius: 28px;
+  padding: clamp(1.2rem, 3vw, 2.1rem) clamp(1rem, 3vw, 2.2rem);
+}
+
+.levelup-hero-panel.glass-card,
+.levelup-video.glass-card,
+.levelup-countdown.glass-card,
+.levelup-image-frame.glass-card,
+.levelup-text-card.glass-card,
+.levelup-senja-frame.glass-card,
+.levelup-whatsapp-testimonial.glass-card,
+.levelup-form.glass-card,
+.levelup-sticky-cta.glass-card {
+  background:
+    radial-gradient(circle at 12% 8%, rgb(255 255 255 / 0.9), transparent 9rem),
+    linear-gradient(145deg, rgb(255 255 255 / 0.72), rgb(255 249 253 / 0.58) 52%, rgb(239 253 255 / 0.48)) !important;
+  border: 1px solid rgb(255 255 255 / 0.74) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.86),
+    0 20px 52px rgb(80 28 54 / 0.13),
+    0 0 0 1px rgb(255 255 255 / 0.26) !important;
+  backdrop-filter: blur(14px) saturate(1.08) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.08) !important;
+}
+
+.levelup-video {
+  aspect-ratio: 16 / 9;
+}
+
+.levelup-video::before {
+  content: none !important;
+  display: none !important;
+  padding: 0 !important;
+}
+
+.levelup-section--black {
+  background:
+    linear-gradient(180deg, rgb(0 0 0 / 0.86), rgb(0 0 0 / 0.78)),
+    transparent;
+}
+
+.levelup-section--pink-note,
+.levelup-testimonials,
+.levelup-difference,
+.levelup-faq {
+  background: transparent;
+}
+
+.levelup-glass-components {
+  padding: clamp(1rem, 2.8vw, 2rem) 0 clamp(1.6rem, 4vw, 3rem);
+}
+
+.levelup-glass-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(0.9rem, 2vw, 1.35rem);
+}
+
+.levelup-production-card.learning-card,
+.levelup-production-card.method-pillar,
+.levelup-production-card.outcomes-card {
+  min-height: 100%;
+  display: grid !important;
+  align-content: start;
+  gap: 0.7rem;
+  margin: 0 !important;
+  padding: clamp(1.1rem, 2.2vw, 1.45rem) !important;
+  text-align: left;
+  transform: none !important;
+}
+
+.levelup-production-card .levelup-production-card__eyebrow {
+  width: 2.8rem;
+  height: 2.8rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 30% 25%, rgb(255 255 255 / 0.44), transparent 34%),
+    linear-gradient(135deg, #e91e8c, #b7398f);
+  color: #ffffff;
+  font-family: var(--font-conversion), Montserrat, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.levelup-production-card h3 {
+  margin: 0;
+  color: #251822;
+  font-family: var(--font-editorial), "Libre Baskerville", Georgia, serif;
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  line-height: 1.18;
+}
+
+.levelup-production-card p {
+  margin: 0;
+  color: #5f4a56;
+  font-family: var(--font-conversion), Montserrat, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.levelup-image-frame {
+  width: min(100%, 1200px);
+  margin: 0 auto 18px;
+  border-radius: 24px;
+  padding: clamp(0.45rem, 1.2vw, 0.8rem);
+}
+
+.levelup-image-frame--narrow {
+  width: min(60%, 720px);
+}
+
+.levelup-image-frame .levelup-image {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  border-radius: 16px;
+}
+
+.levelup-text-card {
+  width: min(calc(100% - 2rem), 960px);
+  border-radius: 28px;
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.levelup-refund {
+  background:
+    linear-gradient(180deg, rgb(0 0 0 / 0.82), rgb(0 0 0 / 0.76)),
+    transparent;
+  padding: clamp(1.4rem, 4vw, 2.8rem) 0;
+}
+
+.levelup-refund .levelup-text-card,
+.levelup-refund .levelup-text-card p,
+.levelup-refund .levelup-text-card li,
+.levelup-refund .levelup-refund__notice,
+.levelup-refund .levelup-guarantee--dark {
+  color: #ffffff;
+}
+
+.levelup-difference {
+  padding: clamp(1.4rem, 4vw, 2.8rem) 0;
+}
+
+.levelup-difference .levelup-text-card {
+  text-align: left;
+}
+
+.levelup-senja-frame {
+  width: min(100%, 1040px);
+  min-height: 340px;
+  margin: 0 auto;
+  border-radius: 24px;
+  padding: clamp(0.75rem, 2vw, 1rem);
+}
+
+.levelup-checkout-section {
+  background:
+    linear-gradient(180deg, rgb(0 0 0 / 0.82), rgb(0 0 0 / 0.74)),
+    transparent;
+}
+
+.levelup-form.pricing-card {
+  display: block !important;
+  width: min(100%, 480px) !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  border-radius: 20px !important;
+  text-align: center !important;
+  transform: none !important;
+}
+
+.levelup-form .flexi-form-inner,
+.levelup-form__inner {
+  position: relative;
+  z-index: 1;
+}
+
+.levelup-faq-item.faq-item {
+  width: 82%;
+  margin: 0 auto 10px !important;
+  padding: 0 !important;
+  border-radius: 12px !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.75),
+    0 12px 32px rgb(80 28 54 / 0.1) !important;
+}
+
+.levelup-faq-item.faq-item summary {
+  border-radius: 12px 12px 0 0;
+  background: rgb(253 229 240 / 0.82);
+}
+
+.levelup-faq-item.faq-item:not([open]) summary {
+  border-radius: 12px;
+}
+
+.levelup-sticky-cta.glass-card {
+  background:
+    radial-gradient(circle at 12% 8%, rgb(255 255 255 / 0.96), transparent 9rem),
+    linear-gradient(145deg, rgb(255 255 255 / 0.92), rgb(255 245 251 / 0.84) 52%, rgb(236 253 255 / 0.74)) !important;
+}
+
+.levelup-cta .liquid-button-pool,
+.levelup-order-button .liquid-button-pool {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.levelup-cta > span:not(.liquid-button-pool),
+.levelup-order-button > span:not(.liquid-button-pool) {
+  position: relative;
+  z-index: 2;
+}
+
+.levelup-order-button {
+  isolation: isolate;
+}
+
+@media (max-width: 768px) {
+  .levelup-glass-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .levelup-hero-panel,
+  .levelup-text-card {
+    width: min(calc(100% - 1rem), 720px);
+    border-radius: 22px;
+  }
+}
+
+@media (max-width: 480px) {
+  .levelup-hero-panel {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    padding: 16px 8px;
+  }
+
+  .levelup-image-frame,
+  .levelup-image-frame--narrow,
+  .levelup-whatsapp-testimonial,
+  .levelup-senja-frame,
+  .levelup-text-card {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+  }
+
+  .levelup-image-frame .levelup-image {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .levelup-production-card.learning-card,
+  .levelup-production-card.method-pillar,
+  .levelup-production-card.outcomes-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 1rem !important;
+    overflow: hidden !important;
+  }
+
+  .levelup-hero-panel .levelup-title,
+  .levelup-hero-panel .levelup-subtitle,
+  .levelup-hero-panel .levelup-video,
+  .levelup-hero-panel .levelup-countdown {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .levelup-glass-grid {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    margin-inline: auto;
+    overflow: hidden;
+  }
+
+  .levelup-production-card h3,
+  .levelup-production-card p {
+    overflow-wrap: anywhere;
+  }
+
+  .levelup-sticky-cta .levelup-cta {
+    width: calc(100% - 16px) !important;
+    min-width: 0 !important;
+    max-width: 400px !important;
+  }
+
+  .levelup-sticky-cta {
+    overflow-x: hidden;
+  }
+}
+
+/* LevelUp clone Grainient: yellow and sakura palette. */
+html:has(.levelup-clone),
+body:has(.levelup-clone) {
+  background:
+    radial-gradient(circle at 14% 20%, rgb(245 167 189 / 0.56), transparent 26rem),
+    radial-gradient(circle at 72% 16%, rgb(255 231 143 / 0.5), transparent 30rem),
+    radial-gradient(circle at 82% 78%, rgb(184 216 154 / 0.32), transparent 32rem),
+    radial-gradient(circle at 48% 82%, rgb(244 114 182 / 0.28), transparent 30rem),
+    linear-gradient(135deg, #fffaf0 0%, #fff1f7 42%, #fff7d6 72%, #f4f8df 100%) !important;
+}
+
+.levelup-clone .ambient-background--aqua-mesh {
+  background:
+    radial-gradient(circle at 14% 20%, rgb(245 167 189 / 0.56), transparent 26rem),
+    radial-gradient(circle at 72% 16%, rgb(255 231 143 / 0.5), transparent 30rem),
+    radial-gradient(circle at 82% 78%, rgb(184 216 154 / 0.32), transparent 32rem),
+    radial-gradient(circle at 48% 82%, rgb(244 114 182 / 0.28), transparent 30rem),
+    linear-gradient(135deg, #fffaf0 0%, #fff1f7 42%, #fff7d6 72%, #f4f8df 100%) !important;
+}
+
+.levelup-clone .ambient-background__webgl.grainient-container {
+  opacity: 0.98 !important;
+  filter: saturate(1.32) contrast(1.1) brightness(1.05) !important;
+}
+
+.levelup-clone .ambient-background__field {
+  background:
+    radial-gradient(circle at 14% 26%, rgb(245 167 189 / 0.8), transparent 20rem),
+    radial-gradient(circle at 82% 20%, rgb(255 231 143 / 0.64), transparent 22rem),
+    radial-gradient(circle at 82% 78%, rgb(184 216 154 / 0.4), transparent 24rem),
+    radial-gradient(circle at 50% 78%, rgb(244 114 182 / 0.4), transparent 24rem),
+    linear-gradient(110deg, rgb(245 167 189 / 0.34), rgb(255 231 143 / 0.3), rgb(184 216 154 / 0.2)) !important;
+  opacity: 0.92 !important;
+}
+
+.levelup-clone .ambient-background__flow {
+  background:
+    radial-gradient(circle at 18% 24%, rgb(245 167 189 / 0.4), transparent 16rem),
+    radial-gradient(circle at 78% 18%, rgb(255 231 143 / 0.34), transparent 18rem),
+    radial-gradient(circle at 78% 76%, rgb(184 216 154 / 0.22), transparent 20rem),
+    linear-gradient(130deg, transparent, rgb(255 255 255 / 0.3), transparent) !important;
+  opacity: 0.8 !important;
+  animation: aqua-mesh-flow 9.5s ease-in-out infinite alternate !important;
+}
+
+.levelup-clone .ambient-background__counterflow {
+  background:
+    radial-gradient(circle at 18% 10%, rgb(255 255 255 / 0.22), transparent 28rem),
+    radial-gradient(circle at 82% 82%, rgb(255 231 143 / 0.26), transparent 30rem),
+    radial-gradient(circle at 20% 80%, rgb(184 216 154 / 0.18), transparent 28rem),
+    linear-gradient(180deg, rgb(255 252 244 / 0.18), rgb(255 241 247 / 0.2) 46%, rgb(244 248 223 / 0.3)) !important;
+  opacity: 0.58 !important;
+  animation: aqua-mesh-counterflow 12s ease-in-out infinite alternate !important;
+  mix-blend-mode: normal !important;
+}
+
+.levelup-clone .ambient-background--aqua-mesh .ambient-background__readability-veil {
+  background:
+    linear-gradient(180deg, rgb(255 252 244 / 0.04), rgb(255 241 247 / 0.06) 46%, rgb(255 250 238 / 0.08)),
+    radial-gradient(circle at 18% 10%, rgb(255 255 255 / 0.06), transparent 28rem),
+    radial-gradient(circle at 82% 82%, rgb(255 245 205 / 0.05), transparent 30rem) !important;
+}
+
+.levelup-hero-panel.glass-card,
+.levelup-video.glass-card,
+.levelup-countdown.glass-card,
+.levelup-image-frame.glass-card,
+.levelup-text-card.glass-card,
+.levelup-senja-frame.glass-card,
+.levelup-whatsapp-testimonial.glass-card,
+.levelup-form.glass-card {
+  background:
+    radial-gradient(circle at 12% 8%, rgb(255 255 255 / 0.78), transparent 9rem),
+    linear-gradient(145deg, rgb(255 255 255 / 0.64), rgb(255 246 250 / 0.48) 52%, rgb(248 250 224 / 0.42)) !important;
+  backdrop-filter: blur(16px) saturate(1.18) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.18) !important;
+}
+
+.levelup-livebar {
+  background: rgb(255 255 255 / 0.56);
+}
+
+@media (max-width: 768px) {
+  .levelup-clone .ambient-background__webgl.grainient-container {
+    opacity: 0.95 !important;
+    filter: saturate(1.26) contrast(1.08) brightness(1.05) !important;
+  }
+
+  .levelup-whatsapp-testimonial-grid {
+    grid-template-columns: 1fr;
+    width: min(100%, 520px);
+  }
+
+  .levelup-clone .ambient-background--aqua-mesh .ambient-background__readability-veil {
+    background:
+      linear-gradient(180deg, rgb(255 252 244 / 0.06), rgb(255 241 247 / 0.09) 48%, rgb(255 250 238 / 0.08)),
+      radial-gradient(circle at 50% 10%, rgb(255 255 255 / 0.06), transparent 20rem) !important;
+  }
+}
+
+/* LevelUp soft section bands: replace hard black separators with opaque pastel surfaces. */
+.levelup-section--black,
+.levelup-refund,
+.levelup-checkout-section {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 14% 14%, rgb(245 167 189 / 0.46), transparent 24rem),
+    radial-gradient(circle at 86% 18%, rgb(255 231 143 / 0.34), transparent 26rem),
+    radial-gradient(circle at 82% 84%, rgb(184 216 154 / 0.24), transparent 26rem),
+    linear-gradient(135deg, #fffaf0 0%, #fff1f7 48%, #fff7d6 78%, #f4f8df 100%) !important;
+  color: #24151f !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    inset 0 -1px 0 rgb(190 24 93 / 0.16),
+    0 24px 70px rgb(80 28 54 / 0.12) !important;
+}
+
+.levelup-section--black::before,
+.levelup-refund::before,
+.levelup-checkout-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgb(244 114 182 / 0.14), transparent 22%, transparent 66%, rgb(255 231 143 / 0.16), rgb(184 216 154 / 0.14)),
+    linear-gradient(180deg, rgb(255 255 255 / 0.74), transparent 18%, transparent 82%, rgb(255 255 255 / 0.56));
+}
+
+.levelup-section--black > *,
+.levelup-refund > *,
+.levelup-checkout-section > * {
+  position: relative;
+  z-index: 1;
+}
+
+.levelup-section--black .levelup-guarantee--dark,
+.levelup-refund .levelup-text-card,
+.levelup-refund .levelup-text-card p,
+.levelup-refund .levelup-text-card li,
+.levelup-refund .levelup-refund__notice,
+.levelup-refund .levelup-guarantee--dark {
+  color: #24151f !important;
+}
+
+.levelup-refund h2 {
+  color: #d41479 !important;
+}
+
+.levelup-refund li span {
+  color: #d41479 !important;
+}
+
+.levelup-refund .levelup-text-card {
+  background:
+    radial-gradient(circle at 12% 8%, #ffffff 0, transparent 9rem),
+    linear-gradient(145deg, #fffefa, #fff1f7 48%, #fff8dc 78%, #f6fae8) !important;
+  border-color: rgb(233 30 140 / 0.16) !important;
+}
+
+.levelup-checkout-section {
+  padding-block: clamp(1.5rem, 4vw, 3rem) !important;
+}
+
+.levelup-form.glass-card,
+.levelup-form.pricing-card {
+  background:
+    linear-gradient(145deg, #ffffff 0%, #fff7fb 54%, #f2fffd 100%) !important;
+  border-color: rgb(5 150 105 / 0.14) !important;
+}
+
+/* LevelUp production typography alignment. */
+.levelup-clone {
+  --levelup-font-body:
+    var(--font-body), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --levelup-font-display:
+    var(--font-display), Georgia, Cambria, "Times New Roman", serif;
+  --levelup-font-accent:
+    var(--font-accent), Georgia, Cambria, "Times New Roman", serif;
+  --levelup-font-conversion:
+    var(--font-conversion), var(--font-body), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  color: var(--color-text) !important;
+  font-family: var(--levelup-font-body) !important;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.65;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.levelup-topbar,
+.levelup-livebar,
+.levelup-badge,
+.levelup-countdown__label,
+.levelup-countdown__units span,
+.levelup-cta,
+.levelup-note,
+.levelup-spots,
+.levelup-guarantee,
+.levelup-form,
+.levelup-form input,
+.levelup-form__secure,
+.levelup-savings,
+.levelup-product-table,
+.levelup-trust-row,
+.levelup-form-viewers,
+.levelup-faq-item summary,
+.levelup-sticky-price,
+.levelup-sticky-countdown,
+.levelup-sticky-spots,
+.levelup-footer p {
+  font-family: var(--levelup-font-conversion) !important;
+  letter-spacing: 0 !important;
+}
+
+.levelup-title,
+.levelup-testimonials h2,
+.levelup-refund h2,
+.levelup-difference h2,
+.levelup-faq h2 {
+  font-family: var(--levelup-font-display) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+}
+
+.levelup-title {
+  max-width: 1080px;
+  color: #050102 !important;
+  font-size: 5rem !important;
+  line-height: 1.02 !important;
+}
+
+.levelup-title span {
+  color: #df1682 !important;
+}
+
+.levelup-subtitle {
+  max-width: 960px;
+  color: #1f1720 !important;
+  font-family: var(--levelup-font-body) !important;
+  font-size: 1.16rem !important;
+  font-weight: 600 !important;
+  line-height: 1.68 !important;
+}
+
+.levelup-badge {
+  font-size: 0.78rem !important;
+  font-weight: 900 !important;
+  line-height: 1.25 !important;
+}
+
+.levelup-topbar,
+.levelup-livebar {
+  font-size: 0.86rem !important;
+  font-weight: 700 !important;
+  line-height: 1.45 !important;
+}
+
+.levelup-topbar strong,
+.levelup-livebar strong,
+.levelup-spots strong,
+.levelup-form-viewers strong {
+  font-weight: 900 !important;
+}
+
+.levelup-countdown__units strong,
+.levelup-sticky-countdown strong,
+.levelup-sticky-price strong {
+  font-family: var(--levelup-font-display) !important;
+  font-weight: 900 !important;
+  letter-spacing: 0 !important;
+}
+
+.levelup-countdown__units strong {
+  font-size: 2.1rem !important;
+  line-height: 0.95 !important;
+}
+
+.levelup-cta {
+  font-size: 1rem !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+}
+
+.levelup-testimonials h2,
+.levelup-refund h2,
+.levelup-difference h2,
+.levelup-faq h2 {
+  color: #170913 !important;
+  font-size: 3.25rem !important;
+  line-height: 1.08 !important;
+}
+
+.levelup-refund h2 {
+  color: #d41479 !important;
+}
+
+.levelup-difference p,
+.levelup-refund p,
+.levelup-refund li,
+.levelup-refund__notice,
+.levelup-faq-item p {
+  font-family: var(--levelup-font-body) !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+
+.levelup-difference p {
+  color: #24151f !important;
+  font-size: 1.12rem !important;
+  line-height: 1.76 !important;
+}
+
+.levelup-refund p,
+.levelup-refund li,
+.levelup-refund__notice {
+  font-size: 1.08rem !important;
+  line-height: 1.68 !important;
+}
+
+.levelup-faq-item summary {
+  color: #201620 !important;
+  font-size: 1.08rem !important;
+  font-weight: 800 !important;
+  line-height: 1.35 !important;
+}
+
+.levelup-faq-item p {
+  color: #5f4c58 !important;
+  font-size: 0.98rem !important;
+  line-height: 1.7 !important;
+}
+
+@media (max-width: 991px) {
+  .levelup-title {
+    font-size: 4.1rem !important;
+    line-height: 1.04 !important;
+  }
+
+  .levelup-testimonials h2,
+  .levelup-refund h2,
+  .levelup-difference h2,
+  .levelup-faq h2 {
+    font-size: 2.75rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .levelup-title {
+    font-size: 3.35rem !important;
+    line-height: 1.04 !important;
+  }
+
+  .levelup-subtitle {
+    margin-top: 1.7rem !important;
+    font-size: 1.04rem !important;
+    line-height: 1.58 !important;
+  }
+
+  .levelup-badge {
+    font-size: 0.72rem !important;
+  }
+
+  .levelup-testimonials h2,
+  .levelup-refund h2,
+  .levelup-difference h2,
+  .levelup-faq h2 {
+    font-size: 2.3rem !important;
+    line-height: 1.1 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .levelup-title {
+    font-size: 2.45rem !important;
+    font-weight: 800 !important;
+    line-height: 1.06 !important;
+  }
+
+  .levelup-subtitle {
+    font-size: 0.96rem !important;
+    font-weight: 600 !important;
+    line-height: 1.56 !important;
+  }
+
+  .levelup-topbar,
+  .levelup-livebar {
+    font-size: 0.78rem !important;
+  }
+
+  .levelup-cta {
+    font-size: 0.94rem !important;
+  }
+
+  .levelup-testimonials h2,
+  .levelup-refund h2,
+  .levelup-difference h2,
+  .levelup-faq h2 {
+    font-size: 2rem !important;
+  }
+}
+
+/* LevelUp footer: keep legal copy visible above the fixed sticky CTA. */
+.levelup-footer {
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+  border-top: 1px solid rgb(233 30 140 / 0.2);
+  background:
+    radial-gradient(circle at 12% 8%, rgb(255 255 255 / 0.78), transparent 12rem),
+    radial-gradient(circle at 72% 18%, rgb(255 231 143 / 0.26), transparent 18rem),
+    radial-gradient(circle at 90% 84%, rgb(184 216 154 / 0.2), transparent 18rem),
+    linear-gradient(135deg, #fffaf0 0%, #fff1f7 44%, #fff8dc 78%, #f6fae8 100%) !important;
+  color: #261520 !important;
+  padding: clamp(2rem, 5vw, 3.25rem) 1rem calc(7.75rem + env(safe-area-inset-bottom)) !important;
+  text-align: left;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.88),
+    0 -18px 54px rgb(80 28 54 / 0.1) !important;
+}
+
+.levelup-footer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgb(244 114 182 / 0.12), transparent 22%, transparent 68%, rgb(255 231 143 / 0.14), rgb(184 216 154 / 0.12)),
+    linear-gradient(180deg, rgb(255 255 255 / 0.72), transparent 34%);
+}
+
+.levelup-footer__inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem 2rem;
+  width: min(100%, 1140px);
+  margin: 0 auto;
+}
+
+.levelup-footer__brand {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.levelup-footer__brand span {
+  color: #15080f;
+  font-family: var(--levelup-font-display) !important;
+  font-size: 1.85rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.levelup-footer__brand strong {
+  color: #9f174d;
+  font-family: var(--levelup-font-conversion) !important;
+  font-size: 0.84rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.levelup-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.levelup-footer__links a {
+  border: 1px solid rgb(233 30 140 / 0.18);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.56);
+  padding: 0.55rem 0.85rem;
+  color: #7d1749;
+  font-family: var(--levelup-font-conversion) !important;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.levelup-footer__links a:hover {
+  border-color: rgb(233 30 140 / 0.36);
+  background: #ffffff;
+  color: #d41479;
+  transform: translateY(-1px);
+}
+
+.levelup-footer p.levelup-footer__copy,
+.levelup-footer p.levelup-footer__disclaimer {
+  grid-column: 1 / -1;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: var(--levelup-font-body) !important;
+  letter-spacing: 0 !important;
+}
+
+.levelup-footer__copy {
+  color: #2a1723;
+  font-size: 0.9rem !important;
+  font-weight: 800;
+  line-height: 1.45 !important;
+}
+
+.levelup-footer__disclaimer {
+  color: #68505e;
+  font-size: 0.78rem !important;
+  font-weight: 600;
+  line-height: 1.62 !important;
+}
+
+@media (max-width: 768px) {
+  .levelup-footer {
+    padding-bottom: calc(10.75rem + env(safe-area-inset-bottom)) !important;
+    text-align: center;
+  }
+
+  .levelup-footer__inner {
+    grid-template-columns: 1fr;
+    gap: 0.9rem;
+  }
+
+  .levelup-footer__links {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .levelup-footer {
+    padding-inline: 0.75rem !important;
+    padding-bottom: calc(12rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  .levelup-footer__brand span {
+    font-size: 1.55rem;
+  }
+
+  .levelup-footer__links a {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.72rem;
+  }
+}
+
+/* LevelUp masterclass walkthrough: coded replacement for the old image section. */
+.levelup-masterclass {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 12% 8%, rgb(255 255 255 / 0.84), transparent 16rem),
+    radial-gradient(circle at 88% 14%, rgb(253 174 250 / 0.26), transparent 22rem),
+    linear-gradient(180deg, #fffafd 0%, #fff4fa 50%, #fffafd 100%) !important;
+  color: #180c14;
+  padding: 3rem 0 3.5rem;
+}
+
+.levelup-masterclass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent, rgb(233 30 140 / 0.08) 18%, transparent 38%),
+    radial-gradient(circle at 50% 0%, rgb(255 255 255 / 0.72), transparent 28rem);
+}
+
+.levelup-masterclass__inner {
+  position: relative;
+  z-index: 1;
+  width: min(calc(100% - 2rem), 1080px);
+}
+
+.levelup-masterclass__header {
+  display: grid;
+  gap: 1rem;
+  max-width: 900px;
+  margin: 0 auto 2.3rem;
+  text-align: center;
+}
+
+.levelup-masterclass__kicker {
+  justify-self: center;
+  border: 1px solid rgb(233 30 140 / 0.2);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.86);
+  padding: 0.6rem 1.05rem;
+  color: #d41479;
+  font-family: var(--levelup-font-conversion) !important;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-transform: uppercase;
+  box-shadow: 0 10px 28px rgb(80 28 54 / 0.08);
+}
+
+.levelup-masterclass h2 {
+  margin: 0;
+  color: #090407;
+  font-family: var(--levelup-font-display) !important;
+  font-size: 3.25rem;
+  font-weight: 900;
+  line-height: 1.06;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.levelup-masterclass__header p {
+  margin: 0;
+  color: #3b2a35;
+  font-family: var(--levelup-font-body) !important;
+  font-size: 1.1rem;
+  font-weight: 650;
+  line-height: 1.68;
+}
+
+.levelup-masterclass-progress {
+  --progress-travel: 10.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.7rem;
+  margin: 0 auto 2.7rem;
+}
+
+.levelup-masterclass-progress__number {
+  color: transparent;
+  font-family: var(--levelup-font-conversion) !important;
+  font-size: 9rem;
+  font-weight: 900;
+  line-height: 0.8;
+  -webkit-text-stroke: 2px #e91e8c;
+  text-shadow: 0 18px 40px rgb(233 30 140 / 0.12);
+}
+
+.levelup-masterclass-progress__track {
+  position: relative;
+  width: 12rem;
+  height: 4.2rem;
+  flex: 0 0 12rem;
+}
+
+.levelup-masterclass-progress__line {
+  position: absolute;
+  top: 50%;
+  right: 0.9rem;
+  left: 0;
+  height: 0.28rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(233 30 140 / 0.18);
+  transform: translateY(-50%);
+}
+
+.levelup-masterclass-progress__line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgb(233 30 140 / 0.78), transparent);
+  animation: levelup-progress-shimmer 2.8s ease-in-out infinite;
+}
+
+.levelup-masterclass-progress__arrow {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 2rem;
+  height: 2rem;
+  border-top: 0.28rem solid #e91e8c;
+  border-right: 0.28rem solid #e91e8c;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.levelup-masterclass-progress__dot {
+  position: absolute;
+  top: 50%;
+  left: 0.15rem;
+  z-index: 2;
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 999px;
+  background: #e91e8c;
+  box-shadow: 0 0 0 0.35rem rgb(233 30 140 / 0.12), 0 0 24px rgb(233 30 140 / 0.34);
+  transform: translate3d(0, -50%, 0);
+  animation: levelup-progress-dot 2.8s ease-in-out infinite;
+}
+
+.levelup-masterclass__cards {
+  display: grid;
+  gap: 1.45rem;
+  width: min(100%, 980px);
+  margin: 0 auto;
+}
+
+.levelup-masterclass-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgb(233 30 140 / 0.12);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 12% 8%, rgb(255 255 255 / 0.9), transparent 10rem),
+    linear-gradient(145deg, #fff9fd 0%, #fde7f3 54%, #fff5fb 100%);
+  padding: 1.55rem 1.8rem;
+  color: #160b12;
+  text-align: left;
+  box-shadow: 0 18px 48px rgb(80 28 54 / 0.09), inset 0 1px 0 rgb(255 255 255 / 0.86);
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+  transition:
+    opacity 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 660ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.levelup-masterclass-card:nth-child(2) {
+  transition-delay: 90ms;
+}
+
+.levelup-masterclass-card:nth-child(3) {
+  transition-delay: 180ms;
+}
+
+.levelup-masterclass-card:nth-child(4) {
+  transition-delay: 270ms;
+}
+
+.levelup-masterclass-card:nth-child(5) {
+  transition-delay: 360ms;
+}
+
+.levelup-masterclass-card:nth-child(6) {
+  transition-delay: 450ms;
+}
+
+.levelup-masterclass-card.is-visible {
+  opacity: 1;
+  transform: translate3d(0, var(--walkthrough-depth, 0), 0);
+}
+
+.levelup-masterclass-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 0 34%, rgb(255 255 255 / 0.36) 46%, transparent 58% 100%);
+  opacity: 0.42;
+  transform: translateX(-65%);
+}
+
+.levelup-masterclass-card__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.levelup-masterclass-card h3 {
+  margin: 0;
+  color: #090407;
+  font-family: var(--levelup-font-conversion) !important;
+  font-size: 1.38rem;
+  font-weight: 900;
+  line-height: 1.18;
+  text-transform: uppercase;
+}
+
+.levelup-masterclass-card__badge {
+  position: relative;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #e91e8c, #c4147a);
+  padding: 0.42rem 0.78rem;
+  color: #ffffff;
+  font-family: var(--levelup-font-conversion) !important;
+  font-size: 0.92rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 10px 22px rgb(233 30 140 / 0.24);
+}
+
+.levelup-masterclass-card__badge::after {
+  content: "";
+  position: absolute;
+  inset: -20% -55%;
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.56) 50%, transparent 65%);
+  opacity: 0;
+  transform: translateX(-70%);
+}
+
+.levelup-masterclass-card.is-visible .levelup-masterclass-card__badge::after {
+  animation: levelup-badge-shine 900ms ease-out 180ms both;
+}
+
+.levelup-masterclass-card p,
+.levelup-masterclass-card li {
+  color: #2f202b;
+  font-family: var(--levelup-font-body) !important;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.62;
+}
+
+.levelup-masterclass-card p {
+  margin: 0;
+}
+
+.levelup-masterclass-card ul {
+  display: grid;
+  gap: 0.42rem;
+  margin: 0.8rem 0 0.85rem;
+  padding: 0;
+  list-style: none;
+}
+
+.levelup-masterclass-card li {
+  position: relative;
+  padding-left: 1.05rem;
+}
+
+.levelup-masterclass-card li::before {
+  content: "";
+  position: absolute;
+  top: 0.68em;
+  left: 0;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: #e91e8c;
+  box-shadow: 0 0 0 0.22rem rgb(233 30 140 / 0.1);
+}
+
+.levelup-masterclass-card__closing {
+  color: #6d1645 !important;
+  font-weight: 800 !important;
+}
+
+.levelup-masterclass-card--bonus {
+  border-color: rgb(233 30 140 / 0.26);
+  background:
+    radial-gradient(circle at 12% 8%, rgb(255 255 255 / 0.94), transparent 10rem),
+    radial-gradient(circle at 88% 16%, rgb(94 234 212 / 0.18), transparent 16rem),
+    linear-gradient(145deg, #ffffff 0%, #ffe5f3 52%, #f4fffd 100%);
+  box-shadow: 0 20px 54px rgb(233 30 140 / 0.13), inset 0 1px 0 rgb(255 255 255 / 0.92);
+}
+
+.levelup-masterclass-card--bonus::after {
+  content: "";
+  position: absolute;
+  top: 1rem;
+  right: 1.3rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow:
+    0 0 0 0.4rem rgb(233 30 140 / 0.08),
+    0 0 24px rgb(233 30 140 / 0.28),
+    -1.1rem 1rem 0 -0.14rem rgb(233 30 140 / 0.34);
+  animation: levelup-bonus-glow 2.9s ease-in-out infinite;
+}
+
+.levelup-masterclass-card--bonus .levelup-masterclass-card__badge {
+  background: linear-gradient(135deg, #9f174d, #e91e8c);
+}
+
+.levelup-masterclass__cta {
+  display: grid;
+  justify-items: center;
+  gap: 0.8rem;
+  margin-top: 2.1rem;
+}
+
+.levelup-masterclass__cta .levelup-guarantee {
+  color: #48313f !important;
+  font-size: 0.95rem !important;
+  font-weight: 650 !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .levelup-masterclass-card:hover {
+    border-color: rgb(233 30 140 / 0.28);
+    box-shadow: 0 24px 64px rgb(80 28 54 / 0.14), 0 0 0 1px rgb(255 255 255 / 0.64);
+    transform: translate3d(0, calc(var(--walkthrough-depth, 0px) - 4px), 0);
+  }
+
+  .levelup-masterclass-card:hover::before {
+    animation: levelup-card-sheen 760ms ease-out both;
+  }
+}
+
+@media (max-width: 991px) {
+  .levelup-masterclass h2 {
+    font-size: 2.65rem;
+  }
+
+  .levelup-masterclass-progress {
+    --progress-travel: 7.7rem;
+    gap: 1.25rem;
+  }
+
+  .levelup-masterclass-progress__number {
+    font-size: 6.8rem;
+  }
+
+  .levelup-masterclass-progress__track {
+    width: 8.8rem;
+    flex-basis: 8.8rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .levelup-masterclass {
+    padding: 2.35rem 0 2.75rem;
+  }
+
+  .levelup-masterclass__inner {
+    width: min(calc(100% - 1rem), 720px);
+  }
+
+  .levelup-masterclass h2 {
+    font-size: 2.12rem;
+    line-height: 1.12;
+  }
+
+  .levelup-masterclass__header p {
+    font-size: 0.98rem;
+    line-height: 1.58;
+  }
+
+  .levelup-masterclass-progress {
+    --progress-travel: 5.35rem;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+  }
+
+  .levelup-masterclass-progress__number {
+    font-size: 4.5rem;
+    -webkit-text-stroke-width: 1.4px;
+  }
+
+  .levelup-masterclass-progress__track {
+    width: 6.2rem;
+    height: 3rem;
+    flex-basis: 6.2rem;
+  }
+
+  .levelup-masterclass-progress__arrow {
+    width: 1.45rem;
+    height: 1.45rem;
+  }
+
+  .levelup-masterclass-card {
+    padding: 1.18rem;
+    border-radius: 20px;
+    transform: translate3d(0, 12px, 0);
+  }
+
+  .levelup-masterclass-card.is-visible {
+    transform: translate3d(0, 0, 0);
+  }
+
+  .levelup-masterclass-card__heading {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .levelup-masterclass-card__badge {
+    width: fit-content;
+    justify-self: start;
+  }
+
+  .levelup-masterclass-card h3 {
+    font-size: 1.06rem;
+  }
+
+  .levelup-masterclass-card p,
+  .levelup-masterclass-card li {
+    font-size: 0.94rem;
+    line-height: 1.56;
+  }
+}
+
+@media (max-width: 480px) {
+  .levelup-masterclass__kicker {
+    font-size: 0.68rem;
+  }
+
+  .levelup-masterclass h2 {
+    font-size: 1.82rem;
+  }
+
+  .levelup-masterclass-progress {
+    --progress-travel: 4.05rem;
+    gap: 0.5rem;
+  }
+
+  .levelup-masterclass-progress__number {
+    font-size: 3.55rem;
+  }
+
+  .levelup-masterclass-progress__track {
+    width: 4.8rem;
+    flex-basis: 4.8rem;
+  }
+
+  .levelup-masterclass-card {
+    padding: 1rem;
+  }
+
+  .levelup-masterclass-card__badge {
+    width: fit-content;
+    font-size: 0.82rem;
+  }
+}
+
+@keyframes levelup-progress-shimmer {
+  0%,
+  100% {
+    transform: translateX(-85%);
+  }
+
+  50% {
+    transform: translateX(85%);
+  }
+}
+
+@keyframes levelup-progress-dot {
+  0%,
+  100% {
+    transform: translate3d(0, -50%, 0);
+    opacity: 0.72;
+  }
+
+  50% {
+    transform: translate3d(var(--progress-travel), -50%, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes levelup-badge-shine {
+  0% {
+    opacity: 0;
+    transform: translateX(-70%);
+  }
+
+  28% {
+    opacity: 0.8;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(70%);
+  }
+}
+
+@keyframes levelup-card-sheen {
+  0% {
+    opacity: 0;
+    transform: translateX(-65%);
+  }
+
+  30% {
+    opacity: 0.52;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(65%);
+  }
+}
+
+@keyframes levelup-bonus-glow {
+  0%,
+  100% {
+    opacity: 0.48;
+    transform: scale(0.96);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .levelup-masterclass-progress__line::after,
+  .levelup-masterclass-progress__dot,
+  .levelup-masterclass-card,
+  .levelup-masterclass-card::before,
+  .levelup-masterclass-card__badge::after,
+  .levelup-masterclass-card--bonus::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .levelup-masterclass-card {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* Final sticky CTA state guard: preserve original hidden-until-trigger funnel behavior. */
+.levelup-clone .levelup-sticky-cta {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(calc(100% + 24px)) !important;
+  visibility: hidden !important;
+}
+
+.levelup-clone .levelup-sticky-cta.is-visible {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translateY(0) !important;
+  visibility: visible !important;
 }

@@ -1,21 +1,11 @@
+import { notFound } from "next/navigation";
 import { promptAnalysisExamples } from "@/lib/prompt-refinement/examples";
 
 export default function PromptLabPage() {
   const isEnabled = process.env.ENABLE_PROMPT_LAB === "true";
 
   if (!isEnabled) {
-    return (
-      <main className="policy-page">
-        <article className="policy-document">
-          <p className="policy-kicker">Internal tool disabled</p>
-          <h1>Prompt Lab</h1>
-          <p>
-            This internal prompt-refinement tool is disabled by default. Set
-            `ENABLE_PROMPT_LAB=true` in a non-production environment to review examples.
-          </p>
-        </article>
-      </main>
-    );
+    notFound();
   }
 
   return (
