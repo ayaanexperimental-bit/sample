@@ -2,35 +2,125 @@
 
 import { useEffect, useState } from "react";
 
-const MIN_DISPLAY_VIEWERS = 128;
-const MAX_DISPLAY_VIEWERS = 189;
-export const START_DISPLAY_VIEWERS = 141;
+export const START_DISPLAY_VIEWERS = 1;
 
-export function getNextLiveViewerCount(current: number) {
-  const next = current + Math.floor(Math.random() * 7) - 3;
-  return Math.max(MIN_DISPLAY_VIEWERS, Math.min(MAX_DISPLAY_VIEWERS, next));
+type LiveViewerPayload = {
+  viewers?: unknown;
+};
+
+export function getLiveViewerCopy(count: number) {
+  return count === 1
+    ? "woman is viewing this page right now"
+    : "women are viewing this page right now";
+}
+
+function normalizeViewerCount(value: unknown) {
+  const parsed = typeof value === "number" ? value : Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    return START_DISPLAY_VIEWERS;
+  }
+
+  return Math.max(START_DISPLAY_VIEWERS, Math.round(parsed));
+}
+
+function liveViewerApiUrl() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname)) {
+    return null;
+  }
+
+  return `${window.location.origin}/api/live-viewers`;
+}
+
+function liveViewerSocketUrl(apiUrl: string) {
+  const url = new URL(apiUrl);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+
+  return url.toString();
+}
+
+export function useLiveViewerCount(initialViewerCount = START_DISPLAY_VIEWERS) {
+  const [viewerCount, setViewerCount] = useState(() => normalizeViewerCount(initialViewerCount));
+
+  useEffect(() => {
+    const apiUrl = liveViewerApiUrl();
+
+    if (!apiUrl) {
+      return;
+    }
+
+    const endpoint = apiUrl;
+    let cancelled = false;
+    let socket: WebSocket | null = null;
+    let reconnectTimer: number | undefined;
+
+    const applyViewerCount = (payload: LiveViewerPayload) => {
+      setViewerCount(normalizeViewerCount(payload.viewers));
+    };
+
+    const connectSocket = () => {
+      if (cancelled || !("WebSocket" in window)) {
+        return;
+      }
+
+      socket = new WebSocket(liveViewerSocketUrl(endpoint));
+
+      socket.addEventListener("message", (event) => {
+        try {
+          applyViewerCount(JSON.parse(event.data) as LiveViewerPayload);
+        } catch {
+          // Ignore malformed live-viewer messages without interrupting the page.
+        }
+      });
+
+      socket.addEventListener("close", () => {
+        if (cancelled) {
+          return;
+        }
+
+        reconnectTimer = window.setTimeout(connectSocket, 5000);
+      });
+    };
+
+    async function loadSnapshot() {
+      try {
+        const response = await fetch(endpoint, { cache: "no-store" });
+
+        if (!response.ok || cancelled) {
+          return;
+        }
+
+        applyViewerCount((await response.json()) as LiveViewerPayload);
+        connectSocket();
+      } catch {
+        // Local Next.js dev does not serve the Cloudflare Pages Function.
+        // Keep the honest single-viewer fallback instead of simulating demand.
+      }
+    }
+
+    void loadSnapshot();
+
+    return () => {
+      cancelled = true;
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      socket?.close();
+    };
+  }, []);
+
+  return viewerCount;
 }
 
 export function LiveViewerCount({ viewerCount: controlledViewerCount }: { viewerCount?: number }) {
-  const [localViewerCount, setLocalViewerCount] = useState(START_DISPLAY_VIEWERS);
-
-  useEffect(() => {
-    if (controlledViewerCount !== undefined) return;
-
-    const timer = window.setInterval(() => {
-      setLocalViewerCount(getNextLiveViewerCount);
-    }, 4000);
-
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, [controlledViewerCount]);
-
-  const displayCount = controlledViewerCount ?? localViewerCount;
+  const localViewerCount = useLiveViewerCount();
+  const displayCount = normalizeViewerCount(controlledViewerCount ?? localViewerCount);
 
   return (
     <span>
-      <strong>{displayCount}</strong> women are viewing this page right now
+      <strong>{displayCount}</strong> {getLiveViewerCopy(displayCount)}
     </span>
   );
 }

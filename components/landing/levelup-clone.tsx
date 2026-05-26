@@ -5,10 +5,11 @@ import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { AmbientBackground } from "@/components/landing/ambient-background";
 import { GlassCardInteractions } from "@/components/landing/glass-card-interactions";
+import { Infinite3DTestimonialsCarousel } from "@/components/landing/infinite-3d-testimonials-carousel";
 import {
-  getNextLiveViewerCount,
+  getLiveViewerCopy,
   LiveViewerCount,
-  START_DISPLAY_VIEWERS
+  useLiveViewerCount
 } from "@/components/landing/live-viewer-count";
 
 const ASSET_BASE = "https://img.flexifunnels.com/images/7855";
@@ -409,7 +410,7 @@ function MasterclassWalkthroughSection({ onRegister }: { onRegister: () => void 
 export function LevelupClone() {
   const [secondsLeft, setSecondsLeft] = useState(30 * 60);
   const [slotsLeft, setSlotsLeft] = useState(7);
-  const [liveViewerCount, setLiveViewerCount] = useState(START_DISPLAY_VIEWERS);
+  const liveViewerCount = useLiveViewerCount();
   const [stickyVisible, setStickyVisible] = useState(false);
   const [formMessage, setFormMessage] = useState("");
 
@@ -417,10 +418,6 @@ export function LevelupClone() {
     const countdownTimer = window.setInterval(() => {
       setSecondsLeft((current) => (current <= 1 ? 30 * 60 : current - 1));
     }, 1000);
-
-    const liveViewerTimer = window.setInterval(() => {
-      setLiveViewerCount(getNextLiveViewerCount);
-    }, 4000);
 
     let slotsTimer: number | undefined;
     const dropSlot = () => {
@@ -477,7 +474,6 @@ export function LevelupClone() {
 
     return () => {
       window.clearInterval(countdownTimer);
-      window.clearInterval(liveViewerTimer);
       if (slotsTimer) window.clearTimeout(slotsTimer);
       if (stickyFrame) window.cancelAnimationFrame(stickyFrame);
       revealObserver?.disconnect();
@@ -493,9 +489,11 @@ export function LevelupClone() {
     if (!form) return;
 
     const offset = window.innerWidth <= 768 ? 18 : 28;
-    const top = form.getBoundingClientRect().top + window.scrollY - offset;
-    window.scrollTo({ top, behavior: "auto" });
-    form.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
+    form.scrollIntoView({ behavior: "auto", block: "start" });
+    window.scrollBy({ top: -offset, behavior: "auto" });
+    window.setTimeout(() => {
+      form.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
+    }, 80);
   }
 
   return (
@@ -605,13 +603,7 @@ export function LevelupClone() {
             <br />
             In Our <u>Wellness Community</u>
           </h2>
-          <div className="levelup-whatsapp-testimonial-grid">
-            {whatsappTestimonials.map((testimonial) => (
-              <figure className="levelup-whatsapp-testimonial glass-card" key={testimonial.src}>
-                <img src={testimonial.src} alt={testimonial.alt} loading="lazy" />
-              </figure>
-            ))}
-          </div>
+          <Infinite3DTestimonialsCarousel testimonials={whatsappTestimonials} />
         </div>
       </section>
 
@@ -762,7 +754,7 @@ export function LevelupClone() {
               </div>
               <div className="levelup-form-viewers">
                 <span className="levelup-dot levelup-dot--live" aria-hidden="true" />
-                <strong>{liveViewerCount}</strong> women are viewing this page right now
+                <strong>{liveViewerCount}</strong> {getLiveViewerCopy(liveViewerCount)}
               </div>
             </div>
           </form>
