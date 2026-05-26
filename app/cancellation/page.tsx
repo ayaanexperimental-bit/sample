@@ -4,11 +4,11 @@ export default function CancellationPage() {
   return (
     <main className="policy-page">
       <article className="policy-document">
-        <p className="policy-kicker">Policy template</p>
+        <p className="policy-kicker">Yours Wellness Center</p>
         <h1>Cancellation Policy</h1>
         <p>
-          A participant may request cancellation by contacting us at [Support Email] or [WhatsApp
-          Number].
+          A participant may request cancellation by using the contact details shared with their
+          registration confirmation.
         </p>
         <h2>Required Details</h2>
         <p>
@@ -28,8 +28,8 @@ export default function CancellationPage() {
         </p>
         <h2>No Reschedule Promise</h2>
         <p>
-          Participant-side rescheduling is not available unless specifically announced by [Brand
-          Name] in writing.
+          Participant-side rescheduling is not available unless specifically announced by Yours
+          Wellness Center in writing.
         </p>
         <Link href="/">Back to landing page</Link>
       </article>

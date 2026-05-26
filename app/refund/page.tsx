@@ -4,9 +4,9 @@ export default function RefundPage() {
   return (
     <main className="policy-page">
       <article className="policy-document">
-        <p className="policy-kicker">Policy template</p>
+        <p className="policy-kicker">Yours Wellness Center</p>
         <h1>Refund Policy</h1>
-        <p>Last updated: [Date]</p>
+        <p>Last updated: May 26, 2026</p>
         <h2>Workshop Fee</h2>
         <p>The workshop/session fee is displayed on the registration page before payment.</p>
         <h2>Refund Eligibility</h2>
@@ -24,8 +24,8 @@ export default function RefundPage() {
         </p>
         <h2>Request Timeline</h2>
         <p>
-          Refund requests must be raised within [X days/hours] of payment or before the workshop
-          begins, whichever is earlier.
+          Refund requests must be raised before the workshop begins or within 24 hours of payment,
+          whichever is earlier.
         </p>
         <h2>Processing And Final Decision</h2>
         <p>

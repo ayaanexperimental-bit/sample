@@ -4,13 +4,12 @@ export default function TermsPage() {
   return (
     <main className="policy-page">
       <article className="policy-document">
-        <p className="policy-kicker">Policy template</p>
+        <p className="policy-kicker">Yours Wellness Center</p>
         <h1>Terms and Conditions</h1>
-        <p>Last updated: [Date]</p>
+        <p>Last updated: May 26, 2026</p>
         <p>
-          These Terms and Conditions govern your use of [Website URL], registration for our
-          workshops, and participation in programs offered by [Business Legal Name] under the brand
-          [Brand Name].
+          These Terms and Conditions govern your use of freedomfromdiabetes.in, registration for our
+          workshops, and participation in programs offered by Yours Wellness Center.
         </p>
         <h2>Nature Of Service</h2>
         <p>
@@ -49,29 +48,24 @@ export default function TermsPage() {
         <p>
           We may modify, postpone, or cancel a session due to technical issues, speaker
           availability, low registrations, emergencies, or other unavoidable circumstances.
-          Participant-side rescheduling is not available unless specifically announced by [Brand
-          Name] in writing.
+          Participant-side rescheduling is not available unless specifically announced by Yours
+          Wellness Center in writing.
         </p>
         <h2>Intellectual Property And Conduct</h2>
         <p>
           All session content, slides, videos, documents, messages, designs, and materials belong to
-          [Business Legal Name] unless otherwise stated. You may not copy, record, distribute, sell,
+          Yours Wellness Center unless otherwise stated. You may not copy, record, distribute, sell,
           upload, or reuse our content without written permission.
         </p>
         <h2>Liability And Governing Law</h2>
         <p>
-          To the maximum extent permitted by law, [Business Legal Name] will not be liable for
+          To the maximum extent permitted by law, Yours Wellness Center will not be liable for
           indirect, incidental, consequential, or personal health-related losses arising from your
           use of the website, workshop, or educational content. These Terms are governed by the laws
-          of India. Disputes shall be subject to courts located in [City, State], unless otherwise
-          required by law.
+          of India. Disputes shall be handled under the applicable jurisdiction required by law.
         </p>
-        <h2>Contact</h2>
-        <p>Email: [Support Email]. WhatsApp/Phone: [WhatsApp Number].</p>
-        <p className="policy-warning">
-          This is website-ready template text from the compliance pack and should be legally
-          reviewed before publishing.
-        </p>
+        <h2 id="contact">Contact</h2>
+        <p>Use the contact details shared with your registration confirmation.</p>
         <Link href="/">Back to landing page</Link>
       </article>
     </main>

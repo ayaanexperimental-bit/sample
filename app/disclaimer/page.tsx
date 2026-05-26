@@ -4,7 +4,7 @@ export default function DisclaimerPage() {
   return (
     <main className="policy-page">
       <article className="policy-document">
-        <p className="policy-kicker">Policy template</p>
+        <p className="policy-kicker">Yours Wellness Center</p>
         <h1>Disclaimer</h1>
         <p>
           This masterclass is intended for education and general wellness awareness. It is not a
@@ -12,8 +12,8 @@ export default function DisclaimerPage() {
           qualified healthcare professional.
         </p>
         <p>
-          Results and experiences vary. Final approved disclaimer text should be reviewed before
-          launch.
+          Results and experiences vary. The information on this page is educational wellness content
+          and should be interpreted with professional medical guidance where needed.
         </p>
         <p>
           If you have diabetes, PMOS, thyroid issues, pregnancy-related concerns, infertility,
@@ -30,10 +30,6 @@ export default function DisclaimerPage() {
         <p>
           If you experience any medical emergency, immediately contact a qualified medical
           professional or emergency service.
-        </p>
-        <p className="policy-warning">
-          This is website-ready template text from the compliance pack and should be legally
-          reviewed before publishing.
         </p>
         <Link href="/">Back to landing page</Link>
       </article>

@@ -4,14 +4,13 @@ export default function PrivacyPage() {
   return (
     <main className="policy-page">
       <article className="policy-document">
-        <p className="policy-kicker">Policy template</p>
+        <p className="policy-kicker">Yours Wellness Center</p>
         <h1>Privacy Policy</h1>
-        <p>Last updated: [Date]</p>
+        <p>Last updated: May 26, 2026</p>
         <p>
-          This Privacy Policy explains how [Business Legal Name], operating under the brand name
-          [Brand Name], collects, uses, stores, and protects your information when you visit our
-          website, register for our workshop, make a payment, or communicate with us through phone,
-          email, WhatsApp, SMS, or other channels.
+          This Privacy Policy explains how Yours Wellness Center collects, uses, stores, and
+          protects your information when you visit our website, register for our workshop, make a
+          payment, or communicate with us through phone, email, WhatsApp, SMS, or other channels.
         </p>
         <h2>Information We Collect</h2>
         <p>
@@ -57,7 +56,7 @@ export default function PrivacyPage() {
         <h2>Your Rights And Contact</h2>
         <p>
           You may request access, correction, promotional opt-out, deletion where legally permitted,
-          or raise a privacy concern by contacting [Support Email].
+          or raise a privacy concern through the contact details shared with your registration.
         </p>
         <h2>Children&apos;s Privacy</h2>
         <p>
@@ -66,12 +65,7 @@ export default function PrivacyPage() {
         </p>
         <h2>Contact</h2>
         <p>
-          [Business Legal Name], [Business Address]. Email: [Support Email]. WhatsApp/Phone:
-          [WhatsApp Number].
-        </p>
-        <p className="policy-warning">
-          This is website-ready template text from the compliance pack and should be legally
-          reviewed before publishing.
+          Yours Wellness Center. Use the contact details shared with your registration confirmation.
         </p>
         <Link href="/">Back to landing page</Link>
       </article>

@@ -17,7 +17,7 @@ const imageAssets = {
   },
   logoMark: {
     src: `${ASSET_BASE}/tmpzi9207j3_gzntg_236.webp`,
-    alt: "Levelupforwomen logo mark"
+    alt: "Yours Wellness Center logo mark"
   },
   transformation: {
     src: `${ASSET_BASE}/TheTransformationYouCanExpectblack1_k4otc_1920.jpg`,
@@ -51,7 +51,7 @@ const refundRules = [
   "You come fully prepared - having filled the pre-call form and watched the training video",
   "You attend from a quiet, distraction-free space",
   "You bring your key decision-maker (spouse/parent/family) on the call with you",
-  "You actively communicate during the call so our Director can properly evaluate your case"
+  "You actively communicate during the call so our wellness coach can properly evaluate your case"
 ];
 
 const differentiators = [
@@ -407,6 +407,7 @@ export function LevelupClone() {
   const [slotsLeft, setSlotsLeft] = useState(7);
   const [formViewers, setFormViewers] = useState(23);
   const [stickyVisible, setStickyVisible] = useState(false);
+  const [formMessage, setFormMessage] = useState("");
 
   useEffect(() => {
     const countdownTimer = window.setInterval(() => {
@@ -486,9 +487,13 @@ export function LevelupClone() {
   const seconds = String(secondsLeft % 60).padStart(2, "0");
 
   function scrollToForm() {
-    document
-      .getElementById("flexiOrderForm_wKNos")
-      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const form = document.getElementById("flexiOrderForm_wKNos");
+    if (!form) return;
+
+    const offset = window.innerWidth <= 768 ? 18 : 28;
+    const top = form.getBoundingClientRect().top + window.scrollY - offset;
+    window.scrollTo({ top, behavior: "auto" });
+    form.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
   }
 
   return (
@@ -515,21 +520,16 @@ export function LevelupClone() {
           </div>
 
           <h1 className="levelup-title">
-            A practical <span>PMOS hormone reset</span> program for women ready to feel balanced
-            again
+            Heal Your Hormones With A Practical <span>PMOS Reset</span>
           </h1>
 
           <p className="levelup-subtitle">
-            Reset your hormones naturally with simple lifestyle changes - without starvation diets,
-            exhausting workouts, or confusing advice.
+            A simple lifestyle-led masterclass for women who want better periods, energy, mood,
+            weight management, and hormonal balance without starvation diets or exhausting workouts.
             <br />
             <br />
-            Using our Magical 5-Step Hormone Reset Method, Yours Wellness Center helps women support
-            PMOS symptoms, weight management, energy, period health, mood, and confidence through a
-            holistic routine they can actually follow.
-            <br />
-            <br />
-            Join 50,000+ women choosing a clearer path to metabolic wellness and hormone balance.
+            Learn the Magical 5-Step Hormone Reset Method from Yours Wellness Center and leave with
+            a clear, practical direction you can actually follow.
           </p>
 
           <div className="levelup-video glass-card" aria-label="Consultation preview video">
@@ -659,7 +659,7 @@ export function LevelupClone() {
 
       <section className="levelup-section levelup-difference">
         <div className="levelup-wrap levelup-wrap--text levelup-text-card glass-card">
-          <h2>Why Levelupforwomen Is Unlike Anything Else You&apos;ve Tried</h2>
+          <h2>Why Yours Wellness Center Is Different From Quick-Fix Advice</h2>
           <p>
             Every other approach tries to control your symptoms.
             <br />
@@ -699,6 +699,9 @@ export function LevelupClone() {
             className="levelup-form glass-card pricing-card"
             onSubmit={(event) => {
               event.preventDefault();
+              setFormMessage(
+                "Thank you. Your details are ready. Our team will confirm your registration and payment slot shortly."
+              );
             }}
           >
             <div className="levelup-form__secure">Secure Checkout</div>
@@ -737,15 +740,16 @@ export function LevelupClone() {
                 </thead>
                 <tbody>
                   <tr>
-                    <td>Dynamically Updated</td>
-                    <td>$0.00</td>
+                    <td>Heal Your Hormones Registration</td>
+                    <td>₹51</td>
                   </tr>
                 </tbody>
               </table>
 
               <button className="levelup-order-button" type="submit" data-ripple="liquid">
-                Complete Order <span aria-hidden="true">›</span>
+                REGISTER NOW <span aria-hidden="true">›</span>
               </button>
+              {formMessage ? <p className="levelup-form-message">{formMessage}</p> : null}
 
               <div className="levelup-trust-row" aria-label="Checkout trust signals">
                 <span>SSL Secured</span>

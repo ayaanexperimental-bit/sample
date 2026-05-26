@@ -28,7 +28,7 @@ export function FooterCompliance() {
               {link.label}
             </a>
           ))}
-          <a href="mailto:[Support Email]">Contact Support</a>
+          <a href="/terms#contact">Contact Support</a>
         </nav>
       </Container>
     </footer>
