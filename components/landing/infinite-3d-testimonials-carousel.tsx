@@ -405,6 +405,27 @@ export function Infinite3DTestimonialsCarousel({
     [resetDragState, resumeCarousel]
   );
 
+  const releaseControlInteraction = useCallback(() => {
+    clearResumeTimer();
+    clearTouchAutoResumeTimer();
+    centeringRef.current.active = false;
+    dragRef.current = {
+      active: false,
+      moved: false,
+      pointerId: null,
+      pointerType: "",
+      startProgress: progressRef.current,
+      startX: 0,
+      startY: 0
+    };
+    interactionModeRef.current = null;
+    pausedRef.current = false;
+    setHoveredIndex(null);
+    setIsCentering(false);
+    setTouchedIndex(null);
+    setIsPaused(false);
+  }, [clearResumeTimer, clearTouchAutoResumeTimer]);
+
   const setCarouselDirection = useCallback((nextDirection: CarouselDirection) => {
     directionRef.current = nextDirection;
     setDirection(nextDirection);
@@ -505,6 +526,11 @@ export function Infinite3DTestimonialsCarousel({
       }
 
       const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest(".infinite-3d-testimonials__controls")) {
+        releaseControlInteraction();
+        return;
+      }
+
       const focusedCard = target?.closest(".infinite-3d-testimonials__card");
       const focusedIndex =
         focusedCard instanceof HTMLElement ? Number(focusedCard.dataset.cardIndex) : NaN;
@@ -536,7 +562,13 @@ export function Infinite3DTestimonialsCarousel({
       carouselElement.removeEventListener("focusin", handleNativeFocusIn);
       carouselElement.removeEventListener("focusout", handleNativeFocusOut);
     };
-  }, [centerCardForReading, isRecentTouchInteraction, pauseCarousel, resumeCarousel]);
+  }, [
+    centerCardForReading,
+    isRecentTouchInteraction,
+    pauseCarousel,
+    releaseControlInteraction,
+    resumeCarousel
+  ]);
 
   useEffect(() => {
     const focusCheckInterval = window.setInterval(() => {
@@ -579,15 +611,13 @@ export function Infinite3DTestimonialsCarousel({
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === "ArrowRight") {
       event.preventDefault();
-      interactionModeRef.current = "keyboard";
-      pauseCarousel();
+      releaseControlInteraction();
       setCarouselDirection(1);
     }
 
     if (event.key === "ArrowLeft") {
       event.preventDefault();
-      interactionModeRef.current = "keyboard";
-      pauseCarousel();
+      releaseControlInteraction();
       setCarouselDirection(-1);
     }
   }
@@ -835,19 +865,27 @@ export function Infinite3DTestimonialsCarousel({
       {testimonialCount > 1 ? (
         <div className="infinite-3d-testimonials__controls" aria-label="Carousel controls">
           <button
-            aria-label="Move testimonials to the right"
+            aria-label="Set carousel direction to the right"
             aria-pressed={direction === -1}
             className="infinite-3d-testimonials__arrow"
-            onClick={() => setCarouselDirection(-1)}
+            onClick={() => {
+              releaseControlInteraction();
+              setCarouselDirection(-1);
+            }}
+            onFocus={releaseControlInteraction}
             type="button"
           >
             <span aria-hidden="true">{"<"}</span>
           </button>
           <button
-            aria-label="Move testimonials to the left"
+            aria-label="Set carousel direction to the left"
             aria-pressed={direction === 1}
             className="infinite-3d-testimonials__arrow"
-            onClick={() => setCarouselDirection(1)}
+            onClick={() => {
+              releaseControlInteraction();
+              setCarouselDirection(1);
+            }}
+            onFocus={releaseControlInteraction}
             type="button"
           >
             <span aria-hidden="true">{">"}</span>
