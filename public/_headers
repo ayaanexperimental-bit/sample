@@ -4,3 +4,24 @@
   X-Frame-Options: DENY
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
   Content-Security-Policy: base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+
+/
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/privacy
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/terms
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/refund
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/disclaimer
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/cancellation
+  Cache-Control: no-cache, no-store, must-revalidate

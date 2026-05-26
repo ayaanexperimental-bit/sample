@@ -5,7 +5,11 @@ import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { AmbientBackground } from "@/components/landing/ambient-background";
 import { GlassCardInteractions } from "@/components/landing/glass-card-interactions";
-import { LiveViewerCount } from "@/components/landing/live-viewer-count";
+import {
+  getNextLiveViewerCount,
+  LiveViewerCount,
+  START_DISPLAY_VIEWERS
+} from "@/components/landing/live-viewer-count";
 
 const ASSET_BASE = "https://img.flexifunnels.com/images/7855";
 
@@ -405,7 +409,7 @@ function MasterclassWalkthroughSection({ onRegister }: { onRegister: () => void 
 export function LevelupClone() {
   const [secondsLeft, setSecondsLeft] = useState(30 * 60);
   const [slotsLeft, setSlotsLeft] = useState(7);
-  const [formViewers, setFormViewers] = useState(23);
+  const [liveViewerCount, setLiveViewerCount] = useState(START_DISPLAY_VIEWERS);
   const [stickyVisible, setStickyVisible] = useState(false);
   const [formMessage, setFormMessage] = useState("");
 
@@ -414,11 +418,9 @@ export function LevelupClone() {
       setSecondsLeft((current) => (current <= 1 ? 30 * 60 : current - 1));
     }, 1000);
 
-    const formTimer = window.setInterval(() => {
-      setFormViewers((current) =>
-        Math.max(14, Math.min(38, current + (Math.random() > 0.5 ? 1 : -1)))
-      );
-    }, 3000);
+    const liveViewerTimer = window.setInterval(() => {
+      setLiveViewerCount(getNextLiveViewerCount);
+    }, 4000);
 
     let slotsTimer: number | undefined;
     const dropSlot = () => {
@@ -475,7 +477,7 @@ export function LevelupClone() {
 
     return () => {
       window.clearInterval(countdownTimer);
-      window.clearInterval(formTimer);
+      window.clearInterval(liveViewerTimer);
       if (slotsTimer) window.clearTimeout(slotsTimer);
       if (stickyFrame) window.cancelAnimationFrame(stickyFrame);
       revealObserver?.disconnect();
@@ -509,7 +511,7 @@ export function LevelupClone() {
 
       <div className="levelup-livebar">
         <span className="levelup-dot levelup-dot--live" aria-hidden="true" />
-        <LiveViewerCount />
+        <LiveViewerCount viewerCount={liveViewerCount} />
       </div>
 
       <section className="levelup-hero">
@@ -760,7 +762,7 @@ export function LevelupClone() {
               </div>
               <div className="levelup-form-viewers">
                 <span className="levelup-dot levelup-dot--live" aria-hidden="true" />
-                <strong>{formViewers}</strong> people viewing this right now
+                <strong>{liveViewerCount}</strong> women are viewing this page right now
               </div>
             </div>
           </form>
