@@ -10636,6 +10636,17 @@ body:has(.levelup-clone) {
   will-change: background-position;
 }
 
+.levelup-clone .ambient-background--aqua-mesh {
+  animation: none !important;
+  transform: none !important;
+}
+
+.levelup-clone .ambient-background__field {
+  animation: levelup-production-gradient 9s ease-in-out infinite alternate !important;
+  transform-origin: center;
+  will-change: background-position, transform;
+}
+
 .levelup-clone .ambient-background__flow {
   opacity: 0.68 !important;
   background:
@@ -10857,18 +10868,22 @@ body:has(.levelup-clone) {
 @keyframes levelup-production-gradient {
   0% {
     background-position: 0% 24%, 100% 0%, 80% 100%, 0% 100%, 38% 42%, 0% 50%;
+    transform: translate3d(-1.1%, -0.8%, 0) scale(1.035);
   }
 
   35% {
     background-position: 34% 10%, 68% 24%, 100% 68%, 20% 84%, 62% 36%, 54% 50%;
+    transform: translate3d(1.2%, -0.2%, 0) scale(1.055);
   }
 
   70% {
     background-position: 16% 42%, 86% 12%, 62% 92%, 38% 68%, 44% 64%, 84% 50%;
+    transform: translate3d(-0.6%, 1%, 0) scale(1.065);
   }
 
   100% {
     background-position: 48% 18%, 58% 44%, 92% 78%, 8% 66%, 74% 52%, 100% 50%;
+    transform: translate3d(1.4%, 0.5%, 0) scale(1.05);
   }
 }
 
