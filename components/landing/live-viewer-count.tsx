@@ -2,217 +2,35 @@
 
 import { useEffect, useState } from "react";
 
-const INITIAL_RECONNECT_DELAY_MS = 5000;
-const MAX_RECONNECT_DELAY_MS = 30000;
-const LOCAL_PREVIEW_VIEWER_COUNT = 1;
+const MIN_DISPLAY_VIEWERS = 128;
+const MAX_DISPLAY_VIEWERS = 189;
+export const START_DISPLAY_VIEWERS = 141;
 
-type ViewerCountMessage = {
-  type?: unknown;
-  viewers?: unknown;
-};
-
-function getLiveViewerUrl() {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/api/live-viewers`;
+export function getNextLiveViewerCount(current: number) {
+  const next = current + Math.floor(Math.random() * 7) - 3;
+  return Math.max(MIN_DISPLAY_VIEWERS, Math.min(MAX_DISPLAY_VIEWERS, next));
 }
 
-function isLocalNextPreview() {
-  return (
-    process.env.NODE_ENV === "development" &&
-    ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)
-  );
-}
-
-function parseViewerPayload(payload: ViewerCountMessage) {
-  if (
-    payload.type === "viewer_count" &&
-    typeof payload.viewers === "number" &&
-    Number.isInteger(payload.viewers) &&
-    payload.viewers >= 0
-  ) {
-    return payload.viewers;
-  }
-
-  return null;
-}
-
-function parseViewerCountMessage(message: string) {
-  try {
-    const payload = JSON.parse(message) as ViewerCountMessage;
-    return parseViewerPayload(payload);
-  } catch {
-    return null;
-  }
-}
-
-export function useLiveViewerCount() {
-  const [viewerCount, setViewerCount] = useState<number | null>(null);
+export function LiveViewerCount({ viewerCount: controlledViewerCount }: { viewerCount?: number }) {
+  const [localViewerCount, setLocalViewerCount] = useState(START_DISPLAY_VIEWERS);
 
   useEffect(() => {
-    let socket: WebSocket | null = null;
-    let reconnectTimer: number | undefined;
-    let reconnectDelay = INITIAL_RECONNECT_DELAY_MS;
-    let connecting = false;
-    let disposed = false;
+    if (controlledViewerCount !== undefined) return;
 
-    function setViewerCountIfChanged(count: number) {
-      setViewerCount((current) => (current === count ? current : count));
-    }
-
-    if (isLocalNextPreview()) {
-      setViewerCountIfChanged(LOCAL_PREVIEW_VIEWER_COUNT);
-      return;
-    }
-
-    function clearReconnectTimer() {
-      if (reconnectTimer !== undefined) {
-        window.clearTimeout(reconnectTimer);
-        reconnectTimer = undefined;
-      }
-    }
-
-    function scheduleReconnect() {
-      clearReconnectTimer();
-
-      if (disposed || document.visibilityState !== "visible") {
-        return;
-      }
-
-      const delay = reconnectDelay;
-      reconnectDelay = Math.min(Math.round(reconnectDelay * 1.6), MAX_RECONNECT_DELAY_MS);
-      reconnectTimer = window.setTimeout(connect, delay);
-    }
-
-    function closeSocket() {
-      clearReconnectTimer();
-
-      if (socket) {
-        socket.onclose = null;
-        socket.onerror = null;
-        socket.onmessage = null;
-
-        if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
-          socket.close(1000, "Viewer left page");
-        }
-      }
-
-      socket = null;
-    }
-
-    async function fetchViewerCountSnapshot() {
-      const response = await fetch("/api/live-viewers", {
-        method: "GET",
-        cache: "no-store"
-      });
-
-      if (!response.ok) {
-        return false;
-      }
-
-      const payload = (await response.json()) as { viewers?: unknown };
-      if (
-        typeof payload.viewers === "number" &&
-        Number.isInteger(payload.viewers) &&
-        payload.viewers >= 0
-      ) {
-        setViewerCountIfChanged(payload.viewers);
-      }
-
-      return true;
-    }
-
-    async function connectSocket() {
-      if (
-        disposed ||
-        connecting ||
-        document.visibilityState !== "visible" ||
-        socket?.readyState === WebSocket.OPEN ||
-        socket?.readyState === WebSocket.CONNECTING
-      ) {
-        return;
-      }
-
-      connecting = true;
-
-      try {
-        const isEndpointReady = await fetchViewerCountSnapshot();
-
-        if (!isEndpointReady || disposed || document.visibilityState !== "visible") {
-          scheduleReconnect();
-          return;
-        }
-
-        socket = new WebSocket(getLiveViewerUrl());
-      } catch {
-        scheduleReconnect();
-        return;
-      } finally {
-        connecting = false;
-      }
-
-      reconnectDelay = INITIAL_RECONNECT_DELAY_MS;
-
-      socket.onmessage = (event) => {
-        if (typeof event.data !== "string") {
-          return;
-        }
-
-        const count = parseViewerCountMessage(event.data);
-
-        if (count !== null) {
-          setViewerCountIfChanged(count);
-        }
-      };
-
-      socket.onclose = () => {
-        socket = null;
-        scheduleReconnect();
-      };
-
-      socket.onerror = () => {
-        socket?.close(3001, "Viewer connection error");
-      };
-    }
-
-    function connect() {
-      void connectSocket();
-    }
-
-    function handleVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        connect();
-      } else {
-        closeSocket();
-      }
-    }
-
-    connect();
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("pageshow", connect);
-    window.addEventListener("pagehide", closeSocket);
+    const timer = window.setInterval(() => {
+      setLocalViewerCount(getNextLiveViewerCount);
+    }, 4000);
 
     return () => {
-      disposed = true;
-      connecting = false;
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("pageshow", connect);
-      window.removeEventListener("pagehide", closeSocket);
-      closeSocket();
+      window.clearInterval(timer);
     };
-  }, []);
+  }, [controlledViewerCount]);
 
-  return viewerCount;
-}
-
-export function LiveViewerCount({ viewerCount }: { viewerCount: number | null }) {
-  if (viewerCount === null) {
-    return <span>Checking live viewer count</span>;
-  }
+  const displayCount = controlledViewerCount ?? localViewerCount;
 
   return (
     <span>
-      <strong>{viewerCount}</strong> {viewerCount === 1 ? "person is" : "people are"} viewing this
-      page right now
+      <strong>{displayCount}</strong> women are viewing this page right now
     </span>
   );
 }

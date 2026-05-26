@@ -5,7 +5,11 @@ import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { AmbientBackground } from "@/components/landing/ambient-background";
 import { GlassCardInteractions } from "@/components/landing/glass-card-interactions";
-import { LiveViewerCount, useLiveViewerCount } from "@/components/landing/live-viewer-count";
+import {
+  getNextLiveViewerCount,
+  LiveViewerCount,
+  START_DISPLAY_VIEWERS
+} from "@/components/landing/live-viewer-count";
 
 const ASSET_BASE = "https://img.flexifunnels.com/images/7855";
 
@@ -405,8 +409,7 @@ function MasterclassWalkthroughSection({ onRegister }: { onRegister: () => void 
 export function LevelupClone() {
   const [secondsLeft, setSecondsLeft] = useState(30 * 60);
   const [slotsLeft, setSlotsLeft] = useState(7);
-  const [videoLoaded, setVideoLoaded] = useState(false);
-  const liveViewerCount = useLiveViewerCount();
+  const [liveViewerCount, setLiveViewerCount] = useState(START_DISPLAY_VIEWERS);
   const [stickyVisible, setStickyVisible] = useState(false);
   const [formMessage, setFormMessage] = useState("");
 
@@ -414,6 +417,10 @@ export function LevelupClone() {
     const countdownTimer = window.setInterval(() => {
       setSecondsLeft((current) => (current <= 1 ? 30 * 60 : current - 1));
     }, 1000);
+
+    const liveViewerTimer = window.setInterval(() => {
+      setLiveViewerCount(getNextLiveViewerCount);
+    }, 4000);
 
     let slotsTimer: number | undefined;
     const dropSlot = () => {
@@ -470,6 +477,7 @@ export function LevelupClone() {
 
     return () => {
       window.clearInterval(countdownTimer);
+      window.clearInterval(liveViewerTimer);
       if (slotsTimer) window.clearTimeout(slotsTimer);
       if (stickyFrame) window.cancelAnimationFrame(stickyFrame);
       revealObserver?.disconnect();
@@ -527,30 +535,13 @@ export function LevelupClone() {
           </p>
 
           <div className="levelup-video glass-card" aria-label="Consultation preview video">
-            {videoLoaded ? (
-              <iframe
-                src="https://api.vadoo.tv/iframe_test?id=PLJpSMhwLlnaLYI9N9WXiL3hwhrdaKDH"
-                title="PMOS consultation training video"
-                allow="autoplay; fullscreen"
-                loading="lazy"
-                allowFullScreen
-              />
-            ) : (
-              <button
-                className="levelup-video__placeholder"
-                type="button"
-                onClick={() => setVideoLoaded(true)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    setVideoLoaded(true);
-                  }
-                }}
-                onPointerDown={() => setVideoLoaded(true)}
-              >
-                <span aria-hidden="true">▶</span>
-                Tap to load training video
-              </button>
-            )}
+            <iframe
+              src="https://api.vadoo.tv/iframe_test?id=PLJpSMhwLlnaLYI9N9WXiL3hwhrdaKDH"
+              title="PMOS consultation training video"
+              allow="autoplay; fullscreen"
+              loading="lazy"
+              allowFullScreen
+            />
           </div>
 
           <div className="levelup-countdown glass-card" aria-label="Offer expiry countdown">
@@ -771,7 +762,7 @@ export function LevelupClone() {
               </div>
               <div className="levelup-form-viewers">
                 <span className="levelup-dot levelup-dot--live" aria-hidden="true" />
-                <LiveViewerCount viewerCount={liveViewerCount} />
+                <strong>{liveViewerCount}</strong> women are viewing this page right now
               </div>
             </div>
           </form>

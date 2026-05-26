@@ -1,11 +1,7 @@
-"use client";
-
 import { DisplaySlotCycle } from "@/components/landing/display-slot-cycle";
-import { LiveViewerCount, useLiveViewerCount } from "@/components/landing/live-viewer-count";
+import { LiveViewerCount } from "@/components/landing/live-viewer-count";
 
 export function FunnelStatusBars() {
-  const liveViewerCount = useLiveViewerCount();
-
   return (
     <div className="funnel-status" aria-label="Workshop availability and activity">
       <div className="funnel-status__urgency">
@@ -20,7 +16,7 @@ export function FunnelStatusBars() {
       <div className="funnel-status__live">
         <span className="funnel-status__dot funnel-status__dot--live" aria-hidden="true" />
         <span className="funnel-status__copy">
-          <LiveViewerCount viewerCount={liveViewerCount} />
+          <LiveViewerCount />
         </span>
       </div>
     </div>
