@@ -10624,36 +10624,42 @@ body:has(.levelup-clone) {
 .levelup-clone .ambient-background--aqua-mesh,
 .levelup-clone .ambient-background__field {
   background:
-    radial-gradient(circle at 18% 18%, rgb(245 167 189 / 0.52), transparent 24rem),
-    radial-gradient(circle at 76% 20%, rgb(255 231 143 / 0.48), transparent 26rem),
-    radial-gradient(circle at 84% 78%, rgb(184 216 154 / 0.34), transparent 28rem),
-    radial-gradient(circle at 28% 86%, rgb(244 170 190 / 0.34), transparent 24rem),
-    linear-gradient(125deg, #fffaf0 0%, #fff4f8 38%, #fff5cb 68%, #f3f9df 100%) !important;
-  background-size: 145% 145%, 150% 150%, 145% 145%, 140% 140%, 180% 180% !important;
-  animation: levelup-production-gradient 14s ease-in-out infinite alternate !important;
+    radial-gradient(circle at 16% 16%, rgb(245 167 189 / 0.68), transparent 20rem),
+    radial-gradient(circle at 78% 18%, rgb(255 231 143 / 0.66), transparent 21rem),
+    radial-gradient(circle at 84% 78%, rgb(184 216 154 / 0.5), transparent 23rem),
+    radial-gradient(circle at 28% 86%, rgb(244 170 190 / 0.5), transparent 20rem),
+    radial-gradient(ellipse at 50% 46%, rgb(255 244 176 / 0.34), transparent 28rem),
+    linear-gradient(125deg, #fff6e8 0%, #ffeaf4 34%, #fff19e 66%, #eaf6d2 100%) !important;
+  background-size: 165% 165%, 170% 170%, 165% 165%, 160% 160%, 185% 185%, 205% 205% !important;
+  animation: levelup-production-gradient 9s ease-in-out infinite alternate !important;
+  filter: saturate(1.14) contrast(1.045) !important;
+  will-change: background-position;
 }
 
 .levelup-clone .ambient-background__flow {
-  opacity: 0.52 !important;
+  opacity: 0.68 !important;
   background:
-    radial-gradient(circle at 24% 26%, rgb(255 255 255 / 0.44), transparent 16rem),
-    radial-gradient(circle at 70% 28%, rgb(245 167 189 / 0.24), transparent 18rem),
-    linear-gradient(110deg, transparent, rgb(255 255 255 / 0.3), transparent) !important;
-  animation: aqua-mesh-flow 12s ease-in-out infinite alternate !important;
+    radial-gradient(circle at 24% 26%, rgb(255 255 255 / 0.36), transparent 13rem),
+    radial-gradient(circle at 70% 28%, rgb(245 167 189 / 0.34), transparent 15rem),
+    radial-gradient(circle at 58% 72%, rgb(255 231 143 / 0.26), transparent 18rem),
+    linear-gradient(110deg, transparent, rgb(255 255 255 / 0.2), transparent) !important;
+  animation: aqua-mesh-flow 7.5s ease-in-out infinite alternate !important;
 }
 
 .levelup-clone .ambient-background__counterflow {
-  opacity: 0.34 !important;
+  opacity: 0.48 !important;
   background:
-    radial-gradient(circle at 18% 78%, rgb(184 216 154 / 0.2), transparent 22rem),
-    radial-gradient(circle at 86% 18%, rgb(255 231 143 / 0.24), transparent 24rem),
-    linear-gradient(180deg, rgb(255 255 255 / 0.12), transparent 56%, rgb(255 247 214 / 0.2)) !important;
+    radial-gradient(circle at 18% 78%, rgb(184 216 154 / 0.3), transparent 18rem),
+    radial-gradient(circle at 86% 18%, rgb(255 231 143 / 0.34), transparent 19rem),
+    radial-gradient(circle at 38% 18%, rgb(245 167 189 / 0.2), transparent 16rem),
+    linear-gradient(180deg, rgb(255 255 255 / 0.08), transparent 52%, rgb(255 247 214 / 0.22)) !important;
+  animation: aqua-mesh-counterflow 10s ease-in-out infinite alternate !important;
 }
 
 .levelup-clone .ambient-background--aqua-mesh .ambient-background__readability-veil {
   background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.18), rgb(255 252 246 / 0.1) 42%, rgb(255 248 252 / 0.16)),
-    radial-gradient(circle at 50% 0%, rgb(255 255 255 / 0.16), transparent 22rem) !important;
+    linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 252 246 / 0.04) 42%, rgb(255 248 252 / 0.08)),
+    radial-gradient(circle at 50% 0%, rgb(255 255 255 / 0.08), transparent 20rem) !important;
 }
 
 .levelup-hero-panel.glass-card {
@@ -10740,6 +10746,29 @@ body:has(.levelup-clone) {
 }
 
 @media (max-width: 768px) {
+  .levelup-clone .ambient-background--aqua-mesh,
+  .levelup-clone .ambient-background__field {
+    background-size: 175% 175%, 180% 180%, 170% 170%, 170% 170%, 195% 195%, 215% 215% !important;
+    animation-duration: 8s !important;
+    filter: saturate(1.18) contrast(1.055) !important;
+  }
+
+  .levelup-clone .ambient-background__flow {
+    opacity: 0.74 !important;
+    animation-duration: 6.8s !important;
+  }
+
+  .levelup-clone .ambient-background__counterflow {
+    opacity: 0.54 !important;
+    animation-duration: 8.6s !important;
+  }
+
+  .levelup-clone .ambient-background--aqua-mesh .ambient-background__readability-veil {
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 252 246 / 0.03) 44%, rgb(255 248 252 / 0.06)),
+      radial-gradient(circle at 50% 0%, rgb(255 255 255 / 0.06), transparent 18rem) !important;
+  }
+
   .levelup-hero {
     padding-top: 0.8rem !important;
   }
@@ -10827,15 +10856,19 @@ body:has(.levelup-clone) {
 
 @keyframes levelup-production-gradient {
   0% {
-    background-position: 0% 24%, 100% 0%, 80% 100%, 0% 100%, 0% 50%;
+    background-position: 0% 24%, 100% 0%, 80% 100%, 0% 100%, 38% 42%, 0% 50%;
   }
 
-  50% {
-    background-position: 28% 12%, 72% 22%, 100% 70%, 18% 82%, 70% 50%;
+  35% {
+    background-position: 34% 10%, 68% 24%, 100% 68%, 20% 84%, 62% 36%, 54% 50%;
+  }
+
+  70% {
+    background-position: 16% 42%, 86% 12%, 62% 92%, 38% 68%, 44% 64%, 84% 50%;
   }
 
   100% {
-    background-position: 8% 34%, 92% 18%, 70% 86%, 34% 76%, 100% 50%;
+    background-position: 48% 18%, 58% 44%, 92% 78%, 8% 66%, 74% 52%, 100% 50%;
   }
 }
 
