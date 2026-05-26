@@ -15,7 +15,7 @@ export function AmbientBackground() {
         warpSpeed={1.18}
         warpAmplitude={22}
         blendAngle={42}
-        blendSoftness={0.48}
+        blendSoftness={0.65}
         rotationAmount={440}
         noiseScale={2.35}
         grainAmount={0.02}

@@ -10624,7 +10624,7 @@ body:has(.levelup-clone) {
   display: block !important;
   width: auto !important;
   height: auto !important;
-  opacity: 0.44 !important;
+  opacity: 0.28 !important;
   mix-blend-mode: normal !important;
   filter: saturate(1.14) contrast(1.05) brightness(1.02) !important;
   transform: translate3d(0, 0, 0);
@@ -10788,7 +10788,7 @@ body:has(.levelup-clone) {
   .levelup-clone .ambient-background__webgl.grainient-container {
     display: block !important;
     inset: -16vmax !important;
-    opacity: 0.38 !important;
+    opacity: 0.24 !important;
     filter: saturate(1.12) contrast(1.04) brightness(1.02) !important;
   }
 
