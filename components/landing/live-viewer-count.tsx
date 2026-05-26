@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 export const START_DISPLAY_VIEWERS = 1;
+const LIVE_VIEWER_ID_STORAGE_KEY = "ywc-live-viewer-id";
 
 type LiveViewerPayload = {
   viewers?: unknown;
@@ -33,7 +34,14 @@ function liveViewerApiUrl() {
     return null;
   }
 
-  return `${window.location.origin}/api/live-viewers`;
+  const url = new URL("/api/live-viewers", window.location.origin);
+  const viewerId = getLiveViewerId();
+
+  if (viewerId) {
+    url.searchParams.set("viewerId", viewerId);
+  }
+
+  return url.toString();
 }
 
 function liveViewerSocketUrl(apiUrl: string) {
@@ -41,6 +49,30 @@ function liveViewerSocketUrl(apiUrl: string) {
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
 
   return url.toString();
+}
+
+function createViewerId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+function getLiveViewerId() {
+  try {
+    const existingViewerId = window.localStorage.getItem(LIVE_VIEWER_ID_STORAGE_KEY);
+
+    if (existingViewerId) {
+      return existingViewerId;
+    }
+
+    const viewerId = createViewerId();
+    window.localStorage.setItem(LIVE_VIEWER_ID_STORAGE_KEY, viewerId);
+    return viewerId;
+  } catch {
+    return null;
+  }
 }
 
 export function useLiveViewerCount(initialViewerCount = START_DISPLAY_VIEWERS) {

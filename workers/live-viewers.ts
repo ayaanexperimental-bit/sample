@@ -21,6 +21,7 @@ const JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "cache-control": "no-store"
 };
+const VIEWER_ID_MAX_LENGTH = 96;
 
 const worker = {
   fetch(request: Request, env: Env) {
@@ -43,7 +44,10 @@ export class LiveViewerRoom {
     const [client, server] = Object.values(pair) as [CloudflareWebSocket, CloudflareWebSocket];
 
     this.state.acceptWebSocket(server);
-    server.serializeAttachment({ connectedAt: Date.now() });
+    server.serializeAttachment({
+      connectedAt: Date.now(),
+      viewerId: getViewerId(request)
+    });
     this.broadcastViewerCount();
 
     return new Response(null, {
@@ -65,7 +69,26 @@ export class LiveViewerRoom {
   }
 
   private activeViewerCount() {
-    return this.state.getWebSockets().filter((socket) => socket.readyState === WEBSOCKET_OPEN).length;
+    const uniqueViewers = new Set<string>();
+    let hasAnonymousViewer = false;
+
+    for (const socket of this.state.getWebSockets()) {
+      if (socket.readyState !== WEBSOCKET_OPEN) {
+        continue;
+      }
+
+      const attachment = socket.deserializeAttachment() as
+        | { viewerId?: unknown }
+        | undefined;
+
+      if (typeof attachment?.viewerId === "string" && attachment.viewerId) {
+        uniqueViewers.add(attachment.viewerId);
+      } else {
+        hasAnonymousViewer = true;
+      }
+    }
+
+    return uniqueViewers.size + (hasAnonymousViewer ? 1 : 0);
   }
 
   private broadcastViewerCount() {
@@ -83,6 +106,16 @@ export class LiveViewerRoom {
       }
     }
   }
+}
+
+function getViewerId(request: Request) {
+  const viewerId = new URL(request.url).searchParams.get("viewerId");
+
+  if (!viewerId || viewerId.length > VIEWER_ID_MAX_LENGTH) {
+    return null;
+  }
+
+  return /^[a-zA-Z0-9_-]+(?:-[a-zA-Z0-9_-]+)*$/.test(viewerId) ? viewerId : null;
 }
 
 function json(payload: unknown, status = 200) {
