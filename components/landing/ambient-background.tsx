@@ -9,13 +9,13 @@ export function AmbientBackground() {
       <Grainient
         className="ambient-background__webgl"
         timeSpeed={2.35}
-        colorBalance={0.01}
+        colorBalance={0.04}
         warpStrength={1.24}
         warpFrequency={4.7}
         warpSpeed={1.18}
         warpAmplitude={22}
-        blendAngle={58}
-        blendSoftness={0.28}
+        blendAngle={42}
+        blendSoftness={0.48}
         rotationAmount={440}
         noiseScale={2.35}
         grainAmount={0.02}
@@ -28,8 +28,8 @@ export function AmbientBackground() {
         centerY={-0.01}
         zoom={0.92}
         color1="#f5a7bd"
-        color2="#ffeeb0"
-        color3="#cde9ad"
+        color2="#fff6c4"
+        color3="#dff0c7"
         frameRate={26}
         lowPowerFrameRate={18}
       />
