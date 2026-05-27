@@ -10791,17 +10791,72 @@ body:has(.levelup-clone) {
   box-shadow: 0 10px 28px rgb(233 30 140 / 0.28) !important;
 }
 
-.levelup-cta::before,
-.levelup-order-button::before {
-  content: none !important;
-  display: none !important;
+.levelup-cta[data-ripple="liquid"],
+.levelup-order-button[data-ripple="liquid"] {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.34) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.28),
+    inset 0 -10px 24px rgb(153 13 103 / 0.18),
+    0 14px 34px rgb(233 30 140 / 0.3),
+    0 0 0 1px rgb(255 255 255 / 0.14) !important;
 }
 
-.levelup-cta .liquid-button-pool,
-.levelup-cta .liquid-water-ripple,
-.levelup-order-button .liquid-button-pool,
-.levelup-order-button .liquid-water-ripple {
-  display: none !important;
+.levelup-cta[data-ripple="liquid"]::before,
+.levelup-order-button[data-ripple="liquid"]::before {
+  content: "" !important;
+  position: absolute;
+  inset: 1px;
+  z-index: 1;
+  display: block !important;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 28% 4%, rgb(255 255 255 / 0.28), transparent 30%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.2), transparent 48%);
+  opacity: 0.36;
+  transform: none !important;
+  transition: opacity 0.24s ease, transform 0.24s ease !important;
+}
+
+.levelup-cta[data-ripple="liquid"]:hover::before,
+.levelup-order-button[data-ripple="liquid"]:hover::before,
+.levelup-cta[data-ripple="liquid"]:focus-visible::before,
+.levelup-order-button[data-ripple="liquid"]:focus-visible::before {
+  opacity: 0.5;
+}
+
+.levelup-cta[data-ripple="liquid"] .liquid-button-pool,
+.levelup-order-button[data-ripple="liquid"] .liquid-button-pool {
+  display: block !important;
+  visibility: visible !important;
+  inset: 0 !important;
+  margin: 0 !important;
+  font-size: inherit !important;
+  line-height: normal !important;
+  opacity: 0.72 !important;
+  z-index: 0 !important;
+}
+
+.levelup-cta[data-ripple="liquid"] .liquid-button-pool > span,
+.levelup-order-button[data-ripple="liquid"] .liquid-button-pool > span {
+  margin: 0 !important;
+  font-size: inherit !important;
+  line-height: normal !important;
+}
+
+.levelup-cta[data-ripple="liquid"] .liquid-water-ripple,
+.levelup-order-button[data-ripple="liquid"] .liquid-water-ripple {
+  display: block !important;
+  visibility: visible !important;
+}
+
+.levelup-cta[data-ripple="liquid"] > span:not(.liquid-button-pool),
+.levelup-order-button[data-ripple="liquid"] > span:not(.liquid-button-pool) {
+  position: relative;
+  z-index: 2;
 }
 
 @media (max-width: 768px) {
@@ -12003,7 +12058,7 @@ body:has(.levelup-clone) {
   }
 }
 
-/* Grainient stripped from the live funnel: keep a stable flat page base. */
+/* React Bits Grainient background: keep all background motion in <Grainient />. */
 html:has(.levelup-clone),
 body:has(.levelup-clone) {
   background: #fff7fb !important;
@@ -12011,23 +12066,49 @@ body:has(.levelup-clone) {
 }
 
 .levelup-clone {
-  background: #fff7fb !important;
+  background: transparent !important;
 }
 
-.levelup-clone > .ambient-background,
-.levelup-clone .ambient-background,
-.levelup-clone .ambient-background--grainient,
-.levelup-clone .ambient-background--aqua-mesh,
-.levelup-clone .ambient-background__field,
-.levelup-clone .ambient-background__flow,
-.levelup-clone .ambient-background__counterflow,
-.levelup-clone .ambient-background__grain,
-.levelup-clone .ambient-background__readability-veil,
-.levelup-clone .grainient-container,
-.levelup-clone .grainient-skeleton {
+.levelup-clone > .ambient-background--grainient {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  display: block !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+  background: #fff7fb !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.levelup-clone > .ambient-background--grainient::before,
+.levelup-clone > .ambient-background--grainient::after {
+  content: none !important;
   display: none !important;
-  animation: none !important;
-  background: none !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
+}
+
+.levelup-clone .ambient-background--grainient .grainient-container,
+.levelup-clone .ambient-background--grainient .ambient-background__webgl {
+  position: absolute !important;
+  inset: -6vmax !important;
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  visibility: visible !important;
+  opacity: 0.9 !important;
+}
+
+.levelup-clone .ambient-background--grainient canvas {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.levelup-clone > :not(.ambient-background):not(.levelup-topbar):not(.levelup-livebar):not(.levelup-sticky-cta) {
+  position: relative;
+  z-index: 1;
 }

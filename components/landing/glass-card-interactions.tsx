@@ -124,6 +124,7 @@ export function ButtonRippleInteractions() {
     let pendingMove: { control: HTMLElement; clientX: number; clientY: number } | null = null;
     let pointerMoveFrame = 0;
     let stabilizeFrame = 0;
+    let hydrateFrame = 0;
 
     stabilizeMobileGlassSurfaces();
 
@@ -146,10 +147,20 @@ export function ButtonRippleInteractions() {
       });
     };
 
-    const idleHandle = coarsePointer
-      ? 0
-      : (idleWindow.requestIdleCallback?.(hydrateVisibleControls, { timeout: 1400 }) ??
-        window.setTimeout(hydrateVisibleControls, 1000));
+    const scheduleHydrateVisibleControls = () => {
+      if (hydrateFrame !== 0) {
+        return;
+      }
+
+      hydrateFrame = window.requestAnimationFrame(() => {
+        hydrateFrame = 0;
+        hydrateVisibleControls();
+      });
+    };
+
+    const idleHandle =
+      idleWindow.requestIdleCallback?.(hydrateVisibleControls, { timeout: coarsePointer ? 900 : 1400 }) ??
+      window.setTimeout(hydrateVisibleControls, coarsePointer ? 500 : 1000);
 
     function scheduleManagedTimeout(callback: () => void, delay: number) {
       const timeoutId = window.setTimeout(() => {
@@ -316,6 +327,7 @@ export function ButtonRippleInteractions() {
     }
     document.addEventListener("pointerup", releasePressedControls, { passive: true });
     document.addEventListener("pointercancel", releasePressedControls, { passive: true });
+    document.addEventListener("scroll", scheduleHydrateVisibleControls, { passive: true });
     window.addEventListener("resize", scheduleMobileGlassStabilization, { passive: true });
     window.addEventListener("orientationchange", scheduleMobileGlassStabilization, { passive: true });
 
@@ -334,11 +346,15 @@ export function ButtonRippleInteractions() {
       if (stabilizeFrame !== 0) {
         window.cancelAnimationFrame(stabilizeFrame);
       }
+      if (hydrateFrame !== 0) {
+        window.cancelAnimationFrame(hydrateFrame);
+      }
 
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("pointermove", handlePointerMove);
       document.removeEventListener("pointerup", releasePressedControls);
       document.removeEventListener("pointercancel", releasePressedControls);
+      document.removeEventListener("scroll", scheduleHydrateVisibleControls);
       window.removeEventListener("resize", scheduleMobileGlassStabilization);
       window.removeEventListener("orientationchange", scheduleMobileGlassStabilization);
     };
