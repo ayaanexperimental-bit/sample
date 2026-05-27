@@ -496,6 +496,7 @@ function ProgramBonusesSection() {
         <div className="levelup-program-bonuses__journey" aria-label="Program bonus journey">
           {programBonuses.map((bonus, index) => (
             <article
+              id={`program-bonus-${index + 1}`}
               className="levelup-program-bonus"
               key={bonus.badge}
               style={{ "--program-bonus-index": index } as CSSProperties}
@@ -588,6 +589,8 @@ export function LevelupClone() {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let revealObserver: IntersectionObserver | undefined;
     let timelineFrame = 0;
+    let lastReachedProgramNode = -1;
+    const programNodePopTimers = new Map<HTMLElement, number>();
 
     if (prefersReducedMotion || !("IntersectionObserver" in window)) {
       revealCards.forEach((card) => card.classList.add("is-visible"));
@@ -616,6 +619,24 @@ export function LevelupClone() {
       const clampedProgress = clampTimelineProgress(progress);
       item.style.setProperty("--program-line-progress", clampedProgress.toFixed(3));
       item.style.setProperty("--program-line-light-top", `${(clampedProgress * 100).toFixed(1)}%`);
+    };
+
+    const triggerProgramNodePop = (item: HTMLElement) => {
+      const existingTimer = programNodePopTimers.get(item);
+      if (existingTimer) {
+        window.clearTimeout(existingTimer);
+      }
+
+      item.classList.remove("is-node-pop");
+      void item.offsetWidth;
+      item.classList.add("is-node-pop");
+
+      const timer = window.setTimeout(() => {
+        item.classList.remove("is-node-pop");
+        programNodePopTimers.delete(item);
+      }, 860);
+
+      programNodePopTimers.set(item, timer);
     };
 
     const updateProgramTimeline = () => {
@@ -659,6 +680,15 @@ export function LevelupClone() {
         item.classList.toggle("is-complete", index < activeIndex);
       });
 
+      if (activeIndex >= 0 && activeIndex !== lastReachedProgramNode) {
+        if (activeIndex > lastReachedProgramNode) {
+          const reachedItem = programBonusItems[activeIndex];
+          if (reachedItem) triggerProgramNodePop(reachedItem);
+        }
+
+        lastReachedProgramNode = activeIndex;
+      }
+
       programBonusItems.forEach((item, index) => {
         if (index >= nodeCenters.length - 1) {
           setProgramLineProgress(item, 0);
@@ -696,6 +726,8 @@ export function LevelupClone() {
       if (slotsTimer) window.clearTimeout(slotsTimer);
       if (stickyFrame) window.cancelAnimationFrame(stickyFrame);
       if (timelineFrame) window.cancelAnimationFrame(timelineFrame);
+      programNodePopTimers.forEach((timer) => window.clearTimeout(timer));
+      programNodePopTimers.clear();
       revealObserver?.disconnect();
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("scroll", queueProgramTimelineUpdate);
