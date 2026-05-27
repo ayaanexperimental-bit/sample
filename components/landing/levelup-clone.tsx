@@ -580,13 +580,22 @@ export function LevelupClone() {
     window.addEventListener("scroll", handleScroll, { passive: true });
 
     const revealCards = Array.from(
-      document.querySelectorAll<HTMLElement>(".levelup-masterclass-card, .levelup-program-bonus")
+      document.querySelectorAll<HTMLElement>(".levelup-masterclass-card")
+    );
+    const programBonusItems = Array.from(
+      document.querySelectorAll<HTMLElement>(".levelup-program-bonus")
     );
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let revealObserver: IntersectionObserver | undefined;
+    let timelineFrame = 0;
 
     if (prefersReducedMotion || !("IntersectionObserver" in window)) {
       revealCards.forEach((card) => card.classList.add("is-visible"));
+      programBonusItems.forEach((item) => {
+        item.classList.add("is-visible", "is-complete");
+        item.style.setProperty("--program-line-progress", "1");
+        item.style.setProperty("--program-line-light-top", "100%");
+      });
     } else {
       revealObserver = new IntersectionObserver(
         (entries) => {
@@ -601,12 +610,96 @@ export function LevelupClone() {
       revealCards.forEach((card) => revealObserver?.observe(card));
     }
 
+    const clampTimelineProgress = (value: number) => Math.min(1, Math.max(0, value));
+
+    const setProgramLineProgress = (item: HTMLElement, progress: number) => {
+      const clampedProgress = clampTimelineProgress(progress);
+      item.style.setProperty("--program-line-progress", clampedProgress.toFixed(3));
+      item.style.setProperty("--program-line-light-top", `${(clampedProgress * 100).toFixed(1)}%`);
+    };
+
+    const updateProgramTimeline = () => {
+      timelineFrame = 0;
+
+      if (prefersReducedMotion || programBonusItems.length === 0) {
+        return;
+      }
+
+      const section = document.querySelector<HTMLElement>(".levelup-program-bonuses");
+      const anchorY = window.scrollY + window.innerHeight * 0.58;
+      const revealY = window.scrollY + window.innerHeight * 0.78;
+      const nodeCenters = programBonusItems.map((item) => {
+        const node = item.querySelector<HTMLElement>(".levelup-program-bonus__node") ?? item;
+        const rect = node.getBoundingClientRect();
+
+        return rect.top + window.scrollY + rect.height / 2;
+      });
+
+      let activeIndex = -1;
+
+      nodeCenters.forEach((centerY, index) => {
+        if (anchorY >= centerY) {
+          activeIndex = index;
+        }
+      });
+
+      if (
+        activeIndex < 0 &&
+        section &&
+        section.getBoundingClientRect().top <= window.innerHeight * 0.7
+      ) {
+        activeIndex = 0;
+      }
+
+      programBonusItems.forEach((item, index) => {
+        const isVisible = revealY >= nodeCenters[index] || index <= activeIndex;
+
+        item.classList.toggle("is-visible", isVisible);
+        item.classList.toggle("is-active", index === activeIndex);
+        item.classList.toggle("is-complete", index < activeIndex);
+      });
+
+      programBonusItems.forEach((item, index) => {
+        if (index >= nodeCenters.length - 1) {
+          setProgramLineProgress(item, 0);
+          item.classList.remove("is-line-active", "is-line-complete");
+          return;
+        }
+
+        const segmentStart = nodeCenters[index] + 28;
+        const segmentEnd = nodeCenters[index + 1] - 28;
+        const segmentProgress = clampTimelineProgress(
+          (anchorY - segmentStart) / Math.max(1, segmentEnd - segmentStart)
+        );
+
+        setProgramLineProgress(item, segmentProgress);
+        item.classList.toggle(
+          "is-line-active",
+          activeIndex === index && segmentProgress > 0.04 && segmentProgress < 0.98
+        );
+        item.classList.toggle("is-line-complete", segmentProgress >= 0.98);
+      });
+    };
+
+    const queueProgramTimelineUpdate = () => {
+      if (timelineFrame || prefersReducedMotion) return;
+
+      timelineFrame = window.requestAnimationFrame(updateProgramTimeline);
+    };
+
+    updateProgramTimeline();
+    window.addEventListener("scroll", queueProgramTimelineUpdate, { passive: true });
+    window.addEventListener("resize", queueProgramTimelineUpdate);
+
     return () => {
       window.clearInterval(countdownTimer);
       if (slotsTimer) window.clearTimeout(slotsTimer);
       if (stickyFrame) window.cancelAnimationFrame(stickyFrame);
+      if (timelineFrame) window.cancelAnimationFrame(timelineFrame);
       revealObserver?.disconnect();
       window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("scroll", queueProgramTimelineUpdate);
+      window.removeEventListener("resize", queueProgramTimelineUpdate);
     };
   }, []);
 
