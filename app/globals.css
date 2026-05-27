@@ -11850,6 +11850,21 @@ body:has(.levelup-clone) {
   }
 }
 
+/* Production fallback: never let the coded bonus journey depend on observer timing. */
+.levelup-program-bonus {
+  opacity: 1 !important;
+  transform: translate3d(0, 0, 0) rotateX(0) !important;
+}
+
+.levelup-program-bonus__line {
+  transform: scaleY(1) !important;
+}
+
+.levelup-program-bonus__line > span {
+  animation: levelup-program-line-pulse 2.2s ease-in-out infinite;
+  opacity: 1;
+}
+
 /* Grainient stripped from the live funnel: keep a stable flat page base. */
 html:has(.levelup-clone),
 body:has(.levelup-clone) {
