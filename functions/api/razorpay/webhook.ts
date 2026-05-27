@@ -23,7 +23,12 @@ const JSON_HEADERS = {
   "cache-control": "no-store"
 };
 
-const SUCCESS_EVENTS = new Set(["order.paid", "payment.captured", "payment_link.paid"]);
+const SUCCESS_EVENTS = new Set([
+  "order.paid",
+  "payment.captured",
+  "payment_link.paid",
+  "payment_page.paid"
+]);
 const ATTEMPT_FIELD_KEYS = new Set([
   normalizeFieldKey(PAYMENT_ATTEMPT_FIELD),
   "referenceid",
