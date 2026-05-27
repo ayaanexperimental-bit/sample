@@ -7,8 +7,16 @@
     "enabled": true
   },
   "vars": {
-    "NEXT_PUBLIC_PAYMENT_ENABLED": "false"
+    "NEXT_PUBLIC_PAYMENT_ENABLED": "false",
+    "RAZORPAY_PAYMENT_PAGE_URL": "https://pages.razorpay.com/pl_SkURMJD4JJjdxO/view"
   },
+  "d1_databases": [
+    {
+      "binding": "PAYMENT_ACCESS_DB",
+      "database_name": "freedomfromdiabetes-payment-access",
+      "database_id": "0e55326b-ae6b-4b5e-96ad-719df5dadabb"
+    }
+  ],
   "durable_objects": {
     "bindings": [
       {

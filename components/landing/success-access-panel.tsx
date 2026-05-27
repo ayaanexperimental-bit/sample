@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 type AccessState =
   | { status: "checking" }
+  | { status: "pending" }
   | { status: "locked" }
   | { expiresAt: number; joinUrl: string; status: "allowed" };
 
@@ -11,6 +12,7 @@ type AccessResponse = {
   allowed?: boolean;
   expiresAt?: number;
   joinUrl?: string;
+  reason?: string;
 };
 
 export function SuccessAccessPanel() {
@@ -18,6 +20,10 @@ export function SuccessAccessPanel() {
 
   useEffect(() => {
     let cancelled = false;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    let pollCount = 0;
+
+    const maxPolls = 30;
 
     async function checkAccess() {
       try {
@@ -35,6 +41,10 @@ export function SuccessAccessPanel() {
             joinUrl: payload.joinUrl,
             expiresAt: payload.expiresAt
           });
+        } else if (payload.reason === "payment_pending" && pollCount < maxPolls) {
+          pollCount += 1;
+          setAccess({ status: "pending" });
+          pollTimer = setTimeout(checkAccess, 2000);
         } else {
           setAccess({ status: "locked" });
         }
@@ -49,21 +59,30 @@ export function SuccessAccessPanel() {
 
     return () => {
       cancelled = true;
+      if (pollTimer) {
+        clearTimeout(pollTimer);
+      }
     };
   }, []);
 
-  if (access.status === "checking") {
+  if (access.status === "checking" || access.status === "pending") {
+    const isPending = access.status === "pending";
+
     return (
       <section className="success-panel" aria-labelledby="success-next-step-title">
-        <h2 id="success-next-step-title">Checking payment access</h2>
+        <h2 id="success-next-step-title">
+          {isPending ? "Waiting for payment confirmation" : "Checking payment access"}
+        </h2>
         <p>
-          We are checking whether this browser has a recent verified Razorpay payment session.
+          {isPending
+            ? "Razorpay is confirming the payment. Keep this page open for a few seconds."
+            : "We are checking whether this browser has a recent verified Razorpay payment session."}
         </p>
         <span
           className="ui-button ui-button--secondary ui-button--lg success-action"
           aria-disabled="true"
         >
-          Checking Verification
+          {isPending ? "Waiting for Verification" : "Checking Verification"}
         </span>
       </section>
     );

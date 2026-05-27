@@ -13,7 +13,7 @@ import {
 } from "@/components/landing/live-viewer-count";
 
 const ASSET_BASE = "https://img.flexifunnels.com/images/7855";
-const RAZORPAY_PAYMENT_PAGE_URL = "https://rzp.io/rzp/xBIZzJHv";
+const PAYMENT_START_URL = "/api/payment/start";
 const YOUTUBE_HERO_EMBED_URL =
   "https://www.youtube.com/embed/gBQoms47fB8?autoplay=1&mute=1&loop=1&playlist=gBQoms47fB8&playsinline=1&controls=1&rel=0&modestbranding=1";
 
@@ -984,7 +984,7 @@ export function LevelupClone() {
 
               <a
                 className="levelup-order-button"
-                href={RAZORPAY_PAYMENT_PAGE_URL}
+                href={PAYMENT_START_URL}
                 data-ripple="liquid"
               >
                 REGISTER NOW <span aria-hidden="true">›</span>
