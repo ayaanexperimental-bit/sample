@@ -172,6 +172,52 @@ const masterclassBonus = {
   copy: "Get access to practical implementation guidance, wellness support, and a supportive community throughout your journey."
 };
 
+type ProgramBonus = {
+  badge: string;
+  title: string;
+  intro?: string;
+  body?: string;
+  bullets?: string[];
+};
+
+const programBonuses: ProgramBonus[] = [
+  {
+    badge: "Bonus 1",
+    title: "Health Calculators & Wellness Tools",
+    intro: "Access practical health calculators to better understand your body and track progress:",
+    bullets: [
+      "HbA1c Calculator",
+      "Insulin Resistance Calculator",
+      "eGFR Calculator",
+      "BMI Calculator",
+      "BMR Calculator"
+    ]
+  },
+  {
+    badge: "Bonus 2",
+    title: "Weekly Health Support Sessions",
+    body: "Join weekly wellness support sessions guided by different experts to help you stay motivated, informed, and supported throughout your journey."
+  },
+  {
+    badge: "Bonus 3",
+    title: "Root Cause Analysis Guide",
+    intro: "Understand the deeper reasons behind:",
+    bullets: [
+      "Irregular periods",
+      "Weight gain",
+      "Cravings and fatigue",
+      "Acne and hair fall",
+      "Mood swings and low energy",
+      "PCOS/PMOS symptoms"
+    ]
+  },
+  {
+    badge: "Bonus 4",
+    title: "Natural Lifestyle & Hormone Reset Strategies",
+    body: "Discover natural strategies to support hormone balance and create a lifestyle that feels sustainable, practical, and easier to follow in real life."
+  }
+];
+
 const faqs = [
   {
     question: "Is reversing PMOS possible without medication?",
@@ -406,6 +452,70 @@ function MasterclassWalkthroughSection({ onRegister }: { onRegister: () => void 
   );
 }
 
+function ProgramBonusesSection() {
+  return (
+    <section
+      className="levelup-section levelup-program-bonuses"
+      aria-labelledby="program-bonuses-title"
+    >
+      <div className="levelup-wrap levelup-program-bonuses__inner">
+        <div className="levelup-program-bonuses__header">
+          <span className="levelup-program-bonuses__kicker">Heal Your Hormones Program</span>
+          <h2 id="program-bonuses-title">
+            What You&apos;ll Receive Inside
+            <br />
+            <span>The Heal Your Hormones Program</span>{" "}
+            <span aria-hidden="true">{"\u{1F338}"}</span>
+          </h2>
+          <p>
+            A practical lifestyle-based approach designed to help women better understand hormones,
+            metabolism, PCOS/PMOS symptoms, and sustainable healing habits.
+          </p>
+        </div>
+
+        <div className="levelup-program-bonuses__journey" aria-label="Program bonus journey">
+          {programBonuses.map((bonus, index) => (
+            <article
+              className="levelup-program-bonus"
+              key={bonus.badge}
+              style={{ "--program-bonus-index": index } as CSSProperties}
+            >
+              <div className="levelup-program-bonus__node" aria-hidden="true">
+                {String(index + 1).padStart(2, "0")}
+              </div>
+              {index < programBonuses.length - 1 ? (
+                <span className="levelup-program-bonus__line" aria-hidden="true">
+                  <span />
+                </span>
+              ) : null}
+              <div className="levelup-program-bonus__card">
+                <div className="levelup-program-bonus__heading">
+                  <h3>{bonus.title}</h3>
+                  <span className="levelup-program-bonus__badge">{bonus.badge}</span>
+                </div>
+                {bonus.intro ? <p>{bonus.intro}</p> : null}
+                {bonus.body ? <p>{bonus.body}</p> : null}
+                {bonus.bullets ? (
+                  <ul>
+                    {bonus.bullets.map((bullet) => (
+                      <li key={bullet}>{bullet}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <p className="levelup-program-bonuses__note">
+          These resources are designed to give you practical guidance, deeper understanding, and
+          ongoing support throughout your wellness journey.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 export function LevelupClone() {
   const [secondsLeft, setSecondsLeft] = useState(30 * 60);
   const [slotsLeft, setSlotsLeft] = useState(7);
@@ -450,7 +560,7 @@ export function LevelupClone() {
     window.addEventListener("scroll", handleScroll, { passive: true });
 
     const revealCards = Array.from(
-      document.querySelectorAll<HTMLElement>(".levelup-masterclass-card")
+      document.querySelectorAll<HTMLElement>(".levelup-masterclass-card, .levelup-program-bonus")
     );
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let revealObserver: IntersectionObserver | undefined;
@@ -593,6 +703,8 @@ export function LevelupClone() {
       </section>
 
       <MasterclassWalkthroughSection onRegister={scrollToForm} />
+
+      <ProgramBonusesSection />
 
       <section className="levelup-section levelup-testimonials" id="testimonials">
         <div className="levelup-wrap">
