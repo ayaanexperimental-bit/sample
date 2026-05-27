@@ -2,8 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import type { CSSProperties, ReactNode } from "react";
-import { useCallback, useEffect, useState } from "react";
-import { AmbientBackground } from "@/components/landing/ambient-background";
+import { useEffect, useState } from "react";
 import { GlassCardInteractions } from "@/components/landing/glass-card-interactions";
 import { Infinite3DTestimonialsCarousel } from "@/components/landing/infinite-3d-testimonials-carousel";
 import {
@@ -549,18 +548,6 @@ export function LevelupClone() {
   const [stickyVisible, setStickyVisible] = useState(false);
   const [formMessage, setFormMessage] = useState("");
 
-  const scrollToForm = useCallback(() => {
-    const form = document.getElementById("flexiOrderForm_wKNos");
-    if (!form) return;
-
-    const offset = window.innerWidth <= 768 ? 18 : 28;
-    const targetTop = window.scrollY + form.getBoundingClientRect().top - offset;
-    window.scrollTo({ top: Math.max(0, targetTop), behavior: "auto" });
-    window.setTimeout(() => {
-      form.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
-    }, 80);
-  }, []);
-
   useEffect(() => {
     const countdownTimer = window.setInterval(() => {
       setSecondsLeft((current) => (current <= 1 ? 30 * 60 : current - 1));
@@ -738,19 +725,6 @@ export function LevelupClone() {
     window.addEventListener("scroll", queueProgramTimelineUpdate, { passive: true });
     window.addEventListener("resize", queueProgramTimelineUpdate);
 
-    const handleDelegatedRegistrationClick = (event: MouseEvent) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-
-      const cta = target.closest<HTMLElement>("[data-registration-cta='true']");
-      if (!cta) return;
-
-      event.preventDefault();
-      scrollToForm();
-    };
-
-    document.addEventListener("click", handleDelegatedRegistrationClick);
-
     return () => {
       window.clearInterval(countdownTimer);
       if (slotsTimer) window.clearTimeout(slotsTimer);
@@ -762,16 +736,26 @@ export function LevelupClone() {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("scroll", queueProgramTimelineUpdate);
       window.removeEventListener("resize", queueProgramTimelineUpdate);
-      document.removeEventListener("click", handleDelegatedRegistrationClick);
     };
-  }, [scrollToForm]);
+  }, []);
 
   const minutes = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const seconds = String(secondsLeft % 60).padStart(2, "0");
 
+  function scrollToForm() {
+    const form = document.getElementById("flexiOrderForm_wKNos");
+    if (!form) return;
+
+    const offset = window.innerWidth <= 768 ? 18 : 28;
+    form.scrollIntoView({ behavior: "auto", block: "start" });
+    window.scrollBy({ top: -offset, behavior: "auto" });
+    window.setTimeout(() => {
+      form.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
+    }, 80);
+  }
+
   return (
     <main className="levelup-clone">
-      <AmbientBackground />
       <GlassCardInteractions />
 
       <div className="levelup-topbar">
@@ -1015,7 +999,7 @@ export function LevelupClone() {
                 </tbody>
               </table>
 
-              <button className="levelup-order-button" type="submit">
+              <button className="levelup-order-button" type="submit" data-ripple="liquid">
                 REGISTER NOW <span aria-hidden="true">›</span>
               </button>
               {formMessage ? <p className="levelup-form-message">{formMessage}</p> : null}
