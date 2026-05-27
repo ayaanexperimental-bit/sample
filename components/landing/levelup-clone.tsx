@@ -793,12 +793,15 @@ export function LevelupClone() {
           </p>
 
           <div className="levelup-video glass-card" aria-label="Consultation preview video">
-            <iframe
-              src="https://api.vadoo.tv/iframe_test?id=PLJpSMhwLlnaLYI9N9WXiL3hwhrdaKDH"
+            <video
+              src="/videos/hero-card.mp4"
               title="PMOS consultation training video"
-              allow="autoplay; fullscreen"
-              loading="lazy"
-              allowFullScreen
+              autoPlay
+              muted
+              loop
+              playsInline
+              controls
+              preload="metadata"
             />
           </div>
 
