@@ -13,6 +13,7 @@ import {
 } from "@/components/landing/live-viewer-count";
 
 const ASSET_BASE = "https://img.flexifunnels.com/images/7855";
+const RAZORPAY_PAYMENT_PAGE_URL = "https://rzp.io/rzp/xBIZzJHv";
 
 const imageAssets = {
   whoFor: {
@@ -548,7 +549,6 @@ export function LevelupClone() {
   const [slotsLeft, setSlotsLeft] = useState(7);
   const liveViewerCount = useLiveViewerCount();
   const [stickyVisible, setStickyVisible] = useState(false);
-  const [formMessage, setFormMessage] = useState("");
 
   useEffect(() => {
     const countdownTimer = window.setInterval(() => {
@@ -752,7 +752,7 @@ export function LevelupClone() {
     form.scrollIntoView({ behavior: "auto", block: "start" });
     window.scrollBy({ top: -offset, behavior: "auto" });
     window.setTimeout(() => {
-      form.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
+      form.querySelector<HTMLAnchorElement>(".levelup-order-button")?.focus({ preventScroll: true });
     }, 80);
   }
 
@@ -953,42 +953,16 @@ export function LevelupClone() {
 
       <section className="levelup-section levelup-checkout-section" id="registration">
         <div className="levelup-wrap">
-          <form
+          <div
             id="flexiOrderForm_wKNos"
             className="levelup-form glass-card pricing-card"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setFormMessage(
-                "Thank you. Your details are ready. Our team will confirm your registration and payment slot shortly."
-              );
-            }}
+            tabIndex={-1}
           >
-            <div className="levelup-form__secure">Secure Checkout</div>
+            <div className="levelup-form__secure">Secure Razorpay Payment Page</div>
             <div className="levelup-form__inner">
               <div className="levelup-savings">
                 You&apos;re saving <s>₹1,999</s> <strong>₹1,948 today</strong> - Limited Time
               </div>
-              <input
-                type="text"
-                name="first_name"
-                placeholder="First Name"
-                aria-label="First Name"
-                required
-              />
-              <input
-                type="email"
-                name="email"
-                placeholder="Email ID"
-                aria-label="Email ID"
-                required
-              />
-              <input
-                type="tel"
-                name="phone"
-                placeholder="Phone Number"
-                aria-label="Phone Number"
-                required
-              />
 
               <table className="levelup-product-table">
                 <thead>
@@ -1005,10 +979,18 @@ export function LevelupClone() {
                 </tbody>
               </table>
 
-              <button className="levelup-order-button" type="submit" data-ripple="liquid">
+              <p className="levelup-form-message">
+                You will enter your name, email, and phone on Razorpay&apos;s secure payment page.
+                No card or UPI details are collected on this website.
+              </p>
+
+              <a
+                className="levelup-order-button"
+                href={RAZORPAY_PAYMENT_PAGE_URL}
+                data-ripple="liquid"
+              >
                 REGISTER NOW <span aria-hidden="true">›</span>
-              </button>
-              {formMessage ? <p className="levelup-form-message">{formMessage}</p> : null}
+              </a>
 
               <div className="levelup-trust-row" aria-label="Checkout trust signals">
                 <span>SSL Secured</span>
@@ -1022,7 +1004,7 @@ export function LevelupClone() {
                 <strong>{liveViewerCount}</strong> {getLiveViewerCopy(liveViewerCount)}
               </div>
             </div>
-          </form>
+          </div>
         </div>
       </section>
 
