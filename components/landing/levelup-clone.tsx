@@ -14,6 +14,8 @@ import {
 
 const ASSET_BASE = "https://img.flexifunnels.com/images/7855";
 const RAZORPAY_PAYMENT_PAGE_URL = "https://rzp.io/rzp/xBIZzJHv";
+const YOUTUBE_HERO_EMBED_URL =
+  "https://www.youtube.com/embed/gBQoms47fB8?autoplay=1&mute=1&loop=1&playlist=gBQoms47fB8&playsinline=1&controls=1&rel=0&modestbranding=1";
 
 const imageAssets = {
   whoFor: {
@@ -31,9 +33,8 @@ const imageAssets = {
     alt: "The transformation you can expect"
   },
   aboutChetan: {
-    src: `${ASSET_BASE}/AboutChetan3_awnty_1294.png`,
-    srcSet: `${ASSET_BASE}/320/AboutChetan3_awnty_1294.png 320w, ${ASSET_BASE}/480/AboutChetan3_awnty_1294.png 480w, ${ASSET_BASE}/768/AboutChetan3_awnty_1294.png 768w, ${ASSET_BASE}/992/AboutChetan3_awnty_1294.png 992w, ${ASSET_BASE}/AboutChetan3_awnty_1294.png 1200w`,
-    alt: "About Chetan"
+    src: "/images/coach-gyana-ranjan.png",
+    alt: "Coach Gyana Ranjan, women's hormonal health coach"
   }
 };
 
@@ -793,15 +794,12 @@ export function LevelupClone() {
           </p>
 
           <div className="levelup-video glass-card" aria-label="Consultation preview video">
-            <video
-              src="/videos/hero-card.mp4"
-              title="PMOS consultation training video"
-              autoPlay
-              muted
-              loop
-              playsInline
-              controls
-              preload="metadata"
+            <iframe
+              src={YOUTUBE_HERO_EMBED_URL}
+              title="PMOS consultation training video on YouTube"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
             />
           </div>
 

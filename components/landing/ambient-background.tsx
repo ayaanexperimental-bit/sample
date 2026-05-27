@@ -8,7 +8,7 @@ export function AmbientBackground() {
         color1="#f59ab8"
         color2="#ffe88f"
         color3="#b7d99c"
-        timeSpeed={0.7}
+        timeSpeed={1.2}
         colorBalance={0}
         warpStrength={1.14}
         warpFrequency={5}
