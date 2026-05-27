@@ -15,23 +15,23 @@ export function AmbientBackground() {
         warpSpeed={1.18}
         warpAmplitude={22}
         blendAngle={42}
-        blendSoftness={0.65}
+        blendSoftness={0.82}
         rotationAmount={440}
         noiseScale={2.35}
-        grainAmount={0.02}
+        grainAmount={0.006}
         grainScale={2}
-        grainAnimated
-        contrast={1.18}
+        grainAnimated={false}
+        contrast={1.1}
         gamma={1}
-        saturation={1.26}
+        saturation={1.18}
         centerX={0}
         centerY={-0.01}
-        zoom={0.92}
+        zoom={0.84}
         color1="#f5a7bd"
         color2="#fff6c4"
         color3="#dff0c7"
-        frameRate={26}
-        lowPowerFrameRate={18}
+        frameRate={22}
+        lowPowerFrameRate={12}
       />
       <span className="ambient-background__readability-veil" />
     </div>
