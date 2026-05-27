@@ -29,22 +29,22 @@ export function AmbientBackground() {
           color1="#f5a7bd"
           color2="#ffe78f"
           color3="#b8d89a"
-          timeSpeed={0.56}
-          warpStrength={0.9}
-          warpFrequency={4.1}
-          warpSpeed={1.68}
-          warpAmplitude={50}
+          timeSpeed={1.06}
+          warpStrength={1.34}
+          warpFrequency={4.9}
+          warpSpeed={2.65}
+          warpAmplitude={48}
           blendAngle={-18}
           blendSoftness={0.18}
           rotationAmount={220}
           noiseScale={1.7}
-          grainAmount={0.028}
+          grainAmount={0.036}
           grainScale={1.8}
           grainAnimated
-          contrast={1.12}
+          contrast={1.26}
           gamma={1}
-          saturation={1.22}
-          zoom={0.82}
+          saturation={1.56}
+          zoom={0.76}
         />
       ) : null}
       <div className="levelup-sakura-grainient__veil" />
