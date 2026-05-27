@@ -1,6 +1,7 @@
 import {
   clearPaymentAccessCookie,
-  createPaymentAccessCookie
+  createPaymentAccessCookie,
+  verifyPaymentAttemptFromCookie
 } from "../../../lib/server/payment-access";
 
 type Env = {
@@ -15,6 +16,7 @@ type PagesContext = {
 
 type VerificationResult = {
   paymentId: string;
+  referenceId?: string;
   source: "payment_link" | "checkout";
 };
 
@@ -45,6 +47,18 @@ export async function onRequest({ request, env }: PagesContext) {
   }
 
   const accessSecret = env.SUCCESS_ACCESS_SECRET || keySecret;
+
+  if (verification.source === "payment_link") {
+    const paymentAttempt = await verifyPaymentAttemptFromCookie({
+      cookieHeader: request.headers.get("cookie"),
+      secret: accessSecret
+    });
+
+    if (!paymentAttempt || paymentAttempt.attemptId !== verification.referenceId) {
+      return redirectToLockedSuccess(request, "browser_verification_failed");
+    }
+  }
+
   const accessCookie = await createPaymentAccessCookie({
     paymentId: verification.paymentId,
     source: verification.source,
@@ -111,7 +125,9 @@ async function verifyRazorpayCallback(
     const payload = [paymentLinkId, paymentLinkReferenceId, paymentLinkStatus, paymentId].join("|");
     const valid = await verifyHmacSha256Hex(payload, signature, keySecret);
 
-    return valid ? { paymentId, source: "payment_link" } : null;
+    return valid
+      ? { paymentId, referenceId: paymentLinkReferenceId, source: "payment_link" }
+      : null;
   }
 
   const orderId = params.get("razorpay_order_id");

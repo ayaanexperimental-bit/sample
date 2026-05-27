@@ -24,7 +24,7 @@ export type PaymentAttemptPayload = {
 type SignedTokenPayload = Record<string, unknown>;
 
 export function createPaymentAttemptId() {
-  const bytes = new Uint8Array(32);
+  const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
 
   return base64UrlEncode(bytes);

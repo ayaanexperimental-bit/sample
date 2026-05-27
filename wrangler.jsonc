@@ -7,8 +7,7 @@
     "enabled": true
   },
   "vars": {
-    "NEXT_PUBLIC_PAYMENT_ENABLED": "false",
-    "RAZORPAY_PAYMENT_PAGE_URL": "https://pages.razorpay.com/pl_SkURMJD4JJjdxO/view"
+    "NEXT_PUBLIC_PAYMENT_ENABLED": "false"
   },
   "d1_databases": [
     {

@@ -26,6 +26,7 @@ const JSON_HEADERS = {
 const SUCCESS_EVENTS = new Set(["order.paid", "payment.captured", "payment_link.paid"]);
 const ATTEMPT_FIELD_KEYS = new Set([
   normalizeFieldKey(PAYMENT_ATTEMPT_FIELD),
+  "referenceid",
   "registrationid",
   "customerreference",
   "paymentattemptid",
