@@ -2218,6 +2218,18 @@ svg {
   margin-top: var(--space-6);
 }
 
+.success-access-note {
+  font-size: 0.92rem !important;
+  font-weight: 700;
+}
+
+.success-panel--verified {
+  border-color: rgb(20 184 166 / 0.24);
+  background:
+    linear-gradient(145deg, rgb(236 253 245 / 0.82), rgb(255 255 255 / 0.74)),
+    rgb(255 255 255 / 0.72);
+}
+
 .success-pending {
   border-top: 1px solid var(--color-border);
   padding-top: var(--space-5);

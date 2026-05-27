@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { SuccessAccessPanel } from "@/components/landing/success-access-panel";
 
 export const metadata: Metadata = {
   robots: {
@@ -21,20 +22,7 @@ export default function SuccessPage() {
           flow.
         </p>
 
-        <section className="success-panel" aria-labelledby="success-next-step-title">
-          <h2 id="success-next-step-title">No payment status is shown here</h2>
-          <p>
-            Class access, reminders, and community details are shared only after the backend
-            confirms a genuine successful payment. This page cannot be used as proof of purchase.
-          </p>
-
-          <span
-            className="ui-button ui-button--secondary ui-button--lg success-action"
-            aria-disabled="true"
-          >
-            Confirmation Locked Until Verification
-          </span>
-        </section>
+        <SuccessAccessPanel />
 
         <p>
           If you completed payment, keep your Razorpay payment ID available and wait for the official
