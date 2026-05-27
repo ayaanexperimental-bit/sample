@@ -3,7 +3,6 @@
 /* eslint-disable @next/next/no-img-element */
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { AmbientBackground } from "@/components/landing/ambient-background";
 import { GlassCardInteractions } from "@/components/landing/glass-card-interactions";
 import { Infinite3DTestimonialsCarousel } from "@/components/landing/infinite-3d-testimonials-carousel";
 import {
@@ -498,7 +497,6 @@ export function LevelupClone() {
 
   return (
     <main className="levelup-clone">
-      <AmbientBackground />
       <GlassCardInteractions />
 
       <div className="levelup-topbar">

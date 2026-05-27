@@ -11348,3 +11348,32 @@ body:has(.levelup-clone) {
     transform: translate3d(-1.5%, -0.5%, 0) scale(1.055);
   }
 }
+
+/* Grainient stripped from the live funnel: keep a stable flat page base. */
+html:has(.levelup-clone),
+body:has(.levelup-clone) {
+  background: #fff7fb !important;
+  background-image: none !important;
+}
+
+.levelup-clone {
+  background: #fff7fb !important;
+}
+
+.levelup-clone > .ambient-background,
+.levelup-clone .ambient-background,
+.levelup-clone .ambient-background--grainient,
+.levelup-clone .ambient-background--aqua-mesh,
+.levelup-clone .ambient-background__field,
+.levelup-clone .ambient-background__flow,
+.levelup-clone .ambient-background__counterflow,
+.levelup-clone .ambient-background__grain,
+.levelup-clone .ambient-background__readability-veil,
+.levelup-clone .grainient-container,
+.levelup-clone .grainient-skeleton {
+  display: none !important;
+  animation: none !important;
+  background: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
