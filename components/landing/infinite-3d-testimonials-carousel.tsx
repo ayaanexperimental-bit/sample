@@ -96,11 +96,11 @@ function getCarouselMetrics(stageWidth: number): CarouselMetrics {
     return {
       cardWidth: Math.min(stageWidth - 52, 306),
       farOpacity: 0,
-      farScale: 0.62,
-      maxRotate: 11,
-      sideOpacity: 0.62,
-      sideScale: 0.78,
-      spacing: Math.min(stageWidth * 0.42, 160),
+      farScale: 0.58,
+      maxRotate: 13,
+      sideOpacity: 0.34,
+      sideScale: 0.7,
+      spacing: Math.min(Math.max(stageWidth * 0.72, 210), 280),
       yDepth: 15,
       zDepth: 76
     };

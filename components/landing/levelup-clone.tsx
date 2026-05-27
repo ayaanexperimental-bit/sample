@@ -47,6 +47,26 @@ const whatsappTestimonials = [
   {
     src: "/images/testimonials/yours-wellness-testimonial-3.jpeg",
     alt: "WhatsApp testimonial from a Yours Wellness community member about PCOD support and confidence"
+  },
+  {
+    src: "/images/testimonials/yours-wellness-testimonial-4.jpeg",
+    alt: "WhatsApp testimonial from a Yours Wellness community member about period cycle support and reduced stress"
+  },
+  {
+    src: "/images/testimonials/yours-wellness-testimonial-5.jpeg",
+    alt: "WhatsApp testimonial from a Yours Wellness community member about smoother periods and reduced pain"
+  },
+  {
+    src: "/images/testimonials/yours-wellness-testimonial-6.jpeg",
+    alt: "WhatsApp testimonial from a Yours Wellness community member about skin, energy, and confidence"
+  },
+  {
+    src: "/images/testimonials/yours-wellness-testimonial-7.jpeg",
+    alt: "WhatsApp testimonial from a Yours Wellness community member about natural periods and renewed trust"
+  },
+  {
+    src: "/images/testimonials/yours-wellness-testimonial-8.jpeg",
+    alt: "WhatsApp testimonial from a Yours Wellness community member about long-term hormone symptoms and feeling calmer"
   }
 ];
 
