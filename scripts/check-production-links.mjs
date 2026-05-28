@@ -30,6 +30,19 @@ const checks = [
     }
   },
   {
+    name: "Legacy Razorpay callback",
+    url: `${SITE_URL}/api/razorpay/debug-callback`,
+    allowedStatuses: [302],
+    redirect: "manual",
+    validate(response) {
+      const location = response.headers.get("location") || "";
+
+      if (new URL(location).pathname !== "/success") {
+        throw new Error(`expected redirect to /success, received ${location || "no location"}`);
+      }
+    }
+  },
+  {
     name: "WhatsApp group",
     url: WHATSAPP_GROUP_URL,
     allowedStatuses: [200, 301, 302, 303, 307, 308]
