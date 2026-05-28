@@ -490,7 +490,7 @@ function ProgramBonusesSection() {
         <div className="levelup-program-bonuses__header">
           <span className="levelup-program-bonuses__kicker">Heal Your Hormones Program</span>
           <h2 id="program-bonuses-title">
-            What You&apos;ll Receive After The Program{" "}
+            What You&apos;ll Receive After The <span>Program</span>{" "}
             <span aria-hidden="true">{"\u{1F338}"}</span>
           </h2>
           <p>
