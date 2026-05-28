@@ -33,4 +33,5 @@ Do not put secrets in `NEXT_PUBLIC_` variables unless the value is intentionally
 
 ## Source Of Truth
 
-Use `WHM101_SOURCE_OF_TRUTH_MIGRATION.md`.
+The production website and the current app code are the source of truth. Avoid using old handoff,
+prototype, or migration notes as design authority unless they are reintroduced intentionally.

@@ -1,6 +1,6 @@
 const SITE_URL = trimTrailingSlash(process.env.SITE_URL || "https://freedomfromdiabetes.in");
 const PAYMENT_HOST = "pages.razorpay.com";
-const THANK_YOU_VIDEO_URL = "https://www.youtube.com/watch?v=fLSSje0nCHk";
+const THANK_YOU_VIDEO_URL = "https://www.youtube-nocookie.com/embed/fLSSje0nCHk?rel=0";
 const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/FceSzvdQmNr2gHNCSaBXyy";
 const REQUEST_TIMEOUT_MS = 12_000;
 
