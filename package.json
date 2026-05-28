@@ -13,26 +13,27 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "check:links": "node scripts/check-production-links.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "next": "latest",
-    "ogl": "^1.0.11",
-    "react": "latest",
-    "react-dom": "latest"
+    "next": "16.2.6",
+    "ogl": "1.0.11",
+    "react": "19.2.5",
+    "react-dom": "19.2.5"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260506.1",
-    "@opennextjs/cloudflare": "^1.19.6",
-    "@types/node": "latest",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
+    "@cloudflare/workers-types": "4.20260506.1",
+    "@opennextjs/cloudflare": "1.19.6",
+    "@types/node": "25.6.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
     "eslint": "9.39.1",
-    "eslint-config-next": "latest",
-    "prettier": "latest",
-    "typescript": "latest",
-    "wrangler": "latest"
+    "eslint-config-next": "16.2.6",
+    "prettier": "3.8.3",
+    "typescript": "6.0.3",
+    "wrangler": "4.87.0"
   },
   "pnpm": {
     "overrides": {

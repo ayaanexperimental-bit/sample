@@ -19,6 +19,10 @@ const DEFAULT_PAYMENT_PAGE_URL = "https://pages.razorpay.com/pl_SkURMJD4JJjdxO/v
 const NO_STORE_HEADERS = {
   "cache-control": "no-store"
 };
+const HTML_HEADERS = {
+  ...NO_STORE_HEADERS,
+  "content-type": "text/html; charset=utf-8"
+};
 
 export async function onRequest({ request, env }: PagesContext) {
   if (request.method !== "GET") {
@@ -30,7 +34,7 @@ export async function onRequest({ request, env }: PagesContext) {
 
   const accessSecret = env.SUCCESS_ACCESS_SECRET || env.RAZORPAY_KEY_SECRET;
   if (!accessSecret) {
-    return redirectToSuccess(request, "missing_configuration");
+    return paymentUnavailable();
   }
 
   const attemptId = createPaymentAttemptId();
@@ -51,15 +55,55 @@ export async function onRequest({ request, env }: PagesContext) {
   });
 }
 
-function redirectToSuccess(request: Request, reason: string) {
-  const url = new URL("/success", request.url);
-  url.searchParams.set("payment", reason);
-
-  return new Response(null, {
-    status: 302,
-    headers: {
-      ...NO_STORE_HEADERS,
-      location: url.toString()
+function paymentUnavailable() {
+  return new Response(
+    `<!doctype html>
+      <html lang="en">
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>Payment Temporarily Unavailable</title>
+          <style>
+            body {
+              margin: 0;
+              min-height: 100vh;
+              display: grid;
+              place-items: center;
+              background: #fff7fb;
+              color: #251126;
+              font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            }
+            main {
+              width: min(92vw, 34rem);
+              padding: 2rem;
+              border: 1px solid rgba(201, 33, 126, 0.18);
+              border-radius: 1.25rem;
+              background: rgba(255, 255, 255, 0.82);
+              box-shadow: 0 1rem 3rem rgba(99, 25, 70, 0.12);
+            }
+            h1 {
+              margin: 0 0 0.75rem;
+              font-size: clamp(1.6rem, 5vw, 2.2rem);
+              line-height: 1.05;
+            }
+            p {
+              margin: 0;
+              color: #60445e;
+              font-size: 1rem;
+              line-height: 1.6;
+            }
+          </style>
+        </head>
+        <body>
+          <main>
+            <h1>Payment is temporarily unavailable</h1>
+            <p>Please try again shortly. Registration is not confirmed until payment is completed.</p>
+          </main>
+        </body>
+      </html>`,
+    {
+      status: 503,
+      headers: HTML_HEADERS
     }
-  });
+  );
 }
