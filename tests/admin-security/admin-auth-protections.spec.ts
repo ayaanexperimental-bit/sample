@@ -195,7 +195,17 @@ test.describe("admin auth security protections", () => {
       email: ADMIN_EMAIL,
       role: "owner"
     });
-    expect(dashboardBody.modules).toHaveLength(6);
+    expect(dashboardBody.dashboard.demoNotice).toContain("Demo/sample data only");
+    expect(dashboardBody.dashboard.navigation).toHaveLength(10);
+    expect(dashboardBody.dashboard.summary).toHaveLength(12);
+    expect(dashboardBody.dashboard.topCoaches[0]).toMatchObject({
+      name: "Gyana Ranjan",
+      publicLink: "/gyana"
+    });
+    expect(dashboardBody.coachSites[0]).toMatchObject({
+      publicUrl: "/coach/gyana-ranjan",
+      status: "published"
+    });
 
     const dashboardWithRequiredDbRoles = await dashboardOverviewRequest({
       env: {

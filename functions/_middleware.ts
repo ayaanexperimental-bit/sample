@@ -82,6 +82,10 @@ export async function onRequest(context: PagesContext) {
     return context.next();
   }
 
+  if (isPublicCoachPagePath(pathname)) {
+    return context.next();
+  }
+
   const routeFunnel = getFunnelForPath(pathname);
   if (routeFunnel) {
     const activeFunnel = await getActiveFunnel(context.request, context.env);
@@ -187,6 +191,10 @@ function isStaticOrApiPath(pathname: string) {
 
 function isProtectedAdminPagePath(pathname: string) {
   return pathname.startsWith("/admin/") && !PUBLIC_ADMIN_PAGE_PATHS.has(pathname);
+}
+
+function isPublicCoachPagePath(pathname: string) {
+  return /^\/coach\/[a-z0-9-]+$/.test(pathname);
 }
 
 function isPageLikePath(pathname: string) {

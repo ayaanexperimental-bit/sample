@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { type CSSProperties, type FormEvent, useEffect, useMemo, useState } from "react";
+import { AdminDashboardShell } from "./admin-dashboard-shell";
 import styles from "./admin-auth-shell.module.css";
 
 export type AdminAuthStep = "dashboard" | "forgot" | "login" | "reset" | "verify";
@@ -31,15 +32,6 @@ type MessageState = {
 
 const GENERIC_AUTH_ERROR = "Invalid credentials or unauthorized admin access.";
 const FORGOT_PASSWORD_SUCCESS = "If this email is authorized, reset instructions will be sent.";
-
-const dashboardCards = [
-  "Total Registrations",
-  "Payments",
-  "WhatsApp Group Links",
-  "Masterclass Settings",
-  "User Management",
-  "Reports"
-];
 
 export function AdminAuthShell({
   initialStep = "login",
@@ -630,33 +622,11 @@ export function AdminAuthShell({
         className={`${styles.authPanel} ${styles.dashboardPanel}`}
         aria-labelledby="admin-dashboard-title"
       >
-        <div className={styles.dashboardHeader}>
-          <div>
-            <p className={styles.eyebrow}>Verified Admin Session</p>
-            <h1 className={styles.title} id="admin-dashboard-title">
-              Admin Panel
-            </h1>
-            <p className={styles.subtitle}>Management dashboard coming soon.</p>
-          </div>
-          <button className={styles.secondaryButton} onClick={handleLogout} type="button">
-            Logout
-          </button>
-        </div>
-
-        <div className={styles.dashboardGrid}>
-          {dashboardCards.map((card, index) => (
-            <article className={styles.dashboardCard} key={card}>
-              <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
-              <h2>{card}</h2>
-              <p>Placeholder module</p>
-            </article>
-          ))}
-        </div>
-
-        <p className={styles.securityNotice}>
-          Real admin features will be added after authentication is finalized.
-        </p>
-        {sessionEmail ? <p className={styles.sessionMeta}>Signed in as {sessionEmail}</p> : null}
+        <AdminDashboardShell
+          csrfToken={csrfToken}
+          onLogout={handleLogout}
+          sessionEmail={sessionEmail}
+        />
       </section>
     );
   }
@@ -665,17 +635,25 @@ export function AdminAuthShell({
     <main className={styles.adminPage}>
       <div className={styles.backdrop} aria-hidden="true" />
       <div className={`${styles.shell} ${step === "dashboard" ? styles.shellDashboard : ""}`}>
-        <aside className={styles.brandPanel} aria-label="YW Coach admin security">
-          <div className={styles.logoMark}>
-            <Image alt="" height={994} priority src="/images/yw-nutritech-logo.png" width={1302} />
-          </div>
-          <p className={styles.brandKicker}>YW Coach Admin</p>
-          <h2>Controlled access for coach platform operations.</h2>
-          <p>
-            This foundation is structured for allowlisted admins, MFA, guarded APIs, audit trails,
-            and future dashboard modules.
-          </p>
-        </aside>
+        {step === "dashboard" ? null : (
+          <aside className={styles.brandPanel} aria-label="YW Coach admin security">
+            <div className={styles.logoMark}>
+              <Image
+                alt=""
+                height={994}
+                priority
+                src="/images/yw-nutritech-logo.png"
+                width={1302}
+              />
+            </div>
+            <p className={styles.brandKicker}>YW Coach Admin</p>
+            <h2>Controlled access for coach platform operations.</h2>
+            <p>
+              This foundation is structured for allowlisted admins, MFA, guarded APIs, audit trails,
+              and future dashboard modules.
+            </p>
+          </aside>
+        )}
 
         {renderPanel()}
       </div>

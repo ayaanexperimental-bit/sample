@@ -35,8 +35,8 @@
 }
 
 .shellDashboard {
-  width: min(100%, 82rem);
-  grid-template-columns: minmax(14rem, 0.45fr) minmax(0, 1fr);
+  width: min(100%, 96rem);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .brandPanel,
@@ -136,6 +136,7 @@
 
 .dashboardPanel {
   align-content: start;
+  min-height: auto;
 }
 
 .title {
