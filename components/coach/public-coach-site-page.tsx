@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import type { CoachSiteRecord } from "../../lib/admin-coach-sites";
+import { DEFAULT_SUPPORT_EMAIL } from "../../lib/error-reporting";
 import styles from "./public-coach-site-page.module.css";
 
 type PublicCoachSitePageProps = {
   site: CoachSiteRecord;
 };
 
-const SUPPORT_EMAIL = "support@ywcoach.com";
 const DEFAULT_SUPPORT_NAME = "Yours Wellness Support";
 const DEFAULT_SUPPORT_TEXT = "Need help? Contact Yours Wellness support.";
 
@@ -232,7 +232,7 @@ function CoachContactSupport({
 
 function getSupportDetails(site: CoachSiteRecord) {
   const hasCoachContact = Boolean(site.coachEmail || site.coachPhone || site.whatsappLink);
-  const email = site.coachEmail || SUPPORT_EMAIL;
+  const email = site.coachEmail || DEFAULT_SUPPORT_EMAIL;
   const subject = encodeURIComponent(`Coach page support ${site.slug}`);
   const emailHref = `mailto:${email}?subject=${subject}`;
   const whatsappLink = site.whatsappLink || "";

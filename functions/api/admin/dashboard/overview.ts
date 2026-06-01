@@ -1,5 +1,6 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { demoCoachSites } from "../../../../lib/admin-coach-sites";
+import { adminControlCenterData } from "../../../../lib/admin-control-center";
 import { adminDashboardData } from "../../../../lib/admin-dashboard-data";
 import { adminJson, requireAdmin } from "../../../../lib/server/admin-auth";
 
@@ -30,6 +31,7 @@ export async function onRequest({ request, env }: PagesContext) {
   return adminJson({
     admin: admin.admin,
     coachSites: demoCoachSites,
+    controlCenter: adminControlCenterData,
     dashboard: adminDashboardData,
     ok: true
   });

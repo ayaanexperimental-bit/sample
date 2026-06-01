@@ -732,6 +732,173 @@
   overflow-wrap: anywhere;
 }
 
+.statusGrid,
+.definitionGrid,
+.modelList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.statusCard,
+.modelList article,
+.statusList div {
+  border: 1px solid rgb(168 85 137 / 0.1);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 0.5);
+  padding: 0.86rem;
+}
+
+.statusCard {
+  display: grid;
+  gap: 0.42rem;
+  border-left: 0.3rem solid rgb(117 96 108 / 0.22);
+}
+
+.statusCard[data-tone="success"],
+.statusList div[data-tone="success"] {
+  border-left-color: #087a73;
+}
+
+.statusCard[data-tone="warning"],
+.statusList div[data-tone="warning"] {
+  border-left-color: #b7791f;
+}
+
+.statusCard[data-tone="attention"],
+.statusList div[data-tone="attention"] {
+  border-left-color: #9f174d;
+}
+
+.statusCard h3 {
+  margin: 0;
+  color: #251822;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.statusCard span,
+.statusList span,
+.modelList strong {
+  color: #087a73;
+  font-size: 0.76rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.statusCard p,
+.modelList p {
+  margin: 0;
+  color: #6d5968;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.reportPrompt {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+  border: 1px solid rgb(8 122 115 / 0.14);
+  border-radius: var(--radius-md);
+  background: rgb(8 122 115 / 0.07);
+  padding: 0.86rem;
+}
+
+.reportPrompt strong,
+.modelList code,
+.definitionGrid dt,
+.statusList strong {
+  color: #251822;
+  font-size: 0.82rem;
+  font-weight: 950;
+  line-height: 1.25;
+}
+
+.reportPrompt code {
+  color: #075f5b;
+  font-family: var(--font-sans);
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.definitionGrid {
+  margin: 0 0 0.85rem;
+}
+
+.definitionGrid div {
+  border: 1px solid rgb(168 85 137 / 0.1);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 0.5);
+  padding: 0.78rem;
+}
+
+.definitionGrid dt {
+  color: #755c6c;
+  text-transform: uppercase;
+}
+
+.definitionGrid dd {
+  margin: 0.3rem 0 0;
+  color: #251822;
+  font-size: 0.9rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.chipList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.44rem;
+  margin-top: 0.75rem;
+}
+
+.chipList code,
+.chipList span {
+  border: 1px solid rgb(8 122 115 / 0.14);
+  border-radius: 999px;
+  background: rgb(8 122 115 / 0.08);
+  color: #075f5b;
+  padding: 0.36rem 0.55rem;
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.chipList[data-tone="muted"] span {
+  border-color: rgb(117 96 108 / 0.12);
+  background: rgb(117 96 108 / 0.07);
+  color: #5f4a59;
+}
+
+.modelList {
+  grid-template-columns: 1fr;
+}
+
+.modelList article,
+.statusList div {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.modelList code {
+  color: #075f5b;
+  font-family: var(--font-sans);
+}
+
+.statusList {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.statusList div {
+  border-left: 0.3rem solid rgb(117 96 108 / 0.22);
+}
+
 .modulePlaceholders {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -784,7 +951,9 @@
   .twoColumn,
   .coachFilters,
   .copyEditorGrid,
-  .modulePlaceholders {
+  .definitionGrid,
+  .modulePlaceholders,
+  .statusGrid {
     grid-template-columns: 1fr;
   }
 
@@ -824,7 +993,8 @@
   }
 
   .formGrid,
-  .removeDetails {
+  .removeDetails,
+  .statusGrid {
     grid-template-columns: 1fr;
   }
 

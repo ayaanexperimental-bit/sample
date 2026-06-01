@@ -1,5 +1,6 @@
 import styles from "./admin-dashboard-shell.module.css";
 import { AdminCoachSitesManager } from "./admin-coach-sites-manager";
+import { adminControlCenterData, createErrorReportBugPrompt } from "../../lib/admin-control-center";
 import { adminDashboardData } from "../../lib/admin-dashboard-data";
 
 type AdminDashboardShellProps = {
@@ -14,6 +15,7 @@ export function AdminDashboardShell({
   sessionEmail
 }: AdminDashboardShellProps) {
   const data = adminDashboardData;
+  const control = adminControlCenterData;
 
   return (
     <section className={styles.dashboard} aria-labelledby="admin-overview-title">
@@ -219,31 +221,249 @@ export function AdminDashboardShell({
 
       <AdminCoachSitesManager csrfToken={csrfToken} />
 
-      <section className={styles.modulePlaceholders} aria-label="Pending admin modules">
-        {[
-          [
-            "masterclass-settings",
-            "Masterclass Link Settings",
-            "Manage payment, success video, support, and private paid links server-side."
-          ],
-          [
-            "error-reports",
-            "Error Reports / Bug Reports",
-            "Review safe error reports, statuses, admin notes, and Codex-ready bug prompts."
-          ],
-          [
-            "backup-cleanup",
-            "Data Backup & Cleanup",
-            "Manual backup and 90-day raw analytics cleanup planning."
-          ],
-          ["settings", "Settings", "Admin-only configuration, role checks, and security hardening."]
-        ].map(([id, title, description]) => (
-          <article className={styles.placeholderCard} id={id} key={id}>
-            <span className={styles.sampleBadge}>Planned module</span>
-            <h2>{title}</h2>
-            <p>{description}</p>
-          </article>
-        ))}
+      <section className={styles.section} aria-labelledby="coach-wise-analytics-title">
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.kicker}>Coach-Wise Analytics</p>
+            <h2 id="coach-wise-analytics-title">Individual coach performance</h2>
+          </div>
+          <span className={styles.sampleBadge}>Demo analytics</span>
+        </div>
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Coach slug</th>
+                <th>Status</th>
+                <th>Public URL</th>
+                <th>Total visits</th>
+                <th>Daily</th>
+                <th>Weekly</th>
+                <th>Monthly</th>
+                <th>Register clicks</th>
+                <th>WhatsApp clicks</th>
+                <th>Video plays</th>
+                <th>Conversion</th>
+                <th>Device</th>
+                <th>Region</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {control.coachAnalytics.map((coach) => (
+                <tr key={coach.slug}>
+                  <td>
+                    <code>{coach.slug}</code>
+                  </td>
+                  <td>
+                    <span className={styles.statusBadge} data-status={coach.status}>
+                      {coach.status}
+                    </span>
+                  </td>
+                  <td>
+                    <code>{coach.publicUrl}</code>
+                  </td>
+                  <td>{coach.totalVisits.toLocaleString()}</td>
+                  <td>{coach.dailyVisits.toLocaleString()}</td>
+                  <td>{coach.weeklyVisits.toLocaleString()}</td>
+                  <td>{coach.monthlyVisits.toLocaleString()}</td>
+                  <td>{coach.registerClicks.toLocaleString()}</td>
+                  <td>{coach.whatsappClicks.toLocaleString()}</td>
+                  <td>{coach.videoPlays.toLocaleString()}</td>
+                  <td>{coach.conversionRate}</td>
+                  <td>{coach.deviceBreakdown}</td>
+                  <td>{coach.regionBreakdown}</td>
+                  <td>{coach.sourceBreakdown}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className={styles.inlineNote}>
+          Google Form submissions are not claimed here because the `.md` keeps Google Form
+          automation for a later integration. Current free-funnel analytics stop at tracked clicks.
+        </p>
+      </section>
+
+      <section className={styles.section} id="masterclass-settings">
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.kicker}>Masterclass Link Settings</p>
+            <h2>Server-side paid funnel settings</h2>
+          </div>
+          <span className={styles.sampleBadge}>No private URLs shown</span>
+        </div>
+        <div className={styles.statusGrid}>
+          {control.masterclassSettings.map((item) => (
+            <article className={styles.statusCard} data-tone={item.tone} key={item.label}>
+              <span>{item.status}</span>
+              <h3>{item.label}</h3>
+              <p>{item.description}</p>
+            </article>
+          ))}
+        </div>
+        <p className={styles.inlineStatus}>
+          Paid landing pages remain custom jobs. Admin can manage references/settings only after a
+          database settings table is approved.
+        </p>
+      </section>
+
+      <section className={styles.section} id="error-reports">
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.kicker}>Error Reports / Bug Reports</p>
+            <h2>Safe error reports</h2>
+          </div>
+          <span className={styles.sampleBadge}>Admin-only details</span>
+        </div>
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Reference</th>
+                <th>Status</th>
+                <th>Severity</th>
+                <th>Category</th>
+                <th>Page</th>
+                <th>User action</th>
+                <th>Safe message</th>
+                <th>Device</th>
+                <th>Screen</th>
+                <th>Coach</th>
+              </tr>
+            </thead>
+            <tbody>
+              {control.errorReports.map((report) => (
+                <tr key={report.referenceId}>
+                  <td>
+                    <code>{report.referenceId}</code>
+                  </td>
+                  <td>{report.status}</td>
+                  <td>{report.severity}</td>
+                  <td>{report.category}</td>
+                  <td>{report.pagePath}</td>
+                  <td>{report.userAction}</td>
+                  <td>{report.safeMessage}</td>
+                  <td>{report.deviceType}</td>
+                  <td>{report.screenSize}</td>
+                  <td>{report.coachSlug || "none"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className={styles.reportPrompt}>
+          <strong>Codex-ready bug prompt</strong>
+          <code>{createErrorReportBugPrompt(control.errorReports[0])}</code>
+        </div>
+      </section>
+
+      <section className={styles.twoColumn}>
+        <article className={styles.section} id="backup-cleanup">
+          <div className={styles.sectionHeader}>
+            <div>
+              <p className={styles.kicker}>Data Backup & Cleanup</p>
+              <h2>90-day raw analytics retention</h2>
+            </div>
+          </div>
+          <dl className={styles.definitionGrid}>
+            <div>
+              <dt>Retention period</dt>
+              <dd>{control.backupCleanup.retentionDays} days</dd>
+            </div>
+            <div>
+              <dt>Backup destination</dt>
+              <dd>{control.backupCleanup.backupDestination}</dd>
+            </div>
+            <div>
+              <dt>Google Sheets</dt>
+              <dd>
+                {control.backupCleanup.googleSheetsConfigured ? "Configured" : "Not configured yet"}
+              </dd>
+            </div>
+            <div>
+              <dt>Last backup</dt>
+              <dd>{control.backupCleanup.lastBackupAt}</dd>
+            </div>
+            <div>
+              <dt>Last cleanup</dt>
+              <dd>{control.backupCleanup.lastCleanupAt}</dd>
+            </div>
+            <div>
+              <dt>Cleanup status</dt>
+              <dd>{control.backupCleanup.cleanupStatus}</dd>
+            </div>
+          </dl>
+          <div className={styles.formActions}>
+            <button className={styles.secondaryAction} disabled type="button">
+              Manual Backup
+            </button>
+            <button className={styles.dangerAction} disabled type="button">
+              Manual Cleanup
+            </button>
+          </div>
+          <p className={styles.linkWarning}>
+            Cleanup stays disabled until backup storage succeeds. Coach profiles, sites, active
+            links, and lifetime summaries must not be deleted by raw-event cleanup.
+          </p>
+        </article>
+
+        <article className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <p className={styles.kicker}>Event Tracking System</p>
+              <h2>Tracked event contract</h2>
+            </div>
+          </div>
+          <p className={styles.inlineNote}>{control.eventTracking.storageStatus}</p>
+          <div className={styles.chipList}>
+            {control.eventTracking.eventNames.map((eventName) => (
+              <code key={eventName}>{eventName}</code>
+            ))}
+          </div>
+          <div className={styles.chipList} data-tone="muted">
+            {control.eventTracking.fields.map((field) => (
+              <span key={field}>{field}</span>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      <section className={styles.twoColumn}>
+        <article className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <p className={styles.kicker}>Data Models</p>
+              <h2>Persistence plan</h2>
+            </div>
+          </div>
+          <div className={styles.modelList}>
+            {control.dataModels.map((model) => (
+              <article key={model.name}>
+                <code>{model.name}</code>
+                <strong>{model.status}</strong>
+                <p>{model.purpose}</p>
+              </article>
+            ))}
+          </div>
+        </article>
+
+        <article className={styles.section} id="settings">
+          <div className={styles.sectionHeader}>
+            <div>
+              <p className={styles.kicker}>Settings</p>
+              <h2>Security and configuration status</h2>
+            </div>
+          </div>
+          <div className={styles.statusList}>
+            {control.security.map((item) => (
+              <div data-tone={item.tone} key={item.label}>
+                <strong>{item.label}</strong>
+                <span>{item.status}</span>
+              </div>
+            ))}
+          </div>
+        </article>
       </section>
 
       <p className={styles.securityNote}>

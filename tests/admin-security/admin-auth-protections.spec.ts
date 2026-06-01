@@ -1,13 +1,17 @@
 import { expect, test } from "@playwright/test";
 import { onRequest as middlewareRequest } from "../../functions/_middleware";
+import { onRequest as backupCleanupRequest } from "../../functions/api/admin/backup-cleanup";
 import { onRequest as dashboardOverviewRequest } from "../../functions/api/admin/dashboard/overview";
+import { onRequest as errorReportsRequest } from "../../functions/api/admin/error-reports";
 import { onRequest as forgotPasswordRequest } from "../../functions/api/admin/auth/forgot-password";
 import { onRequest as loginRequest } from "../../functions/api/admin/auth/login";
 import { onRequest as logoutRequest } from "../../functions/api/admin/auth/logout";
+import { onRequest as masterclassSettingsRequest } from "../../functions/api/admin/masterclass-settings";
 import { onRequest as resendOtpRequest } from "../../functions/api/admin/auth/resend-otp";
 import { onRequest as resetPasswordRequest } from "../../functions/api/admin/auth/reset-password";
 import { onRequest as sessionRequest } from "../../functions/api/admin/auth/session";
 import { onRequest as verifyOtpRequest } from "../../functions/api/admin/auth/verify-otp";
+import { onRequest as publicErrorReportRequest } from "../../functions/api/error-report";
 
 const ADMIN_EMAIL = "admin@example.com";
 const ADMIN_DEV_OTP = "123456";
@@ -136,6 +140,15 @@ test.describe("admin auth security protections", () => {
     expect(blockedDashboardApi.status).toBe(401);
     await expectJson(blockedDashboardApi, { authenticated: false });
 
+    for (const handler of [errorReportsRequest, backupCleanupRequest, masterclassSettingsRequest]) {
+      const blockedAdminModuleApi = await handler({
+        env,
+        request: new Request("https://ywcoach.com/api/admin/protected-module")
+      });
+      expect(blockedAdminModuleApi.status).toBe(401);
+      await expectJson(blockedAdminModuleApi, { authenticated: false });
+    }
+
     const localDemoOtp = await verifyOtpRequest({
       env,
       request: jsonRequest("http://127.0.0.1/api/admin/auth/verify-otp", {
@@ -202,10 +215,55 @@ test.describe("admin auth security protections", () => {
       name: "Gyana Ranjan",
       publicLink: "/gyana"
     });
+    expect(dashboardBody.controlCenter.errorReports[0]).toMatchObject({
+      referenceId: "ERR-20260601-SMPL"
+    });
     expect(dashboardBody.coachSites[0]).toMatchObject({
       publicUrl: "/coach/gyana-ranjan",
       status: "published"
     });
+
+    const errorReports = await errorReportsRequest({
+      env,
+      request: new Request("https://ywcoach.com/api/admin/error-reports", {
+        headers: { cookie }
+      })
+    });
+    expect(errorReports.status).toBe(200);
+    await expectJson(errorReports, { ok: true, persistence: "placeholder" });
+
+    const backupCleanup = await backupCleanupRequest({
+      env,
+      request: new Request("https://ywcoach.com/api/admin/backup-cleanup", {
+        headers: { cookie }
+      })
+    });
+    expect(backupCleanup.status).toBe(200);
+    await expectJson(backupCleanup, { ok: true, persistence: "placeholder" });
+
+    const masterclassSettings = await masterclassSettingsRequest({
+      env: { ...env, WHATSAPP_GROUP_URL_GYANA_PCOS_51: "https://private.example.invalid/invite" },
+      request: new Request("https://ywcoach.com/api/admin/masterclass-settings", {
+        headers: { cookie }
+      })
+    });
+    expect(masterclassSettings.status).toBe(200);
+    const masterclassSettingsBody = await masterclassSettings.json();
+    expect(masterclassSettingsBody).toMatchObject({
+      ok: true,
+      privateLinkValuesExposed: false
+    });
+    expect(JSON.stringify(masterclassSettingsBody)).not.toContain("private.example.invalid");
+
+    const backupWithoutCsrf = await backupCleanupRequest({
+      env,
+      request: jsonRequest(
+        "https://ywcoach.com/api/admin/backup-cleanup",
+        { action: "backup" },
+        { cookie }
+      )
+    });
+    expect(backupWithoutCsrf.status).toBe(403);
 
     const dashboardWithRequiredDbRoles = await dashboardOverviewRequest({
       env: {
@@ -252,6 +310,28 @@ test.describe("admin auth security protections", () => {
     expect(logoutWithCsrf.status).toBe(200);
     await expectJson(logoutWithCsrf, { ok: true });
     expect(logoutWithCsrf.headers.get("set-cookie")).toContain("Max-Age=0");
+  });
+
+  test("accepts public safe error reports without exposing technical details", async () => {
+    const response = await publicErrorReportRequest({
+      request: jsonRequest("https://ywcoach.com/api/error-report", {
+        category: "ui_crash",
+        pagePath: "/coach/gyana-ranjan",
+        safeMessage: "This page could not load properly.",
+        stack: "should not be echoed",
+        userAction: "page_render"
+      })
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      category: "ui_crash",
+      ok: true,
+      persisted: false
+    });
+    expect(String(body.referenceId)).toMatch(/^ERR-\d{8}-[A-Z0-9]{4}$/);
+    expect(JSON.stringify(body)).not.toContain("should not be echoed");
   });
 });
 

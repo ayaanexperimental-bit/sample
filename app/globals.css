@@ -13500,6 +13500,31 @@ body:has(.levelup-clone) {
   margin: 0 !important;
 }
 
+.success-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: clamp(1.25rem, 3vw, 2rem);
+}
+
+.success-actions .success-whatsapp-button {
+  margin-top: 0;
+}
+
+.success-page code {
+  background: rgb(126 87 116 / 0.1);
+  border-radius: 999px;
+  color: #64415f;
+  display: inline-flex;
+  font-family: var(--font-sans);
+  font-size: 0.86rem;
+  font-weight: 900;
+  margin-top: 1rem;
+  padding: 0.42rem 0.72rem;
+}
+
 .success-page .success-whatsapp-button {
   align-items: center;
   appearance: none;
