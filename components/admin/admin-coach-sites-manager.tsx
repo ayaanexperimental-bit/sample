@@ -13,7 +13,11 @@ import {
   demoCoachSites,
   normalizeCoachSlug
 } from "../../lib/admin-coach-sites";
-import { isSupportedVideoUrl, normalizeVideoEmbedUrl } from "../../lib/video-links";
+import {
+  isSupportedVideoSource,
+  isUploadedVideoSource,
+  normalizeVideoEmbedUrl
+} from "../../lib/video-links";
 import styles from "./admin-dashboard-shell.module.css";
 
 type AdminCoachSitesManagerProps = {
@@ -25,6 +29,7 @@ type CoachDialog =
   | { type: "analytics"; site: CoachSiteRecord }
   | { type: "copy"; link: string; site: CoachSiteRecord }
   | { type: "creator" }
+  | { type: "manage"; site: CoachSiteRecord }
   | { type: "preview"; site: CoachSiteRecord }
   | { nextStatus: "paused" | "published"; site: CoachSiteRecord; type: "status" }
   | { site: CoachSiteRecord; type: "remove" };
@@ -148,8 +153,8 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       return false;
     }
 
-    if (form.heroMediaType === "video" && !isSupportedVideoUrl(form.videoUrl)) {
-      setMessage("Enter a valid YouTube or video URL, or choose No Media.");
+    if (form.heroMediaType === "video" && !isSupportedVideoSource(form.videoUrl)) {
+      setMessage("Enter a valid YouTube/video URL, upload a video file, or choose No Media.");
       return false;
     }
 
@@ -295,122 +300,107 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   }
 
   return (
-    <section className={styles.managerSurface} aria-label="Coach site manager">
+    <section className={styles.managerSurface} data-mode={mode} aria-label="Coach site manager">
       <div className={styles.sectionHeader}>
         <div>
           <p className={styles.kicker}>Coach Sites</p>
-          <h2>Referral website list</h2>
+          <h2>{mode === "create" ? "Website creator" : "Referral websites"}</h2>
         </div>
         <button className={styles.primaryAction} onClick={() => openCreatorDialog()} type="button">
           Open Website Creator
         </button>
       </div>
       <p className={styles.inlineNote}>
-        Coach public links are shareable. Analytics, edit access, private settings, and future write
-        APIs remain admin-only.
+        Coach public links are shareable. Editing, analytics, and settings remain admin-only.
       </p>
 
-      <div className={styles.coachFilters}>
-        <label className={styles.compactField}>
-          <span>Search coaches</span>
-          <input
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by name, niche, or slug"
-            type="search"
-            value={search}
-          />
-        </label>
-        <label className={styles.compactField}>
-          <span>Status</span>
-          <select
-            onChange={(event) => setStatusFilter(event.target.value as "all" | CoachSiteStatus)}
-            value={statusFilter}
-          >
-            {statusOptions.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      {mode === "list" ? (
+        <>
+          <div className={styles.coachFilters}>
+            <label className={styles.compactField}>
+              <span>Search coaches</span>
+              <input
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Name, niche, or slug"
+                type="search"
+                value={search}
+              />
+            </label>
+            <label className={styles.compactField}>
+              <span>Status</span>
+              <select
+                onChange={(event) => setStatusFilter(event.target.value as "all" | CoachSiteStatus)}
+                value={statusFilter}
+              >
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Coach</th>
-              <th>Niche</th>
-              <th>Status</th>
-              <th>Public link</th>
-              <th>Visits</th>
-              <th>Register clicks</th>
-              <th>Conversion</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredSites.map((site) => (
-              <tr key={site.id}>
-                <td>{site.coachName}</td>
-                <td>{site.niche}</td>
-                <td>
-                  <span className={styles.statusBadge} data-status={site.status}>
-                    {site.status}
-                  </span>
-                </td>
-                <td>
-                  <code>{site.publicUrl}</code>
-                </td>
-                <td>{site.analytics.totalVisits.toLocaleString()}</td>
-                <td>{site.analytics.totalRegisterClicks.toLocaleString()}</td>
-                <td>{site.analytics.conversionRate}</td>
-                <td>
-                  <div className={styles.rowActions}>
-                    <button onClick={() => setDialog({ site, type: "preview" })} type="button">
-                      Preview
-                    </button>
-                    <button onClick={() => openCreatorDialog(site)} type="button">
-                      Edit
-                    </button>
-                    <button onClick={() => openCreatorDialog(site, 3)} type="button">
-                      Support
-                    </button>
-                    <button onClick={() => setDialog({ site, type: "analytics" })} type="button">
-                      Analytics
-                    </button>
-                    <button onClick={() => void copyPublicLink(site)} type="button">
-                      Copy
-                    </button>
-                    {site.status === "paused" ? (
+          <div className={styles.tableWrap}>
+            <table className={styles.table} data-density="compact">
+              <thead>
+                <tr>
+                  <th>Coach</th>
+                  <th>Status</th>
+                  <th>Public link</th>
+                  <th>Performance</th>
+                  <th>Manage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredSites.map((site) => (
+                  <tr key={site.id}>
+                    <td>
+                      <strong>{site.coachName}</strong>
+                      <span>{site.niche}</span>
+                    </td>
+                    <td>
+                      <span className={styles.statusBadge} data-status={site.status}>
+                        {site.status}
+                      </span>
+                    </td>
+                    <td>
+                      <code>{site.publicUrl}</code>
+                    </td>
+                    <td>
+                      <span>{site.analytics.totalVisits.toLocaleString()} visits</span>
+                      <span>
+                        {site.analytics.totalRegisterClicks.toLocaleString()} clicks /{" "}
+                        {site.analytics.conversionRate}
+                      </span>
+                    </td>
+                    <td>
                       <button
-                        onClick={() => setDialog({ nextStatus: "published", site, type: "status" })}
+                        className={styles.secondaryAction}
+                        onClick={() => setDialog({ site, type: "manage" })}
                         type="button"
                       >
-                        Resume
+                        Manage
                       </button>
-                    ) : (
-                      <button
-                        onClick={() => setDialog({ nextStatus: "paused", site, type: "status" })}
-                        type="button"
-                      >
-                        Pause
-                      </button>
-                    )}
-                    <button onClick={() => setDialog({ site, type: "remove" })} type="button">
-                      Remove
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className={styles.tableFooter}>
-        <span>{filteredSites.length} coach sites</span>
-        <span>Page 1 of 1</span>
-      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className={styles.tableFooter}>
+            <span>{filteredSites.length} coach sites</span>
+          </div>
+        </>
+      ) : (
+        <div className={styles.emptyState}>
+          <h3>Creator opens in a clean wizard</h3>
+          <p>
+            Use the modal to enter only the fixed-template content, media, links, and support
+            details.
+          </p>
+        </div>
+      )}
 
       {message ? <p className={styles.inlineStatus}>{message}</p> : null}
 
@@ -421,7 +411,9 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         form={form}
         onClose={() => setDialog(null)}
         onCopyAgain={(site) => void copyPublicLink(site)}
+        onEditSite={openCreatorDialog}
         onGenerateAi={() => void handleGenerateWithAi()}
+        onOpenDialog={setDialog}
         onPreparePreview={preparePreview}
         onPublish={() => upsertSite("published")}
         onRemoveCancel={() => {
@@ -452,7 +444,9 @@ function CoachDialogRenderer({
   form,
   onClose,
   onCopyAgain,
+  onEditSite,
   onGenerateAi,
+  onOpenDialog,
   onPreparePreview,
   onPublish,
   onRemoveCancel,
@@ -475,7 +469,9 @@ function CoachDialogRenderer({
   form: CoachSiteFormState;
   onClose: () => void;
   onCopyAgain: (site: CoachSiteRecord) => void;
+  onEditSite: (site?: CoachSiteRecord, step?: number) => void;
   onGenerateAi: () => void;
+  onOpenDialog: (dialog: CoachDialog) => void;
   onPreparePreview: () => boolean;
   onPublish: () => CoachSiteRecord;
   onRemoveCancel: () => void;
@@ -691,6 +687,85 @@ function CoachDialogRenderer({
     );
   }
 
+  if (dialog.type === "manage") {
+    return (
+      <AdminActionDialog onClose={onClose} open title="Manage Coach Site">
+        <div className={styles.manageDialog}>
+          <div>
+            <p className={styles.kicker}>Coach Site</p>
+            <h3>{dialog.site.coachName}</h3>
+            <p>{dialog.site.niche}</p>
+            <code>{dialog.site.publicUrl}</code>
+          </div>
+          <div className={styles.manageMetrics}>
+            <span>{dialog.site.analytics.totalVisits.toLocaleString()} visits</span>
+            <span>
+              {dialog.site.analytics.totalRegisterClicks.toLocaleString()} register clicks
+            </span>
+            <span>{dialog.site.analytics.conversionRate} conversion</span>
+          </div>
+          <div className={styles.formActions}>
+            <button
+              className={styles.secondaryAction}
+              onClick={() => onOpenDialog({ site: dialog.site, type: "preview" })}
+              type="button"
+            >
+              Preview
+            </button>
+            <button
+              className={styles.secondaryAction}
+              onClick={() => onEditSite(dialog.site)}
+              type="button"
+            >
+              Edit
+            </button>
+            <button
+              className={styles.secondaryAction}
+              onClick={() => onEditSite(dialog.site, 3)}
+              type="button"
+            >
+              Contact Support
+            </button>
+            <button
+              className={styles.secondaryAction}
+              onClick={() => onOpenDialog({ site: dialog.site, type: "analytics" })}
+              type="button"
+            >
+              Analytics
+            </button>
+            <button
+              className={styles.secondaryAction}
+              onClick={() => onCopyAgain(dialog.site)}
+              type="button"
+            >
+              Copy Link
+            </button>
+            <button
+              className={styles.secondaryAction}
+              onClick={() =>
+                onOpenDialog({
+                  nextStatus: dialog.site.status === "paused" ? "published" : "paused",
+                  site: dialog.site,
+                  type: "status"
+                })
+              }
+              type="button"
+            >
+              {dialog.site.status === "paused" ? "Resume" : "Pause"}
+            </button>
+            <button
+              className={styles.dangerAction}
+              onClick={() => onOpenDialog({ site: dialog.site, type: "remove" })}
+              type="button"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      </AdminActionDialog>
+    );
+  }
+
   if (dialog.type === "preview") {
     return (
       <AdminActionDialog onClose={onClose} open size="large" title="Preview Coach Site">
@@ -863,9 +938,42 @@ function HeroMediaStep({
     value: CoachSiteFormState[Key]
   ) => void;
 }) {
+  const [uploadMessage, setUploadMessage] = useState("");
   const imagePreviewUrl = form.photoUrl || form.logoUrl;
   const videoPreviewUrl = normalizeVideoEmbedUrl(form.videoUrl);
-  const videoInvalid = form.heroMediaType === "video" && form.videoUrl.trim() && !videoPreviewUrl;
+  const uploadedVideoUrl = isUploadedVideoSource(form.videoUrl) ? form.videoUrl : "";
+  const videoInvalid =
+    form.heroMediaType === "video" && form.videoUrl.trim() && !videoPreviewUrl && !uploadedVideoUrl;
+
+  async function handleMediaUpload(file: File | undefined, mediaType: "image" | "video") {
+    if (!file) return;
+
+    const maxBytes = mediaType === "image" ? 4 * 1024 * 1024 : 24 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      setUploadMessage(
+        mediaType === "image"
+          ? "Image is too large. Use an image under 4 MB."
+          : "Video is too large. Use a video under 24 MB or add a video URL."
+      );
+      return;
+    }
+
+    if (mediaType === "image" && !file.type.startsWith("image/")) {
+      setUploadMessage("Upload an image file.");
+      return;
+    }
+
+    if (mediaType === "video" && !file.type.startsWith("video/")) {
+      setUploadMessage("Upload a video file.");
+      return;
+    }
+
+    const dataUrl = await readFileAsDataUrl(file);
+    onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", dataUrl);
+    setUploadMessage(
+      `${file.name} uploaded for this draft. You can remove or replace it before publishing.`
+    );
+  }
 
   return (
     <div className={styles.mediaStep}>
@@ -886,6 +994,15 @@ function HeroMediaStep({
 
       {form.heroMediaType === "image" ? (
         <div className={styles.formGrid}>
+          <label className={styles.compactField}>
+            <span>Upload photo/image</span>
+            <input
+              accept="image/*"
+              onChange={(event) => void handleMediaUpload(event.target.files?.[0], "image")}
+              type="file"
+            />
+            <small>Use this for coach photo, logo, or hero image. URL is still available.</small>
+          </label>
           <TextField
             helper="Use a coach photo, logo, or hero image URL."
             label="Coach photo / hero image URL"
@@ -908,11 +1025,29 @@ function HeroMediaStep({
               <span>Image preview</span>
             )}
           </div>
+          {imagePreviewUrl ? (
+            <button
+              className={styles.secondaryAction}
+              onClick={() => onUpdateField("photoUrl", "")}
+              type="button"
+            >
+              Remove Image
+            </button>
+          ) : null}
         </div>
       ) : null}
 
       {form.heroMediaType === "video" ? (
         <div className={styles.formGrid}>
+          <label className={styles.compactField}>
+            <span>Upload video</span>
+            <input
+              accept="video/*"
+              onChange={(event) => void handleMediaUpload(event.target.files?.[0], "video")}
+              type="file"
+            />
+            <small>Use upload for a local video, or paste a YouTube/video URL below.</small>
+          </label>
           <TextField
             helper="YouTube watch, shorts, share, and embed links are supported."
             label="Hero video URL"
@@ -928,6 +1063,8 @@ function HeroMediaStep({
                 src={videoPreviewUrl}
                 title="Hero video preview"
               />
+            ) : uploadedVideoUrl ? (
+              <video controls src={uploadedVideoUrl} />
             ) : (
               <span>Video preview</span>
             )}
@@ -936,6 +1073,15 @@ function HeroMediaStep({
             <p className={styles.linkWarning}>
               This video URL is not valid. Add a supported link or choose No Media.
             </p>
+          ) : null}
+          {form.videoUrl ? (
+            <button
+              className={styles.secondaryAction}
+              onClick={() => onUpdateField("videoUrl", "")}
+              type="button"
+            >
+              Remove Video
+            </button>
           ) : null}
         </div>
       ) : null}
@@ -946,6 +1092,7 @@ function HeroMediaStep({
           <p>No image or video field is needed. The public page will use a clean text-only hero.</p>
         </div>
       ) : null}
+      {uploadMessage ? <p className={styles.inlineStatus}>{uploadMessage}</p> : null}
     </div>
   );
 }
@@ -1071,6 +1218,8 @@ function CoachSitePreview({ site }: { site: CoachSiteRecord }) {
   const previewImageUrl = site.heroMediaType === "image" ? site.photoUrl || site.logoUrl : "";
   const previewVideoUrl =
     site.heroMediaType === "video" ? normalizeVideoEmbedUrl(site.videoUrl) : "";
+  const previewUploadedVideoUrl =
+    site.heroMediaType === "video" && isUploadedVideoSource(site.videoUrl) ? site.videoUrl : "";
 
   return (
     <article className={styles.coachPreview}>
@@ -1108,11 +1257,18 @@ function CoachSitePreview({ site }: { site: CoachSiteRecord }) {
                 title={`${site.coachName} hero video preview`}
               />
             ) : null}
+            {previewUploadedVideoUrl ? (
+              <video
+                controls
+                src={previewUploadedVideoUrl}
+                title={`${site.coachName} hero video preview`}
+              />
+            ) : null}
             {previewImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img alt={`${site.coachName} profile`} src={previewImageUrl} />
             ) : null}
-            {!previewVideoUrl && !previewImageUrl ? (
+            {!previewVideoUrl && !previewUploadedVideoUrl && !previewImageUrl ? (
               <span>{site.coachName.slice(0, 2).toUpperCase()}</span>
             ) : null}
           </div>
@@ -1215,4 +1371,13 @@ function TextAreaField({
       {helper ? <small>{helper}</small> : null}
     </label>
   );
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result || "")));
+    reader.addEventListener("error", () => reject(reader.error));
+    reader.readAsDataURL(file);
+  });
 }

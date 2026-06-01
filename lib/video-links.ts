@@ -1,6 +1,7 @@
 export function normalizeVideoEmbedUrl(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return "";
+  if (isUploadedVideoSource(trimmed)) return "";
 
   try {
     const url = new URL(trimmed);
@@ -33,8 +34,14 @@ export function normalizeVideoEmbedUrl(value: string) {
   }
 }
 
-export function isSupportedVideoUrl(value: string) {
-  return Boolean(normalizeVideoEmbedUrl(value));
+export function isSupportedVideoSource(value: string) {
+  const trimmed = value.trim();
+  return Boolean(normalizeVideoEmbedUrl(trimmed) || isUploadedVideoSource(trimmed));
+}
+
+export function isUploadedVideoSource(value: string) {
+  const trimmed = value.trim();
+  return trimmed.startsWith("data:video/") || trimmed.startsWith("blob:");
 }
 
 function createYoutubeEmbedUrl(videoId: string) {

@@ -144,10 +144,15 @@
   object-fit: cover;
 }
 
-.heroMedia iframe {
+.heroMedia iframe,
+.heroMedia video {
   width: 100%;
   height: 100%;
   border: 0;
+}
+
+.heroMedia video {
+  object-fit: cover;
 }
 
 .heroMedia span {
@@ -221,10 +226,15 @@
   background: #fff;
 }
 
-.videoFrame iframe {
+.videoFrame iframe,
+.videoFrame video {
   width: 100%;
   height: 100%;
   border: 0;
+}
+
+.videoFrame video {
+  object-fit: cover;
 }
 
 .finalCta {

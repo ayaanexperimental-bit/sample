@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import type { PublicCoachSiteRecord } from "../../lib/admin-coach-sites";
 import { DEFAULT_SUPPORT_EMAIL } from "../../lib/error-reporting";
-import { normalizeVideoEmbedUrl } from "../../lib/video-links";
+import { isUploadedVideoSource, normalizeVideoEmbedUrl } from "../../lib/video-links";
 import styles from "./public-coach-site-page.module.css";
 
 type PublicCoachSitePageProps = {
@@ -20,7 +20,11 @@ export function PublicCoachSitePage({ site }: PublicCoachSitePageProps) {
   const heroMediaType = site.heroMediaType || "image";
   const heroImageUrl = heroMediaType === "image" ? site.photoUrl || site.logoUrl : "";
   const heroVideoUrl = heroMediaType === "video" ? normalizeVideoEmbedUrl(site.videoUrl) : "";
+  const heroUploadedVideoUrl =
+    heroMediaType === "video" && isUploadedVideoSource(site.videoUrl) ? site.videoUrl : "";
   const optionalVideoUrl = heroMediaType !== "video" ? normalizeVideoEmbedUrl(site.videoUrl) : "";
+  const optionalUploadedVideoUrl =
+    heroMediaType !== "video" && isUploadedVideoSource(site.videoUrl) ? site.videoUrl : "";
 
   useEffect(() => {
     void recordCoachEvent("coach_site_view", site.slug);
@@ -82,11 +86,16 @@ export function PublicCoachSitePage({ site }: PublicCoachSitePageProps) {
                 title={`${site.coachName} hero video`}
               />
             ) : null}
+            {heroUploadedVideoUrl ? (
+              <video controls src={heroUploadedVideoUrl} title={`${site.coachName} hero video`} />
+            ) : null}
             {heroMediaType === "image" && heroImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img alt={`${site.coachName} profile`} src={heroImageUrl} />
             ) : null}
-            {!heroVideoUrl && !(heroMediaType === "image" && heroImageUrl) ? (
+            {!heroVideoUrl &&
+            !heroUploadedVideoUrl &&
+            !(heroMediaType === "image" && heroImageUrl) ? (
               <span>{site.coachName.slice(0, 2).toUpperCase()}</span>
             ) : null}
           </div>
@@ -108,16 +117,24 @@ export function PublicCoachSitePage({ site }: PublicCoachSitePageProps) {
         </article>
       </section>
 
-      {optionalVideoUrl ? (
+      {optionalVideoUrl || optionalUploadedVideoUrl ? (
         <section className={styles.videoSection}>
           <p className={styles.kicker}>Intro Video</p>
           <div className={styles.videoFrame}>
-            <iframe
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              src={optionalVideoUrl}
-              title={`${site.coachName} intro video`}
-            />
+            {optionalVideoUrl ? (
+              <iframe
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                src={optionalVideoUrl}
+                title={`${site.coachName} intro video`}
+              />
+            ) : (
+              <video
+                controls
+                src={optionalUploadedVideoUrl}
+                title={`${site.coachName} intro video`}
+              />
+            )}
           </div>
         </section>
       ) : null}
