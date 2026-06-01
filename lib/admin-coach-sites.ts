@@ -1,4 +1,5 @@
 export type CoachSiteStatus = "archived" | "draft" | "paused" | "published" | "removed";
+export type CoachHeroMediaType = "image" | "none" | "video";
 
 export type CoachSiteContent = {
   benefits: string[];
@@ -43,6 +44,7 @@ export type CoachSiteRecord = {
   coachPhone: string;
   content: CoachSiteContent;
   googleFormUrl: string;
+  heroMediaType: CoachHeroMediaType;
   id: string;
   location: string;
   logoUrl: string;
@@ -71,6 +73,7 @@ export type CoachSiteFormState = {
   ctaText: string;
   faqText: string;
   googleFormUrl: string;
+  heroMediaType: CoachHeroMediaType;
   heroHeadline: string;
   location: string;
   logoUrl: string;
@@ -98,6 +101,7 @@ export const EMPTY_COACH_SITE_FORM: CoachSiteFormState = {
   ctaText: "Register Now",
   faqText: "",
   googleFormUrl: "",
+  heroMediaType: "image",
   heroHeadline: "",
   location: "",
   logoUrl: "",
@@ -135,6 +139,7 @@ export const demoCoachSites: CoachSiteRecord[] = [
     videoUrl:
       "https://www.youtube.com/embed/gBQoms47fB8?playsinline=1&controls=1&rel=0&modestbranding=1",
     googleFormUrl: "",
+    heroMediaType: "image",
     slug: "gyana-ranjan",
     publicUrl: "/coach/gyana-ranjan",
     status: "published",
@@ -166,8 +171,7 @@ export const demoCoachSites: CoachSiteRecord[] = [
       ],
       trustText:
         "Education-first, doctor-friendly coaching support. This does not replace diagnosis or treatment.",
-      socialCopy:
-        "Join Gyana Ranjan's PCOS lifestyle guidance page for a clear first step."
+      socialCopy: "Join Gyana Ranjan's PCOS lifestyle guidance page for a clear first step."
     },
     analytics: {
       averageVisits: 140,
@@ -204,6 +208,7 @@ export const demoCoachSites: CoachSiteRecord[] = [
     logoUrl: "",
     videoUrl: "",
     googleFormUrl: "",
+    heroMediaType: "none",
     slug: "sample-coach-a",
     publicUrl: "/coach/sample-coach-a",
     status: "paused",
@@ -212,9 +217,14 @@ export const demoCoachSites: CoachSiteRecord[] = [
     content: {
       heroHeadline: "A practical first step with Sample Coach A.",
       subheadline: "Demo coach referral site content for review.",
-      coachIntro: "This is sample copy. Replace with real approved coach details before publishing.",
+      coachIntro:
+        "This is sample copy. Replace with real approved coach details before publishing.",
       visionText: "Guide guests through clear, sustainable habits.",
-      benefits: ["Simple routine clarity", "Supportive coach introduction", "Clear registration step"],
+      benefits: [
+        "Simple routine clarity",
+        "Supportive coach introduction",
+        "Clear registration step"
+      ],
       ctaText: "Register Now",
       faq: [
         {
@@ -271,6 +281,7 @@ export function toPublicCoachSiteRecord(site: CoachSiteRecord): PublicCoachSiteR
     coachPhone: site.coachPhone,
     content: site.content,
     googleFormUrl: site.googleFormUrl,
+    heroMediaType: site.heroMediaType,
     location: site.location,
     logoUrl: site.logoUrl,
     niche: site.niche,
@@ -303,8 +314,7 @@ export function createCoachContentFromForm(form: CoachSiteFormState): CoachSiteC
   const bio = form.bio.trim() || "A Yours Wellness coach focused on simple, supportive guidance.";
 
   return {
-    heroHeadline:
-      form.heroHeadline.trim() || `Meet ${coachName} for practical ${niche} guidance.`,
+    heroHeadline: form.heroHeadline.trim() || `Meet ${coachName} for practical ${niche} guidance.`,
     subheadline:
       form.subheadline.trim() ||
       `A fixed-template coach referral page introducing ${coachName}, their niche, vision, and registration step.`,
@@ -321,8 +331,7 @@ export function createCoachContentFromForm(form: CoachSiteFormState): CoachSiteC
       form.trustText.trim() ||
       "This page is for coach introduction and education. It does not replace medical advice.",
     socialCopy:
-      form.socialCopy.trim() ||
-      `Join ${coachName}'s ${niche} referral page for a clear first step.`
+      form.socialCopy.trim() || `Join ${coachName}'s ${niche} referral page for a clear first step.`
   };
 }
 
@@ -349,6 +358,7 @@ export function createCoachSiteFromForm(input: {
     logoUrl: input.form.logoUrl.trim(),
     videoUrl: input.form.videoUrl.trim(),
     googleFormUrl: input.form.googleFormUrl.trim(),
+    heroMediaType: input.form.heroMediaType,
     slug,
     publicUrl: getCoachPublicUrl(slug),
     status: input.status,
@@ -386,10 +396,9 @@ export function createFormFromCoachSite(site: CoachSiteRecord): CoachSiteFormSta
     coachPhone: site.coachPhone,
     coachIntro: site.content.coachIntro,
     ctaText: site.content.ctaText,
-    faqText: site.content.faq
-      .map((item) => `${item.question}\n${item.answer}`)
-      .join("\n\n"),
+    faqText: site.content.faq.map((item) => `${item.question}\n${item.answer}`).join("\n\n"),
     googleFormUrl: site.googleFormUrl,
+    heroMediaType: site.heroMediaType,
     heroHeadline: site.content.heroHeadline,
     location: site.location,
     logoUrl: site.logoUrl,

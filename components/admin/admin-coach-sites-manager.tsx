@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AdminActionDialog } from "./admin-dashboard-layout";
 import {
   EMPTY_COACH_SITE_FORM,
+  type CoachHeroMediaType,
   type CoachSiteFormState,
   type CoachSiteRecord,
   type CoachSiteStatus,
@@ -12,6 +13,7 @@ import {
   demoCoachSites,
   normalizeCoachSlug
 } from "../../lib/admin-coach-sites";
+import { isSupportedVideoUrl, normalizeVideoEmbedUrl } from "../../lib/video-links";
 import styles from "./admin-dashboard-shell.module.css";
 
 type AdminCoachSitesManagerProps = {
@@ -37,11 +39,12 @@ const statusOptions: Array<"all" | CoachSiteStatus> = [
 ];
 
 const wizardSteps = [
-  "Coach Details",
-  "Niche & Bio",
-  "Links & Contact",
-  "AI Copy",
-  "Preview Site",
+  "Coach Basic Details",
+  "Hero Media",
+  "Coach Niche & Content",
+  "Links & Contact Support",
+  "AI Copy Generation",
+  "Preview",
   "Publish"
 ];
 
@@ -53,10 +56,7 @@ const removalReasons = [
   "other"
 ];
 
-export function AdminCoachSitesManager({
-  csrfToken,
-  mode = "list"
-}: AdminCoachSitesManagerProps) {
+export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachSitesManagerProps) {
   const [sites, setSites] = useState<CoachSiteRecord[]>(demoCoachSites);
   const [form, setForm] = useState<CoachSiteFormState>(EMPTY_COACH_SITE_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -116,7 +116,7 @@ export function AdminCoachSitesManager({
       setEditingId(site.id);
       setForm(createFormFromCoachSite(site));
       setPreviewSite(site);
-      setMessage(`Editing ${site.coachName}. Changing slug will change the public link.`);
+      setMessage(`Editing ${site.coachName}. Public link stays stable after future edits.`);
     } else {
       setEditingId(null);
       setForm(EMPTY_COACH_SITE_FORM);
@@ -144,7 +144,12 @@ export function AdminCoachSitesManager({
   function preparePreview() {
     const slug = normalizeCoachSlug(form.slug || form.coachName);
     if (!form.coachName.trim() || !form.niche.trim() || !slug) {
-      setMessage("Coach name, coach niche, and referral slug are required.");
+      setMessage("Coach name and coach niche are required.");
+      return false;
+    }
+
+    if (form.heroMediaType === "video" && !isSupportedVideoUrl(form.videoUrl)) {
+      setMessage("Enter a valid YouTube or video URL, or choose No Media.");
       return false;
     }
 
@@ -193,9 +198,7 @@ export function AdminCoachSitesManager({
 
     window.setTimeout(() => {
       setAiMessage((current) =>
-        current === "Generating niche-based content..."
-          ? "Preparing coach site copy..."
-          : current
+        current === "Generating niche-based content..." ? "Preparing coach site copy..." : current
       );
     }, 450);
 
@@ -246,9 +249,8 @@ export function AdminCoachSitesManager({
         coachIntro: payload.content?.coachIntro || current.coachIntro,
         ctaText: payload.content?.ctaText || current.ctaText,
         faqText:
-          payload.content?.faq
-            ?.map((item) => `${item.question}\n${item.answer}`)
-            .join("\n\n") || current.faqText,
+          payload.content?.faq?.map((item) => `${item.question}\n${item.answer}`).join("\n\n") ||
+          current.faqText,
         heroHeadline: payload.content?.heroHeadline || current.heroHeadline,
         registerButtonText: payload.content?.ctaText || current.registerButtonText,
         socialCopy: payload.content?.socialCopy || current.socialCopy,
@@ -265,7 +267,9 @@ export function AdminCoachSitesManager({
   }
 
   function updateSiteStatus(site: CoachSiteRecord, status: "paused" | "published") {
-    setSites((current) => current.map((item) => (item.id === site.id ? { ...item, status } : item)));
+    setSites((current) =>
+      current.map((item) => (item.id === site.id ? { ...item, status } : item))
+    );
     setPreviewSite((current) => (current?.id === site.id ? { ...current, status } : current));
     setMessage(
       status === "paused"
@@ -369,8 +373,8 @@ export function AdminCoachSitesManager({
                     <button onClick={() => openCreatorDialog(site)} type="button">
                       Edit
                     </button>
-                    <button onClick={() => openCreatorDialog(site, 2)} type="button">
-                      Links
+                    <button onClick={() => openCreatorDialog(site, 3)} type="button">
+                      Support
                     </button>
                     <button onClick={() => setDialog({ site, type: "analytics" })} type="button">
                       Analytics
@@ -528,35 +532,31 @@ function CoachDialogRenderer({
 
           <div className={styles.wizardPanel}>
             {wizardStep === 0 ? (
-              <div className={styles.formGrid}>
-                <TextField label="Coach name" onChange={onUpdateCoachName} required value={form.coachName} />
-                <TextField
-                  label="Coach location"
-                  onChange={(value) => onUpdateField("location", value)}
-                  value={form.location}
-                />
-                <TextField
-                  label="Referral slug"
-                  onChange={(value) => onUpdateField("slug", normalizeCoachSlug(value))}
-                  required
-                  value={form.slug}
-                />
-                <TextField
-                  label="Coach photo URL"
-                  onChange={(value) => onUpdateField("photoUrl", value)}
-                  type="url"
-                  value={form.photoUrl}
-                />
-                <TextField
-                  label="Coach logo URL"
-                  onChange={(value) => onUpdateField("logoUrl", value)}
-                  type="url"
-                  value={form.logoUrl}
-                />
-              </div>
+              <>
+                <div className={styles.formGrid}>
+                  <TextField
+                    helper="Used for the public coach page, support card, and stable link."
+                    label="Coach name"
+                    onChange={onUpdateCoachName}
+                    required
+                    value={form.coachName}
+                  />
+                  <TextField
+                    label="Coach location"
+                    onChange={(value) => onUpdateField("location", value)}
+                    value={form.location}
+                  />
+                </div>
+                <p className={styles.inlineNote}>
+                  The public link slug is generated from the coach name and stays stable after
+                  future edits.
+                </p>
+              </>
             ) : null}
 
-            {wizardStep === 1 ? (
+            {wizardStep === 1 ? <HeroMediaStep form={form} onUpdateField={onUpdateField} /> : null}
+
+            {wizardStep === 2 ? (
               <div className={styles.copyEditorGrid}>
                 <TextField
                   label="Coach niche"
@@ -577,16 +577,17 @@ function CoachDialogRenderer({
               </div>
             ) : null}
 
-            {wizardStep === 2 ? (
+            {wizardStep === 3 ? (
               <div className={styles.formGrid}>
                 <TextField
                   label="Google Form registration link"
+                  helper="Register buttons open this link after the click is tracked."
                   onChange={(value) => onUpdateField("googleFormUrl", value)}
                   type="url"
                   value={form.googleFormUrl}
                 />
                 <TextField
-                  label="WhatsApp link"
+                  label="WhatsApp/contact link"
                   onChange={(value) => onUpdateField("whatsappLink", value)}
                   type="url"
                   value={form.whatsappLink}
@@ -603,12 +604,6 @@ function CoachDialogRenderer({
                   value={form.coachPhone}
                 />
                 <TextField
-                  label="Intro video link"
-                  onChange={(value) => onUpdateField("videoUrl", value)}
-                  type="url"
-                  value={form.videoUrl}
-                />
-                <TextField
                   label="Register button text"
                   onChange={(value) => onUpdateField("registerButtonText", value)}
                   value={form.registerButtonText}
@@ -622,7 +617,7 @@ function CoachDialogRenderer({
               </div>
             ) : null}
 
-            {wizardStep === 3 ? (
+            {wizardStep === 4 ? (
               <>
                 <div className={styles.sectionHeader}>
                   <div>
@@ -651,16 +646,6 @@ function CoachDialogRenderer({
                     value={form.subheadline}
                   />
                   <TextAreaField
-                    label="Coach introduction"
-                    onChange={(value) => onUpdateField("coachIntro", value)}
-                    value={form.coachIntro}
-                  />
-                  <TextAreaField
-                    label="Vision statement"
-                    onChange={(value) => onUpdateField("visionText", value)}
-                    value={form.visionText}
-                  />
-                  <TextAreaField
                     label="Benefits section"
                     onChange={(value) => onUpdateField("benefitsText", value)}
                     placeholder="One benefit per line"
@@ -672,33 +657,33 @@ function CoachDialogRenderer({
                     placeholder={"Question\nAnswer\n\nQuestion\nAnswer"}
                     value={form.faqText}
                   />
-                  <TextAreaField
-                    label="Trust/support text"
-                    onChange={(value) => onUpdateField("trustText", value)}
-                    value={form.trustText}
-                  />
-                  <TextAreaField
-                    label="Social media copy"
-                    onChange={(value) => onUpdateField("socialCopy", value)}
-                    value={form.socialCopy}
-                  />
                 </div>
+                <p className={styles.inlineNote}>
+                  Coach introduction, mission, CTA, and contact support come from the previous
+                  steps. AI only prepares fixed-template copy for admin review.
+                </p>
               </>
             ) : null}
 
-            {wizardStep === 4 ? (
+            {wizardStep === 5 ? (
               previewSite ? (
                 <CoachSitePreview site={previewSite} />
               ) : (
                 <div className={styles.emptyState}>
                   <h3>Preview not prepared yet</h3>
-                  <p>Use the Preview button to generate a fixed-template preview before publishing.</p>
+                  <p>
+                    Use the Preview button to generate a fixed-template preview before publishing.
+                  </p>
                 </div>
               )
             ) : null}
 
-            {wizardStep === 5 ? (
-              <PublishPanel publishedSite={publishedSite} previewSite={previewSite} />
+            {wizardStep === 6 ? (
+              <PublishPanel
+                onCopyLink={onCopyAgain}
+                publishedSite={publishedSite}
+                previewSite={previewSite}
+              />
             ) : null}
           </div>
         </div>
@@ -861,8 +846,107 @@ function CoachDialogRenderer({
           </select>
         </label>
       </div>
-      <p className={styles.linkWarning}>OTP verification not configured. Permanent removal is disabled.</p>
+      <p className={styles.linkWarning}>
+        OTP verification not configured. Permanent removal is disabled.
+      </p>
     </AdminActionDialog>
+  );
+}
+
+function HeroMediaStep({
+  form,
+  onUpdateField
+}: {
+  form: CoachSiteFormState;
+  onUpdateField: <Key extends keyof CoachSiteFormState>(
+    key: Key,
+    value: CoachSiteFormState[Key]
+  ) => void;
+}) {
+  const imagePreviewUrl = form.photoUrl || form.logoUrl;
+  const videoPreviewUrl = normalizeVideoEmbedUrl(form.videoUrl);
+  const videoInvalid = form.heroMediaType === "video" && form.videoUrl.trim() && !videoPreviewUrl;
+
+  return (
+    <div className={styles.mediaStep}>
+      <label className={styles.compactField}>
+        <span>Hero Media Type</span>
+        <select
+          onChange={(event) =>
+            onUpdateField("heroMediaType", event.target.value as CoachHeroMediaType)
+          }
+          value={form.heroMediaType}
+        >
+          <option value="image">Photo/Image</option>
+          <option value="video">Video Link</option>
+          <option value="none">No Media</option>
+        </select>
+        <small>Choose one mode. The fixed template will only show the fields for that mode.</small>
+      </label>
+
+      {form.heroMediaType === "image" ? (
+        <div className={styles.formGrid}>
+          <TextField
+            helper="Use a coach photo, logo, or hero image URL."
+            label="Coach photo / hero image URL"
+            onChange={(value) => onUpdateField("photoUrl", value)}
+            type="url"
+            value={form.photoUrl}
+          />
+          <TextField
+            helper="Optional. Used as fallback image if no photo is added."
+            label="Coach logo URL"
+            onChange={(value) => onUpdateField("logoUrl", value)}
+            type="url"
+            value={form.logoUrl}
+          />
+          <div className={styles.mediaPreview} data-state={imagePreviewUrl ? "ready" : "empty"}>
+            {imagePreviewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img alt="Hero media preview" src={imagePreviewUrl} />
+            ) : (
+              <span>Image preview</span>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {form.heroMediaType === "video" ? (
+        <div className={styles.formGrid}>
+          <TextField
+            helper="YouTube watch, shorts, share, and embed links are supported."
+            label="Hero video URL"
+            onChange={(value) => onUpdateField("videoUrl", value)}
+            type="url"
+            value={form.videoUrl}
+          />
+          <div className={styles.mediaPreview} data-state={videoPreviewUrl ? "ready" : "empty"}>
+            {videoPreviewUrl ? (
+              <iframe
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                src={videoPreviewUrl}
+                title="Hero video preview"
+              />
+            ) : (
+              <span>Video preview</span>
+            )}
+          </div>
+          {videoInvalid ? (
+            <p className={styles.linkWarning}>
+              This video URL is not valid. Add a supported link or choose No Media.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {form.heroMediaType === "none" ? (
+        <div className={styles.emptyState}>
+          <h3>Text-only hero selected</h3>
+          <p>No image or video field is needed. The public page will use a clean text-only hero.</p>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -898,7 +982,7 @@ function WizardFooter({
         className={styles.secondaryAction}
         onClick={() => {
           const prepared = onPreparePreview();
-          if (prepared) setWizardStep(4);
+          if (prepared) setWizardStep(5);
         }}
         type="button"
       >
@@ -908,7 +992,7 @@ function WizardFooter({
         className={styles.secondaryAction}
         onClick={() => {
           onSaveDraft();
-          setWizardStep(5);
+          setWizardStep(6);
         }}
         type="button"
       >
@@ -927,7 +1011,7 @@ function WizardFooter({
           className={styles.primaryAction}
           onClick={() => {
             onPublish();
-            setWizardStep(5);
+            setWizardStep(6);
           }}
           type="button"
         >
@@ -939,9 +1023,11 @@ function WizardFooter({
 }
 
 function PublishPanel({
+  onCopyLink,
   previewSite,
   publishedSite
 }: {
+  onCopyLink: (site: CoachSiteRecord) => void;
   previewSite: CoachSiteRecord | null;
   publishedSite: CoachSiteRecord | null;
 }) {
@@ -962,8 +1048,14 @@ function PublishPanel({
         {publishedSite ? "Successfully Published" : site.status}
       </span>
       <h3>{site.coachName}</h3>
-      <p>Stable public link stays the same after future edits unless the slug is intentionally changed.</p>
+      <p>
+        Stable public link stays the same after future edits unless the slug is intentionally
+        changed.
+      </p>
       <code>{site.publicUrl}</code>
+      <button className={styles.primaryAction} onClick={() => onCopyLink(site)} type="button">
+        Copy Public Link
+      </button>
       {!site.googleFormUrl ? (
         <p className={styles.linkWarning}>
           Google Form link missing. The public page will show Contact Support fallback instead of a
@@ -976,10 +1068,13 @@ function PublishPanel({
 
 function CoachSitePreview({ site }: { site: CoachSiteRecord }) {
   const canRegister = Boolean(site.googleFormUrl);
+  const previewImageUrl = site.heroMediaType === "image" ? site.photoUrl || site.logoUrl : "";
+  const previewVideoUrl =
+    site.heroMediaType === "video" ? normalizeVideoEmbedUrl(site.videoUrl) : "";
 
   return (
     <article className={styles.coachPreview}>
-      <div className={styles.previewHero}>
+      <div className={styles.previewHero} data-media={site.heroMediaType}>
         <div>
           <p className={styles.previewNiche}>{site.niche}</p>
           <h3>{site.content.heroHeadline}</h3>
@@ -1003,14 +1098,25 @@ function CoachSitePreview({ site }: { site: CoachSiteRecord }) {
             </p>
           ) : null}
         </div>
-        <div className={styles.previewMedia}>
-          {site.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img alt={`${site.coachName} profile`} src={site.photoUrl} />
-          ) : (
-            <span>{site.coachName.slice(0, 2).toUpperCase()}</span>
-          )}
-        </div>
+        {site.heroMediaType !== "none" ? (
+          <div className={styles.previewMedia} data-media={site.heroMediaType}>
+            {previewVideoUrl ? (
+              <iframe
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                src={previewVideoUrl}
+                title={`${site.coachName} hero video preview`}
+              />
+            ) : null}
+            {previewImageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img alt={`${site.coachName} profile`} src={previewImageUrl} />
+            ) : null}
+            {!previewVideoUrl && !previewImageUrl ? (
+              <span>{site.coachName.slice(0, 2).toUpperCase()}</span>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div className={styles.previewGrid}>
@@ -1057,12 +1163,14 @@ function CoachSitePreview({ site }: { site: CoachSiteRecord }) {
 }
 
 function TextField({
+  helper,
   label,
   onChange,
   required = false,
   type = "text",
   value
 }: {
+  helper?: string;
   label: string;
   onChange: (value: string) => void;
   required?: boolean;
@@ -1078,16 +1186,19 @@ function TextField({
         type={type}
         value={value}
       />
+      {helper ? <small>{helper}</small> : null}
     </label>
   );
 }
 
 function TextAreaField({
+  helper,
   label,
   onChange,
   placeholder,
   value
 }: {
+  helper?: string;
   label: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -1101,6 +1212,7 @@ function TextAreaField({
         placeholder={placeholder}
         value={value}
       />
+      {helper ? <small>{helper}</small> : null}
     </label>
   );
 }

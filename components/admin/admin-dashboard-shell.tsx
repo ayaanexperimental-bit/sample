@@ -1,14 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { AdminCoachSitesManager } from "./admin-coach-sites-manager";
 import {
   AdminActionDialog,
   AdminHeader,
   type AdminNavSection,
   AdminPageShell,
-  AdminSidebar,
-  AdminSubmenu
+  AdminSidebar
 } from "./admin-dashboard-layout";
 import styles from "./admin-dashboard-shell.module.css";
 import { adminControlCenterData, createErrorReportBugPrompt } from "../../lib/admin-control-center";
@@ -21,19 +20,14 @@ type AdminDashboardShellProps = {
 };
 
 type AdminViewId =
-  | "activity-logs"
-  | "admin-settings"
   | "backup-cleanup"
   | "coach-analytics"
-  | "coach-sites-all"
-  | "coach-sites-create"
+  | "coach-sites"
+  | "create-coach-site"
   | "error-reports"
   | "overview"
-  | "paid-funnel"
-  | "paid-links"
-  | "security-settings"
-  | "success-settings"
-  | "support-settings"
+  | "paid-masterclass-settings"
+  | "settings"
   | "top-coaches";
 
 type ActionDialogState = {
@@ -44,63 +38,35 @@ type ActionDialogState = {
 
 const navSections: AdminNavSection[] = [
   {
-    id: "overview",
-    label: "Dashboard",
-    items: [{ id: "overview", label: "Overview", description: "Summary, alerts, quick actions" }]
-  },
-  {
-    id: "coach-sites",
-    label: "Coach Sites",
+    id: "admin-workflow",
+    label: "Admin",
     items: [
-      { id: "coach-sites-all", label: "All Coach Sites", description: "List, filter, actions" },
-      { id: "coach-sites-create", label: "Create Coach Site", description: "Open creator wizard" },
-      { id: "top-coaches", label: "Top Performing Coaches", description: "Ranked demo table" },
-      { id: "coach-analytics", label: "Coach Analytics", description: "Coach-wise metrics" }
-    ]
-  },
-  {
-    id: "paid-masterclass",
-    label: "Paid Masterclass",
-    items: [
-      { id: "paid-funnel", label: "Funnel Analytics", description: "Paid funnel steps" },
-      { id: "paid-links", label: "Link Settings", description: "Server-side link status" },
-      { id: "success-settings", label: "Success Page Settings", description: "Post-payment status" }
-    ]
-  },
-  {
-    id: "reports",
-    label: "Reports",
-    items: [
-      { id: "error-reports", label: "Error Reports", description: "Safe error details" },
-      { id: "activity-logs", label: "Activity Logs", description: "Recent admin events" },
-      { id: "backup-cleanup", label: "Backup & Cleanup", description: "Retention controls" }
-    ]
-  },
-  {
-    id: "settings",
-    label: "Settings",
-    items: [
-      { id: "admin-settings", label: "Admin Settings", description: "Role and access status" },
-      { id: "support-settings", label: "Support Settings", description: "Fallback contact details" },
-      { id: "security-settings", label: "Security Settings", description: "Hardening checklist" }
+      { id: "overview", label: "Overview", description: "Key metrics and alerts" },
+      { id: "coach-sites", label: "Coach Sites", description: "Search and manage sites" },
+      { id: "create-coach-site", label: "Create Coach Site", description: "Open builder wizard" },
+      { id: "coach-analytics", label: "Coach Analytics", description: "Coach-wise metrics" },
+      { id: "top-coaches", label: "Top Performers", description: "Best coaches" },
+      {
+        id: "paid-masterclass-settings",
+        label: "Paid Masterclass Links/Settings",
+        description: "Links and settings"
+      },
+      { id: "error-reports", label: "Error Reports", description: "Recent issues" },
+      { id: "backup-cleanup", label: "Backup/Cleanup", description: "Retention controls" },
+      { id: "settings", label: "Settings", description: "Admin and support basics" }
     ]
   }
 ];
 
 const viewTitles: Record<AdminViewId, string> = {
-  "activity-logs": "Activity Logs",
-  "admin-settings": "Admin Settings",
   "backup-cleanup": "Backup & Cleanup",
   "coach-analytics": "Coach Analytics",
-  "coach-sites-all": "All Coach Sites",
-  "coach-sites-create": "Create Coach Site",
+  "coach-sites": "Coach Sites",
+  "create-coach-site": "Create Coach Site",
   "error-reports": "Error Reports",
   overview: "Overview",
-  "paid-funnel": "Paid Funnel Analytics",
-  "paid-links": "Masterclass Link Settings",
-  "security-settings": "Security Settings",
-  "success-settings": "Success Page Settings",
-  "support-settings": "Support Settings",
+  "paid-masterclass-settings": "Paid Masterclass Links/Settings",
+  settings: "Settings",
   "top-coaches": "Top Performing Coaches"
 };
 
@@ -114,11 +80,6 @@ export function AdminDashboardShell({
   const [activeView, setActiveView] = useState<AdminViewId>("overview");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [actionDialog, setActionDialog] = useState<ActionDialogState>(null);
-
-  const currentSection = useMemo(
-    () => navSections.find((section) => section.items.some((item) => item.id === activeView)),
-    [activeView]
-  );
 
   function openAction(title: string, body: string, tone: "danger" | "standard" = "standard") {
     setActionDialog({ body, title, tone });
@@ -146,26 +107,16 @@ export function AdminDashboardShell({
           sessionEmail={sessionEmail}
         />
 
-        {currentSection && currentSection.items.length > 1 ? (
-          <AdminSubmenu
-            activeView={activeView}
-            items={currentSection.items}
-            onSelect={selectView}
-          />
-        ) : null}
-
         <p className={styles.demoNotice}>{data.demoNotice}</p>
 
-        {activeView === "overview" ? (
-          <OverviewView data={data} onAction={openAction} onSelect={setActiveView} />
-        ) : null}
+        {activeView === "overview" ? <OverviewView data={data} onSelect={setActiveView} /> : null}
 
-        {activeView === "coach-sites-all" ? (
+        {activeView === "coach-sites" ? (
           <AdminPageShell
             actions={
               <button
                 className={styles.primaryAction}
-                onClick={() => setActiveView("coach-sites-create")}
+                onClick={() => setActiveView("create-coach-site")}
                 type="button"
               >
                 Create Coach Site
@@ -178,7 +129,7 @@ export function AdminDashboardShell({
           </AdminPageShell>
         ) : null}
 
-        {activeView === "coach-sites-create" ? (
+        {activeView === "create-coach-site" ? (
           <AdminPageShell eyebrow="Coach Sites" title="Create Coach Site">
             <AdminCoachSitesManager csrfToken={csrfToken} mode="create" />
           </AdminPageShell>
@@ -186,21 +137,18 @@ export function AdminDashboardShell({
 
         {activeView === "top-coaches" ? <TopCoachesView data={data} /> : null}
         {activeView === "coach-analytics" ? <CoachAnalyticsView control={control} /> : null}
-        {activeView === "paid-funnel" ? <PaidFunnelView data={data} /> : null}
-        {activeView === "paid-links" ? <MasterclassLinksView control={control} /> : null}
-        {activeView === "success-settings" ? (
-          <SuccessSettingsView onAction={openAction} />
+        {activeView === "paid-masterclass-settings" ? (
+          <MasterclassLinksView control={control} />
         ) : null}
         {activeView === "error-reports" ? (
           <ErrorReportsView control={control} onAction={openAction} />
         ) : null}
-        {activeView === "activity-logs" ? <ActivityLogsView data={data} /> : null}
         {activeView === "backup-cleanup" ? (
           <BackupCleanupView control={control} onAction={openAction} />
         ) : null}
-        {activeView === "admin-settings" ? <AdminSettingsView control={control} /> : null}
-        {activeView === "support-settings" ? <SupportSettingsView onAction={openAction} /> : null}
-        {activeView === "security-settings" ? <SecuritySettingsView control={control} /> : null}
+        {activeView === "settings" ? (
+          <SettingsView control={control} onAction={openAction} />
+        ) : null}
       </div>
 
       <AdminActionDialog
@@ -217,19 +165,29 @@ export function AdminDashboardShell({
 
 function OverviewView({
   data,
-  onAction,
   onSelect
 }: {
   data: typeof adminDashboardData;
-  onAction: (title: string, body: string) => void;
   onSelect: (view: AdminViewId) => void;
 }) {
+  const overviewMetrics = data.summary.filter((metric) =>
+    [
+      "Total site visits",
+      "Today's visits",
+      "Weekly visits",
+      "Monthly visits",
+      "Total register button clicks",
+      "Total WhatsApp clicks",
+      "Recent error reports"
+    ].includes(metric.label)
+  );
+
   return (
     <AdminPageShell
       actions={
         <button
           className={styles.primaryAction}
-          onClick={() => onSelect("coach-sites-create")}
+          onClick={() => onSelect("create-coach-site")}
           type="button"
         >
           Create Coach Site
@@ -239,7 +197,7 @@ function OverviewView({
       title="Admin Overview"
     >
       <section className={styles.summaryGrid} aria-label="Top summary cards">
-        {data.summary.map((metric) => (
+        {overviewMetrics.map((metric) => (
           <article className={styles.metricCard} data-tone={metric.tone} key={metric.label}>
             <span>{metric.label}</span>
             <strong>{metric.value}</strong>
@@ -255,7 +213,11 @@ function OverviewView({
               <p className={styles.kicker}>Top Performing Coaches</p>
               <h2>Fast ranking</h2>
             </div>
-            <button className={styles.secondaryAction} onClick={() => onSelect("top-coaches")} type="button">
+            <button
+              className={styles.secondaryAction}
+              onClick={() => onSelect("top-coaches")}
+              type="button"
+            >
               Open Details
             </button>
           </div>
@@ -278,7 +240,11 @@ function OverviewView({
               <p className={styles.kicker}>Alerts</p>
               <h2>Needs attention</h2>
             </div>
-            <button className={styles.secondaryAction} onClick={() => onSelect("error-reports")} type="button">
+            <button
+              className={styles.secondaryAction}
+              onClick={() => onSelect("error-reports")}
+              type="button"
+            >
               View Reports
             </button>
           </div>
@@ -301,28 +267,26 @@ function OverviewView({
           </div>
         </div>
         <div className={styles.quickActions}>
-          <button onClick={() => onSelect("coach-sites-create")} type="button">
+          <button onClick={() => onSelect("create-coach-site")} type="button">
             Create Coach Site
+          </button>
+          <button onClick={() => onSelect("coach-sites")} type="button">
+            Coach Sites
           </button>
           <button onClick={() => onSelect("coach-analytics")} type="button">
             View Coach Analytics
           </button>
-          <button onClick={() => onSelect("paid-links")} type="button">
+          <button onClick={() => onSelect("top-coaches")} type="button">
+            Top Performers
+          </button>
+          <button onClick={() => onSelect("paid-masterclass-settings")} type="button">
             Update Masterclass Links
+          </button>
+          <button onClick={() => onSelect("error-reports")} type="button">
+            Error Reports
           </button>
           <button onClick={() => onSelect("backup-cleanup")} type="button">
             Backup Analytics
-          </button>
-          <button
-            onClick={() =>
-              onAction(
-                "Export Report",
-                "Export is planned behind admin-only reporting APIs. No export file is generated until persistence is approved."
-              )
-            }
-            type="button"
-          >
-            Export Report
           </button>
         </div>
       </section>
@@ -430,37 +394,6 @@ function CoachAnalyticsView({ control }: { control: typeof adminControlCenterDat
   );
 }
 
-function PaidFunnelView({ data }: { data: typeof adminDashboardData }) {
-  const paidFunnel = data.funnels.find((funnel) => funnel.name.startsWith("Paid"));
-  const freeFunnel = data.funnels.find((funnel) => funnel.name.startsWith("Free"));
-
-  return (
-    <AdminPageShell eyebrow="Paid Masterclass" title="Funnel Analytics">
-      <section className={styles.twoColumn}>
-        {[paidFunnel, freeFunnel].filter(Boolean).map((funnel) => (
-          <article className={styles.section} key={funnel?.name}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <p className={styles.kicker}>Funnel</p>
-                <h2>{funnel?.name}</h2>
-              </div>
-              <span className={styles.sampleBadge}>Sample</span>
-            </div>
-            <div className={styles.funnelSteps}>
-              {funnel?.steps.map((step) => (
-                <div className={styles.funnelStep} key={step.label}>
-                  <span>{step.label}</span>
-                  <strong>{step.value}</strong>
-                </div>
-              ))}
-            </div>
-          </article>
-        ))}
-      </section>
-    </AdminPageShell>
-  );
-}
-
 function MasterclassLinksView({ control }: { control: typeof adminControlCenterData }) {
   return (
     <AdminPageShell eyebrow="Paid Masterclass" title="Link Settings">
@@ -476,46 +409,6 @@ function MasterclassLinksView({ control }: { control: typeof adminControlCenterD
       <p className={styles.inlineStatus}>
         Paid landing pages remain custom jobs. Private paid links stay server-side only.
       </p>
-    </AdminPageShell>
-  );
-}
-
-function SuccessSettingsView({
-  onAction
-}: {
-  onAction: (title: string, body: string) => void;
-}) {
-  return (
-    <AdminPageShell
-      actions={
-        <button
-          className={styles.secondaryAction}
-          onClick={() =>
-            onAction(
-              "Success Page Settings",
-              "Success page settings are currently code/config controlled. A database settings table is required before admin edits are enabled."
-            )
-          }
-          type="button"
-        >
-          Review Settings
-        </button>
-      }
-      eyebrow="Paid Masterclass"
-      title="Success Page Settings"
-    >
-      <section className={styles.statusGrid}>
-        <article className={styles.statusCard} data-tone="success">
-          <span>Protected</span>
-          <h3>Success page access</h3>
-          <p>Paid success page remains behind payment/funnel access checks.</p>
-        </article>
-        <article className={styles.statusCard} data-tone="success">
-          <span>Server-side</span>
-          <h3>Paid WhatsApp button</h3>
-          <p>Private group URL is resolved only after verified paid access.</p>
-        </article>
-      </section>
     </AdminPageShell>
   );
 }
@@ -594,22 +487,6 @@ function ErrorReportsView({
   );
 }
 
-function ActivityLogsView({ data }: { data: typeof adminDashboardData }) {
-  return (
-    <AdminPageShell eyebrow="Reports" title="Activity Logs">
-      <div className={styles.activityList}>
-        {data.activities.map((activity) => (
-          <div className={styles.activityItem} key={`${activity.type}-${activity.timestamp}`}>
-            <span>{activity.timestamp}</span>
-            <strong>{activity.type}</strong>
-            <p>{activity.description}</p>
-          </div>
-        ))}
-      </div>
-    </AdminPageShell>
-  );
-}
-
 function BackupCleanupView({
   control,
   onAction
@@ -641,10 +518,7 @@ function BackupCleanupView({
         <button
           className={styles.secondaryAction}
           onClick={() =>
-            onAction(
-              "Backup Data",
-              "Backup storage is not configured yet. No backup was created."
-            )
+            onAction("Backup Data", "Backup storage is not configured yet. No backup was created.")
           }
           type="button"
         >
@@ -672,25 +546,11 @@ function BackupCleanupView({
   );
 }
 
-function AdminSettingsView({ control }: { control: typeof adminControlCenterData }) {
-  return (
-    <AdminPageShell eyebrow="Settings" title="Admin Settings">
-      <div className={styles.modelList}>
-        {control.dataModels.map((model) => (
-          <article key={model.name}>
-            <code>{model.name}</code>
-            <strong>{model.status}</strong>
-            <p>{model.purpose}</p>
-          </article>
-        ))}
-      </div>
-    </AdminPageShell>
-  );
-}
-
-function SupportSettingsView({
+function SettingsView({
+  control,
   onAction
 }: {
+  control: typeof adminControlCenterData;
   onAction: (title: string, body: string) => void;
 }) {
   return (
@@ -701,36 +561,37 @@ function SupportSettingsView({
           onClick={() =>
             onAction(
               "Support Settings",
-              "Default support is used only when coach-specific support details are missing. Coach support details remain editable inside the Coach Site creator."
+              "Default Yours Wellness support is used only when coach-specific public contact details are missing. Coach details stay editable inside the Coach Site builder."
             )
           }
           type="button"
         >
-          Edit Support Settings
+          Support Settings
         </button>
       }
       eyebrow="Settings"
-      title="Support Settings"
+      title="Settings"
     >
       <section className={styles.statusGrid}>
         <article className={styles.statusCard} data-tone="success">
+          <span>Protected</span>
+          <h3>Admin access</h3>
+          <p>Admin routes and write APIs remain protected behind the current auth foundation.</p>
+        </article>
+        <article className={styles.statusCard} data-tone="success">
           <span>Coach-specific</span>
-          <h3>Coach page support</h3>
-          <p>Public coach pages prefer coach phone, WhatsApp, email, image/logo, and support text.</p>
+          <h3>Contact support</h3>
+          <p>Coach pages use coach phone, WhatsApp, email, image/logo, and support text first.</p>
         </article>
         <article className={styles.statusCard} data-tone="warning">
           <span>Fallback</span>
           <h3>Yours Wellness support</h3>
-          <p>Default support appears only when a coach site has no public support contact details.</p>
+          <p>
+            Default support appears only when a coach site has no public support contact details.
+          </p>
         </article>
       </section>
-    </AdminPageShell>
-  );
-}
 
-function SecuritySettingsView({ control }: { control: typeof adminControlCenterData }) {
-  return (
-    <AdminPageShell eyebrow="Settings" title="Security Settings">
       <div className={styles.statusList}>
         {control.security.map((item) => (
           <div data-tone={item.tone} key={item.label}>
