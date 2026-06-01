@@ -1,56 +1,68 @@
-const SITE_URL = trimTrailingSlash(process.env.SITE_URL || "https://freedomfromdiabetes.in");
+const SITE_URL = trimTrailingSlash(process.env.SITE_URL || "https://ywcoach.com");
+const ROOT_REDIRECT_URL = "https://yourswellness.in";
 const PAYMENT_HOST = "pages.razorpay.com";
 const THANK_YOU_VIDEO_URL = "https://www.youtube-nocookie.com/embed/fLSSje0nCHk?rel=0";
-const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/FceSzvdQmNr2gHNCSaBXyy";
 const REQUEST_TIMEOUT_MS = 12_000;
 
 const checks = [
-  {
-    name: "Home page",
-    url: `${SITE_URL}/`,
-    allowedStatuses: [200]
+  async () => {
+    const response = await request(`${SITE_URL}/`, { redirect: "manual" });
+    assertStatus(response, [302], "Root redirect");
+    assertLocation(response, ROOT_REDIRECT_URL, "Root redirect");
   },
-  {
-    name: "Success page",
-    url: `${SITE_URL}/success`,
-    allowedStatuses: [200]
-  },
-  {
-    name: "Payment redirect",
-    url: `${SITE_URL}/api/payment/start`,
-    allowedStatuses: [302],
-    redirect: "manual",
-    validate(response) {
-      const location = response.headers.get("location") || "";
-      const host = safeHost(location);
+  async () => {
+    const guestEntry = await request(`${SITE_URL}/go/gyana-guest`, { redirect: "manual" });
+    assertStatus(guestEntry, [302], "Gyana guest entry");
+    assertPath(guestEntry.headers.get("location"), "/gyana", "Gyana guest entry");
 
-      if (host !== PAYMENT_HOST) {
-        throw new Error(`expected redirect to ${PAYMENT_HOST}, received ${location || "no location"}`);
-      }
-    }
-  },
-  {
-    name: "Legacy Razorpay callback",
-    url: `${SITE_URL}/api/razorpay/debug-callback`,
-    allowedStatuses: [302],
-    redirect: "manual",
-    validate(response) {
-      const location = response.headers.get("location") || "";
+    const guestCookie = getSetCookie(guestEntry);
+    const guestPage = await request(`${SITE_URL}/gyana`, { cookie: guestCookie });
+    assertStatus(guestPage, [200], "Gyana guest page");
 
-      if (new URL(location).pathname !== "/success") {
-        throw new Error(`expected redirect to /success, received ${location || "no location"}`);
-      }
-    }
+    const blockedPaid = await request(`${SITE_URL}/gyana/pcos-51`, { cookie: guestCookie });
+    assertStatus(blockedPaid, [403], "Guest cannot open paid page");
+
+    const guestWhatsapp = await request(`${SITE_URL}/api/whatsapp-access`, {
+      cookie: guestCookie
+    });
+    assertStatus(guestWhatsapp, [200], "Guest WhatsApp API");
+    await assertNoJoinUrl(guestWhatsapp, "Guest WhatsApp API");
   },
-  {
-    name: "WhatsApp group",
-    url: WHATSAPP_GROUP_URL,
-    allowedStatuses: [200, 301, 302, 303, 307, 308]
+  async () => {
+    const paidEntry = await request(`${SITE_URL}/go/gyana-pcos-51`, { redirect: "manual" });
+    assertStatus(paidEntry, [302], "Gyana paid entry");
+    assertPath(paidEntry.headers.get("location"), "/gyana/pcos-51", "Gyana paid entry");
+
+    const paidCookie = getSetCookie(paidEntry);
+    const paidPage = await request(`${SITE_URL}/gyana/pcos-51`, { cookie: paidCookie });
+    assertStatus(paidPage, [200], "Gyana paid page");
+
+    const blockedGuest = await request(`${SITE_URL}/gyana`, { cookie: paidCookie });
+    assertStatus(blockedGuest, [403], "Paid cannot open guest page");
+
+    const successPage = await request(`${SITE_URL}/gyana/pcos-51/success`, { cookie: paidCookie });
+    assertStatus(successPage, [200], "Gyana paid success page");
+
+    const paymentRedirect = await request(`${SITE_URL}/api/payment/start`, {
+      cookie: paidCookie,
+      redirect: "manual"
+    });
+    assertStatus(paymentRedirect, [302], "Payment redirect");
+    assertHost(paymentRedirect.headers.get("location"), PAYMENT_HOST, "Payment redirect");
+
+    const whatsappAccess = await request(`${SITE_URL}/api/whatsapp-access`, {
+      cookie: paidCookie
+    });
+    assertStatus(whatsappAccess, [200], "Paid WhatsApp API");
+    await assertAllowedWhatsAppResponse(whatsappAccess, "Paid WhatsApp API");
   },
-  {
-    name: "Thank-you video",
-    url: THANK_YOU_VIDEO_URL,
-    allowedStatuses: [200, 301, 302, 303, 307, 308]
+  async () => {
+    const invalidEntry = await request(`${SITE_URL}/go/not-real`, { redirect: "manual" });
+    assertStatus(invalidEntry, [404], "Invalid entry link");
+  },
+  async () => {
+    const video = await request(THANK_YOU_VIDEO_URL, { redirect: "manual" });
+    assertStatus(video, [200, 301, 302, 303, 307, 308], "Thank-you video");
   }
 ];
 
@@ -58,18 +70,10 @@ let failures = 0;
 
 for (const check of checks) {
   try {
-    const response = await request(check);
-
-    if (!check.allowedStatuses.includes(response.status)) {
-      throw new Error(`unexpected status ${response.status}`);
-    }
-
-    check.validate?.(response);
-    await response.body?.cancel();
-    console.log(`PASS ${check.name}: ${response.status}`);
+    await check();
   } catch (error) {
     failures += 1;
-    console.error(`FAIL ${check.name}: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`FAIL ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -77,22 +81,102 @@ if (failures > 0) {
   process.exit(1);
 }
 
-function request(check) {
+function assertStatus(response, allowedStatuses, name) {
+  if (!allowedStatuses.includes(response.status)) {
+    throw new Error(`${name}: unexpected status ${response.status}`);
+  }
+
+  console.log(`PASS ${name}: ${response.status}`);
+}
+
+function assertLocation(response, expected, name) {
+  const location = response.headers.get("location") || "";
+
+  if (location !== expected) {
+    throw new Error(
+      `${name}: expected redirect to ${expected}, received ${location || "no location"}`
+    );
+  }
+}
+
+function assertPath(value, expectedPath, name) {
+  const path = safePath(value);
+
+  if (path !== expectedPath) {
+    throw new Error(`${name}: expected path ${expectedPath}, received ${value || "no location"}`);
+  }
+}
+
+function assertHost(value, expectedHost, name) {
+  const host = safeHost(value);
+
+  if (host !== expectedHost) {
+    throw new Error(`${name}: expected host ${expectedHost}, received ${value || "no location"}`);
+  }
+}
+
+async function assertNoJoinUrl(response, name) {
+  const payload = await response.json();
+
+  if (payload?.joinUrl) {
+    throw new Error(`${name}: joinUrl leaked when access was not allowed`);
+  }
+
+  console.log(`PASS ${name}: no joinUrl`);
+}
+
+async function assertAllowedWhatsAppResponse(response, name) {
+  const payload = await response.json();
+
+  if (payload?.allowed === true) {
+    assertHost(payload.joinUrl, "chat.whatsapp.com", name);
+    console.log(`PASS ${name}: matching funnel joinUrl available`);
+    return;
+  }
+
+  throw new Error(`${name}: expected allowed=true for active paid funnel`);
+}
+
+function request(url, options = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const headers = {
+    "user-agent": "YoursWellnessLinkCheck/1.0"
+  };
 
-  return fetch(check.url, {
-    headers: {
-      "user-agent": "YoursWellnessLinkCheck/1.0"
-    },
-    redirect: check.redirect || "follow",
+  if (options.cookie) {
+    headers.cookie = options.cookie;
+  }
+
+  return fetch(url, {
+    headers,
+    redirect: options.redirect || "follow",
     signal: controller.signal
   }).finally(() => clearTimeout(timeout));
+}
+
+function getSetCookie(response) {
+  const setCookie = response.headers.get("set-cookie") || "";
+  const [cookie] = setCookie.split(";");
+
+  if (!cookie) {
+    throw new Error("missing funnel access cookie");
+  }
+
+  return cookie;
 }
 
 function safeHost(value) {
   try {
     return new URL(value).hostname;
+  } catch {
+    return "";
+  }
+}
+
+function safePath(value) {
+  try {
+    return new URL(value).pathname;
   } catch {
     return "";
   }

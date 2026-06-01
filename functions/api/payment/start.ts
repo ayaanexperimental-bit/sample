@@ -3,8 +3,12 @@ import {
   createPaymentAttemptId,
   PAYMENT_ATTEMPT_FIELD
 } from "../../../lib/server/payment-access";
+import { getFunnelById, isPaidProgramFunnel } from "../../../lib/coach-platform";
+import { blockedLinkResponse } from "../../../lib/server/blocked-response";
+import { verifyFunnelAccessFromCookie } from "../../../lib/server/funnel-access";
 
 type Env = {
+  FUNNEL_ACCESS_SECRET?: string;
   RAZORPAY_KEY_SECRET?: string;
   RAZORPAY_PAYMENT_PAGE_URL?: string;
   SUCCESS_ACCESS_SECRET?: string;
@@ -37,12 +41,19 @@ export async function onRequest({ request, env }: PagesContext) {
     return paymentUnavailable();
   }
 
+  const activeFunnel = await getActivePaidFunnel(request, env);
+  if (!activeFunnel) {
+    return blockedLinkResponse();
+  }
+
   const attemptId = createPaymentAttemptId();
   const attemptCookie = await createPaymentAttemptCookie({
     attemptId,
     secret: accessSecret
   });
-  const paymentPageUrl = new URL(env.RAZORPAY_PAYMENT_PAGE_URL || DEFAULT_PAYMENT_PAGE_URL);
+  const paymentPageUrl = new URL(
+    activeFunnel.paymentUrl || env.RAZORPAY_PAYMENT_PAGE_URL || DEFAULT_PAYMENT_PAGE_URL
+  );
   paymentPageUrl.searchParams.set(PAYMENT_ATTEMPT_FIELD, attemptId);
 
   return new Response(null, {
@@ -53,6 +64,21 @@ export async function onRequest({ request, env }: PagesContext) {
       "set-cookie": attemptCookie
     }
   });
+}
+
+async function getActivePaidFunnel(request: Request, env: Env) {
+  const funnelAccessSecret = env.FUNNEL_ACCESS_SECRET;
+  if (!funnelAccessSecret) return null;
+
+  const funnelAccess = await verifyFunnelAccessFromCookie({
+    cookieHeader: request.headers.get("cookie"),
+    secret: funnelAccessSecret
+  });
+  if (!funnelAccess) return null;
+
+  const funnel = getFunnelById(funnelAccess.funnelId);
+
+  return isPaidProgramFunnel(funnel) ? funnel : null;
 }
 
 function paymentUnavailable() {

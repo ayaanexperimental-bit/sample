@@ -8,8 +8,8 @@ export default function TermsPage() {
         <h1>Terms and Conditions</h1>
         <p>Last updated: May 26, 2026</p>
         <p>
-          These Terms and Conditions govern your use of freedomfromdiabetes.in, registration for our
-          workshops, and participation in programs offered by Yours Wellness Center.
+          These Terms and Conditions govern your use of ywcoach.com, registration for our workshops,
+          and participation in programs offered by Yours Wellness Center.
         </p>
         <h2>Nature Of Service</h2>
         <p>

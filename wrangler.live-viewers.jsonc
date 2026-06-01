@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "freedomfromdiabetes-live-viewers",
+  "name": "ywcoach-live-viewers",
   "main": "workers/live-viewers.ts",
   "compatibility_date": "2026-05-02",
   "observability": {

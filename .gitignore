@@ -8,6 +8,9 @@ out/
 dist/
 build/
 coverage/
+playwright-report/
+test-results/
+artifacts/
 tsconfig.tsbuildinfo
 secrets/
 Secrets/

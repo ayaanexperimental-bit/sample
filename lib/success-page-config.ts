@@ -1,12 +1,9 @@
-export const SUCCESS_THANK_YOU_VIDEO_URL = "https://youtu.be/fLSSje0nCHk?si=6cTvc3XKAJGZoD-5";
-export const SUCCESS_WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/FceSzvdQmNr2gHNCSaBXyy";
-
 export type SuccessVideoSource =
   | { kind: "none" }
   | { kind: "youtube"; url: string }
   | { kind: "video"; url: string };
 
-export function getSuccessVideoSource(videoUrl = SUCCESS_THANK_YOU_VIDEO_URL): SuccessVideoSource {
+export function getSuccessVideoSource(videoUrl: string): SuccessVideoSource {
   const trimmedUrl = videoUrl.trim();
   if (!trimmedUrl) return { kind: "none" };
 

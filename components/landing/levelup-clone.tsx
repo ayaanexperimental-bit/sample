@@ -24,8 +24,8 @@ const imageAssets = {
     alt: "Who this consultation is for"
   },
   logoMark: {
-    src: `${ASSET_BASE}/tmpzi9207j3_gzntg_236.webp`,
-    alt: "Yours Wellness Center logo mark"
+    src: "/images/yw-nutritech-logo.png",
+    alt: "YW NutriTech logo"
   },
   transformation: {
     src: `${ASSET_BASE}/TheTransformationYouCanExpectblack1_k4otc_1920.jpg`,
@@ -1054,7 +1054,12 @@ export function LevelupClone() {
       <footer className="levelup-footer" aria-label="Yours Wellness compliance footer">
         <div className="levelup-footer__inner">
           <div className="levelup-footer__brand">
-            <span>Yours Wellness Center</span>
+            <img
+              alt="YW NutriTech"
+              className="levelup-footer__logo"
+              src="/images/yw-nutritech-logo.png"
+            />
+            <span>Powered by YW NutriTech</span>
             <strong>Holistic hormone reset support for women</strong>
           </div>
           <nav className="levelup-footer__links" aria-label="Legal links">

@@ -44,13 +44,13 @@ const conversionFont = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "WOMEN HEALTH MASTERCLASS 101",
-  description: "AN INTEGRATED AND HOLISTIC APPROACH FOR PMOS/PCOD",
-  applicationName: "WOMEN HEALTH MASTERCLASS 101",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://freedomfromdiabetes.in"),
+  title: "YW Coach",
+  description: "Coach-led wellness funnels by Yours Wellness.",
+  applicationName: "YW Coach",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://ywcoach.com"),
   openGraph: {
-    title: "WOMEN HEALTH MASTERCLASS 101",
-    description: "AN INTEGRATED AND HOLISTIC APPROACH FOR PMOS/PCOD",
+    title: "YW Coach",
+    description: "Coach-led wellness funnels by Yours Wellness.",
     type: "website"
   },
   robots: {
@@ -58,7 +58,9 @@ export const metadata: Metadata = {
     follow: true
   },
   icons: {
-    icon: "/icon.svg"
+    apple: "/images/yw-nutritech-logo.png",
+    icon: "/images/yw-nutritech-logo.png",
+    shortcut: "/images/yw-nutritech-logo.png"
   }
 };
 

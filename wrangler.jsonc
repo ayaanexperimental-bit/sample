@@ -1,20 +1,21 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "freedomfromdiabetes",
+  "name": "ywcoach",
   "pages_build_output_dir": "out",
   "compatibility_date": "2026-05-02",
   "observability": {
     "enabled": true
   },
   "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://ywcoach.com",
     "NEXT_PUBLIC_PAYMENT_ENABLED": "false",
     "RAZORPAY_PAYMENT_PAGE_URL": "https://pages.razorpay.com/pl_SkURMJD4JJjdxO/view"
   },
   "d1_databases": [
     {
-      "binding": "PAYMENT_ACCESS_DB",
-      "database_name": "freedomfromdiabetes-payment-access",
-      "database_id": "0e55326b-ae6b-4b5e-96ad-719df5dadabb"
+      "binding": "ADMIN_DB",
+      "database_name": "ywcoach-admin",
+      "database_id": "a82c8785-b313-4c30-ac94-6bd9efa33712"
     }
   ],
   "durable_objects": {
@@ -22,7 +23,7 @@
       {
         "name": "LIVE_VIEWERS",
         "class_name": "LiveViewerRoom",
-        "script_name": "freedomfromdiabetes-live-viewers"
+        "script_name": "ywcoach-live-viewers"
       }
     ]
   }

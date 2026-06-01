@@ -14,7 +14,7 @@ export function onRequest({ request }: PagesContext) {
     });
   }
 
-  const url = new URL("/success", request.url);
+  const url = new URL("/gyana/pcos-51/success", request.url);
 
   return new Response(null, {
     status: 302,
