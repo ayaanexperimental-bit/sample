@@ -2,19 +2,19 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
-import type { CoachSiteRecord } from "../../lib/admin-coach-sites";
+import type { PublicCoachSiteRecord } from "../../lib/admin-coach-sites";
 import { DEFAULT_SUPPORT_EMAIL } from "../../lib/error-reporting";
 import styles from "./public-coach-site-page.module.css";
 
 type PublicCoachSitePageProps = {
-  site: CoachSiteRecord;
+  site: PublicCoachSiteRecord;
 };
 
 const DEFAULT_SUPPORT_NAME = "Yours Wellness Support";
 const DEFAULT_SUPPORT_TEXT = "Need help? Contact Yours Wellness support.";
 
 export function PublicCoachSitePage({ site }: PublicCoachSitePageProps) {
-  const referenceId = createFallbackReferenceId(site.slug);
+  const referenceId = createCoachFallbackReferenceId(site.slug);
   const hasRegisterLink = Boolean(site.googleFormUrl);
 
   useEffect(() => {
@@ -156,7 +156,39 @@ export function PublicCoachSitePage({ site }: PublicCoachSitePageProps) {
   );
 }
 
-function ContactSupportFallback({ referenceId, site }: { referenceId: string; site: CoachSiteRecord }) {
+export function CoachRouteErrorFallback({
+  referenceId,
+  reset,
+  site
+}: {
+  referenceId: string;
+  reset?: () => void;
+  site: PublicCoachSiteRecord | null;
+}) {
+  return (
+    <main className={styles.page}>
+      <section className={styles.unavailablePanel}>
+        <p className={styles.kicker}>Contact Support</p>
+        <h1>Something went wrong</h1>
+        <p>We could not complete this step. Please contact support for help.</p>
+        <CoachContactSupport referenceId={referenceId} site={site} tone="compact" />
+        {reset ? (
+          <button className={styles.retryButton} onClick={reset} type="button">
+            Try Again
+          </button>
+        ) : null}
+      </section>
+    </main>
+  );
+}
+
+function ContactSupportFallback({
+  referenceId,
+  site
+}: {
+  referenceId: string;
+  site: PublicCoachSiteRecord;
+}) {
   return (
     <section className={styles.supportFallback} id="contact-support">
       <p className={styles.kicker}>Contact Support</p>
@@ -168,13 +200,13 @@ function ContactSupportFallback({ referenceId, site }: { referenceId: string; si
   );
 }
 
-function CoachContactSupport({
+export function CoachContactSupport({
   referenceId,
   site,
   tone = "standard"
 }: {
   referenceId: string;
-  site: CoachSiteRecord;
+  site: PublicCoachSiteRecord | null;
   tone?: "compact" | "embedded" | "standard";
 }) {
   const support = getSupportDetails(site);
@@ -230,28 +262,28 @@ function CoachContactSupport({
   );
 }
 
-function getSupportDetails(site: CoachSiteRecord) {
-  const hasCoachContact = Boolean(site.coachEmail || site.coachPhone || site.whatsappLink);
-  const email = site.coachEmail || DEFAULT_SUPPORT_EMAIL;
-  const subject = encodeURIComponent(`Coach page support ${site.slug}`);
+function getSupportDetails(site: PublicCoachSiteRecord | null) {
+  const hasCoachContact = Boolean(site?.coachEmail || site?.coachPhone || site?.whatsappLink);
+  const email = site?.coachEmail || DEFAULT_SUPPORT_EMAIL;
+  const subject = encodeURIComponent(`Coach page support ${site?.slug || "unknown-coach"}`);
   const emailHref = `mailto:${email}?subject=${subject}`;
-  const whatsappLink = site.whatsappLink || "";
+  const whatsappLink = site?.whatsappLink || "";
 
   return {
     email,
     emailHref,
-    imageUrl: hasCoachContact ? site.logoUrl || site.photoUrl : "",
-    name: hasCoachContact ? site.coachName : DEFAULT_SUPPORT_NAME,
-    phone: site.coachPhone,
+    imageUrl: hasCoachContact ? site?.logoUrl || site?.photoUrl || "" : "",
+    name: hasCoachContact && site ? site.coachName : DEFAULT_SUPPORT_NAME,
+    phone: site?.coachPhone || "",
     primaryHref: whatsappLink || emailHref,
     text:
-      site.supportText ||
+      site?.supportText ||
       (hasCoachContact ? "Need help? Contact your coach directly." : DEFAULT_SUPPORT_TEXT),
     whatsappLink
   };
 }
 
-function createFallbackReferenceId(slug: string) {
+export function createCoachFallbackReferenceId(slug: string) {
   const suffix = slug
     .replace(/[^a-z0-9]/gi, "")
     .slice(0, 4)

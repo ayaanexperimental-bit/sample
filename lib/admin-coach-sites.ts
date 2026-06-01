@@ -59,6 +59,8 @@ export type CoachSiteRecord = {
   analytics: CoachSiteAnalyticsSummary;
 };
 
+export type PublicCoachSiteRecord = Omit<CoachSiteRecord, "analytics" | "coachId" | "id">;
+
 export type CoachSiteFormState = {
   benefitsText: string;
   bio: string;
@@ -251,13 +253,37 @@ export function getCoachPublicUrl(slug: string) {
 
 export function getPublicCoachSiteBySlug(slug: string) {
   const normalizedSlug = normalizeCoachSlug(slug);
-
-  return (
+  const site =
     demoCoachSites.find(
-      (site) =>
-        site.slug === normalizedSlug && (site.status === "published" || site.status === "paused")
-    ) || null
-  );
+      (record) =>
+        record.slug === normalizedSlug &&
+        (record.status === "published" || record.status === "paused")
+    ) || null;
+
+  return site ? toPublicCoachSiteRecord(site) : null;
+}
+
+export function toPublicCoachSiteRecord(site: CoachSiteRecord): PublicCoachSiteRecord {
+  return {
+    bio: site.bio,
+    coachEmail: site.coachEmail,
+    coachName: site.coachName,
+    coachPhone: site.coachPhone,
+    content: site.content,
+    googleFormUrl: site.googleFormUrl,
+    location: site.location,
+    logoUrl: site.logoUrl,
+    niche: site.niche,
+    photoUrl: site.photoUrl,
+    publicUrl: site.publicUrl,
+    registerButtonText: site.registerButtonText,
+    slug: site.slug,
+    status: site.status,
+    supportText: site.supportText,
+    videoUrl: site.videoUrl,
+    vision: site.vision,
+    whatsappLink: site.whatsappLink
+  };
 }
 
 export function normalizeCoachSlug(value: string) {
