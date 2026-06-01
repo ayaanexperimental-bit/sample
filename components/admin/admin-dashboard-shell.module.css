@@ -6,6 +6,203 @@
   color: #251822;
 }
 
+.adminApp {
+  width: 100%;
+  min-height: min(82vh, 72rem);
+  display: grid;
+  grid-template-columns: 17.5rem minmax(0, 1fr);
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid rgb(28 42 59 / 0.08);
+  border-radius: var(--radius-md);
+  background: #f7f9fb;
+  color: #1d2939;
+  box-shadow: 0 1rem 2.8rem rgb(16 24 40 / 0.08);
+}
+
+.adminMain {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.sidebar {
+  min-height: 100%;
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  border-right: 1px solid rgb(28 42 59 / 0.08);
+  background: #ffffff;
+  padding: 1rem;
+}
+
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem 0.35rem 0.8rem;
+}
+
+.sidebarHeader > span {
+  width: 2.4rem;
+  height: 2.4rem;
+  display: grid;
+  place-items: center;
+  border-radius: 0.7rem;
+  background: #087a73;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 950;
+}
+
+.sidebarHeader strong,
+.topbar strong,
+.pageHeader h1 {
+  display: block;
+  color: #1d2939;
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.sidebarHeader p,
+.topbar span {
+  margin: 0.12rem 0 0;
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.sidebarNav,
+.navGroup,
+.pageShell,
+.wizardPanel {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.navGroup p {
+  margin: 0.25rem 0 0;
+  color: #98a2b3;
+  font-size: 0.7rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.navButton {
+  width: 100%;
+  min-height: 3.15rem;
+  display: grid;
+  gap: 0.18rem;
+  border: 1px solid transparent;
+  border-radius: 0.7rem;
+  background: transparent;
+  color: #344054;
+  cursor: pointer;
+  padding: 0.58rem 0.65rem;
+  text-align: left;
+}
+
+.navButton:hover,
+.navButton[data-active="true"] {
+  border-color: rgb(8 122 115 / 0.14);
+  background: #edf8f6;
+  color: #075f5b;
+}
+
+.navButton span {
+  font-size: 0.86rem;
+  font-weight: 950;
+}
+
+.navButton small {
+  color: #667085;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.topbar {
+  min-height: 4.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid rgb(28 42 59 / 0.08);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  padding: 0.75rem 0.9rem;
+  box-shadow: 0 0.55rem 1.4rem rgb(16 24 40 / 0.04);
+}
+
+.topbarActions,
+.pageActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.menuButton {
+  display: none;
+  min-height: 2.35rem;
+  border: 1px solid rgb(28 42 59 / 0.12);
+  border-radius: 0.65rem;
+  background: #ffffff;
+  color: #344054;
+  cursor: pointer;
+  font-weight: 900;
+  padding: 0 0.75rem;
+}
+
+.pageShell {
+  min-width: 0;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pageHeader h1 {
+  margin: 0;
+  font-size: clamp(1.75rem, 3vw, 2.6rem);
+  line-height: 1.02;
+}
+
+.submenuTabs {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  border: 1px solid rgb(28 42 59 / 0.08);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  padding: 0.45rem;
+}
+
+.submenuTabs button {
+  flex: 0 0 auto;
+  min-height: 2.25rem;
+  border: 1px solid transparent;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: #475467;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 900;
+  padding: 0 0.75rem;
+}
+
+.submenuTabs button[data-active="true"] {
+  border-color: rgb(8 122 115 / 0.16);
+  background: #edf8f6;
+  color: #075f5b;
+}
+
 .header {
   display: flex;
   align-items: flex-start;
@@ -77,6 +274,7 @@
 
 .logoutButton,
 .quickActions a,
+.quickActions button,
 .table a,
 .nav a,
 .rowActions button,
@@ -150,6 +348,15 @@
   box-shadow:
     0 1rem 2.8rem rgb(80 28 54 / 0.08),
     inset 0 1px 0 rgb(255 255 255 / 0.86);
+}
+
+.adminApp .metricCard,
+.adminApp .section,
+.adminApp .placeholderCard,
+.adminApp .managerSurface {
+  border: 1px solid rgb(28 42 59 / 0.08);
+  background: #ffffff;
+  box-shadow: 0 0.75rem 1.8rem rgb(16 24 40 / 0.05);
 }
 
 .metricCard {
@@ -366,10 +573,12 @@
   gap: 0.65rem;
 }
 
-.quickActions a {
+.quickActions a,
+.quickActions button {
   border: 1px solid rgb(8 122 115 / 0.18);
   background: rgb(8 122 115 / 0.08);
   color: #075f5b;
+  cursor: pointer;
   padding: 0 0.9rem;
 }
 
@@ -410,6 +619,14 @@
   grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.24fr);
   gap: 0.75rem;
   margin: 1rem 0;
+}
+
+.managerSurface {
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+  border-radius: var(--radius-md);
+  padding: 1rem;
 }
 
 .compactField {
@@ -521,6 +738,16 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
+}
+
+.tableFooter {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.6rem;
+  color: #667085;
+  font-size: 0.82rem;
+  font-weight: 850;
 }
 
 .primaryAction,
@@ -899,6 +1126,223 @@
   border-left: 0.3rem solid rgb(117 96 108 / 0.22);
 }
 
+.compactList {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.compactList div {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  border: 1px solid rgb(28 42 59 / 0.08);
+  border-radius: var(--radius-md);
+  background: #f9fafb;
+  padding: 0.75rem;
+}
+
+.compactList span {
+  width: 1.65rem;
+  height: 1.65rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #087a73;
+  color: #ffffff;
+  font-size: 0.74rem;
+  font-weight: 950;
+}
+
+.compactList strong {
+  color: #1d2939;
+  font-size: 0.92rem;
+}
+
+.compactList p {
+  margin: 0;
+  color: #667085;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.dialogLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: clamp(0.5rem, 2vw, 1.5rem);
+}
+
+.dialogScrim,
+.sidebarScrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgb(15 23 42 / 0.42);
+  cursor: pointer;
+}
+
+.dialogPanel {
+  position: relative;
+  width: min(100%, 38rem);
+  max-height: min(86vh, 54rem);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid rgb(28 42 59 / 0.12);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  box-shadow: 0 1.5rem 4rem rgb(15 23 42 / 0.22);
+}
+
+.dialogPanel[data-size="large"] {
+  width: min(100%, 68rem);
+}
+
+.dialogPanel[data-tone="danger"] {
+  border-color: rgb(180 35 24 / 0.22);
+}
+
+.dialogHeader,
+.dialogFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid rgb(28 42 59 / 0.08);
+  padding: 0.9rem 1rem;
+}
+
+.dialogFooter {
+  justify-content: flex-end;
+  border-top: 1px solid rgb(28 42 59 / 0.08);
+  border-bottom: 0;
+}
+
+.dialogHeader h2 {
+  margin: 0;
+  color: #1d2939;
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+
+.dialogHeader button {
+  min-height: 2.15rem;
+  border: 1px solid rgb(28 42 59 / 0.12);
+  border-radius: 0.6rem;
+  background: #ffffff;
+  color: #344054;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 900;
+  padding: 0 0.65rem;
+}
+
+.dialogBody {
+  min-width: 0;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.dialogCopy {
+  margin: 0;
+  color: #475467;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.wizardShell {
+  display: grid;
+  grid-template-columns: 13rem minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.stepIndicator {
+  display: grid;
+  align-content: start;
+  gap: 0.45rem;
+}
+
+.stepIndicator button {
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid rgb(28 42 59 / 0.1);
+  border-radius: 0.7rem;
+  background: #f9fafb;
+  color: #475467;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 900;
+  padding: 0 0.65rem;
+  text-align: left;
+}
+
+.stepIndicator button[data-active="true"] {
+  border-color: rgb(8 122 115 / 0.2);
+  background: #edf8f6;
+  color: #075f5b;
+}
+
+.stepIndicator span {
+  width: 1.45rem;
+  height: 1.45rem;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgb(8 122 115 / 0.12);
+  font-size: 0.72rem;
+}
+
+.wizardPanel {
+  min-width: 0;
+}
+
+.emptyState,
+.publishPanel {
+  display: grid;
+  gap: 0.7rem;
+  border: 1px dashed rgb(28 42 59 / 0.16);
+  border-radius: var(--radius-md);
+  background: #f9fafb;
+  padding: 1rem;
+}
+
+.emptyState h3,
+.publishPanel h3 {
+  margin: 0;
+  color: #1d2939;
+}
+
+.emptyState p,
+.publishPanel p {
+  margin: 0;
+  color: #667085;
+  font-size: 0.9rem;
+  font-weight: 750;
+  line-height: 1.5;
+}
+
+.publishPanel code,
+.linkCode {
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 999px;
+  background: rgb(8 122 115 / 0.08);
+  color: #075f5b;
+  padding: 0.45rem 0.65rem;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .modulePlaceholders {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -920,6 +1364,35 @@
 }
 
 @media (max-width: 1180px) {
+  .adminApp {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 120;
+    width: min(86vw, 19rem);
+    transform: translateX(-110%);
+    transition: transform 180ms ease;
+    box-shadow: 1rem 0 2rem rgb(15 23 42 / 0.14);
+  }
+
+  .sidebar[data-open="true"] {
+    transform: translateX(0);
+  }
+
+  .sidebarScrim {
+    position: fixed;
+    z-index: 110;
+  }
+
+  .menuButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   .summaryGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -935,6 +1408,21 @@
 }
 
 @media (max-width: 860px) {
+  .adminMain {
+    padding: 0.75rem;
+  }
+
+  .topbar,
+  .pageHeader {
+    align-items: stretch;
+    display: grid;
+  }
+
+  .topbarActions,
+  .pageActions {
+    justify-content: start;
+  }
+
   .header,
   .sectionHeader {
     display: grid;
@@ -952,9 +1440,15 @@
   .coachFilters,
   .copyEditorGrid,
   .definitionGrid,
+  .formGrid,
   .modulePlaceholders,
-  .statusGrid {
+  .statusGrid,
+  .wizardShell {
     grid-template-columns: 1fr;
+  }
+
+  .stepIndicator {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .previewHero,
@@ -964,6 +1458,41 @@
 }
 
 @media (max-width: 520px) {
+  .adminApp {
+    min-height: 100vh;
+    border-radius: 0;
+  }
+
+  .dialogLayer {
+    padding: 0;
+  }
+
+  .dialogPanel,
+  .dialogPanel[data-size="large"] {
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+  }
+
+  .dialogFooter {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .stepIndicator {
+    grid-template-columns: 1fr;
+  }
+
+  .compactList div {
+    grid-template-columns: 2rem minmax(0, 1fr);
+  }
+
+  .compactList p {
+    grid-column: 2;
+  }
+
   .dashboard {
     gap: 0.8rem;
   }
@@ -985,10 +1514,15 @@
   }
 
   .quickActions a,
+  .quickActions button,
   .logoutButton,
+  .menuButton,
   .formActions button,
   .previewActions a,
-  .previewActions button {
+  .previewActions button,
+  .primaryAction,
+  .secondaryAction,
+  .dangerAction {
     width: 100%;
   }
 
