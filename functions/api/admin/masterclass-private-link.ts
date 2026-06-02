@@ -1,5 +1,5 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import { getFunnelByEntryCode, isPaidProgramFunnel } from "../../../lib/coach-platform";
+import { funnels, getFunnelByEntryCode, isPaidProgramFunnel } from "../../../lib/coach-platform";
 import {
   adminJson,
   isAdminDemoAuthEnabled,
@@ -9,7 +9,9 @@ import {
 } from "../../../lib/server/admin-auth";
 import { startAdminEmailOtp, verifyAdminEmailOtp } from "../../../lib/server/admin-email-otp";
 import {
+  getPrivateWhatsappLinkMetadata,
   getPrivateWhatsappGroupUrl,
+  upsertPrivateWhatsappGroupUrl,
   type PrivateFunnelLinkEnv
 } from "../../../lib/server/private-funnel-links";
 
@@ -39,11 +41,23 @@ type PrivateLinkBody = {
   entryCode?: unknown;
   entryPath?: unknown;
   otp?: unknown;
+  whatsappGroupUrl?: unknown;
 };
 
 export async function onRequest({ request, env }: PagesContext) {
+  if (request.method === "GET") {
+    const admin = await requireAdmin(request, env, { requiredRole: "owner" });
+    if (!admin.ok) return admin.response;
+
+    return adminJson({
+      links: await getPaidLinkMetadata(env),
+      ok: true,
+      privateLinkValuesExposed: false
+    });
+  }
+
   if (request.method !== "POST") {
-    return adminJson({ ok: false, error: "Method not allowed." }, 405, { allow: "POST" });
+    return adminJson({ ok: false, error: "Method not allowed." }, 405, { allow: "GET, POST" });
   }
 
   const admin = await requireAdmin(request, env, { requireCsrf: true, requiredRole: "owner" });
@@ -106,7 +120,7 @@ export async function onRequest({ request, env }: PagesContext) {
       return adminJson({ ok: false, error: "OTP is invalid, expired, or not configured." }, 401);
     }
 
-    const privateWhatsappUrl = getPrivateWhatsappGroupUrl(funnel, env);
+    const privateWhatsappUrl = await getPrivateWhatsappGroupUrl(funnel, env);
     if (!privateWhatsappUrl) {
       return adminJson({ ok: false, error: "Private WhatsApp link is not configured." }, 404);
     }
@@ -118,7 +132,56 @@ export async function onRequest({ request, env }: PagesContext) {
     });
   }
 
+  if (action === "update_whatsapp") {
+    const otp = typeof body?.otp === "string" ? body.otp.trim() : "";
+    if (!isValidOtp(otp)) {
+      return adminJson({ ok: false, error: "Enter a valid 6-digit OTP before saving." }, 400);
+    }
+
+    const otpOk = await verifyRevealOtp({
+      email: admin.admin.email,
+      env,
+      otp,
+      request
+    });
+
+    if (!otpOk) {
+      return adminJson({ ok: false, error: "OTP is invalid, expired, or not configured." }, 401);
+    }
+
+    const whatsappGroupUrl =
+      typeof body?.whatsappGroupUrl === "string" ? body.whatsappGroupUrl.trim() : "";
+    const result = await upsertPrivateWhatsappGroupUrl({
+      env,
+      funnel,
+      updatedBy: admin.admin.email,
+      whatsappGroupUrl
+    });
+
+    if (!result.ok) {
+      return adminJson(
+        { ok: false, error: result.error },
+        result.error.includes("database") ? 503 : 400
+      );
+    }
+
+    return adminJson({
+      metadata: result.metadata,
+      ok: true,
+      privateLinkValuesExposed: false
+    });
+  }
+
   return adminJson({ ok: false, error: "Unsupported action." }, 400);
+}
+
+async function getPaidLinkMetadata(env: Env) {
+  return Promise.all(
+    funnels.filter(isPaidProgramFunnel).map(async (funnel) => ({
+      entryCode: funnel.entryCode,
+      ...(await getPrivateWhatsappLinkMetadata(funnel, env))
+    }))
+  );
 }
 
 async function verifyRevealOtp({

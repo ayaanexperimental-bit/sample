@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { getFunnelById } from "../../lib/coach-platform";
 import { createFunnelAccessCookie } from "../../lib/server/funnel-access";
-import { getPrivateWhatsappGroupUrl } from "../../lib/server/private-funnel-links";
+import {
+  getPrivateWhatsappGroupUrl,
+  getPrivateWhatsappLinkMetadata
+} from "../../lib/server/private-funnel-links";
 import {
   createAdminCsrfToken,
   createAdminSessionCookie,
@@ -16,6 +19,7 @@ const PRIVATE_WHATSAPP_URL = "https://chat.whatsapp.com/localRegressionInvite";
 const ADMIN_EMAIL = "admin@example.com";
 const ADMIN_DEV_OTP = "123456";
 const ADMIN_SESSION_SECRET = "local-admin-private-link-reveal-secret";
+const TABLE_WHATSAPP_URL = "https://chat.whatsapp.com/tableRegressionInvite";
 
 test.describe("private WhatsApp links", () => {
   test("does not keep the paid WhatsApp invite in public funnel config", () => {
@@ -25,21 +29,38 @@ test.describe("private WhatsApp links", () => {
     expect("whatsappGroupUrl" in (funnel as Record<string, unknown>)).toBe(false);
   });
 
-  test("resolves private WhatsApp URL only from server env", () => {
+  test("resolves private WhatsApp URL from D1 table first, then legacy env fallback", async () => {
     const funnel = getFunnelById(PAID_FUNNEL_ID);
     if (!funnel) throw new Error("Missing paid funnel fixture.");
 
-    expect(getPrivateWhatsappGroupUrl(funnel, {})).toBeNull();
+    expect(await getPrivateWhatsappGroupUrl(funnel, {})).toBeNull();
     expect(
+      await getPrivateWhatsappGroupUrl(funnel, {
+        ADMIN_DB: createPrivateLinksDb({
+          [PAID_FUNNEL_ID]: {
+            updatedAt: 1780000000,
+            updatedBy: ADMIN_EMAIL,
+            whatsappGroupUrl: TABLE_WHATSAPP_URL
+          }
+        }).db,
+        WHATSAPP_GROUP_URL_GYANA_PCOS_51: PRIVATE_WHATSAPP_URL
+      })
+    ).toBe(TABLE_WHATSAPP_URL);
+    await expect(
       getPrivateWhatsappGroupUrl(funnel, {
         WHATSAPP_GROUP_URL_GYANA_PCOS_51: PRIVATE_WHATSAPP_URL
       })
-    ).toBe(PRIVATE_WHATSAPP_URL);
-    expect(
+    ).resolves.toBe(PRIVATE_WHATSAPP_URL);
+    await expect(
       getPrivateWhatsappGroupUrl(funnel, {
         WHATSAPP_GROUP_URL_GYANA_PCOS_51: "https://example.com/not-whatsapp"
       })
-    ).toBeNull();
+    ).resolves.toBeNull();
+
+    await expect(getPrivateWhatsappLinkMetadata(funnel, {})).resolves.toMatchObject({
+      configured: false,
+      storageSource: "none"
+    });
   });
 
   test("paid WhatsApp API returns join URL only when env and funnel cookie match", async () => {
@@ -82,9 +103,11 @@ test.describe("private WhatsApp links", () => {
   });
 
   test("admin private WhatsApp reveal requires admin session, CSRF, and OTP", async () => {
+    const privateLinksDb = createPrivateLinksDb();
     const env = {
       ADMIN_ALLOWED_EMAILS: ADMIN_EMAIL,
       ADMIN_AUTH_DEMO_ENABLED: "true",
+      ADMIN_DB: privateLinksDb.db,
       ADMIN_DEV_OTP,
       ADMIN_SESSION_SECRET,
       WHATSAPP_GROUP_URL_GYANA_PCOS_51: PRIVATE_WHATSAPP_URL
@@ -133,6 +156,46 @@ test.describe("private WhatsApp links", () => {
       ok: true
     });
 
+    const updateLink = await privateLinkRequest({
+      env,
+      request: jsonRequest(
+        "http://127.0.0.1/api/admin/masterclass-private-link",
+        {
+          action: "update_whatsapp",
+          entryCode: PAID_FUNNEL_ID,
+          otp: ADMIN_DEV_OTP,
+          whatsappGroupUrl: TABLE_WHATSAPP_URL
+        },
+        { cookie, "x-yw-admin-csrf": csrfToken }
+      )
+    });
+    expect(updateLink.status).toBe(200);
+    expect(await updateLink.json()).toMatchObject({
+      metadata: {
+        configured: true,
+        funnelId: PAID_FUNNEL_ID,
+        storageSource: "d1_table",
+        updatedBy: ADMIN_EMAIL
+      },
+      ok: true,
+      privateLinkValuesExposed: false
+    });
+    expect(privateLinksDb.records.get(PAID_FUNNEL_ID)?.whatsappGroupUrl).toBe(TABLE_WHATSAPP_URL);
+
+    const metadata = await privateLinkRequest({
+      env,
+      request: new Request("http://127.0.0.1/api/admin/masterclass-private-link", {
+        headers: { cookie }
+      })
+    });
+    expect(metadata.status).toBe(200);
+    const metadataBody = await metadata.json();
+    expect(JSON.stringify(metadataBody)).not.toContain(TABLE_WHATSAPP_URL);
+    expect(metadataBody.links[0]).toMatchObject({
+      configured: true,
+      storageSource: "d1_table"
+    });
+
     const badOtp = await privateLinkRequest({
       env,
       request: jsonRequest(
@@ -162,11 +225,73 @@ test.describe("private WhatsApp links", () => {
     });
     expect(revealed.status).toBe(200);
     expect(await revealed.json()).toMatchObject({
-      joinUrl: PRIVATE_WHATSAPP_URL,
+      joinUrl: TABLE_WHATSAPP_URL,
       ok: true
     });
   });
 });
+
+type PrivateLinksDbRecord = {
+  updatedAt: number;
+  updatedBy: string;
+  whatsappGroupUrl: string;
+};
+
+function createPrivateLinksDb(initialRecords: Record<string, PrivateLinksDbRecord> = {}) {
+  const records = new Map<string, PrivateLinksDbRecord>(
+    Object.entries(initialRecords).map(([key, value]) => [key, { ...value }])
+  );
+
+  return {
+    db: {
+      prepare(statement: string) {
+        return {
+          bind(...values: unknown[]) {
+            return createPrivateLinksStatement(statement, values, records);
+          },
+          first: async () => null,
+          run: async () => ({ success: true })
+        };
+      }
+    } as never,
+    records
+  };
+}
+
+function createPrivateLinksStatement(
+  statement: string,
+  values: unknown[],
+  records: Map<string, PrivateLinksDbRecord>
+) {
+  return {
+    first: async () => {
+      if (!statement.includes("FROM private_funnel_links")) return null;
+
+      const funnelId = String(values[0] || "");
+      const record = records.get(funnelId);
+      if (!record) return null;
+
+      return {
+        funnel_id: funnelId,
+        updated_at: record.updatedAt,
+        updated_by: record.updatedBy,
+        whatsapp_group_url: record.whatsappGroupUrl
+      };
+    },
+    run: async () => {
+      if (statement.includes("INSERT INTO private_funnel_links")) {
+        const [funnelId, whatsappGroupUrl, updatedAt, updatedBy] = values;
+        records.set(String(funnelId), {
+          updatedAt: Number(updatedAt),
+          updatedBy: String(updatedBy || ""),
+          whatsappGroupUrl: String(whatsappGroupUrl || "")
+        });
+      }
+
+      return { success: true };
+    }
+  };
+}
 
 async function createAdminTestSession(env: {
   ADMIN_ALLOWED_EMAILS: string;

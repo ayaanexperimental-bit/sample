@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminCoachSitesManager } from "./admin-coach-sites-manager";
 import {
   AdminActionDialog,
@@ -39,6 +39,15 @@ type ActionDialogState = {
   title: string;
   tone?: "danger" | "standard";
 } | null;
+
+type PrivateLinkMetadata = {
+  configured: boolean;
+  entryCode: string;
+  funnelId: string;
+  storageSource: "d1_table" | "legacy_env" | "none";
+  updatedAt: string | null;
+  updatedBy: string;
+};
 
 const navSections: AdminNavSection[] = [
   {
@@ -408,9 +417,69 @@ function MasterclassLinksView({
   const [managedLink, setManagedLink] = useState<AdminPaidMasterclassLink | null>(null);
   const [copyMessage, setCopyMessage] = useState("");
   const [privateOtp, setPrivateOtp] = useState("");
+  const [privateWhatsappDraft, setPrivateWhatsappDraft] = useState("");
   const [privateRevealUrl, setPrivateRevealUrl] = useState("");
   const [privateRevealMessage, setPrivateRevealMessage] = useState("");
   const [privateRevealBusy, setPrivateRevealBusy] = useState(false);
+  const [privateUpdateMessage, setPrivateUpdateMessage] = useState("");
+  const [privateLinkMetadata, setPrivateLinkMetadata] = useState<
+    Record<string, PrivateLinkMetadata>
+  >({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPrivateLinkMetadata() {
+      try {
+        const response = await fetch("/api/admin/masterclass-private-link", {
+          cache: "no-store",
+          credentials: "include"
+        });
+        const payload = (await response.json().catch(() => ({}))) as {
+          links?: PrivateLinkMetadata[];
+          ok?: boolean;
+        };
+
+        if (!cancelled && response.ok && payload.ok && Array.isArray(payload.links)) {
+          setPrivateLinkMetadata(
+            Object.fromEntries(payload.links.map((item) => [item.funnelId, item]))
+          );
+        }
+      } catch {
+        // Keep static metadata visible if the protected metadata API is unavailable.
+      }
+    }
+
+    void loadPrivateLinkMetadata();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const paidMasterclassLinks = control.paidMasterclassLinks.map(applyPrivateLinkMetadata);
+  const currentManagedLink = managedLink ? applyPrivateLinkMetadata(managedLink) : null;
+
+  function applyPrivateLinkMetadata(link: AdminPaidMasterclassLink) {
+    const metadata = privateLinkMetadata[link.funnelId];
+    if (!metadata) return link;
+
+    return {
+      ...link,
+      privateWhatsappLastChangedAt: metadata.updatedAt,
+      privateWhatsappLastChangedBy: metadata.updatedBy,
+      privateWhatsappSecretName:
+        metadata.storageSource === "d1_table"
+          ? "private_funnel_links"
+          : link.privateWhatsappSecretName,
+      privateWhatsappStorageSource: metadata.storageSource,
+      privateWhatsappStatus: metadata.configured
+        ? metadata.storageSource === "d1_table"
+          ? "D1 server table"
+          : "Legacy server fallback"
+        : "Not configured"
+    };
+  }
 
   async function sendPrivateRevealOtp(link: AdminPaidMasterclassLink) {
     setPrivateRevealBusy(true);
@@ -501,6 +570,51 @@ function MasterclassLinksView({
     }
   }
 
+  async function updatePrivateWhatsapp(link: AdminPaidMasterclassLink) {
+    setPrivateRevealBusy(true);
+    setPrivateUpdateMessage("");
+    setPrivateRevealUrl("");
+
+    try {
+      const response = await fetch("/api/admin/masterclass-private-link", {
+        body: JSON.stringify({
+          action: "update_whatsapp",
+          entryCode: link.entryCode,
+          otp: privateOtp,
+          whatsappGroupUrl: privateWhatsappDraft
+        }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-yw-admin-csrf": csrfToken
+        },
+        method: "POST"
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        metadata?: PrivateLinkMetadata;
+        ok?: boolean;
+      };
+
+      if (!response.ok || !payload.ok || !payload.metadata) {
+        setPrivateUpdateMessage(payload.error || "Could not save the private WhatsApp link.");
+        return;
+      }
+
+      setPrivateLinkMetadata((current) => ({
+        ...current,
+        [payload.metadata!.funnelId]: payload.metadata!
+      }));
+      setPrivateWhatsappDraft("");
+      setPrivateUpdateMessage("Private WhatsApp link saved server-side in D1.");
+    } catch {
+      setPrivateUpdateMessage("Could not reach the private link save API.");
+    } finally {
+      setPrivateRevealBusy(false);
+    }
+  }
+
   async function copyPrivateWhatsappLink() {
     if (!privateRevealUrl) return;
 
@@ -553,7 +667,7 @@ function MasterclassLinksView({
           </div>
         </div>
         <div className={styles.paidLinkList}>
-          {control.paidMasterclassLinks.map((link) => (
+          {paidMasterclassLinks.map((link) => (
             <article className={styles.paidLinkCard} key={link.entryPath}>
               <div>
                 <p className={styles.kicker}>Masterclass</p>
@@ -577,8 +691,10 @@ function MasterclassLinksView({
                 onClick={() => {
                   setCopyMessage("");
                   setPrivateOtp("");
+                  setPrivateWhatsappDraft("");
                   setPrivateRevealMessage("");
                   setPrivateRevealUrl("");
+                  setPrivateUpdateMessage("");
                   setManagedLink(link);
                 }}
                 type="button"
@@ -612,48 +728,48 @@ function MasterclassLinksView({
         open={Boolean(managedLink)}
         title="Manage Paid Masterclass"
       >
-        {managedLink ? (
+        {currentManagedLink ? (
           <div className={styles.manageDialog}>
             <div>
               <p className={styles.kicker}>Paid Website</p>
-              <h3>{managedLink.displayName}</h3>
-              <p>{managedLink.coachName}</p>
+              <h3>{currentManagedLink.displayName}</h3>
+              <p>{currentManagedLink.coachName}</p>
             </div>
 
             <dl className={styles.definitionGrid}>
               <div>
                 <dt>Public entry</dt>
                 <dd>
-                  <code>{managedLink.entryPath}</code>
+                  <code>{currentManagedLink.entryPath}</code>
                 </dd>
               </div>
               <div>
                 <dt>Paid page</dt>
                 <dd>
-                  <code>{managedLink.paidPagePath}</code>
+                  <code>{currentManagedLink.paidPagePath}</code>
                 </dd>
               </div>
               <div>
                 <dt>Success page</dt>
                 <dd>
-                  <code>{managedLink.successPath}</code>
+                  <code>{currentManagedLink.successPath}</code>
                 </dd>
               </div>
               <div>
                 <dt>Private WhatsApp</dt>
                 <dd>
-                  {managedLink.privateWhatsappStatus}
-                  <code>{managedLink.privateWhatsappSecretName}</code>
+                  {currentManagedLink.privateWhatsappStatus}
+                  <code>{currentManagedLink.privateWhatsappSecretName}</code>
                 </dd>
               </div>
               <div>
                 <dt>Last changed</dt>
                 <dd>
                   <span className={styles.metaValue}>
-                    {formatPrivateWhatsappChangedAt(managedLink)}
+                    {formatPrivateWhatsappChangedAt(currentManagedLink)}
                   </span>
-                  {managedLink.privateWhatsappLastChangedAt ? (
-                    <small>Changed by {managedLink.privateWhatsappLastChangedBy}</small>
+                  {currentManagedLink.privateWhatsappLastChangedAt ? (
+                    <small>Changed by {currentManagedLink.privateWhatsappLastChangedBy}</small>
                   ) : null}
                 </dd>
               </div>
@@ -662,28 +778,32 @@ function MasterclassLinksView({
             <div className={styles.formActions}>
               <button
                 className={styles.primaryAction}
-                onClick={() => openMasterclassPath(managedLink.entryPath)}
+                onClick={() => openMasterclassPath(currentManagedLink.entryPath)}
                 type="button"
               >
                 Preview / Go To Site
               </button>
               <button
                 className={styles.secondaryAction}
-                onClick={() => openMasterclassPath(managedLink.paidPagePath)}
+                onClick={() => openMasterclassPath(currentManagedLink.paidPagePath)}
                 type="button"
               >
                 Open Paid Page
               </button>
               <button
                 className={styles.secondaryAction}
-                onClick={() => void copyMasterclassPath("Public entry link", managedLink.entryPath)}
+                onClick={() =>
+                  void copyMasterclassPath("Public entry link", currentManagedLink.entryPath)
+                }
                 type="button"
               >
                 Copy Entry Link
               </button>
               <button
                 className={styles.secondaryAction}
-                onClick={() => void copyMasterclassPath("Paid page link", managedLink.paidPagePath)}
+                onClick={() =>
+                  void copyMasterclassPath("Paid page link", currentManagedLink.paidPagePath)
+                }
                 type="button"
               >
                 Copy Paid Page
@@ -691,7 +811,7 @@ function MasterclassLinksView({
               <button
                 className={styles.secondaryAction}
                 onClick={() =>
-                  void copyMasterclassPath("Success page link", managedLink.successPath)
+                  void copyMasterclassPath("Success page link", currentManagedLink.successPath)
                 }
                 type="button"
               >
@@ -713,7 +833,7 @@ function MasterclassLinksView({
                 <button
                   className={styles.secondaryAction}
                   disabled={privateRevealBusy}
-                  onClick={() => void sendPrivateRevealOtp(managedLink)}
+                  onClick={() => void sendPrivateRevealOtp(currentManagedLink)}
                   type="button"
                 >
                   {privateRevealBusy ? "Working..." : "Send OTP"}
@@ -734,7 +854,7 @@ function MasterclassLinksView({
                 <button
                   className={styles.primaryAction}
                   disabled={privateRevealBusy || privateOtp.length !== 6}
-                  onClick={() => void revealPrivateWhatsapp(managedLink)}
+                  onClick={() => void revealPrivateWhatsapp(currentManagedLink)}
                   type="button"
                 >
                   Reveal Link
@@ -756,6 +876,40 @@ function MasterclassLinksView({
                 <p className={privateRevealUrl ? styles.inlineStatus : styles.linkWarning}>
                   {privateRevealMessage}
                 </p>
+              ) : null}
+            </div>
+            <div className={styles.privateRevealPanel}>
+              <div>
+                <p className={styles.kicker}>Server-Side Table</p>
+                <h4>Save private WhatsApp link</h4>
+                <p>
+                  Use the same OTP field above. The saved URL goes into D1 and replaces the legacy
+                  secret fallback for this masterclass.
+                </p>
+              </div>
+              <label className={styles.compactField}>
+                <span>WhatsApp invite URL</span>
+                <input
+                  onChange={(event) => setPrivateWhatsappDraft(event.target.value)}
+                  placeholder="https://chat.whatsapp.com/..."
+                  type="url"
+                  value={privateWhatsappDraft}
+                />
+              </label>
+              <div className={styles.formActions}>
+                <button
+                  className={styles.primaryAction}
+                  disabled={
+                    privateRevealBusy || privateOtp.length !== 6 || !privateWhatsappDraft.trim()
+                  }
+                  onClick={() => void updatePrivateWhatsapp(currentManagedLink)}
+                  type="button"
+                >
+                  Save Server Link
+                </button>
+              </div>
+              {privateUpdateMessage ? (
+                <p className={styles.inlineStatus}>{privateUpdateMessage}</p>
               ) : null}
             </div>
             <p className={styles.linkWarning}>

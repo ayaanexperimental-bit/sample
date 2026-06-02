@@ -32,12 +32,15 @@ export type AdminMasterclassSettingsStatus = {
 export type AdminPaidMasterclassLink = {
   coachName: string;
   displayName: string;
+  entryCode: string;
   entryPath: string;
+  funnelId: string;
   paidPagePath: string;
   paymentStatus: string;
   privateWhatsappLastChangedAt: string | null;
   privateWhatsappLastChangedBy: string;
   privateWhatsappSecretName: string;
+  privateWhatsappStorageSource: "d1_table" | "legacy_env" | "none";
   privateWhatsappStatus: string;
   status: string;
   successPath: string;
@@ -176,9 +179,9 @@ export const adminControlCenterData: AdminControlCenterData = {
     },
     {
       description:
-        "Paid WhatsApp group URL must stay server-side and must never be exposed in frontend code.",
+        "Paid WhatsApp group URLs are stored server-side in D1. Legacy Cloudflare secrets are fallback only.",
       label: "Paid WhatsApp private link",
-      status: "Server-side secret only",
+      status: "D1 server table",
       tone: "success"
     },
     {
@@ -367,7 +370,9 @@ function getPaidMasterclassLinks(): AdminPaidMasterclassLink[] {
       return {
         coachName: coach?.displayName || funnel.coachId,
         displayName: funnel.displayName,
+        entryCode: funnel.entryCode,
         entryPath: `/go/${funnel.entryCode}`,
+        funnelId: funnel.id,
         paidPagePath: funnel.canonicalPath,
         paymentStatus: funnel.paymentUrl ? "Configured" : "Missing",
         privateWhatsappSecretName:
@@ -376,7 +381,8 @@ function getPaidMasterclassLinks(): AdminPaidMasterclassLink[] {
             : `WHATSAPP_GROUP_URL_${funnel.id.replace(/[^a-z0-9]/gi, "_").toUpperCase()}`,
         privateWhatsappLastChangedAt: null,
         privateWhatsappLastChangedBy: "Not recorded yet",
-        privateWhatsappStatus: "Server-side only",
+        privateWhatsappStorageSource: "none",
+        privateWhatsappStatus: "D1 server table",
         status: funnel.status,
         successPath: funnel.successPath || "Not configured"
       };
@@ -406,7 +412,7 @@ export function getMasterclassSettingsWithEnvStatus(env: Record<string, string |
 
     return {
       ...item,
-      status: configured ? "Configured server-side" : item.status,
+      status: configured ? "D1 table or legacy fallback configured" : item.status,
       tone: configured ? ("success" as const) : item.tone
     };
   });

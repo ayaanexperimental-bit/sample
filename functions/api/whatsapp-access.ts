@@ -1,3 +1,4 @@
+import type { D1Database } from "@cloudflare/workers-types";
 import { getFunnelById, isPaidProgramFunnel } from "../../lib/coach-platform";
 import { verifyFunnelAccessFromCookie } from "../../lib/server/funnel-access";
 import {
@@ -6,6 +7,7 @@ import {
 } from "../../lib/server/private-funnel-links";
 
 type Env = PrivateFunnelLinkEnv & {
+  ADMIN_DB?: D1Database;
   FUNNEL_ACCESS_SECRET?: string;
 };
 
@@ -31,7 +33,7 @@ export async function onRequest({ request, env }: PagesContext) {
     return json({ allowed: false, reason: "funnel_access_required" });
   }
 
-  const joinUrl = getPrivateWhatsappGroupUrl(activeFunnel, env);
+  const joinUrl = await getPrivateWhatsappGroupUrl(activeFunnel, env);
   if (!joinUrl) {
     return json({ allowed: false, reason: "not_configured" });
   }
