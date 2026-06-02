@@ -28,8 +28,13 @@ type PagesContext = {
 type GenerateCopyBody = {
   bio?: unknown;
   coachName?: unknown;
+  hasGoogleFormUrl?: unknown;
+  hasSupportContact?: unknown;
+  heroMediaType?: unknown;
   location?: unknown;
   niche?: unknown;
+  registerButtonText?: unknown;
+  supportText?: unknown;
   vision?: unknown;
 };
 
@@ -87,8 +92,22 @@ function parseGenerateCopyBody(body: GenerateCopyBody | null): CoachCopyAiInput 
   return {
     bio: typeof body?.bio === "string" ? body.bio.trim().slice(0, 1200) : "",
     coachName: coachName.slice(0, 160),
+    hasGoogleFormUrl: body?.hasGoogleFormUrl === true,
+    hasSupportContact: body?.hasSupportContact === true,
+    heroMediaType:
+      body?.heroMediaType === "image" ||
+      body?.heroMediaType === "none" ||
+      body?.heroMediaType === "video"
+        ? body.heroMediaType
+        : "none",
     location: typeof body?.location === "string" ? body.location.trim().slice(0, 160) : "",
     niche: niche.slice(0, 160),
+    registerButtonText:
+      typeof body?.registerButtonText === "string"
+        ? body.registerButtonText.trim().slice(0, 80)
+        : "",
+    supportText:
+      typeof body?.supportText === "string" ? body.supportText.trim().slice(0, 400) : "",
     vision: typeof body?.vision === "string" ? body.vision.trim().slice(0, 1200) : ""
   };
 }

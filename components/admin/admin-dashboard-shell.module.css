@@ -862,6 +862,62 @@
   gap: 0.65rem;
 }
 
+.previewEditStep {
+  display: grid;
+  gap: 1rem;
+}
+
+.regenerateActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.aiProgressCard,
+.copyEditorPanel {
+  display: grid;
+  gap: 0.8rem;
+  border: 1px solid rgb(168 85 137 / 0.14);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at 10% 0%, rgb(217 70 131 / 0.08), transparent 13rem),
+    linear-gradient(135deg, rgb(255 255 255 / 0.92), rgb(255 248 252 / 0.72));
+  padding: 1rem;
+}
+
+.aiProgressCard strong {
+  color: #251822;
+  font-size: 1rem;
+}
+
+.aiProgressCard ul {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.aiProgressCard li {
+  color: #75606c;
+  font-size: 0.88rem;
+  font-weight: 820;
+}
+
+.copyEditorPanel h3 {
+  margin: 0.22rem 0 0;
+  color: #251822;
+  font-size: 1rem;
+}
+
+.copyEditorPanel p {
+  margin: 0.35rem 0 0;
+  color: #75606c;
+  font-size: 0.88rem;
+  font-weight: 740;
+  line-height: 1.45;
+}
+
 .mediaStep {
   display: grid;
   gap: 0.85rem;
@@ -1994,6 +2050,10 @@
   .previewThemeBar > div:last-child {
     justify-content: flex-start;
   }
+
+  .regenerateActions {
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 520px) {
@@ -2060,6 +2120,7 @@
   .previewActions a,
   .previewActions button,
   .primaryAction,
+  .regenerateActions button,
   .revealedSecretBox,
   .secondaryAction,
   .dangerAction {

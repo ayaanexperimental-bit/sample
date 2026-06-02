@@ -8,8 +8,13 @@ export type CoachCopyAiEnv = {
 export type CoachCopyAiInput = {
   bio?: string;
   coachName: string;
+  hasGoogleFormUrl?: boolean;
+  hasSupportContact?: boolean;
+  heroMediaType?: "image" | "none" | "video";
   location?: string;
   niche: string;
+  registerButtonText?: string;
+  supportText?: string;
   vision?: string;
 };
 
@@ -182,7 +187,13 @@ function createCoachCopyPrompt(input: CoachCopyAiInput) {
     `Coach location: ${input.location || "Not provided"}`,
     `Coach short bio: ${input.bio || "Not provided"}`,
     `Coach vision/mission: ${input.vision || "Not provided"}`,
-    "The public page leads to a Google Form register button. Do not claim form submissions are tracked.",
+    `Hero media type selected: ${input.heroMediaType || "none"}`,
+    `Registration link configured: ${input.hasGoogleFormUrl ? "yes" : "no"}`,
+    `Preferred register button text: ${input.registerButtonText || "Register Now"}`,
+    `Hidden fallback support text configured: ${input.supportText ? "yes" : "no"}`,
+    `Hidden fallback support contact configured: ${input.hasSupportContact ? "yes" : "no"}`,
+    "The public page leads to a Google Form register button when configured. Do not claim form submissions are tracked.",
+    "Do not publish coach phone, email, WhatsApp, or contact-support instructions in normal page copy.",
     "Tone: professional, supportive, clear, practical, and not medical-diagnosis oriented.",
     "Return structured copy only in the requested JSON schema."
   ].join("\n");

@@ -58,6 +58,23 @@ type MediaUploadApiPayload = {
   ok?: boolean;
 };
 
+type GeneratedCoachCopy = {
+  benefits?: string[];
+  coachIntro?: string;
+  ctaText?: string;
+  faq?: Array<{
+    answer: string;
+    question: string;
+  }>;
+  heroHeadline?: string;
+  socialCopy?: string;
+  subheadline?: string;
+  trustText?: string;
+  visionText?: string;
+};
+
+type CopyRegenerationScope = "all" | "benefits" | "faq" | "hero";
+
 const statusOptions: Array<"all" | CoachSiteStatus> = [
   "all",
   "draft",
@@ -71,9 +88,8 @@ const wizardSteps = [
   "Coach Basic Details",
   "Hero Media",
   "Coach Niche & Content",
-  "Links & Hidden Error Support",
-  "AI Copy Generation",
-  "Preview",
+  "Links & Contact Support",
+  "Preview & Edit",
   "Publish"
 ];
 
@@ -123,6 +139,60 @@ const ALLOWED_PHOTO_MIME_TYPES = new Set([
   "image/x-png"
 ]);
 const PASSTHROUGH_PHOTO_EXTENSIONS = new Set([".gif", ".heic", ".heif"]);
+
+function applyGeneratedCopyToForm(
+  current: CoachSiteFormState,
+  content: GeneratedCoachCopy,
+  scope: CopyRegenerationScope
+): CoachSiteFormState {
+  const faqText =
+    content.faq?.map((item) => `${item.question}\n${item.answer}`).join("\n\n") ||
+    current.faqText;
+  const benefitsText = content.benefits?.join("\n") || current.benefitsText;
+
+  if (scope === "hero") {
+    return {
+      ...current,
+      heroHeadline: content.heroHeadline || current.heroHeadline,
+      subheadline: content.subheadline || current.subheadline
+    };
+  }
+
+  if (scope === "benefits") {
+    return {
+      ...current,
+      benefitsText
+    };
+  }
+
+  if (scope === "faq") {
+    return {
+      ...current,
+      faqText
+    };
+  }
+
+  return {
+    ...current,
+    benefitsText,
+    coachIntro: content.coachIntro || current.coachIntro,
+    ctaText: content.ctaText || current.ctaText,
+    faqText,
+    heroHeadline: content.heroHeadline || current.heroHeadline,
+    registerButtonText: current.registerButtonText || content.ctaText || "Register Now",
+    socialCopy: content.socialCopy || current.socialCopy,
+    subheadline: content.subheadline || current.subheadline,
+    trustText: content.trustText || current.trustText,
+    visionText: content.visionText || current.visionText
+  };
+}
+
+function getCopyScopeLabel(scope: CopyRegenerationScope) {
+  if (scope === "benefits") return "Benefits";
+  if (scope === "faq") return "FAQ";
+  if (scope === "hero") return "Hero copy";
+  return "All copy";
+}
 
 export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachSitesManagerProps) {
   const [sites, setSites] = useState<CoachSiteRecord[]>(demoCoachSites);
@@ -202,21 +272,29 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     key: Key,
     value: CoachSiteFormState[Key]
   ) {
-    setForm((current) => ({
-      ...current,
+    const nextForm = {
+      ...form,
       [key]: value
-    }));
+    };
+
+    setForm(nextForm);
+    syncPreviewFromForm(nextForm);
   }
 
   function handleCoachNameChange(value: string) {
-    setForm((current) => ({
-      ...current,
+    const nextForm = {
+      ...form,
       coachName: value,
-      slug: editingId ? current.slug || normalizeCoachSlug(value) : normalizeCoachSlug(value)
-    }));
+      slug: editingId ? form.slug || normalizeCoachSlug(value) : normalizeCoachSlug(value)
+    };
+
+    setForm(nextForm);
+    syncPreviewFromForm(nextForm);
   }
 
   function openCreatorDialog(site?: CoachSiteRecord, step = 0) {
+    setAiMessage("");
+    setAiSubmitting(false);
     if (site) {
       setEditingId(site.id);
       setForm(createFormFromCoachSite(site));
@@ -233,12 +311,12 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     setDialog({ type: "creator" });
   }
 
-  function buildPreviewSite(status: CoachSiteStatus) {
-    const slug = normalizeCoachSlug(form.slug || form.coachName);
+  function buildPreviewSite(status: CoachSiteStatus, sourceForm = form) {
+    const slug = normalizeCoachSlug(sourceForm.slug || sourceForm.coachName);
 
     return createCoachSiteFromForm({
       form: {
-        ...form,
+        ...sourceForm,
         slug
       },
       id: editingId || `coach-site-${slug || "draft"}`,
@@ -246,26 +324,50 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     });
   }
 
-  function preparePreview() {
-    const slug = normalizeCoachSlug(form.slug || form.coachName);
-    if (!form.coachName.trim() || !form.niche.trim() || !slug) {
+  function syncPreviewFromForm(sourceForm: CoachSiteFormState) {
+    setPreviewSite((current) =>
+      current ? buildPreviewSite(current.status, sourceForm) : current
+    );
+  }
+
+  function validatePreviewForm(sourceForm: CoachSiteFormState) {
+    const slug = normalizeCoachSlug(sourceForm.slug || sourceForm.coachName);
+    if (!sourceForm.coachName.trim() || !sourceForm.niche.trim() || !slug) {
       setMessage("Coach name and coach niche are required.");
-      return false;
+      return null;
     }
 
-    if (form.heroMediaType === "video" && !isSupportedVideoSource(form.videoUrl)) {
+    if (sourceForm.heroMediaType === "video" && !isSupportedVideoSource(sourceForm.videoUrl)) {
       setMessage("Enter a valid YouTube/video URL, upload a video file, or choose No Media.");
-      return false;
+      return null;
     }
 
-    const site = buildPreviewSite(previewSite?.status || "draft");
-    setPreviewSite(site);
-    setForm((current) => ({
-      ...current,
-      slug: site.slug
-    }));
-    setMessage("Preview prepared. Review before publishing.");
-    return true;
+    return {
+      ...sourceForm,
+      slug
+    };
+  }
+
+  function fillMissingCopyFromTemplateFallback(
+    sourceForm: CoachSiteFormState,
+    status: CoachSiteStatus
+  ): CoachSiteFormState {
+    const fallbackSite = buildPreviewSite(status, sourceForm);
+
+    return {
+      ...sourceForm,
+      benefitsText: sourceForm.benefitsText || fallbackSite.content.benefits.join("\n"),
+      coachIntro: sourceForm.coachIntro || fallbackSite.content.coachIntro,
+      ctaText: sourceForm.ctaText || fallbackSite.content.ctaText,
+      faqText:
+        sourceForm.faqText ||
+        fallbackSite.content.faq.map((item) => `${item.question}\n${item.answer}`).join("\n\n"),
+      heroHeadline: sourceForm.heroHeadline || fallbackSite.content.heroHeadline,
+      socialCopy: sourceForm.socialCopy || fallbackSite.content.socialCopy,
+      subheadline: sourceForm.subheadline || fallbackSite.content.subheadline,
+      trustText: sourceForm.trustText || fallbackSite.content.trustText,
+      visionText: sourceForm.visionText || fallbackSite.content.visionText
+    };
   }
 
   async function upsertSite(status: CoachSiteStatus) {
@@ -330,84 +432,155 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     return site;
   }
 
-  async function handleGenerateWithAi() {
+  function startAiProgress() {
+    setAiSubmitting(true);
+    setAiMessage("Generating coach website copy...");
+
+    const timers = [
+      window.setTimeout(() => {
+        setAiMessage((current) =>
+          current === "Generating coach website copy..." ? "Preparing preview..." : current
+        );
+      }, 500),
+      window.setTimeout(() => {
+        setAiMessage((current) =>
+          current === "Preparing preview..."
+            ? "Filling template with coach-specific content..."
+            : current
+        );
+      }, 1050)
+    ];
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }
+
+  async function requestGeneratedCopy(sourceForm: CoachSiteFormState) {
+    const response = await fetch("/api/admin/coach-sites/generate-copy", {
+      body: JSON.stringify({
+        bio: sourceForm.bio,
+        coachName: sourceForm.coachName,
+        hasGoogleFormUrl: Boolean(sourceForm.googleFormUrl.trim()),
+        hasSupportContact: Boolean(
+          sourceForm.whatsappLink.trim() ||
+            sourceForm.coachEmail.trim() ||
+            sourceForm.coachPhone.trim()
+        ),
+        heroMediaType: sourceForm.heroMediaType,
+        location: sourceForm.location,
+        niche: sourceForm.niche,
+        registerButtonText: sourceForm.registerButtonText,
+        supportText: sourceForm.supportText,
+        vision: sourceForm.vision
+      }),
+      cache: "no-store",
+      credentials: "include",
+      headers: {
+        "content-type": "application/json",
+        "x-yw-admin-csrf": csrfToken
+      },
+      method: "POST"
+    });
+    const payload = (await response.json().catch(() => ({}))) as {
+      content?: GeneratedCoachCopy;
+      message?: string;
+      ok?: boolean;
+    };
+
+    if (!response.ok || !payload.ok || !payload.content) {
+      return {
+        content: null,
+        message: payload.message || "AI generation not configured yet."
+      };
+    }
+
+    return {
+      content: payload.content,
+      message: ""
+    };
+  }
+
+  async function generatePreviewFromDetails() {
     setAiMessage("");
     setMessage("");
 
-    if (!form.coachName.trim() || !form.niche.trim()) {
-      setAiMessage("Coach name and coach niche are required before AI generation.");
-      return;
-    }
+    const validatedForm = validatePreviewForm(form);
+    if (!validatedForm) return false;
 
-    setAiSubmitting(true);
-    setAiMessage("Generating niche-based content...");
+    const status = previewSite?.status || "draft";
+    setWizardStep(4);
+    setPreviewSite(buildPreviewSite(status, validatedForm));
+    setForm(validatedForm);
 
-    window.setTimeout(() => {
-      setAiMessage((current) =>
-        current === "Generating niche-based content..." ? "Preparing coach site copy..." : current
-      );
-    }, 450);
+    const stopProgress = startAiProgress();
+    let nextForm = validatedForm;
 
     try {
-      const response = await fetch("/api/admin/coach-sites/generate-copy", {
-        body: JSON.stringify({
-          bio: form.bio,
-          coachName: form.coachName,
-          location: form.location,
-          niche: form.niche,
-          vision: form.vision
-        }),
-        cache: "no-store",
-        credentials: "include",
-        headers: {
-          "content-type": "application/json",
-          "x-yw-admin-csrf": csrfToken
-        },
-        method: "POST"
-      });
-      const payload = (await response.json().catch(() => ({}))) as {
-        content?: {
-          benefits?: string[];
-          coachIntro?: string;
-          ctaText?: string;
-          faq?: Array<{
-            answer: string;
-            question: string;
-          }>;
-          heroHeadline?: string;
-          socialCopy?: string;
-          subheadline?: string;
-          trustText?: string;
-          visionText?: string;
-        };
-        message?: string;
-        ok?: boolean;
-      };
+      const result = await requestGeneratedCopy(validatedForm);
 
-      if (!response.ok || !payload.ok || !payload.content) {
-        setAiMessage(payload.message || "AI generation not configured yet.");
+      if (result.content) {
+        nextForm = applyGeneratedCopyToForm(validatedForm, result.content, "all");
+        setAiMessage("AI copy prepared. Review and edit before publishing.");
+      } else {
+        nextForm = fillMissingCopyFromTemplateFallback(validatedForm, status);
+        setAiMessage(`${result.message} Preview opened for manual editing.`);
+      }
+
+      const site = buildPreviewSite(status, nextForm);
+      setForm({
+        ...nextForm,
+        slug: site.slug
+      });
+      setPreviewSite(site);
+      setMessage("Preview prepared. Review generated copy before publishing.");
+      return true;
+    } catch {
+      nextForm = fillMissingCopyFromTemplateFallback(nextForm, status);
+      const site = buildPreviewSite(status, nextForm);
+      setForm({
+        ...nextForm,
+        slug: site.slug
+      });
+      setPreviewSite(site);
+      setAiMessage("AI copy generation failed. Preview opened for manual editing.");
+      setMessage("Preview prepared. Review and edit manually before publishing.");
+      return true;
+    } finally {
+      stopProgress();
+      setAiSubmitting(false);
+    }
+  }
+
+  async function handleRegenerateCopy(scope: CopyRegenerationScope) {
+    setAiMessage("");
+    setMessage("");
+
+    const validatedForm = validatePreviewForm(form);
+    if (!validatedForm) return;
+
+    const stopProgress = startAiProgress();
+    const label = getCopyScopeLabel(scope);
+
+    try {
+      const result = await requestGeneratedCopy(validatedForm);
+      if (!result.content) {
+        setAiMessage(`${result.message} Manual editing remains available.`);
         return;
       }
 
-      setForm((current) => ({
-        ...current,
-        benefitsText: payload.content?.benefits?.join("\n") || current.benefitsText,
-        coachIntro: payload.content?.coachIntro || current.coachIntro,
-        ctaText: payload.content?.ctaText || current.ctaText,
-        faqText:
-          payload.content?.faq?.map((item) => `${item.question}\n${item.answer}`).join("\n\n") ||
-          current.faqText,
-        heroHeadline: payload.content?.heroHeadline || current.heroHeadline,
-        registerButtonText: payload.content?.ctaText || current.registerButtonText,
-        socialCopy: payload.content?.socialCopy || current.socialCopy,
-        subheadline: payload.content?.subheadline || current.subheadline,
-        trustText: payload.content?.trustText || current.trustText,
-        visionText: payload.content?.visionText || current.visionText
-      }));
-      setAiMessage("AI copy prepared. Review and edit before publishing.");
+      const nextForm = applyGeneratedCopyToForm(validatedForm, result.content, scope);
+      const site = buildPreviewSite(previewSite?.status || "draft", nextForm);
+      setForm({
+        ...nextForm,
+        slug: site.slug
+      });
+      setPreviewSite(site);
+      setAiMessage(`${label} regenerated. Review before publishing.`);
     } catch {
-      setAiMessage("AI copy generation failed.");
+      setAiMessage(`${label} regeneration failed. Manual editing remains available.`);
     } finally {
+      stopProgress();
       setAiSubmitting(false);
     }
   }
@@ -589,11 +762,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         onClose={() => setDialog(null)}
         onCopyAgain={(site) => void copyPublicLink(site)}
         onEditSite={openCreatorDialog}
-        onGenerateAi={() => void handleGenerateWithAi()}
+        onGeneratePreview={generatePreviewFromDetails}
         onOpenDialog={setDialog}
-        onPreparePreview={preparePreview}
         onPreviewSiteChange={setPreviewSite}
         onPublish={() => upsertSite("published")}
+        onRegenerateCopy={handleRegenerateCopy}
         onRemoveCancel={() => {
           setRemoveConfirm("");
           setDialog(null);
@@ -624,11 +797,11 @@ function CoachDialogRenderer({
   onClose,
   onCopyAgain,
   onEditSite,
-  onGenerateAi,
+  onGeneratePreview,
   onOpenDialog,
-  onPreparePreview,
   onPreviewSiteChange,
   onPublish,
+  onRegenerateCopy,
   onRemoveCancel,
   onSaveDraft,
   onStatusConfirm,
@@ -651,11 +824,11 @@ function CoachDialogRenderer({
   onClose: () => void;
   onCopyAgain: (site: CoachSiteRecord) => void;
   onEditSite: (site?: CoachSiteRecord, step?: number) => void;
-  onGenerateAi: () => void;
+  onGeneratePreview: () => Promise<boolean>;
   onOpenDialog: (dialog: CoachDialog) => void;
-  onPreparePreview: () => boolean;
   onPreviewSiteChange: (site: CoachSiteRecord) => void;
   onPublish: () => Promise<CoachSiteRecord>;
+  onRegenerateCopy: (scope: CopyRegenerationScope) => Promise<void>;
   onRemoveCancel: () => void;
   onSaveDraft: () => Promise<CoachSiteRecord>;
   onStatusConfirm: (site: CoachSiteRecord, status: "paused" | "published") => void;
@@ -680,8 +853,9 @@ function CoachDialogRenderer({
       <AdminActionDialog
         footer={
           <WizardFooter
+            aiSubmitting={aiSubmitting}
             onClose={onClose}
-            onPreparePreview={onPreparePreview}
+            onGeneratePreview={onGeneratePreview}
             onPublish={onPublish}
             onSaveDraft={onSaveDraft}
             setWizardStep={setWizardStep}
@@ -699,6 +873,7 @@ function CoachDialogRenderer({
               <button
                 data-active={wizardStep === index ? "true" : "false"}
                 key={step}
+                disabled={aiSubmitting}
                 onClick={() => setWizardStep(index)}
                 type="button"
               >
@@ -806,76 +981,18 @@ function CoachDialogRenderer({
             ) : null}
 
             {wizardStep === 4 ? (
-              <>
-                <div className={styles.sectionHeader}>
-                  <div>
-                    <p className={styles.kicker}>AI Copy Generation</p>
-                    <h2>Niche-based coach copy</h2>
-                  </div>
-                  <button
-                    className={styles.secondaryAction}
-                    disabled={aiSubmitting}
-                    onClick={onGenerateAi}
-                    type="button"
-                  >
-                    {aiSubmitting ? "Generating..." : "Generate with AI"}
-                  </button>
-                </div>
-                {aiMessage ? <p className={styles.inlineStatus}>{aiMessage}</p> : null}
-                <div className={styles.copyEditorGrid}>
-                  <TextAreaField
-                    label="Hero headline"
-                    onChange={(value) => onUpdateField("heroHeadline", value)}
-                    value={form.heroHeadline}
-                  />
-                  <TextAreaField
-                    label="Subheadline"
-                    onChange={(value) => onUpdateField("subheadline", value)}
-                    value={form.subheadline}
-                  />
-                  <TextAreaField
-                    label="Benefits section"
-                    onChange={(value) => onUpdateField("benefitsText", value)}
-                    placeholder="One benefit per line"
-                    value={form.benefitsText}
-                  />
-                  <TextAreaField
-                    label="FAQ"
-                    onChange={(value) => onUpdateField("faqText", value)}
-                    placeholder={"Question\nAnswer\n\nQuestion\nAnswer"}
-                    value={form.faqText}
-                  />
-                </div>
-                <p className={styles.inlineNote}>
-                  Coach introduction, mission, CTA, and hidden error support come from the previous
-                  steps. AI only prepares fixed-template copy for admin review.
-                </p>
-              </>
+              <PreviewAndEditStep
+                aiMessage={aiMessage}
+                aiSubmitting={aiSubmitting}
+                form={form}
+                onPreviewSiteChange={onPreviewSiteChange}
+                onRegenerateCopy={onRegenerateCopy}
+                onUpdateField={onUpdateField}
+                previewSite={previewSite}
+              />
             ) : null}
 
             {wizardStep === 5 ? (
-              previewSite ? (
-                <CoachSitePreview
-                  onThemeChange={(selectedThemeId) => {
-                    onUpdateField("selectedThemeId", selectedThemeId);
-                    onPreviewSiteChange({
-                      ...previewSite,
-                      selectedThemeId
-                    });
-                  }}
-                  site={previewSite}
-                />
-              ) : (
-                <div className={styles.emptyState}>
-                  <h3>Preview not prepared yet</h3>
-                  <p>
-                    Use the Preview button to generate a fixed-template preview before publishing.
-                  </p>
-                </div>
-              )
-            ) : null}
-
-            {wizardStep === 6 ? (
               <PublishPanel
                 onCopyLink={onCopyAgain}
                 publishedSite={publishedSite}
@@ -1122,6 +1239,169 @@ function CoachDialogRenderer({
   );
 }
 
+function PreviewAndEditStep({
+  aiMessage,
+  aiSubmitting,
+  form,
+  onPreviewSiteChange,
+  onRegenerateCopy,
+  onUpdateField,
+  previewSite
+}: {
+  aiMessage: string;
+  aiSubmitting: boolean;
+  form: CoachSiteFormState;
+  onPreviewSiteChange: (site: CoachSiteRecord) => void;
+  onRegenerateCopy: (scope: CopyRegenerationScope) => Promise<void>;
+  onUpdateField: <Key extends keyof CoachSiteFormState>(
+    key: Key,
+    value: CoachSiteFormState[Key]
+  ) => void;
+  previewSite: CoachSiteRecord | null;
+}) {
+  return (
+    <div className={styles.previewEditStep}>
+      <div className={styles.sectionHeader}>
+        <div>
+          <p className={styles.kicker}>Preview & Edit</p>
+          <h2>Review generated coach website copy</h2>
+        </div>
+        <div className={styles.regenerateActions}>
+          <button
+            className={styles.secondaryAction}
+            disabled={aiSubmitting}
+            onClick={() => void onRegenerateCopy("all")}
+            type="button"
+          >
+            Regenerate All Copy
+          </button>
+          <button
+            className={styles.secondaryAction}
+            disabled={aiSubmitting}
+            onClick={() => void onRegenerateCopy("hero")}
+            type="button"
+          >
+            Regenerate Hero Copy
+          </button>
+          <button
+            className={styles.secondaryAction}
+            disabled={aiSubmitting}
+            onClick={() => void onRegenerateCopy("benefits")}
+            type="button"
+          >
+            Regenerate Benefits
+          </button>
+          <button
+            className={styles.secondaryAction}
+            disabled={aiSubmitting}
+            onClick={() => void onRegenerateCopy("faq")}
+            type="button"
+          >
+            Regenerate FAQ
+          </button>
+        </div>
+      </div>
+
+      {aiSubmitting ? (
+        <div className={styles.aiProgressCard}>
+          <strong>{aiMessage || "Generating coach website copy..."}</strong>
+          <ul>
+            <li>Generating coach website copy...</li>
+            <li>Preparing preview...</li>
+            <li>Filling template with coach-specific content...</li>
+          </ul>
+        </div>
+      ) : null}
+
+      {!aiSubmitting && aiMessage ? <p className={styles.inlineStatus}>{aiMessage}</p> : null}
+
+      <div className={styles.copyEditorPanel}>
+        <div>
+          <p className={styles.kicker}>Editable Copy</p>
+          <h3>Fixed-template content only</h3>
+          <p>
+            AI and manual edits change copy only. Design, routes, security, and the public template
+            structure stay fixed.
+          </p>
+        </div>
+        <div className={styles.copyEditorGrid}>
+          <TextAreaField
+            label="Hero headline"
+            onChange={(value) => onUpdateField("heroHeadline", value)}
+            value={form.heroHeadline}
+          />
+          <TextAreaField
+            label="Subheadline"
+            onChange={(value) => onUpdateField("subheadline", value)}
+            value={form.subheadline}
+          />
+          <TextAreaField
+            label="Coach introduction"
+            onChange={(value) => onUpdateField("coachIntro", value)}
+            value={form.coachIntro}
+          />
+          <TextAreaField
+            label="Mission / vision copy"
+            onChange={(value) => onUpdateField("visionText", value)}
+            value={form.visionText}
+          />
+          <TextAreaField
+            label="Benefits"
+            onChange={(value) => onUpdateField("benefitsText", value)}
+            placeholder="One benefit per line"
+            value={form.benefitsText}
+          />
+          <TextAreaField
+            label="CTA section text"
+            onChange={(value) => onUpdateField("ctaText", value)}
+            value={form.ctaText}
+          />
+          <TextAreaField
+            label="FAQ"
+            onChange={(value) => onUpdateField("faqText", value)}
+            placeholder={"Question\nAnswer\n\nQuestion\nAnswer"}
+            value={form.faqText}
+          />
+          <TextAreaField
+            helper="Hidden from the normal public coach page. Used only on error/unavailable support pages."
+            label="Contact support text"
+            onChange={(value) => onUpdateField("supportText", value)}
+            value={form.supportText}
+          />
+          <TextAreaField
+            label="Trust note"
+            onChange={(value) => onUpdateField("trustText", value)}
+            value={form.trustText}
+          />
+          <TextField
+            label="Register button text"
+            onChange={(value) => onUpdateField("registerButtonText", value)}
+            value={form.registerButtonText}
+          />
+        </div>
+      </div>
+
+      {previewSite ? (
+        <CoachSitePreview
+          onThemeChange={(selectedThemeId) => {
+            onUpdateField("selectedThemeId", selectedThemeId);
+            onPreviewSiteChange({
+              ...previewSite,
+              selectedThemeId
+            });
+          }}
+          site={previewSite}
+        />
+      ) : (
+        <div className={styles.emptyState}>
+          <h3>Preview not prepared yet</h3>
+          <p>Complete Links & Contact Support, then use Generate Preview.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HeroMediaStep({
   csrfToken,
   form,
@@ -1356,15 +1636,17 @@ function HeroMediaStep({
 }
 
 function WizardFooter({
+  aiSubmitting,
   onClose,
-  onPreparePreview,
+  onGeneratePreview,
   onPublish,
   onSaveDraft,
   setWizardStep,
   wizardStep
 }: {
+  aiSubmitting: boolean;
   onClose: () => void;
-  onPreparePreview: () => boolean;
+  onGeneratePreview: () => Promise<boolean>;
   onPublish: () => Promise<CoachSiteRecord>;
   onSaveDraft: () => Promise<CoachSiteRecord>;
   setWizardStep: (step: number) => void;
@@ -1377,7 +1659,7 @@ function WizardFooter({
       </button>
       <button
         className={styles.secondaryAction}
-        disabled={wizardStep === 0}
+        disabled={wizardStep === 0 || aiSubmitting}
         onClick={() => setWizardStep(Math.max(wizardStep - 1, 0))}
         type="button"
       >
@@ -1385,19 +1667,10 @@ function WizardFooter({
       </button>
       <button
         className={styles.secondaryAction}
-        onClick={() => {
-          const prepared = onPreparePreview();
-          if (prepared) setWizardStep(5);
-        }}
-        type="button"
-      >
-        Preview
-      </button>
-      <button
-        className={styles.secondaryAction}
+        disabled={aiSubmitting}
         onClick={() => {
           void onSaveDraft();
-          setWizardStep(6);
+          setWizardStep(5);
         }}
         type="button"
       >
@@ -1406,17 +1679,26 @@ function WizardFooter({
       {wizardStep < wizardSteps.length - 1 ? (
         <button
           className={styles.primaryAction}
-          onClick={() => setWizardStep(Math.min(wizardStep + 1, wizardSteps.length - 1))}
+          disabled={aiSubmitting}
+          onClick={() => {
+            if (wizardStep === 3) {
+              void onGeneratePreview();
+              return;
+            }
+
+            setWizardStep(Math.min(wizardStep + 1, wizardSteps.length - 1));
+          }}
           type="button"
         >
-          Next
+          {wizardStep === 3 ? "Generate Preview" : "Next"}
         </button>
       ) : (
         <button
           className={styles.primaryAction}
+          disabled={aiSubmitting}
           onClick={() => {
             void onPublish();
-            setWizardStep(6);
+            setWizardStep(5);
           }}
           type="button"
         >
