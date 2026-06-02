@@ -6,7 +6,6 @@ import {
   type CoachSiteRecord,
   type CoachSiteStatus,
   createCoachSiteFromForm,
-  demoCoachSites,
   getCoachPublicUrl,
   normalizeCoachSlug,
   toPublicCoachSiteRecord
@@ -426,6 +425,9 @@ function normalizeCoachSitePayload(payload: CoachSitePayload): CoachSiteRecord {
 }
 
 function rowToCoachSiteRecord(row: CoachSiteRow): CoachSiteRecord {
+  const fallbackContent = createContentFallbackFromRow(row);
+  const parsedContent = safeJson<CoachSitePayload["content"]>(row.content_json, undefined);
+
   return {
     analytics: safeJson<CoachSiteAnalyticsSummary>(row.analytics_json, DEFAULT_ANALYTICS),
     bio: row.bio,
@@ -433,7 +435,7 @@ function rowToCoachSiteRecord(row: CoachSiteRow): CoachSiteRecord {
     coachId: row.coach_id,
     coachName: row.coach_name,
     coachPhone: row.coach_phone,
-    content: safeJson<CoachSiteContent>(row.content_json, demoCoachSites[0].content),
+    content: normalizeContent(parsedContent, fallbackContent),
     googleFormUrl: row.google_form_url,
     heroMediaType: normalizeHeroMediaType(row.hero_media_type),
     id: row.id,
@@ -451,6 +453,45 @@ function rowToCoachSiteRecord(row: CoachSiteRow): CoachSiteRecord {
     vision: row.vision,
     whatsappLink: row.whatsapp_link
   };
+}
+
+function createContentFallbackFromRow(row: CoachSiteRow): CoachSiteContent {
+  const coachName = sanitizeText(row.coach_name, 160) || "Coach";
+  const niche = sanitizeText(row.niche, 160) || "wellness";
+  const slug = normalizeCoachSlug(row.slug || coachName);
+
+  return createCoachSiteFromForm({
+    form: {
+      benefitsText: "",
+      bio: sanitizeText(row.bio, 1200),
+      coachEmail: sanitizeText(row.coach_email, 240),
+      coachName,
+      coachPhone: sanitizeText(row.coach_phone, 80),
+      coachIntro: "",
+      ctaText: "",
+      faqText: "",
+      googleFormUrl: sanitizeUrl(row.google_form_url),
+      heroMediaType: normalizeHeroMediaType(row.hero_media_type),
+      heroHeadline: "",
+      location: sanitizeText(row.location, 160),
+      logoUrl: sanitizeUrl(row.logo_url),
+      niche,
+      photoUrl: sanitizeUrl(row.photo_url),
+      registerButtonText: sanitizeText(row.register_button_text, 80) || "Register Now",
+      selectedThemeId: normalizeCoachTemplateThemeId(row.selected_theme_id),
+      slug,
+      socialCopy: "",
+      subheadline: "",
+      supportText: sanitizeText(row.support_text, 300),
+      trustText: "",
+      videoUrl: sanitizeUrl(row.video_url),
+      vision: sanitizeText(row.vision, 1200),
+      visionText: "",
+      whatsappLink: sanitizeUrl(row.whatsapp_link)
+    },
+    id: sanitizeText(row.id, 120) || `coach-site-${slug || "draft"}`,
+    status: normalizeStatus(row.status)
+  }).content;
 }
 
 function normalizeContent(

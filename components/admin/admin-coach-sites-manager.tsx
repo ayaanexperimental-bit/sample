@@ -1596,7 +1596,7 @@ function HeroMediaStep({
           <div className={styles.mediaPreview} data-state={videoPreviewUrl ? "ready" : "empty"}>
             {videoPreviewUrl ? (
               <iframe
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
                 src={videoPreviewUrl}
                 title="Hero video preview"
@@ -1867,7 +1867,7 @@ function CoachSitePreview({
           <div className={styles.previewMedia} data-media={site.heroMediaType}>
             {previewVideoUrl ? (
               <iframe
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
                 src={previewVideoUrl}
                 title={`${site.coachName} hero video preview`}
