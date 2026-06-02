@@ -1064,7 +1064,7 @@ function SettingsView({
           onClick={() =>
             onAction(
               "Support Settings",
-              "Default Yours Wellness support is used only when coach-specific public contact details are missing. Coach details stay editable inside the Coach Site builder."
+              "Default Yours Wellness support is used only on error or unavailable fallback pages when coach-specific support details are missing. Coach details stay editable inside the Coach Site builder."
             )
           }
           type="button"
@@ -1083,14 +1083,14 @@ function SettingsView({
         </article>
         <article className={styles.statusCard} data-tone="success">
           <span>Coach-specific</span>
-          <h3>Contact support</h3>
-          <p>Coach pages use coach phone, WhatsApp, email, image/logo, and support text first.</p>
+          <h3>Hidden error support</h3>
+          <p>Error fallback pages use coach phone, WhatsApp, email, image/logo, and support text first.</p>
         </article>
         <article className={styles.statusCard} data-tone="warning">
           <span>Fallback</span>
           <h3>Yours Wellness support</h3>
           <p>
-            Default support appears only when a coach site has no public support contact details.
+            Default support appears only when an error fallback has no coach-specific support details.
           </p>
         </article>
       </section>

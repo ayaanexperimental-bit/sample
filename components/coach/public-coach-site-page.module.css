@@ -222,6 +222,15 @@
   transform: translate3d(0, -2px, 0);
 }
 
+.navCta[data-disabled="true"],
+.primaryAction[data-disabled="true"],
+.stickyRegister[data-disabled="true"],
+.registerSection span[data-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.72;
+  pointer-events: none;
+}
+
 .stickyRegister {
   position: fixed;
   right: clamp(0.8rem, 4vw, 2rem);

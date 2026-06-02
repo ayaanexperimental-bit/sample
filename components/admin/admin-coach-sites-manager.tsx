@@ -71,7 +71,7 @@ const wizardSteps = [
   "Coach Basic Details",
   "Hero Media",
   "Coach Niche & Content",
-  "Links & Contact Support",
+  "Links & Hidden Error Support",
   "AI Copy Generation",
   "Preview",
   "Publish"
@@ -713,7 +713,7 @@ function CoachDialogRenderer({
               <>
                 <div className={styles.formGrid}>
                   <TextField
-                    helper="Used for the public coach page, support card, and stable link."
+                    helper="Used for the public coach page, hidden error-support fallback, and stable link."
                     label="Coach name"
                     onChange={onUpdateCoachName}
                     required
@@ -771,19 +771,22 @@ function CoachDialogRenderer({
                   value={form.googleFormUrl}
                 />
                 <TextField
-                  label="WhatsApp/contact link"
+                  helper="Hidden from the normal public page. Used only on error/unavailable fallback pages."
+                  label="Error support WhatsApp link"
                   onChange={(value) => onUpdateField("whatsappLink", value)}
                   type="url"
                   value={form.whatsappLink}
                 />
                 <TextField
-                  label="Coach email"
+                  helper="Hidden from the normal public page. Used only on error/unavailable fallback pages."
+                  label="Error support email"
                   onChange={(value) => onUpdateField("coachEmail", value)}
                   type="email"
                   value={form.coachEmail}
                 />
                 <TextField
-                  label="Coach phone"
+                  helper="Hidden from the normal public page. Used only on error/unavailable fallback pages."
+                  label="Error support phone"
                   onChange={(value) => onUpdateField("coachPhone", value)}
                   value={form.coachPhone}
                 />
@@ -793,7 +796,8 @@ function CoachDialogRenderer({
                   value={form.registerButtonText}
                 />
                 <TextAreaField
-                  label="Contact support text"
+                  helper="Hidden from the normal public page. Shown with the error/reference code only."
+                  label="Error support text"
                   onChange={(value) => onUpdateField("supportText", value)}
                   placeholder="Need help? Contact your coach directly."
                   value={form.supportText}
@@ -843,7 +847,7 @@ function CoachDialogRenderer({
                   />
                 </div>
                 <p className={styles.inlineNote}>
-                  Coach introduction, mission, CTA, and contact support come from the previous
+                  Coach introduction, mission, CTA, and hidden error support come from the previous
                   steps. AI only prepares fixed-template copy for admin review.
                 </p>
               </>
@@ -915,13 +919,6 @@ function CoachDialogRenderer({
               type="button"
             >
               Edit
-            </button>
-            <button
-              className={styles.secondaryAction}
-              onClick={() => onEditSite(dialog.site, 3)}
-              type="button"
-            >
-              Contact Support
             </button>
             <button
               className={styles.secondaryAction}
@@ -1048,7 +1045,7 @@ function CoachDialogRenderer({
         <p className={styles.dialogCopy}>
           The public link stays the same: {dialog.site.publicUrl}.{" "}
           {dialog.nextStatus === "paused"
-            ? "Visitors will see the temporarily unavailable support fallback."
+            ? "Visitors will see the temporarily unavailable page with the hidden support fallback."
             : "Visitors will see the public coach site again."}
         </p>
       </AdminActionDialog>
@@ -1466,8 +1463,8 @@ function PublishPanel({
       </button>
       {!site.googleFormUrl ? (
         <p className={styles.linkWarning}>
-          Google Form link missing. The public page will show Contact Support fallback instead of a
-          broken register link.
+          Google Form link missing. Public register buttons stay disabled until a registration link
+          is added.
         </p>
       ) : null}
     </div>
@@ -1565,8 +1562,8 @@ function CoachSitePreview({
           </div>
           {!canRegister ? (
             <p className={styles.linkWarning}>
-              Google Form link missing. Public users should see Contact Support fallback instead of
-              a broken register link.
+              Google Form link missing. Public register buttons stay disabled until a registration
+              link is added.
             </p>
           ) : null}
           <dl className={styles.previewFacts}>
@@ -1642,16 +1639,6 @@ function CoachSitePreview({
             </div>
           ))}
         </section>
-        <section>
-          <h4>Contact Support</h4>
-          <strong>{site.coachName}</strong>
-          <p>{site.supportText || "Need help? Contact your coach directly."}</p>
-          <p>
-            {site.coachPhone || site.whatsappLink || site.coachEmail
-              ? [site.coachPhone, site.whatsappLink, site.coachEmail].filter(Boolean).join(" / ")
-              : "Default Yours Wellness support will be shown until coach contact details are added."}
-          </p>
-        </section>
       </div>
 
       <section className={styles.previewRegisterBand}>
@@ -1666,7 +1653,7 @@ function CoachSitePreview({
           </a>
         ) : (
           <button disabled type="button">
-            Contact Support
+            Registration link pending
           </button>
         )}
       </section>

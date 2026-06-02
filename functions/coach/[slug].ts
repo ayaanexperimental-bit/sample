@@ -76,7 +76,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
     )
     .join("");
   const journey = [
-    ["01", "Profile", "Meet the coach", "Guests understand the coach story, niche, mission, and support style."],
+    ["01", "Profile", "Meet the coach", "Guests understand the coach story, niche, mission, and guidance style."],
     ["02", "Focus", "See the wellness focus", "The page explains the coach lens in a clear, trustworthy tone."],
     ["03", "Action", "Open registration", "The CTA sends visitors to the coach registration form when configured."]
   ]
@@ -336,6 +336,12 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       .button:active,
       .sticky-register:active {
         transform: translate3d(0, 1px, 0) scale(0.98);
+      }
+      .button.disabled,
+      .sticky-register.disabled {
+        cursor: not-allowed;
+        opacity: 0.72;
+        pointer-events: none;
       }
       .sticky-register {
         position: fixed;
@@ -1096,7 +1102,6 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         <div class="nav-links">
           <a href="#journey">Journey</a>
           <a href="#benefits">Benefits</a>
-          <a href="#coach-contact-support">Support</a>
         </div>
         ${renderRegisterAction(site, "button primary nav-cta", site.registerButtonText || site.content.ctaText || "Register")}
       </nav>
@@ -1112,11 +1117,10 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           <p class="lead">${escapeHtml(site.content.subheadline)}</p>
           <div class="brand-assurance">
             <span>YW care lens</span>
-            <strong>Nutrition, habits, lifestyle, support</strong>
+            <strong>Nutrition, habits, lifestyle, education</strong>
           </div>
           <div class="actions">
             ${renderRegisterAction(site, "button primary", site.registerButtonText || site.content.ctaText || "Register Now")}
-            ${site.whatsappLink ? `<a class="button secondary" data-track="coach_whatsapp_click" href="${escapeAttribute(site.whatsappLink)}" rel="noreferrer" target="_blank">Contact Coach</a>` : `<a class="button secondary" href="#coach-contact-support">Contact Coach</a>`}
           </div>
         </div>
         ${site.heroMediaType !== "none" ? renderHeroMedia(site) : ""}
@@ -1126,7 +1130,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         <div><dt>Coach</dt><dd>${escapeHtml(site.coachName)}</dd></div>
         <div><dt>Niche</dt><dd>${escapeHtml(site.niche)}</dd></div>
         <div><dt>Location</dt><dd>${escapeHtml(site.location || "Yours Wellness")}</dd></div>
-        <div><dt>Referral action</dt><dd>${site.googleFormUrl ? "Google Form registration" : "Contact support fallback"}</dd></div>
+        <div><dt>Referral action</dt><dd>${site.googleFormUrl ? "Google Form registration" : "Registration link pending"}</dd></div>
       </dl>
 
       <section class="section intro-section">
@@ -1195,8 +1199,6 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         </div>
         ${renderRegisterAction(site, "button primary", site.registerButtonText || "Register Now")}
       </section>
-
-      ${renderSupportHtml(site, support)}
 
       <section class="section faq-section">
         <div class="section-head">
@@ -1332,7 +1334,7 @@ function renderRegisterAction(
   const text = label || site.registerButtonText || site.content.ctaText || "Register Now";
 
   if (!site.googleFormUrl) {
-    return `<a class="${escapeAttribute(className)}" href="#coach-contact-support">Contact Support</a>`;
+    return `<span class="${escapeAttribute(`${className} disabled`)}" role="link" aria-disabled="true">Registration link pending</span>`;
   }
 
   return `<a class="${escapeAttribute(className)}" data-track="coach_register_click" href="${escapeAttribute(site.googleFormUrl)}" rel="noreferrer" target="_blank">${escapeHtml(text)}</a>`;

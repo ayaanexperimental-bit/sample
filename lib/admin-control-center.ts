@@ -203,7 +203,7 @@ export const adminControlCenterData: AdminControlCenterData = {
       pagePath: "/coach/sample-coach-a",
       referenceId: "ERR-20260601-SMPL",
       referrer: "direct",
-      safeMessage: "Google Form link missing. Contact Support fallback shown.",
+      safeMessage: "Google Form link missing. Register buttons disabled until configured.",
       screenSize: "390x844",
       sessionId: "demo-session",
       severity: "high",

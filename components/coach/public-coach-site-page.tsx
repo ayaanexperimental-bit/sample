@@ -84,7 +84,6 @@ export function PublicCoachSitePage({
         <div className={styles.navLinks}>
           <Link href="#journey">Journey</Link>
           <Link href="#benefits">Benefits</Link>
-          <Link href="#coach-contact-support">Support</Link>
         </div>
         <RegisterAction className={styles.navCta} site={site}>
           {site.registerButtonText || site.content.ctaText || "Register"}
@@ -102,27 +101,12 @@ export function PublicCoachSitePage({
           <p className={styles.lead}>{site.content.subheadline}</p>
           <div className={styles.brandAssurance}>
             <span>YW care lens</span>
-            <strong>Nutrition, habits, lifestyle, support</strong>
+            <strong>Nutrition, habits, lifestyle, education</strong>
           </div>
           <div className={styles.heroActions}>
             <RegisterAction site={site}>
               {site.registerButtonText || site.content.ctaText || "Register Now"}
             </RegisterAction>
-            {site.whatsappLink ? (
-              <a
-                className={styles.secondaryAction}
-                href={site.whatsappLink}
-                onClick={() => void recordCoachEvent("coach_whatsapp_click", site.slug)}
-                rel="noreferrer"
-                target="_blank"
-              >
-                Contact Coach
-              </a>
-            ) : (
-              <Link className={styles.secondaryAction} href="#coach-contact-support">
-                Contact Coach
-              </Link>
-            )}
           </div>
         </div>
 
@@ -160,7 +144,7 @@ export function PublicCoachSitePage({
         </div>
         <div>
           <dt>Referral action</dt>
-          <dd>{hasRegisterLink ? "Google Form registration" : "Contact support fallback"}</dd>
+          <dd>{hasRegisterLink ? "Google Form registration" : "Registration link pending"}</dd>
         </div>
       </dl>
 
@@ -209,7 +193,7 @@ export function PublicCoachSitePage({
             <small>01</small>
             <span>Profile</span>
             <h3>Meet the coach</h3>
-            <p>Guests first understand the coach story, niche, mission, and support style.</p>
+            <p>Guests first understand the coach story, niche, mission, and guidance style.</p>
           </TemplateCard>
           <TemplateCard spotlightColor="rgba(183, 93, 120, 0.16)">
             <small>02</small>
@@ -266,8 +250,6 @@ export function PublicCoachSitePage({
         </div>
         <RegisterAction site={site}>{site.registerButtonText || "Register Now"}</RegisterAction>
       </section>
-
-      <CoachContactSupport referenceId={referenceId} site={site} />
 
       <section className={`${styles.section} ${styles.faqSection}`}>
         <div className={styles.sectionHead}>
@@ -452,9 +434,14 @@ function RegisterAction({
 }) {
   if (!site.googleFormUrl) {
     return (
-      <a className={className || styles.primaryAction} href="#coach-contact-support">
-        Contact Support
-      </a>
+      <span
+        aria-disabled="true"
+        className={className || styles.primaryAction}
+        data-disabled="true"
+        role="link"
+      >
+        Registration link pending
+      </span>
     );
   }
 
