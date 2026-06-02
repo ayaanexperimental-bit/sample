@@ -33,11 +33,26 @@ export async function onRequest({ request, env }: PagesContext) {
 
   return adminJson({
     admin: admin.admin,
-    coachSites:
-      persistedCoachSites && persistedCoachSites.length > 0 ? persistedCoachSites : demoCoachSites,
+    coachSites: mergeCoachSitesWithStaticFallback(persistedCoachSites),
     controlCenter: adminControlCenterData,
     dashboard: adminDashboardData,
     realCoachSiteStorage: Boolean(persistedCoachSites),
     ok: true
   });
+}
+
+function mergeCoachSitesWithStaticFallback(persistedCoachSites: typeof demoCoachSites | null) {
+  const merged = new Map<string, (typeof demoCoachSites)[number]>();
+
+  for (const site of persistedCoachSites || []) {
+    merged.set(site.slug, site);
+  }
+
+  for (const site of demoCoachSites) {
+    if (!merged.has(site.slug)) {
+      merged.set(site.slug, site);
+    }
+  }
+
+  return Array.from(merged.values());
 }

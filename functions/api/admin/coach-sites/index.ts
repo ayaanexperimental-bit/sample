@@ -40,16 +40,7 @@ export async function onRequest({ request, env }: PagesContext) {
     const persistedSites = await listCoachSitesFromDb(env);
 
     return adminJson({
-      coachSites:
-        persistedSites && persistedSites.length > 0
-          ? persistedSites
-          : demoCoachSites.map((site) => ({
-              ...site,
-              analytics: {
-                ...site.analytics,
-                lastUpdated: "Demo fallback until first admin save"
-              }
-            })),
+      coachSites: mergeCoachSitesWithStaticFallback(persistedSites),
       configured: Boolean(env.ADMIN_DB),
       fallbackUsed: !persistedSites || persistedSites.length === 0,
       ok: true
@@ -136,4 +127,28 @@ function parseCoachStatus(value: unknown): CoachSiteStatus | null {
     value === "removed"
     ? value
     : null;
+}
+
+function mergeCoachSitesWithStaticFallback(persistedSites: CoachSiteRecord[] | null) {
+  const merged = new Map<string, CoachSiteRecord>();
+
+  for (const site of persistedSites || []) {
+    merged.set(site.slug, site);
+  }
+
+  for (const site of demoCoachSites) {
+    if (!merged.has(site.slug)) {
+      merged.set(site.slug, {
+        ...site,
+        analytics: {
+          ...site.analytics,
+          lastUpdated: persistedSites
+            ? "Static fallback; save this site to move it into D1"
+            : "Demo fallback until first admin save"
+        }
+      });
+    }
+  }
+
+  return Array.from(merged.values());
 }
