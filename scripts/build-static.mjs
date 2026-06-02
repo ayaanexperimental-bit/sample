@@ -46,6 +46,7 @@ try {
   rmSync("out", { recursive: true, force: true });
   cpSync(join(exportWorkspace, "out"), "out", { recursive: true });
   removeNestedNextTextPayloads("out");
+  restoreCoachTemplatePreviewTreePayload("out");
 } finally {
   rmSync(exportWorkspace, { recursive: true, force: true });
 }
@@ -73,6 +74,19 @@ function removeNestedNextTextPayloads(outputDir) {
       rmSync(filePath, { force: true });
     }
   }
+}
+
+function restoreCoachTemplatePreviewTreePayload(outputDir) {
+  const source = join(outputDir, "coach-template-preview.txt");
+  const targetDir = join(outputDir, "coach-template-preview");
+  const target = join(targetDir, "__next._tree.txt");
+
+  if (!existsSync(source)) {
+    return;
+  }
+
+  mkdirSync(targetDir, { recursive: true });
+  cpSync(source, target);
 }
 
 function listFiles(dir) {

@@ -46,6 +46,7 @@ const PUBLIC_PAGE_PATHS = new Set([
   ...PUBLIC_ADMIN_PAGE_PATHS,
   "/blocked",
   "/cancellation",
+  "/coach-template-preview",
   "/disclaimer",
   "/privacy",
   "/refund",

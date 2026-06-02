@@ -14,6 +14,11 @@ import {
   normalizeCoachSlug
 } from "../../lib/admin-coach-sites";
 import {
+  coachTemplateThemes,
+  type CoachTemplateThemeId,
+  getCoachTemplateTheme
+} from "../../lib/coach-template-themes";
+import {
   isSupportedVideoSource,
   isUploadedVideoSource,
   normalizeVideoEmbedUrl
@@ -587,6 +592,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         onGenerateAi={() => void handleGenerateWithAi()}
         onOpenDialog={setDialog}
         onPreparePreview={preparePreview}
+        onPreviewSiteChange={setPreviewSite}
         onPublish={() => upsertSite("published")}
         onRemoveCancel={() => {
           setRemoveConfirm("");
@@ -621,6 +627,7 @@ function CoachDialogRenderer({
   onGenerateAi,
   onOpenDialog,
   onPreparePreview,
+  onPreviewSiteChange,
   onPublish,
   onRemoveCancel,
   onSaveDraft,
@@ -647,6 +654,7 @@ function CoachDialogRenderer({
   onGenerateAi: () => void;
   onOpenDialog: (dialog: CoachDialog) => void;
   onPreparePreview: () => boolean;
+  onPreviewSiteChange: (site: CoachSiteRecord) => void;
   onPublish: () => Promise<CoachSiteRecord>;
   onRemoveCancel: () => void;
   onSaveDraft: () => Promise<CoachSiteRecord>;
@@ -721,6 +729,10 @@ function CoachDialogRenderer({
                   The public link slug is generated from the coach name and stays stable after
                   future edits.
                 </p>
+                <ThemeChoiceField
+                  onChange={(value) => onUpdateField("selectedThemeId", value)}
+                  selectedThemeId={form.selectedThemeId}
+                />
               </>
             ) : null}
 
@@ -839,7 +851,16 @@ function CoachDialogRenderer({
 
             {wizardStep === 5 ? (
               previewSite ? (
-                <CoachSitePreview site={previewSite} />
+                <CoachSitePreview
+                  onThemeChange={(selectedThemeId) => {
+                    onUpdateField("selectedThemeId", selectedThemeId);
+                    onPreviewSiteChange({
+                      ...previewSite,
+                      selectedThemeId
+                    });
+                  }}
+                  site={previewSite}
+                />
               ) : (
                 <div className={styles.emptyState}>
                   <h3>Preview not prepared yet</h3>
@@ -1453,16 +1474,74 @@ function PublishPanel({
   );
 }
 
-function CoachSitePreview({ site }: { site: CoachSiteRecord }) {
+function ThemeChoiceField({
+  onChange,
+  selectedThemeId
+}: {
+  onChange: (value: CoachTemplateThemeId) => void;
+  selectedThemeId: CoachTemplateThemeId;
+}) {
+  return (
+    <div className={styles.themeChoicePanel}>
+      <div>
+        <p className={styles.kicker}>Choose Template Theme</p>
+        <h3>{getCoachTemplateTheme(selectedThemeId).name}</h3>
+        <p>Same coach content, different premium YW Nutritech visual skin.</p>
+      </div>
+      <div className={styles.themeChoiceGrid}>
+        {coachTemplateThemes.map((theme) => (
+          <button
+            data-active={theme.id === selectedThemeId ? "true" : "false"}
+            key={theme.id}
+            onClick={() => onChange(theme.id)}
+            type="button"
+          >
+            <span>{theme.previewLabel}</span>
+            <strong>{theme.mood}</strong>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CoachSitePreview({
+  onThemeChange,
+  site
+}: {
+  onThemeChange?: (value: CoachTemplateThemeId) => void;
+  site: CoachSiteRecord;
+}) {
   const canRegister = Boolean(site.googleFormUrl);
   const previewImageUrl = site.heroMediaType === "image" ? site.photoUrl || site.logoUrl : "";
   const previewVideoUrl =
     site.heroMediaType === "video" ? normalizeVideoEmbedUrl(site.videoUrl) : "";
   const previewUploadedVideoUrl =
     site.heroMediaType === "video" && isUploadedVideoSource(site.videoUrl) ? site.videoUrl : "";
+  const selectedTheme = getCoachTemplateTheme(site.selectedThemeId);
 
   return (
-    <article className={styles.coachPreview}>
+    <article className={styles.coachPreview} data-theme={selectedTheme.id}>
+      <div className={styles.previewThemeBar}>
+        <div>
+          <span>Template Theme</span>
+          <strong>{selectedTheme.previewLabel}</strong>
+        </div>
+        {onThemeChange ? (
+          <div>
+            {coachTemplateThemes.map((theme) => (
+              <button
+                data-active={theme.id === selectedTheme.id ? "true" : "false"}
+                key={theme.id}
+                onClick={() => onThemeChange(theme.id)}
+                type="button"
+              >
+                {theme.previewLabel}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
       <div className={styles.previewHero} data-media={site.heroMediaType}>
         <div>
           <div className={styles.previewTemplateMark}>

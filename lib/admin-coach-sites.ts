@@ -1,3 +1,9 @@
+import {
+  DEFAULT_COACH_TEMPLATE_THEME_ID,
+  type CoachTemplateThemeId,
+  normalizeCoachTemplateThemeId
+} from "./coach-template-themes";
+
 export type CoachSiteStatus = "archived" | "draft" | "paused" | "published" | "removed";
 export type CoachHeroMediaType = "image" | "none" | "video";
 
@@ -52,6 +58,7 @@ export type CoachSiteRecord = {
   photoUrl: string;
   publicUrl: string;
   registerButtonText: string;
+  selectedThemeId: CoachTemplateThemeId;
   slug: string;
   status: CoachSiteStatus;
   supportText: string;
@@ -80,6 +87,7 @@ export type CoachSiteFormState = {
   niche: string;
   photoUrl: string;
   registerButtonText: string;
+  selectedThemeId: CoachTemplateThemeId;
   slug: string;
   socialCopy: string;
   subheadline: string;
@@ -108,6 +116,7 @@ export const EMPTY_COACH_SITE_FORM: CoachSiteFormState = {
   niche: "",
   photoUrl: "",
   registerButtonText: "Register Now",
+  selectedThemeId: DEFAULT_COACH_TEMPLATE_THEME_ID,
   slug: "",
   socialCopy: "",
   subheadline: "",
@@ -145,6 +154,7 @@ export const demoCoachSites: CoachSiteRecord[] = [
     status: "published",
     supportText: "",
     registerButtonText: "Register Now",
+    selectedThemeId: DEFAULT_COACH_TEMPLATE_THEME_ID,
     content: {
       heroHeadline: "Meet Gyana Ranjan for practical PCOS lifestyle guidance.",
       subheadline:
@@ -214,6 +224,7 @@ export const demoCoachSites: CoachSiteRecord[] = [
     status: "paused",
     supportText: "",
     registerButtonText: "Register Now",
+    selectedThemeId: DEFAULT_COACH_TEMPLATE_THEME_ID,
     content: {
       heroHeadline: "A practical first step with Sample Coach A.",
       subheadline: "Demo coach referral site content for review.",
@@ -288,6 +299,7 @@ export function toPublicCoachSiteRecord(site: CoachSiteRecord): PublicCoachSiteR
     photoUrl: site.photoUrl,
     publicUrl: site.publicUrl,
     registerButtonText: site.registerButtonText,
+    selectedThemeId: normalizeCoachTemplateThemeId(site.selectedThemeId),
     slug: site.slug,
     status: site.status,
     supportText: site.supportText,
@@ -364,6 +376,7 @@ export function createCoachSiteFromForm(input: {
     status: input.status,
     supportText: input.form.supportText.trim(),
     registerButtonText: input.form.registerButtonText.trim() || "Register Now",
+    selectedThemeId: normalizeCoachTemplateThemeId(input.form.selectedThemeId),
     content,
     analytics: {
       averageVisits: 0,
@@ -405,6 +418,7 @@ export function createFormFromCoachSite(site: CoachSiteRecord): CoachSiteFormSta
     niche: site.niche,
     photoUrl: site.photoUrl,
     registerButtonText: site.registerButtonText,
+    selectedThemeId: normalizeCoachTemplateThemeId(site.selectedThemeId),
     slug: site.slug,
     socialCopy: site.content.socialCopy,
     subheadline: site.content.subheadline,

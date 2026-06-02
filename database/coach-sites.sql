@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS coach_sites (
   hero_media_type TEXT NOT NULL DEFAULT 'image' CHECK (hero_media_type IN ('image', 'none', 'video')),
   public_url TEXT NOT NULL,
   register_button_text TEXT NOT NULL DEFAULT 'Register Now',
+  selected_theme_id TEXT NOT NULL DEFAULT 'default-current',
   support_text TEXT NOT NULL DEFAULT '',
   content_json TEXT NOT NULL,
   analytics_json TEXT NOT NULL,

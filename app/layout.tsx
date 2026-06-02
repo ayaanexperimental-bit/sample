@@ -4,7 +4,8 @@ import {
   Cormorant_Garamond,
   Libre_Baskerville,
   Manrope,
-  Montserrat
+  Montserrat,
+  Urbanist
 } from "next/font/google";
 import "./globals.css";
 
@@ -43,6 +44,13 @@ const conversionFont = Montserrat({
   display: "swap"
 });
 
+const techDisplayFont = Urbanist({
+  subsets: ["latin"],
+  variable: "--font-tech-display",
+  weight: ["500", "600", "700", "800", "900"],
+  display: "swap"
+});
+
 export const metadata: Metadata = {
   title: "YW Coach",
   description: "Coach-led wellness funnels by Yours Wellness.",
@@ -72,7 +80,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${displayFont.variable} ${accentFont.variable} ${editorialFont.variable} ${bodyFont.variable} ${conversionFont.variable}`}
+        className={`${displayFont.variable} ${accentFont.variable} ${editorialFont.variable} ${bodyFont.variable} ${conversionFont.variable} ${techDisplayFont.variable}`}
       >
         {children}
       </body>

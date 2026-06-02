@@ -950,6 +950,69 @@
   opacity: 0.64;
 }
 
+.themeChoicePanel {
+  display: grid;
+  gap: 0.9rem;
+  border: 1px solid rgb(168 85 137 / 0.16);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at 8% 10%, rgb(217 70 131 / 0.08), transparent 12rem),
+    linear-gradient(145deg, rgb(255 255 255 / 0.82), rgb(255 250 253 / 0.58));
+  margin-top: 1rem;
+  padding: 1rem;
+}
+
+.themeChoicePanel h3 {
+  margin: 0.25rem 0 0;
+  color: #251822;
+  font-size: 1.05rem;
+}
+
+.themeChoicePanel p {
+  margin: 0.35rem 0 0;
+  color: #75606c;
+  font-size: 0.9rem;
+  font-weight: 720;
+}
+
+.themeChoiceGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.themeChoiceGrid button,
+.previewThemeBar button {
+  display: grid;
+  gap: 0.22rem;
+  border: 1px solid rgb(168 85 137 / 0.14);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 0.72);
+  color: #332435;
+  cursor: pointer;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.themeChoiceGrid button[data-active="true"],
+.previewThemeBar button[data-active="true"] {
+  border-color: rgb(217 70 131 / 0.42);
+  background: linear-gradient(135deg, rgb(217 70 131 / 0.14), rgb(196 181 253 / 0.18));
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.8), 0 1rem 2rem rgb(159 23 77 / 0.1);
+}
+
+.themeChoiceGrid span {
+  color: #a21caf;
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.themeChoiceGrid strong {
+  color: #554354;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .coachPreview {
   display: grid;
   gap: 1rem;
@@ -959,6 +1022,73 @@
     linear-gradient(120deg, rgb(247 250 249 / 0.96), rgb(255 255 255 / 0.98) 42%, rgb(246 249 255 / 0.94)),
     repeating-linear-gradient(90deg, rgb(19 57 53 / 0.035) 0 1px, transparent 1px 4.5rem);
   padding: 1rem;
+}
+
+.coachPreview[data-theme="premium-feminine-wellness"] {
+  border-color: rgb(217 145 171 / 0.24);
+  background: linear-gradient(135deg, #fff8f3, #fff0f6 52%, #f6ecff);
+}
+
+.coachPreview[data-theme="apple-liquid-glass"] {
+  border-color: rgb(255 255 255 / 0.52);
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.62), rgb(238 247 255 / 0.78));
+  backdrop-filter: blur(18px);
+}
+
+.coachPreview[data-theme="dark-luxury-wellness"] {
+  border-color: rgb(216 181 111 / 0.22);
+  background: linear-gradient(135deg, #080b17, #111730 58%, #321b38);
+}
+
+.coachPreview[data-theme="dark-luxury-wellness"] .previewHero h3,
+.coachPreview[data-theme="dark-luxury-wellness"] .previewHero p,
+.coachPreview[data-theme="dark-luxury-wellness"] .previewGrid h4,
+.coachPreview[data-theme="dark-luxury-wellness"] .previewGrid p,
+.coachPreview[data-theme="dark-luxury-wellness"] .previewGrid li,
+.coachPreview[data-theme="dark-luxury-wellness"] .previewFacts dd {
+  color: #fffaf1;
+}
+
+.previewThemeBar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  align-items: center;
+  border: 1px solid rgb(168 85 137 / 0.12);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 0.62);
+  padding: 0.75rem;
+}
+
+.previewThemeBar span {
+  color: #087a73;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.previewThemeBar strong {
+  display: block;
+  margin-top: 0.2rem;
+  color: #251822;
+}
+
+.previewThemeBar > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.previewThemeBar button {
+  min-height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-align: center;
 }
 
 .previewHero {
@@ -1801,6 +1931,10 @@
   .modulePlaceholders {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .themeChoiceGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 860px) {
@@ -1852,8 +1986,13 @@
   .previewFacts,
   .previewHero,
   .previewGrid,
+  .previewThemeBar,
   .previewRegisterBand {
     grid-template-columns: 1fr;
+  }
+
+  .previewThemeBar > div:last-child {
+    justify-content: flex-start;
   }
 }
 
@@ -1933,6 +2072,7 @@
 
   .formGrid,
   .removeDetails,
+  .themeChoiceGrid,
   .statusGrid {
     grid-template-columns: 1fr;
   }

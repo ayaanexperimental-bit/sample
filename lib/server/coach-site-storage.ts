@@ -11,6 +11,7 @@ import {
   normalizeCoachSlug,
   toPublicCoachSiteRecord
 } from "../admin-coach-sites";
+import { normalizeCoachTemplateThemeId } from "../coach-template-themes";
 
 export type CoachSiteStorageEnv = {
   ADMIN_DB?: D1Database;
@@ -36,6 +37,7 @@ type CoachSiteRow = {
   photo_url: string;
   public_url: string;
   register_button_text: string;
+  selected_theme_id: string | null;
   slug: string;
   status: CoachSiteStatus;
   support_text: string;
@@ -69,6 +71,7 @@ const COACH_SITE_TABLES_SQL = [
     hero_media_type TEXT NOT NULL DEFAULT 'image' CHECK (hero_media_type IN ('image', 'none', 'video')),
     public_url TEXT NOT NULL,
     register_button_text TEXT NOT NULL DEFAULT 'Register Now',
+    selected_theme_id TEXT NOT NULL DEFAULT 'default-current',
     support_text TEXT NOT NULL DEFAULT '',
     content_json TEXT NOT NULL,
     analytics_json TEXT NOT NULL,
@@ -104,6 +107,10 @@ const COACH_SITE_TABLES_SQL = [
     ON coach_site_media (deleted_at)`
 ];
 
+const COACH_SITE_MIGRATIONS_SQL = [
+  `ALTER TABLE coach_sites ADD COLUMN selected_theme_id TEXT NOT NULL DEFAULT 'default-current'`
+];
+
 const DEFAULT_ANALYTICS: CoachSiteAnalyticsSummary = {
   averageVisits: 0,
   conversionRate: "0%",
@@ -129,6 +136,14 @@ export async function ensureCoachSiteTables(env: CoachSiteStorageEnv) {
 
   for (const statement of COACH_SITE_TABLES_SQL) {
     await env.ADMIN_DB.prepare(statement).run();
+  }
+
+  for (const statement of COACH_SITE_MIGRATIONS_SQL) {
+    try {
+      await env.ADMIN_DB.prepare(statement).run();
+    } catch {
+      // Existing databases already have this column.
+    }
   }
 
   return true;
@@ -202,7 +217,8 @@ export async function upsertCoachSiteToDb({
     `INSERT INTO coach_sites (
       id, coach_id, coach_name, slug, status, niche, location, bio, vision,
       coach_email, coach_phone, whatsapp_link, photo_url, logo_url, video_url,
-      google_form_url, hero_media_type, public_url, register_button_text, support_text,
+      google_form_url, hero_media_type, public_url, register_button_text, selected_theme_id,
+      support_text,
       content_json, analytics_json, created_at, updated_at, published_at, archived_at,
       created_by, updated_by
     ) VALUES (
@@ -210,7 +226,7 @@ export async function upsertCoachSiteToDb({
       ?10, ?11, ?12, ?13, ?14, ?15,
       ?16, ?17, ?18, ?19, ?20,
       ?21, ?22, ?23, ?24, ?25, ?26,
-      ?27, ?28
+      ?27, ?28, ?29
     )
     ON CONFLICT(id) DO UPDATE SET
       coach_id = excluded.coach_id,
@@ -231,6 +247,7 @@ export async function upsertCoachSiteToDb({
       hero_media_type = excluded.hero_media_type,
       public_url = excluded.public_url,
       register_button_text = excluded.register_button_text,
+      selected_theme_id = excluded.selected_theme_id,
       support_text = excluded.support_text,
       content_json = excluded.content_json,
       analytics_json = excluded.analytics_json,
@@ -259,6 +276,7 @@ export async function upsertCoachSiteToDb({
       site.heroMediaType,
       site.publicUrl,
       site.registerButtonText,
+      site.selectedThemeId,
       site.supportText,
       JSON.stringify(site.content),
       JSON.stringify(site.analytics),
@@ -382,6 +400,7 @@ function normalizeCoachSitePayload(payload: CoachSitePayload): CoachSiteRecord {
       niche,
       photoUrl: sanitizeUrl(payload.photoUrl),
       registerButtonText: sanitizeText(payload.registerButtonText, 80) || "Register Now",
+      selectedThemeId: normalizeCoachTemplateThemeId(payload.selectedThemeId),
       slug,
       socialCopy: "",
       subheadline: "",
@@ -401,7 +420,8 @@ function normalizeCoachSitePayload(payload: CoachSitePayload): CoachSiteRecord {
     analytics: normalizeAnalytics(payload.analytics),
     coachId: sanitizeText(payload.coachId, 120) || fallback.coachId,
     content: normalizeContent(payload.content, fallback.content),
-    publicUrl: getCoachPublicUrl(slug)
+    publicUrl: getCoachPublicUrl(slug),
+    selectedThemeId: normalizeCoachTemplateThemeId(payload.selectedThemeId)
   };
 }
 
@@ -423,6 +443,7 @@ function rowToCoachSiteRecord(row: CoachSiteRow): CoachSiteRecord {
     photoUrl: row.photo_url,
     publicUrl: row.public_url,
     registerButtonText: row.register_button_text,
+    selectedThemeId: normalizeCoachTemplateThemeId(row.selected_theme_id),
     slug: row.slug,
     status: normalizeStatus(row.status),
     supportText: row.support_text,
