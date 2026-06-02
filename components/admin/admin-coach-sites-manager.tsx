@@ -74,6 +74,7 @@ type GeneratedCoachCopy = {
 };
 
 type CopyRegenerationScope = "all" | "benefits" | "faq" | "hero";
+type CoachSiteDangerStatus = "archived" | "removed";
 
 const statusOptions: Array<"all" | CoachSiteStatus> = [
   "all",
@@ -208,7 +209,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   const [aiMessage, setAiMessage] = useState("");
   const [aiSubmitting, setAiSubmitting] = useState(false);
   const [removeConfirm, setRemoveConfirm] = useState("");
+  const [removeMessage, setRemoveMessage] = useState("");
+  const [removeOtp, setRemoveOtp] = useState("");
+  const [removeOtpSending, setRemoveOtpSending] = useState(false);
   const [removeReason, setRemoveReason] = useState(removalReasons[0]);
+  const [removeSubmitting, setRemoveSubmitting] = useState<CoachSiteDangerStatus | null>(null);
   const [storageMessage, setStorageMessage] = useState("");
   const [storageReady, setStorageReady] = useState(false);
 
@@ -600,7 +605,111 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     void persistSiteStatus(site, status);
   }
 
-  async function persistSiteStatus(site: CoachSiteRecord, status: "paused" | "published") {
+  async function sendCoachSiteDangerOtp(site: CoachSiteRecord) {
+    setRemoveMessage("");
+    setRemoveOtpSending(true);
+
+    try {
+      const response = await fetch("/api/admin/coach-sites", {
+        body: JSON.stringify({
+          action: "send_otp",
+          siteId: site.id,
+          status: "removed"
+        }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-yw-admin-csrf": csrfToken
+        },
+        method: "PATCH"
+      });
+      const payload = (await response.json().catch(() => ({}))) as CoachSitesApiPayload & {
+        demoMode?: boolean;
+        message?: string;
+      };
+
+      if (!response.ok || !payload.ok) {
+        setRemoveMessage(payload.error || "Could not send OTP for this coach-site action.");
+        return;
+      }
+
+      setRemoveMessage(
+        payload.demoMode
+          ? "Local demo OTP is available for this action."
+          : payload.message || "OTP sent to the current admin email."
+      );
+    } catch {
+      setRemoveMessage("Could not reach admin API to send OTP.");
+    } finally {
+      setRemoveOtpSending(false);
+    }
+  }
+
+  async function confirmDangerousCoachSiteStatus(
+    site: CoachSiteRecord,
+    status: CoachSiteDangerStatus
+  ) {
+    const confirmationMatches = removeConfirm === site.slug || removeConfirm === site.coachName;
+    if (!confirmationMatches) {
+      setRemoveMessage("Type the exact coach slug or coach name before continuing.");
+      return;
+    }
+
+    if (!/^\d{6}$/.test(removeOtp.trim())) {
+      setRemoveMessage("Enter the 6-digit OTP before continuing.");
+      return;
+    }
+
+    setRemoveMessage("");
+    setRemoveSubmitting(status);
+
+    try {
+      const response = await fetch("/api/admin/coach-sites", {
+        body: JSON.stringify({
+          otp: removeOtp.trim(),
+          removalReason: removeReason,
+          siteId: site.id,
+          status
+        }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-yw-admin-csrf": csrfToken
+        },
+        method: "PATCH"
+      });
+      const payload = (await response.json().catch(() => ({}))) as CoachSitesApiPayload;
+
+      if (!response.ok || !payload.ok || !payload.coachSite) {
+        setRemoveMessage(payload.error || "Could not update this coach site.");
+        setStorageReady(Boolean(payload.configured));
+        return;
+      }
+
+      setStorageReady(true);
+      setStorageMessage(
+        status === "archived"
+          ? `${payload.coachSite.coachName} archived. The record stays visible in Admin.`
+          : `${payload.coachSite.coachName} removed. The record stays visible in Admin with removed status.`
+      );
+      setSites((current) =>
+        current.map((item) => (item.id === site.id ? payload.coachSite! : item))
+      );
+      setPreviewSite((current) => (current?.id === site.id ? payload.coachSite! : current));
+      setRemoveConfirm("");
+      setRemoveOtp("");
+      setRemoveMessage("");
+      setDialog(null);
+    } catch {
+      setRemoveMessage("Could not reach admin API for this coach-site action.");
+    } finally {
+      setRemoveSubmitting(null);
+    }
+  }
+
+  async function persistSiteStatus(site: CoachSiteRecord, status: CoachSiteStatus) {
     try {
       const response = await fetch("/api/admin/coach-sites", {
         body: JSON.stringify({ siteId: site.id, status }),
@@ -767,10 +876,15 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         onPreviewSiteChange={setPreviewSite}
         onPublish={() => upsertSite("published")}
         onRegenerateCopy={handleRegenerateCopy}
+        onRemoveAction={confirmDangerousCoachSiteStatus}
         onRemoveCancel={() => {
           setRemoveConfirm("");
+          setRemoveMessage("");
+          setRemoveOtp("");
+          setRemoveSubmitting(null);
           setDialog(null);
         }}
+        onSendRemoveOtp={sendCoachSiteDangerOtp}
         onSaveDraft={() => upsertSite("draft")}
         onStatusConfirm={updateSiteStatus}
         onUpdateCoachName={handleCoachNameChange}
@@ -778,8 +892,13 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         previewSite={previewSite}
         publishedSite={publishedSite}
         removeConfirm={removeConfirm}
+        removeMessage={removeMessage}
+        removeOtp={removeOtp}
+        removeOtpSending={removeOtpSending}
         removeReason={removeReason}
+        removeSubmitting={removeSubmitting}
         setRemoveConfirm={setRemoveConfirm}
+        setRemoveOtp={setRemoveOtp}
         setRemoveReason={setRemoveReason}
         setWizardStep={setWizardStep}
         wizardStep={wizardStep}
@@ -802,7 +921,9 @@ function CoachDialogRenderer({
   onPreviewSiteChange,
   onPublish,
   onRegenerateCopy,
+  onRemoveAction,
   onRemoveCancel,
+  onSendRemoveOtp,
   onSaveDraft,
   onStatusConfirm,
   onUpdateCoachName,
@@ -810,8 +931,13 @@ function CoachDialogRenderer({
   previewSite,
   publishedSite,
   removeConfirm,
+  removeMessage,
+  removeOtp,
+  removeOtpSending,
   removeReason,
+  removeSubmitting,
   setRemoveConfirm,
+  setRemoveOtp,
   setRemoveReason,
   setWizardStep,
   wizardStep
@@ -829,7 +955,9 @@ function CoachDialogRenderer({
   onPreviewSiteChange: (site: CoachSiteRecord) => void;
   onPublish: () => Promise<CoachSiteRecord>;
   onRegenerateCopy: (scope: CopyRegenerationScope) => Promise<void>;
+  onRemoveAction: (site: CoachSiteRecord, status: CoachSiteDangerStatus) => Promise<void>;
   onRemoveCancel: () => void;
+  onSendRemoveOtp: (site: CoachSiteRecord) => Promise<void>;
   onSaveDraft: () => Promise<CoachSiteRecord>;
   onStatusConfirm: (site: CoachSiteRecord, status: "paused" | "published") => void;
   onUpdateCoachName: (value: string) => void;
@@ -840,8 +968,13 @@ function CoachDialogRenderer({
   previewSite: CoachSiteRecord | null;
   publishedSite: CoachSiteRecord | null;
   removeConfirm: string;
+  removeMessage: string;
+  removeOtp: string;
+  removeOtpSending: boolean;
   removeReason: string;
+  removeSubmitting: CoachSiteDangerStatus | null;
   setRemoveConfirm: (value: string) => void;
+  setRemoveOtp: (value: string) => void;
   setRemoveReason: (value: string) => void;
   setWizardStep: (step: number) => void;
   wizardStep: number;
@@ -1051,25 +1184,27 @@ function CoachDialogRenderer({
             >
               Copy Link
             </button>
-            <button
-              className={styles.secondaryAction}
-              onClick={() =>
-                onOpenDialog({
-                  nextStatus: dialog.site.status === "paused" ? "published" : "paused",
-                  site: dialog.site,
-                  type: "status"
-                })
-              }
-              type="button"
-            >
-              {dialog.site.status === "paused" ? "Resume" : "Pause"}
-            </button>
+            {dialog.site.status === "published" || dialog.site.status === "paused" ? (
+              <button
+                className={styles.secondaryAction}
+                onClick={() =>
+                  onOpenDialog({
+                    nextStatus: dialog.site.status === "paused" ? "published" : "paused",
+                    site: dialog.site,
+                    type: "status"
+                  })
+                }
+                type="button"
+              >
+                {dialog.site.status === "paused" ? "Resume" : "Pause"}
+              </button>
+            ) : null}
             <button
               className={styles.dangerAction}
               onClick={() => onOpenDialog({ site: dialog.site, type: "remove" })}
               type="button"
             >
-              Remove
+              Archive / Remove
             </button>
           </div>
         </div>
@@ -1169,6 +1304,14 @@ function CoachDialogRenderer({
     );
   }
 
+  const removeConfirmationMatches =
+    removeConfirm === dialog.site.slug || removeConfirm === dialog.site.coachName;
+  const removeOtpValid = /^\d{6}$/.test(removeOtp.trim());
+  const removeBusy = Boolean(removeSubmitting);
+  const removeMessageIsSuccess =
+    removeMessage.toLowerCase().includes("otp sent") ||
+    removeMessage.toLowerCase().includes("demo");
+
   return (
     <AdminActionDialog
       footer={
@@ -1177,22 +1320,40 @@ function CoachDialogRenderer({
             Cancel
           </button>
           <button
-            className={styles.dangerAction}
-            disabled={removeConfirm !== dialog.site.slug && removeConfirm !== dialog.site.coachName}
+            className={styles.secondaryAction}
+            disabled={removeOtpSending || removeBusy}
+            onClick={() => void onSendRemoveOtp(dialog.site)}
             type="button"
           >
-            Verify OTP & Archive
+            {removeOtpSending ? "Sending OTP..." : "Send OTP"}
+          </button>
+          <button
+            className={styles.secondaryAction}
+            disabled={!removeConfirmationMatches || !removeOtpValid || removeBusy}
+            onClick={() => void onRemoveAction(dialog.site, "archived")}
+            type="button"
+          >
+            {removeSubmitting === "archived" ? "Archiving..." : "Archive Site"}
+          </button>
+          <button
+            className={styles.dangerAction}
+            disabled={!removeConfirmationMatches || !removeOtpValid || removeBusy}
+            onClick={() => void onRemoveAction(dialog.site, "removed")}
+            type="button"
+          >
+            {removeSubmitting === "removed" ? "Removing..." : "Remove Site"}
           </button>
         </>
       }
       onClose={onRemoveCancel}
       open
-      title="Remove Coach Site"
+      title="Archive or Remove Coach Site"
       tone="danger"
     >
       <p className={styles.dialogCopy}>
-        This action may permanently remove this coach website. OTP verification is not configured,
-        so permanent removal is disabled.
+        Archive keeps this coach record visible in Admin but removes the public coach page from
+        normal access. Remove marks it removed, keeps the admin record for audit, and prevents static
+        fallback from reappearing for the same slug.
       </p>
       <dl className={styles.removeDetails}>
         <div>
@@ -1216,6 +1377,16 @@ function CoachDialogRenderer({
           <dd>{dialog.site.analytics.totalRegisterClicks.toLocaleString()}</dd>
         </div>
       </dl>
+      <div className={styles.removalChoiceGrid}>
+        <article>
+          <strong>Archive</strong>
+          <p>Use this when the coach may return later. The admin record stays manageable.</p>
+        </article>
+        <article data-tone="danger">
+          <strong>Remove</strong>
+          <p>Use this when the site should be treated as removed. OTP is required.</p>
+        </article>
+      </div>
       <div className={styles.formGrid}>
         <label className={styles.compactField}>
           <span>Type coach slug or coach name</span>
@@ -1231,10 +1402,23 @@ function CoachDialogRenderer({
             ))}
           </select>
         </label>
+        <label className={styles.compactField}>
+          <span>OTP</span>
+          <input
+            inputMode="numeric"
+            maxLength={6}
+            onChange={(event) => setRemoveOtp(event.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="6-digit code"
+            value={removeOtp}
+          />
+          <small>Send OTP first, then enter the code sent to the current admin email.</small>
+        </label>
       </div>
-      <p className={styles.linkWarning}>
-        OTP verification not configured. Permanent removal is disabled.
-      </p>
+      {removeMessage ? (
+        <p className={removeMessageIsSuccess ? styles.inlineStatus : styles.linkWarning}>
+          {removeMessage}
+        </p>
+      ) : null}
     </AdminActionDialog>
   );
 }

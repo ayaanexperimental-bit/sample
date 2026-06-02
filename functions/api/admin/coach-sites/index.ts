@@ -4,7 +4,14 @@ import {
   type CoachSiteRecord,
   type CoachSiteStatus
 } from "../../../../lib/admin-coach-sites";
-import { adminJson, readJsonBody, requireAdmin } from "../../../../lib/server/admin-auth";
+import {
+  adminJson,
+  isAdminDemoAuthEnabled,
+  isValidOtp,
+  readJsonBody,
+  requireAdmin
+} from "../../../../lib/server/admin-auth";
+import { startAdminEmailOtp, verifyAdminEmailOtp } from "../../../../lib/server/admin-email-otp";
 import {
   listCoachSitesFromDb,
   updateCoachSiteStatusInDb,
@@ -16,9 +23,16 @@ type Env = {
   ADMIN_AUTH_DEMO_ENABLED?: string;
   ADMIN_DB?: D1Database;
   ADMIN_DEV_OTP?: string;
+  ADMIN_EMAIL_OTP_ENABLED?: string;
+  ADMIN_EMAIL_OTP_FROM?: string;
+  ADMIN_EMAIL_OTP_FROM_NAME?: string;
+  ADMIN_EMAIL_OTP_SECRET?: string;
+  ADMIN_OTP_MAX_ATTEMPTS?: string;
+  ADMIN_OTP_TTL_SECONDS?: string;
   ADMIN_REQUIRE_DB_ADMIN_ROLES?: string;
   ADMIN_SESSION_SECRET?: string;
   COACH_MEDIA_BUCKET?: R2Bucket;
+  RESEND_API_KEY?: string;
 };
 
 type PagesContext = {
@@ -27,6 +41,9 @@ type PagesContext = {
 };
 
 type CoachSitesBody = {
+  action?: unknown;
+  otp?: unknown;
+  removalReason?: unknown;
   site?: unknown;
   siteId?: unknown;
   status?: unknown;
@@ -82,11 +99,74 @@ export async function onRequest({ request, env }: PagesContext) {
     if (!admin.ok) return admin.response;
 
     const body = await readJsonBody<CoachSitesBody>(request);
+    const action = typeof body?.action === "string" ? body.action.trim() : "";
     const siteId = typeof body?.siteId === "string" ? body.siteId.trim() : "";
     const status = parseCoachStatus(body?.status);
 
     if (!siteId || !status) {
       return adminJson({ ok: false, error: "Coach site id and status are required." }, 400);
+    }
+
+    if (isDangerousStatus(status)) {
+      if (!env.ADMIN_DB) {
+        return adminJson(
+          { configured: false, error: "Coach site database is not configured.", ok: false },
+          503
+        );
+      }
+
+      if (action === "send_otp") {
+        const result = await startAdminEmailOtp({
+          email: admin.admin.email,
+          env,
+          request
+        });
+
+        if (!result.ok && result.reason === "not_configured" && isLocalDemoOtpAvailable(request, env)) {
+          return adminJson({
+            demoMode: true,
+            message: "Local demo OTP is available for this coach-site action.",
+            ok: true
+          });
+        }
+
+        if (!result.ok) {
+          return adminJson(
+            {
+              ok: false,
+              error:
+                "Admin email OTP is not configured. Configure Resend/admin OTP before archive or remove."
+            },
+            result.reason === "rate_limited" ? 429 : 503
+          );
+        }
+
+        return adminJson({
+          message: "OTP sent to the current admin email.",
+          ok: true
+        });
+      }
+
+      const otp = typeof body?.otp === "string" ? body.otp.trim() : "";
+      if (!isValidOtp(otp)) {
+        return adminJson({ ok: false, error: "Enter a valid 6-digit OTP." }, 400);
+      }
+
+      const reason = typeof body?.removalReason === "string" ? body.removalReason.trim() : "";
+      if (reason.length < 3) {
+        return adminJson({ ok: false, error: "Removal reason is required." }, 400);
+      }
+
+      const otpOk = await verifyCoachSiteActionOtp({
+        email: admin.admin.email,
+        env,
+        otp,
+        request
+      });
+
+      if (!otpOk) {
+        return adminJson({ ok: false, error: "OTP is invalid, expired, or not configured." }, 401);
+      }
     }
 
     const updatedSite = await updateCoachSiteStatusInDb({
@@ -127,6 +207,56 @@ function parseCoachStatus(value: unknown): CoachSiteStatus | null {
     value === "removed"
     ? value
     : null;
+}
+
+function isDangerousStatus(status: CoachSiteStatus) {
+  return status === "archived" || status === "removed";
+}
+
+async function verifyCoachSiteActionOtp({
+  email,
+  env,
+  otp,
+  request
+}: {
+  email: string;
+  env: Env;
+  otp: string;
+  request: Request;
+}) {
+  const result = await verifyAdminEmailOtp({
+    email,
+    env,
+    otp,
+    request
+  });
+  if (result.ok) return true;
+
+  return isLocalDemoOtpAvailable(request, env) && otp === env.ADMIN_DEV_OTP?.trim();
+}
+
+function isLocalDemoOtpAvailable(request: Request, env: Env) {
+  return (
+    isAdminDemoAuthEnabled(env) &&
+    isLocalRequest(request) &&
+    isValidOtp(env.ADMIN_DEV_OTP?.trim() || "")
+  );
+}
+
+function isLocalRequest(request: Request) {
+  const url = new URL(request.url);
+  const host = (request.headers.get("host") || "").split(":")[0].toLowerCase();
+
+  return isLocalHostname(url.hostname.toLowerCase()) && isLocalHostname(host);
+}
+
+function isLocalHostname(hostname: string) {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname === "[::1]"
+  );
 }
 
 function mergeCoachSitesWithStaticFallback(persistedSites: CoachSiteRecord[] | null) {

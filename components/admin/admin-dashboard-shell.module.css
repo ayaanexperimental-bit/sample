@@ -1528,6 +1528,40 @@
   overflow-wrap: anywhere;
 }
 
+.removalChoiceGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.removalChoiceGrid article {
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid rgb(183 121 31 / 0.2);
+  border-radius: var(--radius-md);
+  background: rgb(183 121 31 / 0.08);
+  padding: 0.85rem;
+}
+
+.removalChoiceGrid article[data-tone="danger"] {
+  border-color: rgb(180 35 24 / 0.22);
+  background: rgb(180 35 24 / 0.08);
+}
+
+.removalChoiceGrid strong {
+  color: #251822;
+  font-size: 0.9rem;
+  font-weight: 950;
+}
+
+.removalChoiceGrid p {
+  margin: 0;
+  color: #6d5968;
+  font-size: 0.82rem;
+  font-weight: 760;
+  line-height: 1.45;
+}
+
 .statusGrid,
 .definitionGrid,
 .modelList {
@@ -2030,6 +2064,7 @@
   .manageMetrics,
   .modulePlaceholders,
   .paidLinkCard,
+  .removalChoiceGrid,
   .statusGrid,
   .wizardShell {
     grid-template-columns: 1fr;
@@ -2133,6 +2168,7 @@
 
   .formGrid,
   .removeDetails,
+  .removalChoiceGrid,
   .themeChoiceGrid,
   .statusGrid {
     grid-template-columns: 1fr;
