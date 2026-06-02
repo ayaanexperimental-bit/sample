@@ -620,6 +620,80 @@
   padding: 0 0.9rem;
 }
 
+.paidLinkList {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.paidLinkCard {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(10rem, 0.8fr) minmax(10rem, 0.8fr) minmax(
+      8rem,
+      0.55fr
+    ) auto;
+  gap: 0.75rem;
+  align-items: center;
+  border: 1px solid rgb(28 42 59 / 0.08);
+  border-radius: var(--radius-md);
+  background: #f9fafb;
+  padding: 0.85rem;
+}
+
+.paidLinkCard h3 {
+  margin: 0;
+  color: #1d2939;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.paidLinkCard p {
+  margin: 0.28rem 0 0;
+  color: #667085;
+  font-size: 0.84rem;
+  font-weight: 760;
+}
+
+.paidLinkMeta {
+  min-width: 0;
+  display: grid;
+  gap: 0.32rem;
+}
+
+.paidLinkMeta span {
+  color: #087a73;
+  font-size: 0.7rem;
+  font-weight: 950;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.paidLinkMeta strong {
+  width: fit-content;
+  border-radius: 999px;
+  background: rgb(8 122 115 / 0.08);
+  color: #075f5b;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.paidLinkMeta code,
+.definitionGrid code {
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 999px;
+  background: rgb(8 122 115 / 0.08);
+  color: #075f5b;
+  padding: 0.35rem 0.55rem;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .inlineNote,
 .inlineStatus,
 .linkWarning {
@@ -1599,6 +1673,7 @@
   .formGrid,
   .manageMetrics,
   .modulePlaceholders,
+  .paidLinkCard,
   .statusGrid,
   .wizardShell {
     grid-template-columns: 1fr;

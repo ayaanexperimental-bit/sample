@@ -10,7 +10,11 @@ import {
   AdminSidebar
 } from "./admin-dashboard-layout";
 import styles from "./admin-dashboard-shell.module.css";
-import { adminControlCenterData, createErrorReportBugPrompt } from "../../lib/admin-control-center";
+import {
+  adminControlCenterData,
+  type AdminPaidMasterclassLink,
+  createErrorReportBugPrompt
+} from "../../lib/admin-control-center";
 import { adminDashboardData } from "../../lib/admin-dashboard-data";
 
 type AdminDashboardShellProps = {
@@ -395,6 +399,28 @@ function CoachAnalyticsView({ control }: { control: typeof adminControlCenterDat
 }
 
 function MasterclassLinksView({ control }: { control: typeof adminControlCenterData }) {
+  const [managedLink, setManagedLink] = useState<AdminPaidMasterclassLink | null>(null);
+  const [copyMessage, setCopyMessage] = useState("");
+
+  async function copyMasterclassPath(label: string, path: string) {
+    const value =
+      typeof window === "undefined" || path.startsWith("http")
+        ? path
+        : new URL(path, window.location.origin).toString();
+
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopyMessage(`${label} copied.`);
+    } catch {
+      setCopyMessage(`${label}: ${value}`);
+    }
+  }
+
+  function openMasterclassPath(path: string) {
+    if (typeof window === "undefined") return;
+    window.open(path, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <AdminPageShell eyebrow="Paid Masterclass" title="Link Settings">
       <section className={styles.section}>
@@ -404,50 +430,38 @@ function MasterclassLinksView({ control }: { control: typeof adminControlCenterD
             <h2>Public links and private-link status</h2>
           </div>
         </div>
-        <div className={styles.tableWrap}>
-          <table className={styles.table} data-density="compact">
-            <thead>
-              <tr>
-                <th>Masterclass</th>
-                <th>Public entry</th>
-                <th>Paid page</th>
-                <th>Success page</th>
-                <th>Payment</th>
-                <th>Private WhatsApp</th>
-              </tr>
-            </thead>
-            <tbody>
-              {control.paidMasterclassLinks.map((link) => (
-                <tr key={link.entryPath}>
-                  <td>
-                    <strong>{link.displayName}</strong>
-                    <span>{link.coachName}</span>
-                  </td>
-                  <td>
-                    <code>{link.entryPath}</code>
-                  </td>
-                  <td>
-                    <code>{link.paidPagePath}</code>
-                  </td>
-                  <td>
-                    <code>{link.successPath}</code>
-                  </td>
-                  <td>
-                    <span
-                      className={styles.statusBadge}
-                      data-status={link.paymentStatus.toLowerCase()}
-                    >
-                      {link.paymentStatus}
-                    </span>
-                  </td>
-                  <td>
-                    <span>{link.privateWhatsappStatus}</span>
-                    <code>{link.privateWhatsappSecretName}</code>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className={styles.paidLinkList}>
+          {control.paidMasterclassLinks.map((link) => (
+            <article className={styles.paidLinkCard} key={link.entryPath}>
+              <div>
+                <p className={styles.kicker}>Masterclass</p>
+                <h3>{link.displayName}</h3>
+                <p>{link.coachName}</p>
+              </div>
+              <div className={styles.paidLinkMeta}>
+                <span>Public entry</span>
+                <code>{link.entryPath}</code>
+              </div>
+              <div className={styles.paidLinkMeta}>
+                <span>Paid page</span>
+                <code>{link.paidPagePath}</code>
+              </div>
+              <div className={styles.paidLinkMeta}>
+                <span>Payment</span>
+                <strong>{link.paymentStatus}</strong>
+              </div>
+              <button
+                className={styles.primaryAction}
+                onClick={() => {
+                  setCopyMessage("");
+                  setManagedLink(link);
+                }}
+                type="button"
+              >
+                Manage
+              </button>
+            </article>
+          ))}
         </div>
         <p className={styles.inlineNote}>
           Public entry links can be shared. Private WhatsApp invite values are intentionally hidden
@@ -467,6 +481,96 @@ function MasterclassLinksView({ control }: { control: typeof adminControlCenterD
       <p className={styles.inlineStatus}>
         Paid landing pages remain custom jobs. Private paid links stay server-side only.
       </p>
+
+      <AdminActionDialog
+        onClose={() => setManagedLink(null)}
+        open={Boolean(managedLink)}
+        title="Manage Paid Masterclass"
+      >
+        {managedLink ? (
+          <div className={styles.manageDialog}>
+            <div>
+              <p className={styles.kicker}>Paid Website</p>
+              <h3>{managedLink.displayName}</h3>
+              <p>{managedLink.coachName}</p>
+            </div>
+
+            <dl className={styles.definitionGrid}>
+              <div>
+                <dt>Public entry</dt>
+                <dd>
+                  <code>{managedLink.entryPath}</code>
+                </dd>
+              </div>
+              <div>
+                <dt>Paid page</dt>
+                <dd>
+                  <code>{managedLink.paidPagePath}</code>
+                </dd>
+              </div>
+              <div>
+                <dt>Success page</dt>
+                <dd>
+                  <code>{managedLink.successPath}</code>
+                </dd>
+              </div>
+              <div>
+                <dt>Private WhatsApp</dt>
+                <dd>
+                  {managedLink.privateWhatsappStatus}
+                  <code>{managedLink.privateWhatsappSecretName}</code>
+                </dd>
+              </div>
+            </dl>
+
+            <div className={styles.formActions}>
+              <button
+                className={styles.primaryAction}
+                onClick={() => openMasterclassPath(managedLink.entryPath)}
+                type="button"
+              >
+                Preview / Go To Site
+              </button>
+              <button
+                className={styles.secondaryAction}
+                onClick={() => openMasterclassPath(managedLink.paidPagePath)}
+                type="button"
+              >
+                Open Paid Page
+              </button>
+              <button
+                className={styles.secondaryAction}
+                onClick={() => void copyMasterclassPath("Public entry link", managedLink.entryPath)}
+                type="button"
+              >
+                Copy Entry Link
+              </button>
+              <button
+                className={styles.secondaryAction}
+                onClick={() => void copyMasterclassPath("Paid page link", managedLink.paidPagePath)}
+                type="button"
+              >
+                Copy Paid Page
+              </button>
+              <button
+                className={styles.secondaryAction}
+                onClick={() =>
+                  void copyMasterclassPath("Success page link", managedLink.successPath)
+                }
+                type="button"
+              >
+                Copy Success Link
+              </button>
+            </div>
+
+            {copyMessage ? <p className={styles.inlineStatus}>{copyMessage}</p> : null}
+            <p className={styles.linkWarning}>
+              The real WhatsApp invite is not shown here. Only the secret name is visible so the
+              private paid group link stays server-side.
+            </p>
+          </div>
+        ) : null}
+      </AdminActionDialog>
     </AdminPageShell>
   );
 }
