@@ -18,8 +18,43 @@ type PagesContext = {
   request: Request;
 };
 
-const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 24 * 1024 * 1024;
+const ALLOWED_IMAGE_EXTENSIONS = new Set([
+  ".avif",
+  ".bmp",
+  ".gif",
+  ".heic",
+  ".heif",
+  ".jfif",
+  ".jpe",
+  ".jpeg",
+  ".jpg",
+  ".png",
+  ".tif",
+  ".tiff",
+  ".webp"
+]);
+const ALLOWED_IMAGE_CONTENT_TYPES = new Set([
+  "image/avif",
+  "image/bmp",
+  "image/gif",
+  "image/heic",
+  "image/heif",
+  "image/jpeg",
+  "image/pjpeg",
+  "image/png",
+  "image/tiff",
+  "image/webp",
+  "image/x-ms-bmp",
+  "image/x-png"
+]);
+const ALLOWED_VIDEO_EXTENSIONS = new Set([".mov", ".mp4", ".webm"]);
+const ALLOWED_VIDEO_CONTENT_TYPES = new Set([
+  "video/mp4",
+  "video/quicktime",
+  "video/webm"
+]);
 
 export async function onRequest({ request, env }: PagesContext) {
   if (request.method !== "POST") {
@@ -59,7 +94,7 @@ export async function onRequest({ request, env }: PagesContext) {
       {
         error:
           mediaType === "image"
-            ? "Image is too large. Use an image under 4 MB."
+            ? "Image is too large. Upload an optimized photo under 12 MB."
             : "Video is too large. Use a video under 24 MB or paste a video URL.",
         ok: false
       },
@@ -67,12 +102,18 @@ export async function onRequest({ request, env }: PagesContext) {
     );
   }
 
-  if (mediaType === "image" && !file.type.startsWith("image/")) {
-    return adminJson({ ok: false, error: "Upload an image file." }, 400);
+  if (mediaType === "image" && !isAllowedImageFile(file)) {
+    return adminJson(
+      {
+        ok: false,
+        error: "Upload a JPEG, PNG, WebP, AVIF, GIF, HEIC, HEIF, BMP, or TIFF photo."
+      },
+      400
+    );
   }
 
-  if (mediaType === "video" && !file.type.startsWith("video/")) {
-    return adminJson({ ok: false, error: "Upload a video file." }, 400);
+  if (mediaType === "video" && !isAllowedVideoFile(file)) {
+    return adminJson({ ok: false, error: "Upload an MP4, MOV, or WebM video file." }, 400);
   }
 
   const objectKey = createMediaObjectKey({
@@ -80,17 +121,18 @@ export async function onRequest({ request, env }: PagesContext) {
     mediaType,
     slug
   });
+  const contentType = getSafeContentType(file, mediaType);
   const body = await file.arrayBuffer();
   await env.COACH_MEDIA_BUCKET.put(objectKey, body, {
     httpMetadata: {
-      contentType: file.type || (mediaType === "image" ? "image/jpeg" : "video/mp4")
+      contentType
     }
   });
 
   const mediaUrl = `/api/coach-media?key=${encodeURIComponent(objectKey)}`;
   await insertCoachSiteMedia({
     adminEmail: admin.admin.email,
-    contentType: file.type,
+    contentType,
     env,
     fileName: file.name,
     mediaType,
@@ -130,9 +172,101 @@ function createMediaObjectKey({
   return `coach-sites/${slug}/${mediaType}/${timestamp}-${crypto.randomUUID()}${extension}`;
 }
 
+function isAllowedImageFile(file: File) {
+  const contentType = normalizeContentType(file.type);
+  const extension = getFileExtension(file.name);
+
+  if (contentType === "image/svg+xml") return false;
+  if (ALLOWED_IMAGE_CONTENT_TYPES.has(contentType)) return true;
+  if ((contentType === "" || contentType === "application/octet-stream") && extension) {
+    return ALLOWED_IMAGE_EXTENSIONS.has(extension);
+  }
+
+  return false;
+}
+
+function isAllowedVideoFile(file: File) {
+  const contentType = normalizeContentType(file.type);
+  const extension = getFileExtension(file.name);
+
+  if (ALLOWED_VIDEO_CONTENT_TYPES.has(contentType)) return true;
+  if ((contentType === "" || contentType === "application/octet-stream") && extension) {
+    return ALLOWED_VIDEO_EXTENSIONS.has(extension);
+  }
+
+  return false;
+}
+
 function getSafeExtension(fileName: string, mediaType: "image" | "video") {
-  const match = fileName.toLowerCase().match(/\.(avif|gif|jpeg|jpg|mov|mp4|png|webm|webp)$/);
-  if (match) return match[0];
+  const extension = getFileExtension(fileName);
+  if (mediaType === "image" && extension && ALLOWED_IMAGE_EXTENSIONS.has(extension)) {
+    return extension === ".tif" ? ".tiff" : extension;
+  }
+  if (mediaType === "video" && extension && ALLOWED_VIDEO_EXTENSIONS.has(extension)) {
+    return extension;
+  }
 
   return mediaType === "image" ? ".jpg" : ".mp4";
+}
+
+function getSafeContentType(file: File, mediaType: "image" | "video") {
+  const contentType = normalizeContentType(file.type);
+
+  if (mediaType === "image" && ALLOWED_IMAGE_CONTENT_TYPES.has(contentType)) {
+    return normalizeImageContentType(contentType);
+  }
+  if (mediaType === "video" && ALLOWED_VIDEO_CONTENT_TYPES.has(contentType)) {
+    return contentType;
+  }
+
+  return contentTypeFromExtension(getSafeExtension(file.name, mediaType), mediaType);
+}
+
+function contentTypeFromExtension(extension: string, mediaType: "image" | "video") {
+  switch (extension) {
+    case ".avif":
+      return "image/avif";
+    case ".bmp":
+      return "image/bmp";
+    case ".gif":
+      return "image/gif";
+    case ".heic":
+      return "image/heic";
+    case ".heif":
+      return "image/heif";
+    case ".jfif":
+    case ".jpe":
+    case ".jpeg":
+    case ".jpg":
+      return "image/jpeg";
+    case ".png":
+      return "image/png";
+    case ".tif":
+    case ".tiff":
+      return "image/tiff";
+    case ".webp":
+      return "image/webp";
+    case ".mov":
+      return "video/quicktime";
+    case ".webm":
+      return "video/webm";
+    default:
+      return mediaType === "image" ? "image/jpeg" : "video/mp4";
+  }
+}
+
+function getFileExtension(fileName: string) {
+  const match = fileName.toLowerCase().match(/\.[a-z0-9]+$/);
+  return match?.[0] || "";
+}
+
+function normalizeContentType(contentType: string) {
+  return contentType.trim().toLowerCase();
+}
+
+function normalizeImageContentType(contentType: string) {
+  if (contentType === "image/pjpeg") return "image/jpeg";
+  if (contentType === "image/x-png") return "image/png";
+  if (contentType === "image/x-ms-bmp") return "image/bmp";
+  return contentType;
 }

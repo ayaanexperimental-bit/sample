@@ -48,6 +48,7 @@ type MediaUploadApiPayload = {
   error?: string;
   media?: {
     publicUrl?: string;
+    sizeBytes?: number;
   };
   ok?: boolean;
 };
@@ -78,6 +79,45 @@ const removalReasons = [
   "coach left program",
   "other"
 ];
+
+const PHOTO_UPLOAD_ACCEPT =
+  ".jpg,.jpeg,.jpe,.jfif,.png,.webp,.avif,.gif,.heic,.heif,.bmp,.tif,.tiff,image/jpeg,image/png,image/webp,image/avif,image/gif,image/heic,image/heif,image/bmp,image/tiff";
+const PHOTO_ORIGINAL_MAX_BYTES = 20 * 1024 * 1024;
+const PHOTO_STORED_MAX_BYTES = 12 * 1024 * 1024;
+const VIDEO_MAX_BYTES = 24 * 1024 * 1024;
+const IMAGE_OPTIMIZE_MAX_EDGE = 2200;
+const IMAGE_OPTIMIZE_QUALITY = 0.92;
+const IMAGE_MIN_SAVINGS_RATIO = 0.92;
+const ALLOWED_PHOTO_EXTENSIONS = new Set([
+  ".avif",
+  ".bmp",
+  ".gif",
+  ".heic",
+  ".heif",
+  ".jfif",
+  ".jpe",
+  ".jpeg",
+  ".jpg",
+  ".png",
+  ".tif",
+  ".tiff",
+  ".webp"
+]);
+const ALLOWED_PHOTO_MIME_TYPES = new Set([
+  "image/avif",
+  "image/bmp",
+  "image/gif",
+  "image/heic",
+  "image/heif",
+  "image/jpeg",
+  "image/pjpeg",
+  "image/png",
+  "image/tiff",
+  "image/webp",
+  "image/x-ms-bmp",
+  "image/x-png"
+]);
+const PASSTHROUGH_PHOTO_EXTENSIONS = new Set([".gif", ".heic", ".heif"]);
 
 export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachSitesManagerProps) {
   const [sites, setSites] = useState<CoachSiteRecord[]>(demoCoachSites);
@@ -1086,18 +1126,18 @@ function HeroMediaStep({
   async function handleMediaUpload(file: File | undefined, mediaType: "image" | "video") {
     if (!file) return;
 
-    const maxBytes = mediaType === "image" ? 4 * 1024 * 1024 : 24 * 1024 * 1024;
-    if (file.size > maxBytes) {
+    const maxOriginalBytes = mediaType === "image" ? PHOTO_ORIGINAL_MAX_BYTES : VIDEO_MAX_BYTES;
+    if (file.size > maxOriginalBytes) {
       setUploadMessage(
         mediaType === "image"
-          ? "Image is too large. Use an image under 4 MB."
+          ? "Photo is too large. Upload a photo under 20 MB so it can be optimized before saving."
           : "Video is too large. Use a video under 24 MB or add a video URL."
       );
       return;
     }
 
-    if (mediaType === "image" && !file.type.startsWith("image/")) {
-      setUploadMessage("Upload an image file.");
+    if (mediaType === "image" && !isAllowedPhotoFile(file)) {
+      setUploadMessage("Upload JPEG, PNG, WebP, AVIF, GIF, HEIC, HEIF, BMP, or TIFF.");
       return;
     }
 
@@ -1106,13 +1146,36 @@ function HeroMediaStep({
       return;
     }
 
-    const previewUrl = URL.createObjectURL(file);
+    setUploadMessage(mediaType === "image" ? `Optimizing ${file.name}...` : `Uploading ${file.name}...`);
+
+    const preparedMedia =
+      mediaType === "image"
+        ? await preparePhotoForUpload(file).catch(() => ({
+            file,
+            message: "Could not optimize this photo safely. Saving the original file.",
+            optimized: false
+          }))
+        : { file, message: "", optimized: false };
+    const uploadFile = preparedMedia.file;
+
+    if (mediaType === "image" && uploadFile.size > PHOTO_STORED_MAX_BYTES) {
+      setUploadMessage(
+        "Photo is still too large after optimization. Use a smaller image or convert it to JPEG/WebP first."
+      );
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(uploadFile);
     onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", previewUrl);
-    setUploadMessage(`Uploading ${file.name}...`);
+    setUploadMessage(
+      preparedMedia.message
+        ? `${preparedMedia.message} Uploading...`
+        : `Uploading ${uploadFile.name}...`
+    );
 
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", uploadFile);
       formData.append("mediaType", mediaType);
       formData.append("slug", normalizeCoachSlug(form.slug || form.coachName) || "draft-coach");
 
@@ -1128,21 +1191,25 @@ function HeroMediaStep({
       const payload = (await response.json().catch(() => ({}))) as MediaUploadApiPayload;
 
       if (!response.ok || !payload.ok || !payload.media?.publicUrl) {
-        const fallbackPreview = await readFileAsDataUrl(file);
+        const fallbackPreview = await readFileAsDataUrl(uploadFile);
         onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", fallbackPreview);
         setUploadMessage(
           payload.error ||
-            `${file.name} is preview-only until Cloudflare R2 media storage is enabled.`
+            `${uploadFile.name} is preview-only until Cloudflare R2 media storage is enabled.`
         );
         return;
       }
 
       onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", payload.media.publicUrl);
-      setUploadMessage(`${file.name} uploaded and saved for this coach site.`);
+      setUploadMessage(
+        mediaType === "image"
+          ? `${uploadFile.name} uploaded to R2 (${formatBytes(uploadFile.size)}). ${preparedMedia.message}`
+          : `${uploadFile.name} uploaded and saved for this coach site.`
+      );
     } catch {
-      const fallbackPreview = await readFileAsDataUrl(file);
+      const fallbackPreview = await readFileAsDataUrl(uploadFile);
       onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", fallbackPreview);
-      setUploadMessage(`${file.name} is preview-only because the upload API was not reachable.`);
+      setUploadMessage(`${uploadFile.name} is preview-only because the upload API was not reachable.`);
     } finally {
       URL.revokeObjectURL(previewUrl);
     }
@@ -1170,11 +1237,11 @@ function HeroMediaStep({
           <label className={styles.compactField}>
             <span>Upload photo/image</span>
             <input
-              accept="image/*"
+              accept={PHOTO_UPLOAD_ACCEPT}
               onChange={(event) => void handleMediaUpload(event.target.files?.[0], "image")}
               type="file"
             />
-            <small>Use this for coach photo, logo, or hero image. URL is still available.</small>
+            <small>JPEG, PNG, WebP, AVIF, GIF, HEIC, HEIF, BMP, and TIFF are supported.</small>
           </label>
           <TextField
             helper="Use a coach photo, logo, or hero image URL."
@@ -1544,6 +1611,168 @@ function TextAreaField({
       {helper ? <small>{helper}</small> : null}
     </label>
   );
+}
+
+function isAllowedPhotoFile(file: File) {
+  const contentType = file.type.trim().toLowerCase();
+  const extension = getClientFileExtension(file.name);
+
+  if (contentType === "image/svg+xml") return false;
+  if (ALLOWED_PHOTO_MIME_TYPES.has(contentType)) return true;
+
+  return (
+    Boolean(extension) &&
+    ALLOWED_PHOTO_EXTENSIONS.has(extension) &&
+    (contentType === "" || contentType === "application/octet-stream")
+  );
+}
+
+async function preparePhotoForUpload(file: File) {
+  const extension = getClientFileExtension(file.name);
+
+  if (PASSTHROUGH_PHOTO_EXTENSIONS.has(extension) || file.type === "image/gif") {
+    return {
+      file,
+      message: "Saved original format to preserve HEIC/HEIF/GIF quality.",
+      optimized: false
+    };
+  }
+
+  const decoded = await decodeImageForCanvas(file).catch(() => null);
+  if (!decoded) {
+    return {
+      file,
+      message: "Saved original because this browser cannot safely optimize that format.",
+      optimized: false
+    };
+  }
+
+  try {
+    const largestEdge = Math.max(decoded.width, decoded.height);
+    const scale = largestEdge > IMAGE_OPTIMIZE_MAX_EDGE ? IMAGE_OPTIMIZE_MAX_EDGE / largestEdge : 1;
+    const targetWidth = Math.max(1, Math.round(decoded.width * scale));
+    const targetHeight = Math.max(1, Math.round(decoded.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
+    const context = canvas.getContext("2d", { alpha: true });
+    if (!context) {
+      return {
+        file,
+        message: "Saved original because browser image optimization was unavailable.",
+        optimized: false
+      };
+    }
+
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    context.drawImage(decoded.source, 0, 0, targetWidth, targetHeight);
+
+    const blob = await canvasToBlob(canvas, "image/webp", IMAGE_OPTIMIZE_QUALITY);
+    if (!blob || blob.type !== "image/webp") {
+      return {
+        file,
+        message: "Saved original because WebP optimization was unavailable.",
+        optimized: false
+      };
+    }
+
+    const compressionRequired = file.size > PHOTO_STORED_MAX_BYTES;
+    const hasMeaningfulSavings = blob.size <= file.size * IMAGE_MIN_SAVINGS_RATIO;
+    if ((!compressionRequired && !hasMeaningfulSavings) || blob.size >= file.size) {
+      return {
+        file,
+        message: "Saved original because it was already efficiently compressed.",
+        optimized: false
+      };
+    }
+
+    const optimizedFile = new File([blob], replaceFileExtension(file.name, ".webp"), {
+      lastModified: file.lastModified,
+      type: "image/webp"
+    });
+
+    return {
+      file: optimizedFile,
+      message: `Optimized from ${formatBytes(file.size)} to ${formatBytes(blob.size)} with high-quality WebP.`,
+      optimized: true
+    };
+  } finally {
+    decoded.cleanup();
+  }
+}
+
+async function decodeImageForCanvas(file: File): Promise<{
+  cleanup: () => void;
+  height: number;
+  source: CanvasImageSource;
+  width: number;
+}> {
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(file);
+      return {
+        cleanup: () => bitmap.close(),
+        height: bitmap.height,
+        source: bitmap,
+        width: bitmap.width
+      };
+    } catch {
+      return loadImageElement(file);
+    }
+  }
+
+  return loadImageElement(file);
+}
+
+function loadImageElement(file: File) {
+  return new Promise<{
+    cleanup: () => void;
+    height: number;
+    source: CanvasImageSource;
+    width: number;
+  }>((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.decoding = "async";
+    image.addEventListener("load", () => {
+      resolve({
+        cleanup: () => URL.revokeObjectURL(objectUrl),
+        height: image.naturalHeight || image.height,
+        source: image,
+        width: image.naturalWidth || image.width
+      });
+    });
+    image.addEventListener("error", () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Image could not be decoded."));
+    });
+    image.src = objectUrl;
+  });
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, contentType: string, quality: number) {
+  return new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, contentType, quality);
+  });
+}
+
+function getClientFileExtension(fileName: string) {
+  const match = fileName.toLowerCase().match(/\.[a-z0-9]+$/);
+  return match?.[0] || "";
+}
+
+function replaceFileExtension(fileName: string, extension: string) {
+  const baseName = fileName.replace(/\.[a-z0-9]+$/i, "") || "coach-photo";
+  return `${baseName}${extension}`;
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  const kilobytes = bytes / 1024;
+  if (kilobytes < 1024) return `${kilobytes.toFixed(1)} KB`;
+  return `${(kilobytes / 1024).toFixed(2)} MB`;
 }
 
 function readFileAsDataUrl(file: File) {
