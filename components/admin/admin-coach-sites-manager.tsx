@@ -689,7 +689,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     site: CoachSiteRecord,
     status: CoachSiteDangerStatus
   ) {
-    const confirmationMatches = removeConfirm === site.slug || removeConfirm === site.coachName;
+    const confirmationMatches = isRemovalConfirmationMatch(removeConfirm, site);
     if (!confirmationMatches) {
       setRemoveMessage("Type the exact coach slug or coach name before continuing.");
       return;
@@ -1343,10 +1343,10 @@ function CoachDialogRenderer({
     );
   }
 
-  const removeConfirmationMatches =
-    removeConfirm === dialog.site.slug || removeConfirm === dialog.site.coachName;
+  const removeConfirmationMatches = isRemovalConfirmationMatch(removeConfirm, dialog.site);
   const removeOtpValid = /^\d{6}$/.test(removeOtp.trim());
   const removeBusy = Boolean(removeSubmitting);
+  const removeActionsReady = removeConfirmationMatches && removeOtpValid && !removeBusy;
   const removeMessageIsSuccess =
     removeMessage.toLowerCase().includes("otp sent") ||
     removeMessage.toLowerCase().includes("demo");
@@ -1367,7 +1367,7 @@ function CoachDialogRenderer({
             {removeOtpSending ? "Sending OTP..." : "Send OTP"}
           </button>
           <button
-            className={styles.secondaryAction}
+            className={removeActionsReady ? styles.primaryAction : styles.secondaryAction}
             disabled={!removeConfirmationMatches || !removeOtpValid || removeBusy}
             onClick={() => void onRemoveAction(dialog.site, "archived")}
             type="button"
@@ -1375,7 +1375,7 @@ function CoachDialogRenderer({
             {removeSubmitting === "archived" ? "Archiving..." : "Archive Site"}
           </button>
           <button
-            className={styles.dangerAction}
+            className={`${styles.dangerAction} ${removeActionsReady ? styles.dangerActionReady : ""}`}
             disabled={!removeConfirmationMatches || !removeOtpValid || removeBusy}
             onClick={() => void onRemoveAction(dialog.site, "removed")}
             type="button"
@@ -1429,7 +1429,15 @@ function CoachDialogRenderer({
       <div className={styles.formGrid}>
         <label className={styles.compactField}>
           <span>Type coach slug or coach name</span>
-          <input onChange={(event) => setRemoveConfirm(event.target.value)} value={removeConfirm} />
+          <input
+            onChange={(event) => setRemoveConfirm(event.target.value)}
+            placeholder={`${dialog.site.slug} or ${dialog.site.coachName}`}
+            value={removeConfirm}
+          />
+          <small>
+            Type <strong>{dialog.site.slug}</strong> or <strong>{dialog.site.coachName}</strong>.
+            Spaces and uppercase/lowercase are ignored.
+          </small>
         </label>
         <label className={styles.compactField}>
           <span>Removal reason</span>
@@ -1453,6 +1461,21 @@ function CoachDialogRenderer({
           <small>Send OTP first, then enter the code sent to the current admin email.</small>
         </label>
       </div>
+      <div className={styles.removeUnlockChecklist} data-ready={removeActionsReady ? "true" : "false"}>
+        <span data-complete={removeConfirmationMatches ? "true" : "false"}>
+          {removeConfirmationMatches
+            ? "Coach confirmation matched"
+            : "Coach confirmation pending"}
+        </span>
+        <span data-complete={removeOtpValid ? "true" : "false"}>
+          {removeOtpValid ? "6-digit OTP entered" : "6-digit OTP pending"}
+        </span>
+        <strong>
+          {removeActionsReady
+            ? "Archive and Remove buttons are unlocked."
+            : "Both checks must pass before Archive or Remove becomes active."}
+        </strong>
+      </div>
       {removeMessage ? (
         <p className={removeMessageIsSuccess ? styles.inlineStatus : styles.linkWarning}>
           {removeMessage}
@@ -1460,6 +1483,19 @@ function CoachDialogRenderer({
       ) : null}
     </AdminActionDialog>
   );
+}
+
+function isRemovalConfirmationMatch(value: string, site: CoachSiteRecord) {
+  const confirmation = normalizeRemovalConfirmation(value);
+
+  return (
+    confirmation === normalizeRemovalConfirmation(site.slug) ||
+    confirmation === normalizeRemovalConfirmation(site.coachName)
+  );
+}
+
+function normalizeRemovalConfirmation(value: string) {
+  return value.trim().toLowerCase();
 }
 
 function PreviewAndEditStep({
