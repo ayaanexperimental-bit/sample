@@ -628,10 +628,9 @@
 .paidLinkCard {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(12rem, 1fr) minmax(10rem, 0.8fr) minmax(10rem, 0.8fr) minmax(
-      8rem,
-      0.55fr
-    ) auto;
+  grid-template-columns:
+    minmax(12rem, 1fr) minmax(10rem, 0.8fr) minmax(10rem, 0.8fr) minmax(8rem, 0.55fr)
+    auto;
   gap: 0.75rem;
   align-items: center;
   border: 1px solid rgb(28 42 59 / 0.08);
@@ -1084,6 +1083,39 @@
   font-weight: 900;
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+.privateRevealPanel {
+  display: grid;
+  gap: 0.8rem;
+  border: 1px solid rgb(8 122 115 / 0.18);
+  border-radius: var(--radius-md);
+  background: linear-gradient(145deg, rgb(240 253 250 / 0.72), rgb(255 255 255 / 0.9));
+  padding: 0.9rem;
+}
+
+.privateRevealPanel h4 {
+  margin: 0;
+  color: #1d2939;
+  font-size: 1rem;
+}
+
+.revealedSecretBox {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+  border: 1px dashed rgb(8 122 115 / 0.28);
+  border-radius: var(--radius-md);
+  background: #fff;
+  padding: 0.65rem;
+}
+
+.revealedSecretBox code {
+  width: 100%;
+  margin-top: 0;
+  border-radius: var(--radius-sm);
+  overflow-wrap: anywhere;
 }
 
 .manageMetrics {
@@ -1753,9 +1785,14 @@
   .previewActions a,
   .previewActions button,
   .primaryAction,
+  .revealedSecretBox,
   .secondaryAction,
   .dangerAction {
     width: 100%;
+  }
+
+  .revealedSecretBox {
+    grid-template-columns: 1fr;
   }
 
   .formGrid,

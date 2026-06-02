@@ -142,7 +142,7 @@ export function AdminDashboardShell({
         {activeView === "top-coaches" ? <TopCoachesView data={data} /> : null}
         {activeView === "coach-analytics" ? <CoachAnalyticsView control={control} /> : null}
         {activeView === "paid-masterclass-settings" ? (
-          <MasterclassLinksView control={control} />
+          <MasterclassLinksView control={control} csrfToken={csrfToken} />
         ) : null}
         {activeView === "error-reports" ? (
           <ErrorReportsView control={control} onAction={openAction} />
@@ -398,9 +398,119 @@ function CoachAnalyticsView({ control }: { control: typeof adminControlCenterDat
   );
 }
 
-function MasterclassLinksView({ control }: { control: typeof adminControlCenterData }) {
+function MasterclassLinksView({
+  control,
+  csrfToken
+}: {
+  control: typeof adminControlCenterData;
+  csrfToken: string;
+}) {
   const [managedLink, setManagedLink] = useState<AdminPaidMasterclassLink | null>(null);
   const [copyMessage, setCopyMessage] = useState("");
+  const [privateOtp, setPrivateOtp] = useState("");
+  const [privateRevealUrl, setPrivateRevealUrl] = useState("");
+  const [privateRevealMessage, setPrivateRevealMessage] = useState("");
+  const [privateRevealBusy, setPrivateRevealBusy] = useState(false);
+
+  async function sendPrivateRevealOtp(link: AdminPaidMasterclassLink) {
+    setPrivateRevealBusy(true);
+    setPrivateRevealMessage("");
+    setPrivateRevealUrl("");
+
+    try {
+      const response = await fetch("/api/admin/masterclass-private-link", {
+        body: JSON.stringify({
+          action: "send_otp",
+          entryPath: link.entryPath
+        }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-yw-admin-csrf": csrfToken
+        },
+        method: "POST"
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+        ok?: boolean;
+      };
+
+      setPrivateRevealMessage(
+        response.ok && payload.ok
+          ? payload.message || "OTP sent to the current admin email."
+          : payload.error || "Could not send OTP."
+      );
+    } catch {
+      setPrivateRevealMessage("Could not reach the reveal OTP API.");
+    } finally {
+      setPrivateRevealBusy(false);
+    }
+  }
+
+  async function revealPrivateWhatsapp(link: AdminPaidMasterclassLink) {
+    setPrivateRevealBusy(true);
+    setPrivateRevealMessage("");
+    setPrivateRevealUrl("");
+
+    try {
+      const response = await fetch("/api/admin/masterclass-private-link", {
+        body: JSON.stringify({
+          action: "reveal",
+          entryPath: link.entryPath,
+          otp: privateOtp
+        }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-yw-admin-csrf": csrfToken
+        },
+        method: "POST"
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        expiresInSeconds?: number;
+        joinUrl?: string;
+        ok?: boolean;
+      };
+
+      if (!response.ok || !payload.ok || !payload.joinUrl) {
+        setPrivateRevealMessage(payload.error || "Could not reveal the private WhatsApp link.");
+        return;
+      }
+
+      setPrivateRevealUrl(payload.joinUrl);
+      setPrivateRevealMessage(
+        `Private link revealed. It will hide automatically in ${
+          payload.expiresInSeconds || 20
+        } seconds.`
+      );
+      window.setTimeout(
+        () => {
+          setPrivateRevealUrl("");
+          setPrivateOtp("");
+        },
+        (payload.expiresInSeconds || 20) * 1000
+      );
+    } catch {
+      setPrivateRevealMessage("Could not reach the private reveal API.");
+    } finally {
+      setPrivateRevealBusy(false);
+    }
+  }
+
+  async function copyPrivateWhatsappLink() {
+    if (!privateRevealUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(privateRevealUrl);
+      setPrivateRevealMessage("Private WhatsApp link copied.");
+    } catch {
+      setPrivateRevealMessage(`Private WhatsApp link: ${privateRevealUrl}`);
+    }
+  }
 
   async function copyMasterclassPath(label: string, path: string) {
     const value =
@@ -454,6 +564,9 @@ function MasterclassLinksView({ control }: { control: typeof adminControlCenterD
                 className={styles.primaryAction}
                 onClick={() => {
                   setCopyMessage("");
+                  setPrivateOtp("");
+                  setPrivateRevealMessage("");
+                  setPrivateRevealUrl("");
                   setManagedLink(link);
                 }}
                 type="button"
@@ -564,6 +677,64 @@ function MasterclassLinksView({ control }: { control: typeof adminControlCenterD
             </div>
 
             {copyMessage ? <p className={styles.inlineStatus}>{copyMessage}</p> : null}
+            <div className={styles.privateRevealPanel}>
+              <div>
+                <p className={styles.kicker}>Admin OTP Reveal</p>
+                <h4>Reveal private WhatsApp invite</h4>
+                <p>
+                  The real invite is fetched only after a fresh OTP check. It is never printed in
+                  the table or public code.
+                </p>
+              </div>
+              <div className={styles.formActions}>
+                <button
+                  className={styles.secondaryAction}
+                  disabled={privateRevealBusy}
+                  onClick={() => void sendPrivateRevealOtp(managedLink)}
+                  type="button"
+                >
+                  {privateRevealBusy ? "Working..." : "Send OTP"}
+                </button>
+                <label className={styles.compactField}>
+                  <span>OTP</span>
+                  <input
+                    inputMode="numeric"
+                    maxLength={6}
+                    onChange={(event) =>
+                      setPrivateOtp(event.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
+                    placeholder="6-digit code"
+                    type="password"
+                    value={privateOtp}
+                  />
+                </label>
+                <button
+                  className={styles.primaryAction}
+                  disabled={privateRevealBusy || privateOtp.length !== 6}
+                  onClick={() => void revealPrivateWhatsapp(managedLink)}
+                  type="button"
+                >
+                  Reveal Link
+                </button>
+              </div>
+              {privateRevealUrl ? (
+                <div className={styles.revealedSecretBox}>
+                  <code>{privateRevealUrl}</code>
+                  <button
+                    className={styles.primaryAction}
+                    onClick={() => void copyPrivateWhatsappLink()}
+                    type="button"
+                  >
+                    Copy Private Link
+                  </button>
+                </div>
+              ) : null}
+              {privateRevealMessage ? (
+                <p className={privateRevealUrl ? styles.inlineStatus : styles.linkWarning}>
+                  {privateRevealMessage}
+                </p>
+              ) : null}
+            </div>
             <p className={styles.linkWarning}>
               The real WhatsApp invite is not shown here. Only the secret name is visible so the
               private paid group link stays server-side.

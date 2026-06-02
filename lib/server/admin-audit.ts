@@ -9,6 +9,9 @@ export type AdminAuditEventType =
   | "otp_failed"
   | "otp_requested"
   | "otp_verified"
+  | "private_link_reveal_failed"
+  | "private_link_revealed"
+  | "private_link_otp_requested"
   | "password_reset_requested";
 
 export type AdminAuditEnv = {
