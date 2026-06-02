@@ -207,7 +207,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     setForm((current) => ({
       ...current,
       coachName: value,
-      slug: current.slug ? current.slug : normalizeCoachSlug(value)
+      slug: editingId ? current.slug || normalizeCoachSlug(value) : normalizeCoachSlug(value)
     }));
   }
 
