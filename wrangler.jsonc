@@ -8,6 +8,7 @@
   },
   "vars": {
     "NEXT_PUBLIC_SITE_URL": "https://ywcoach.com",
+    "OPENAI_MODEL": "gpt-5-mini",
     "RAZORPAY_PAYMENT_PAGE_URL": "https://pages.razorpay.com/pl_SkURMJD4JJjdxO/view"
   },
   "d1_databases": [
