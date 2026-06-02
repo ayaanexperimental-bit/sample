@@ -22,9 +22,6 @@ export function PublicCoachSitePage({ site }: PublicCoachSitePageProps) {
   const heroVideoUrl = heroMediaType === "video" ? normalizeVideoEmbedUrl(site.videoUrl) : "";
   const heroUploadedVideoUrl =
     heroMediaType === "video" && isUploadedVideoSource(site.videoUrl) ? site.videoUrl : "";
-  const optionalVideoUrl = heroMediaType !== "video" ? normalizeVideoEmbedUrl(site.videoUrl) : "";
-  const optionalUploadedVideoUrl =
-    heroMediaType !== "video" && isUploadedVideoSource(site.videoUrl) ? site.videoUrl : "";
 
   useEffect(() => {
     void recordCoachEvent("coach_site_view", site.slug);
@@ -47,6 +44,10 @@ export function PublicCoachSitePage({ site }: PublicCoachSitePageProps) {
     <main className={styles.page}>
       <section className={styles.hero} data-media={heroMediaType}>
         <div className={styles.heroCopy}>
+          <div className={styles.templateMark}>
+            <span>Yours Wellness Coach</span>
+            <span>{site.location || site.niche}</span>
+          </div>
           <p className={styles.kicker}>{site.niche}</p>
           <h1>{site.content.heroHeadline}</h1>
           <p>{site.content.subheadline}</p>
@@ -75,6 +76,20 @@ export function PublicCoachSitePage({ site }: PublicCoachSitePageProps) {
               </a>
             ) : null}
           </div>
+          <dl className={styles.heroFacts}>
+            <div>
+              <dt>Coach</dt>
+              <dd>{site.coachName}</dd>
+            </div>
+            <div>
+              <dt>Focus</dt>
+              <dd>{site.niche}</dd>
+            </div>
+            <div>
+              <dt>Location</dt>
+              <dd>{site.location || "Yours Wellness"}</dd>
+            </div>
+          </dl>
         </div>
         {heroMediaType !== "none" ? (
           <div className={styles.heroMedia} data-media={heroMediaType}>
@@ -98,13 +113,15 @@ export function PublicCoachSitePage({ site }: PublicCoachSitePageProps) {
             !(heroMediaType === "image" && heroImageUrl) ? (
               <span>{site.coachName.slice(0, 2).toUpperCase()}</span>
             ) : null}
+            <div className={styles.mediaCaption}>
+              <strong>{site.coachName}</strong>
+              <span>{site.niche}</span>
+            </div>
           </div>
         ) : null}
       </section>
 
-      {!hasRegisterLink ? <ContactSupportFallback referenceId={referenceId} site={site} /> : null}
-
-      <section className={styles.contentGrid}>
+      <section className={styles.storyGrid}>
         <article>
           <p className={styles.kicker}>Coach Introduction</p>
           <h2>{site.coachName}</h2>
@@ -117,28 +134,6 @@ export function PublicCoachSitePage({ site }: PublicCoachSitePageProps) {
         </article>
       </section>
 
-      {optionalVideoUrl || optionalUploadedVideoUrl ? (
-        <section className={styles.videoSection}>
-          <p className={styles.kicker}>Intro Video</p>
-          <div className={styles.videoFrame}>
-            {optionalVideoUrl ? (
-              <iframe
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                src={optionalVideoUrl}
-                title={`${site.coachName} intro video`}
-              />
-            ) : (
-              <video
-                controls
-                src={optionalUploadedVideoUrl}
-                title={`${site.coachName} intro video`}
-              />
-            )}
-          </div>
-        </section>
-      ) : null}
-
       <section className={styles.benefits}>
         <p className={styles.kicker}>Benefits</p>
         <h2>What guests can expect</h2>
@@ -150,6 +145,26 @@ export function PublicCoachSitePage({ site }: PublicCoachSitePageProps) {
             </article>
           ))}
         </div>
+      </section>
+
+      <section className={styles.registerBand}>
+        <div>
+          <p className={styles.kicker}>Register</p>
+          <h2>{site.content.ctaText || "Register Now"}</h2>
+          <p>{site.content.trustText}</p>
+        </div>
+        {hasRegisterLink ? (
+          <a
+            href={site.googleFormUrl}
+            onClick={() => void recordCoachEvent("coach_register_click", site.slug)}
+            rel="noreferrer"
+            target="_blank"
+          >
+            {site.registerButtonText || "Register Now"}
+          </a>
+        ) : (
+          <a href="#contact-support">Contact Support</a>
+        )}
       </section>
 
       <section className={styles.faq}>
@@ -166,23 +181,6 @@ export function PublicCoachSitePage({ site }: PublicCoachSitePageProps) {
       </section>
 
       <CoachContactSupport referenceId={referenceId} site={site} />
-
-      <section className={styles.finalCta}>
-        <h2>{site.content.ctaText || "Register Now"}</h2>
-        <p>{site.content.trustText}</p>
-        {hasRegisterLink ? (
-          <a
-            href={site.googleFormUrl}
-            onClick={() => void recordCoachEvent("coach_register_click", site.slug)}
-            rel="noreferrer"
-            target="_blank"
-          >
-            {site.registerButtonText || "Register Now"}
-          </a>
-        ) : (
-          <a href="#contact-support">Contact Support</a>
-        )}
-      </section>
     </main>
   );
 }
@@ -210,24 +208,6 @@ export function CoachRouteErrorFallback({
         ) : null}
       </section>
     </main>
-  );
-}
-
-function ContactSupportFallback({
-  referenceId,
-  site
-}: {
-  referenceId: string;
-  site: PublicCoachSiteRecord;
-}) {
-  return (
-    <section className={styles.supportFallback} id="contact-support">
-      <p className={styles.kicker}>Contact Support</p>
-      <h2>Something went wrong</h2>
-      <p>We could not complete this step. Please contact support for help.</p>
-      <CoachContactSupport referenceId={referenceId} site={site} tone="embedded" />
-      <code>Reference ID: {referenceId}</code>
-    </section>
   );
 }
 

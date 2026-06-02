@@ -953,17 +953,17 @@
 .coachPreview {
   display: grid;
   gap: 1rem;
-  border: 1px solid rgb(168 85 137 / 0.12);
+  border: 1px solid rgb(23 36 33 / 0.1);
   border-radius: var(--radius-md);
   background:
-    radial-gradient(circle at 80% 0%, rgb(94 234 212 / 0.12), transparent 16rem),
-    rgb(255 255 255 / 0.46);
+    linear-gradient(120deg, rgb(247 250 249 / 0.96), rgb(255 255 255 / 0.98) 42%, rgb(246 249 255 / 0.94)),
+    repeating-linear-gradient(90deg, rgb(19 57 53 / 0.035) 0 1px, transparent 1px 4.5rem);
   padding: 1rem;
 }
 
 .previewHero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.28fr);
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.34fr);
   gap: 1rem;
   align-items: center;
 }
@@ -975,7 +975,7 @@
 .previewHero h3 {
   max-width: 14ch;
   margin: 0;
-  color: #251822;
+  color: #172421;
   font-family: var(--font-serif-display);
   font-size: clamp(2rem, 4vw, 3.5rem);
   line-height: 0.98;
@@ -984,15 +984,34 @@
 .previewHero p,
 .previewGrid p,
 .previewGrid li {
-  color: #6d5968;
+  color: #52635f;
   font-size: 0.95rem;
   font-weight: 680;
   line-height: 1.58;
 }
 
+.previewTemplateMark {
+  width: fit-content;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+  color: #37524d;
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.previewTemplateMark span {
+  border: 1px solid rgb(23 36 33 / 0.1);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 0.72);
+  padding: 0.36rem 0.52rem;
+}
+
 .previewNiche {
   margin: 0 0 0.62rem;
-  color: #087a73 !important;
+  color: #0f766e !important;
   font-size: 0.74rem !important;
   font-weight: 950 !important;
   letter-spacing: 0.08em;
@@ -1000,34 +1019,68 @@
 }
 
 .previewActions a {
-  background: linear-gradient(135deg, #139d95, #0d70b7 52%, #d94683);
+  border-color: #0f766e;
+  background: #0f766e;
   color: #ffffff;
 }
 
 .previewActions button {
-  background: rgb(117 96 108 / 0.12);
-  color: #5f4a59;
+  background: rgb(255 255 255 / 0.76);
+  color: #1f3732;
 }
 
 .previewActions code {
   align-self: center;
-  border-radius: 999px;
-  background: rgb(8 122 115 / 0.08);
-  color: #075f5b;
+  border-radius: var(--radius-md);
+  background: rgb(15 118 110 / 0.08);
+  color: #0f766e;
   padding: 0.45rem 0.6rem;
   font-family: var(--font-sans);
   font-size: 0.8rem;
   font-weight: 900;
 }
 
+.previewFacts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+}
+
+.previewFacts div {
+  border: 1px solid rgb(23 36 33 / 0.1);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 0.68);
+  padding: 0.65rem;
+}
+
+.previewFacts dt {
+  color: #0f766e;
+  font-size: 0.66rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.previewFacts dd {
+  margin: 0.22rem 0 0;
+  color: #172421;
+  font-size: 0.84rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
 .previewMedia {
+  position: relative;
   aspect-ratio: 1;
   display: grid;
   place-items: center;
   overflow: hidden;
-  border: 1px solid rgb(8 122 115 / 0.16);
+  border: 1px solid rgb(23 36 33 / 0.12);
   border-radius: var(--radius-md);
-  background: linear-gradient(145deg, rgb(255 255 255 / 0.8), rgb(240 253 250 / 0.64));
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(236 246 244 / 0.9)),
+    repeating-linear-gradient(135deg, rgb(15 118 110 / 0.08) 0 1px, transparent 1px 18px);
 }
 
 .previewMedia[data-media="video"] {
@@ -1135,9 +1188,34 @@
 }
 
 .previewMedia span {
-  color: #087a73;
+  color: #0f766e;
   font-size: clamp(2.3rem, 7vw, 4rem);
   font-weight: 950;
+}
+
+.previewMediaCaption {
+  position: absolute;
+  right: 0.65rem;
+  bottom: 0.65rem;
+  left: 0.65rem;
+  display: grid;
+  gap: 0.15rem;
+  border: 1px solid rgb(255 255 255 / 0.4);
+  border-radius: var(--radius-md);
+  background: rgb(23 36 33 / 0.78);
+  color: #ffffff;
+  padding: 0.65rem;
+  backdrop-filter: blur(12px);
+}
+
+.previewMediaCaption strong {
+  font-size: 0.9rem;
+}
+
+.previewMediaCaption span {
+  color: rgb(255 255 255 / 0.76);
+  font-size: 0.76rem;
+  font-weight: 750;
 }
 
 .previewGrid {
@@ -1147,16 +1225,59 @@
 }
 
 .previewGrid section {
-  border: 1px solid rgb(168 85 137 / 0.1);
+  border: 1px solid rgb(23 36 33 / 0.1);
   border-radius: var(--radius-md);
-  background: rgb(255 255 255 / 0.48);
+  background: rgb(255 255 255 / 0.72);
   padding: 0.9rem;
 }
 
 .previewGrid h4 {
   margin: 0 0 0.5rem;
-  color: #251822;
+  color: #172421;
   font-size: 0.95rem;
+}
+
+.previewRegisterBand {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.85rem;
+  align-items: center;
+  border: 1px solid rgb(15 118 110 / 0.18);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #173c37, #0f766e 62%, #b73758);
+  color: #ffffff;
+  padding: 1rem;
+}
+
+.previewRegisterBand .previewNiche,
+.previewRegisterBand h4,
+.previewRegisterBand p {
+  color: #ffffff !important;
+}
+
+.previewRegisterBand h4 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.previewRegisterBand p {
+  margin: 0.35rem 0 0;
+  opacity: 0.86;
+}
+
+.previewRegisterBand a,
+.previewRegisterBand button {
+  min-height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(255 255 255 / 0.72);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  color: #173c37;
+  padding: 0 0.8rem;
+  font-weight: 900;
+  text-decoration: none;
 }
 
 .previewGrid ul {
@@ -1728,8 +1849,10 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .previewFacts,
   .previewHero,
-  .previewGrid {
+  .previewGrid,
+  .previewRegisterBand {
     grid-template-columns: 1fr;
   }
 }

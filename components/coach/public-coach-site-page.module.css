@@ -1,76 +1,91 @@
 .page {
   min-height: 100svh;
   background:
-    radial-gradient(circle at 18% 8%, rgb(255 211 232 / 0.72), transparent 26rem),
-    radial-gradient(circle at 88% 14%, rgb(184 243 225 / 0.58), transparent 24rem),
-    linear-gradient(135deg, #fff8fb 0%, #fffdf7 46%, #f4fffb 100%);
-  color: #251822;
+    linear-gradient(120deg, rgb(247 250 249 / 0.96), rgb(255 255 255 / 0.98) 42%, rgb(246 249 255 / 0.94)),
+    repeating-linear-gradient(90deg, rgb(19 57 53 / 0.035) 0 1px, transparent 1px 4.5rem);
+  color: #172421;
   padding: clamp(1rem, 4vw, 3rem);
 }
 
 .hero,
-.contentGrid,
+.storyGrid,
 .benefits,
 .faq,
-.finalCta,
+.registerBand,
 .coachSupport,
-.supportFallback,
-.videoSection,
 .unavailablePanel {
-  width: min(100%, 72rem);
+  width: min(100%, 74rem);
   margin-inline: auto;
 }
 
 .hero {
   min-height: min(760px, calc(100svh - 2rem));
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.42fr);
-  gap: clamp(1.25rem, 4vw, 3rem);
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.5fr);
+  gap: clamp(1.25rem, 5vw, 4rem);
   align-items: center;
+  padding-block: clamp(1rem, 4vw, 2rem);
 }
 
 .hero[data-media="none"] {
-  grid-template-columns: minmax(0, 46rem);
+  grid-template-columns: minmax(0, 48rem);
+}
+
+.templateMark {
+  width: fit-content;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.1rem;
+  color: #37524d;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.templateMark span {
+  border: 1px solid rgb(23 36 33 / 0.1);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.72);
+  padding: 0.42rem 0.58rem;
 }
 
 .kicker {
   margin: 0 0 0.7rem;
-  color: #087a73;
-  font-size: 0.78rem;
+  color: #0f766e;
+  font-size: 0.75rem;
   font-weight: 950;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .hero h1,
-.contentGrid h2,
+.storyGrid h2,
 .benefits h2,
 .faq h2,
-.finalCta h2,
+.registerBand h2,
 .coachSupport h2,
-.supportFallback h2,
 .unavailablePanel h1 {
   margin: 0;
-  color: #251822;
+  color: #172421;
   font-family: var(--font-serif-display);
   letter-spacing: 0;
   line-height: 0.98;
 }
 
 .hero h1 {
-  max-width: 13ch;
-  font-size: clamp(2.7rem, 7vw, 5.8rem);
+  max-width: 14ch;
+  font-size: clamp(2.7rem, 6.8vw, 5.9rem);
 }
 
 .hero p,
-.contentGrid p,
+.storyGrid p,
 .benefits p,
 .faq p,
-.finalCta p,
+.registerBand p,
 .coachSupport p,
-.supportFallback p,
 .unavailablePanel p {
-  color: #6d5968;
+  color: #52635f;
   font-size: clamp(0.98rem, 1.7vw, 1.12rem);
   font-weight: 650;
   line-height: 1.64;
@@ -89,7 +104,7 @@
 }
 
 .heroActions a,
-.finalCta a,
+.registerBand a,
 .supportActions a,
 .unavailablePanel a,
 .retryButton {
@@ -97,11 +112,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgb(255 255 255 / 0.58);
-  border-radius: var(--radius-md);
-  background:
-    linear-gradient(135deg, rgb(255 255 255 / 0.18), transparent 32%),
-    linear-gradient(135deg, #139d95, #0d70b7 52%, #d94683);
+  border: 1px solid #0f766e;
+  border-radius: 8px;
+  background: #0f766e;
   color: #ffffff;
   cursor: pointer;
   font-family: inherit;
@@ -109,29 +122,60 @@
   padding: 0 1rem;
   font-weight: 900;
   text-decoration: none;
+  box-shadow: 0 1rem 2.2rem rgb(15 118 110 / 0.16);
 }
 
 .heroActions .secondaryAction,
 .supportActions a:last-child,
 .retryButton {
-  border-color: rgb(168 85 137 / 0.18);
-  background: rgb(255 255 255 / 0.72);
-  color: #332435;
+  border-color: rgb(23 36 33 / 0.14);
+  background: rgb(255 255 255 / 0.76);
+  color: #1f3732;
+  box-shadow: none;
+}
+
+.heroFacts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 1.5rem 0 0;
+}
+
+.heroFacts div {
+  border: 1px solid rgb(23 36 33 / 0.1);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.68);
+  padding: 0.78rem;
+}
+
+.heroFacts dt {
+  color: #0f766e;
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.heroFacts dd {
+  margin: 0.22rem 0 0;
+  color: #172421;
+  font-size: 0.9rem;
+  font-weight: 850;
+  line-height: 1.3;
 }
 
 .heroMedia {
+  position: relative;
   aspect-ratio: 4 / 5;
   display: grid;
   place-items: center;
   overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 0.82);
-  border-radius: var(--radius-md);
+  border: 1px solid rgb(23 36 33 / 0.12);
+  border-radius: 8px;
   background:
-    radial-gradient(circle at 34% 24%, rgb(255 255 255 / 0.95), transparent 35%),
-    linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(232 252 251 / 0.84));
-  box-shadow:
-    0 1.5rem 4rem rgb(80 28 54 / 0.12),
-    inset 0 1px 0 rgb(255 255 255 / 0.9);
+    linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(236 246 244 / 0.9)),
+    repeating-linear-gradient(135deg, rgb(15 118 110 / 0.08) 0 1px, transparent 1px 18px);
+  box-shadow: 0 1.8rem 4rem rgb(23 36 33 / 0.12);
 }
 
 .heroMedia[data-media="video"] {
@@ -155,54 +199,78 @@
   object-fit: cover;
 }
 
-.heroMedia span {
-  color: #087a73;
+.heroMedia > span {
+  color: #0f766e;
   font-size: clamp(3rem, 10vw, 6rem);
   font-weight: 950;
 }
 
-.contentGrid,
-.benefitGrid {
+.mediaCaption {
+  position: absolute;
+  right: 0.8rem;
+  bottom: 0.8rem;
+  left: 0.8rem;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.15rem;
+  border: 1px solid rgb(255 255 255 / 0.4);
+  border-radius: 8px;
+  background: rgb(23 36 33 / 0.78);
+  color: #ffffff;
+  padding: 0.75rem;
+  backdrop-filter: blur(12px);
+}
+
+.mediaCaption strong {
+  font-size: 0.98rem;
+}
+
+.mediaCaption span {
+  color: rgb(255 255 255 / 0.76);
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.storyGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
   gap: 1rem;
 }
 
-.contentGrid article,
+.storyGrid article,
 .benefitGrid article,
 .faqList article,
 .coachSupport,
-.supportFallback,
-.videoSection,
 .unavailablePanel {
-  border: 1px solid rgb(255 255 255 / 0.78);
-  border-radius: var(--radius-md);
-  background:
-    radial-gradient(circle at 16% 8%, rgb(255 255 255 / 0.82), transparent 8rem),
-    linear-gradient(145deg, rgb(255 255 255 / 0.78), rgb(255 240 246 / 0.52));
-  box-shadow:
-    0 1rem 2.8rem rgb(80 28 54 / 0.08),
-    inset 0 1px 0 rgb(255 255 255 / 0.86);
+  border: 1px solid rgb(23 36 33 / 0.1);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.78);
+  box-shadow: 0 1rem 2.6rem rgb(23 36 33 / 0.06);
   padding: clamp(1rem, 3vw, 1.4rem);
 }
 
 .benefits,
 .faq,
-.finalCta,
+.registerBand,
 .coachSupport,
-.supportFallback,
-.videoSection,
 .unavailablePanel {
   margin-top: 1rem;
+}
+
+.benefitGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-top: 0.85rem;
 }
 
 .benefitGrid article {
   display: grid;
   gap: 0.6rem;
+  background: rgb(250 252 251 / 0.86);
 }
 
 .benefitGrid span {
-  color: #087a73;
+  color: #b73758;
   font-size: 0.78rem;
   font-weight: 950;
 }
@@ -215,46 +283,38 @@
 
 .faqList h3 {
   margin: 0;
-  color: #251822;
+  color: #172421;
   font-size: 1rem;
 }
 
-.videoFrame {
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border-radius: var(--radius-md);
-  background: #fff;
-}
-
-.videoFrame iframe,
-.videoFrame video {
-  width: 100%;
-  height: 100%;
-  border: 0;
-}
-
-.videoFrame video {
-  object-fit: cover;
-}
-
-.finalCta {
-  border-radius: var(--radius-md);
-  background:
-    radial-gradient(circle at 18% 8%, rgb(94 234 212 / 0.16), transparent 18rem),
-    linear-gradient(145deg, rgb(255 255 255 / 0.84), rgb(255 241 248 / 0.62));
+.registerBand {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  border: 1px solid rgb(15 118 110 / 0.18);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #173c37, #0f766e 62%, #b73758);
+  color: #ffffff;
   padding: clamp(1.25rem, 4vw, 2rem);
-  text-align: center;
 }
 
-.finalCta a {
-  margin-top: 0.5rem;
+.registerBand .kicker,
+.registerBand h2,
+.registerBand p {
+  color: #ffffff;
 }
 
-.supportFallback {
-  border-color: rgb(183 121 31 / 0.22);
-  background:
-    radial-gradient(circle at 16% 8%, rgb(183 121 31 / 0.1), transparent 9rem),
-    linear-gradient(145deg, rgb(255 255 255 / 0.82), rgb(255 247 237 / 0.56));
+.registerBand p {
+  margin-bottom: 0;
+  opacity: 0.86;
+}
+
+.registerBand a {
+  border-color: rgb(255 255 255 / 0.72);
+  background: #ffffff;
+  color: #173c37;
+  box-shadow: none;
 }
 
 .coachSupport {
@@ -266,8 +326,8 @@
 .coachSupport[data-tone="compact"] {
   width: 100%;
   margin-top: 0.9rem;
-  border-color: rgb(8 122 115 / 0.14);
-  background: rgb(255 255 255 / 0.5);
+  border-color: rgb(15 118 110 / 0.14);
+  background: rgb(255 255 255 / 0.56);
   box-shadow: none;
 }
 
@@ -294,9 +354,9 @@
   display: grid;
   place-items: center;
   overflow: hidden;
-  border: 1px solid rgb(8 122 115 / 0.16);
-  border-radius: var(--radius-md);
-  background: linear-gradient(145deg, rgb(255 255 255 / 0.9), rgb(240 253 250 / 0.72));
+  border: 1px solid rgb(15 118 110 / 0.16);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.92), rgb(239 248 246 / 0.78));
 }
 
 .supportAvatar img {
@@ -306,7 +366,7 @@
 }
 
 .supportAvatar span {
-  color: #087a73;
+  color: #0f766e;
   font-size: clamp(1.45rem, 5vw, 2.2rem);
   font-weight: 950;
 }
@@ -322,16 +382,16 @@
   display: grid;
   gap: 0.3rem;
   align-content: center;
-  border: 1px solid rgb(168 85 137 / 0.1);
-  border-radius: var(--radius-md);
-  background: rgb(255 255 255 / 0.54);
-  color: #251822;
+  border: 1px solid rgb(23 36 33 / 0.1);
+  border-radius: 8px;
+  background: rgb(250 252 251 / 0.78);
+  color: #172421;
   padding: 0.8rem;
   text-decoration: none;
 }
 
 .supportCredentialGrid span {
-  color: #087a73;
+  color: #0f766e;
   font-size: 0.72rem;
   font-weight: 950;
   letter-spacing: 0.06em;
@@ -346,31 +406,21 @@
 
 .supportPrivacyNote {
   margin: 0;
-  color: #806978 !important;
+  color: #687873 !important;
   font-size: 0.82rem !important;
   font-weight: 750 !important;
-}
-
-.supportFallback code {
-  display: inline-flex;
-  margin-top: 0.75rem;
-  border-radius: 999px;
-  background: rgb(183 121 31 / 0.1);
-  color: #765215;
-  padding: 0.45rem 0.65rem;
-  font-family: var(--font-sans);
-  font-weight: 900;
 }
 
 .unavailablePanel {
   margin-top: clamp(1rem, 8vw, 5rem);
 }
 
-@media (max-width: 820px) {
+@media (max-width: 920px) {
   .hero,
-  .contentGrid,
+  .storyGrid,
   .benefitGrid,
-  .supportCredentialGrid {
+  .supportCredentialGrid,
+  .registerBand {
     grid-template-columns: 1fr;
   }
 
@@ -379,8 +429,12 @@
   }
 
   .heroMedia {
-    max-width: 22rem;
+    width: min(100%, 28rem);
     justify-self: start;
+  }
+
+  .heroFacts {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -394,7 +448,7 @@
   }
 
   .heroActions a,
-  .finalCta a,
+  .registerBand a,
   .supportActions a,
   .unavailablePanel a,
   .retryButton {

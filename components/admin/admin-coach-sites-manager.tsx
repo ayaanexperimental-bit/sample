@@ -1465,6 +1465,10 @@ function CoachSitePreview({ site }: { site: CoachSiteRecord }) {
     <article className={styles.coachPreview}>
       <div className={styles.previewHero} data-media={site.heroMediaType}>
         <div>
+          <div className={styles.previewTemplateMark}>
+            <span>Yours Wellness Coach</span>
+            <span>{site.location || site.niche}</span>
+          </div>
           <p className={styles.previewNiche}>{site.niche}</p>
           <h3>{site.content.heroHeadline}</h3>
           <p>{site.content.subheadline}</p>
@@ -1486,6 +1490,20 @@ function CoachSitePreview({ site }: { site: CoachSiteRecord }) {
               a broken register link.
             </p>
           ) : null}
+          <dl className={styles.previewFacts}>
+            <div>
+              <dt>Coach</dt>
+              <dd>{site.coachName}</dd>
+            </div>
+            <div>
+              <dt>Focus</dt>
+              <dd>{site.niche}</dd>
+            </div>
+            <div>
+              <dt>Location</dt>
+              <dd>{site.location || "Yours Wellness"}</dd>
+            </div>
+          </dl>
         </div>
         {site.heroMediaType !== "none" ? (
           <div className={styles.previewMedia} data-media={site.heroMediaType}>
@@ -1511,6 +1529,10 @@ function CoachSitePreview({ site }: { site: CoachSiteRecord }) {
             {!previewVideoUrl && !previewUploadedVideoUrl && !previewImageUrl ? (
               <span>{site.coachName.slice(0, 2).toUpperCase()}</span>
             ) : null}
+            <div className={styles.previewMediaCaption}>
+              <strong>{site.coachName}</strong>
+              <span>{site.niche}</span>
+            </div>
           </div>
         ) : null}
       </div>
@@ -1525,7 +1547,7 @@ function CoachSitePreview({ site }: { site: CoachSiteRecord }) {
           <p>{site.content.visionText}</p>
         </section>
         <section>
-          <h4>Benefits</h4>
+          <h4>What guests can expect</h4>
           <ul>
             {site.content.benefits.map((benefit) => (
               <li key={benefit}>{benefit}</li>
@@ -1553,7 +1575,22 @@ function CoachSitePreview({ site }: { site: CoachSiteRecord }) {
         </section>
       </div>
 
-      <p className={styles.inlineNote}>{site.content.trustText}</p>
+      <section className={styles.previewRegisterBand}>
+        <div>
+          <p className={styles.previewNiche}>Register</p>
+          <h4>{site.content.ctaText || "Register Now"}</h4>
+          <p>{site.content.trustText}</p>
+        </div>
+        {canRegister ? (
+          <a href={site.googleFormUrl} rel="noreferrer" target="_blank">
+            {site.registerButtonText || "Register Now"}
+          </a>
+        ) : (
+          <button disabled type="button">
+            Contact Support
+          </button>
+        )}
+      </section>
     </article>
   );
 }
