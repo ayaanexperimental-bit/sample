@@ -1338,6 +1338,19 @@
   overflow-wrap: anywhere;
 }
 
+.definitionGrid small {
+  display: block;
+  margin-top: 0.32rem;
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.metaValue {
+  display: block;
+  color: #251822;
+}
+
 .chipList {
   display: flex;
   flex-wrap: wrap;

@@ -8,7 +8,6 @@ import {
   requireAdmin
 } from "../../../lib/server/admin-auth";
 import { startAdminEmailOtp, verifyAdminEmailOtp } from "../../../lib/server/admin-email-otp";
-import { recordAdminAuditEvent } from "../../../lib/server/admin-audit";
 import {
   getPrivateWhatsappGroupUrl,
   type PrivateFunnelLinkEnv
@@ -56,13 +55,6 @@ export async function onRequest({ request, env }: PagesContext) {
   const funnel = entryCode ? getFunnelByEntryCode(entryCode) : null;
 
   if (!entryCode || !funnel || !isPaidProgramFunnel(funnel)) {
-    await recordAdminAuditEvent({
-      email: admin.admin.email,
-      env,
-      reason: `invalid_funnel:${entryCode || "missing"}`,
-      request,
-      type: "private_link_reveal_failed"
-    });
     return adminJson({ ok: false, error: "Paid masterclass link is not valid." }, 400);
   }
 
@@ -74,13 +66,6 @@ export async function onRequest({ request, env }: PagesContext) {
     });
 
     if (!result.ok && result.reason === "not_configured" && isLocalDemoOtpAvailable(request, env)) {
-      await recordAdminAuditEvent({
-        email: admin.admin.email,
-        env,
-        reason: `local_demo:${funnel.id}`,
-        request,
-        type: "private_link_otp_requested"
-      });
       return adminJson({
         demoMode: true,
         message: "Local demo OTP is available for this reveal test.",
@@ -89,13 +74,6 @@ export async function onRequest({ request, env }: PagesContext) {
     }
 
     if (!result.ok) {
-      await recordAdminAuditEvent({
-        email: admin.admin.email,
-        env,
-        reason: `otp_not_configured:${funnel.id}`,
-        request,
-        type: "private_link_reveal_failed"
-      });
       return adminJson(
         {
           ok: false,
@@ -104,14 +82,6 @@ export async function onRequest({ request, env }: PagesContext) {
         result.reason === "rate_limited" ? 429 : 503
       );
     }
-
-    await recordAdminAuditEvent({
-      email: admin.admin.email,
-      env,
-      reason: `funnel:${funnel.id}`,
-      request,
-      type: "private_link_otp_requested"
-    });
 
     return adminJson({
       message: "OTP sent to the current admin email.",
@@ -133,35 +103,13 @@ export async function onRequest({ request, env }: PagesContext) {
     });
 
     if (!otpOk) {
-      await recordAdminAuditEvent({
-        email: admin.admin.email,
-        env,
-        reason: `bad_otp:${funnel.id}`,
-        request,
-        type: "private_link_reveal_failed"
-      });
       return adminJson({ ok: false, error: "OTP is invalid, expired, or not configured." }, 401);
     }
 
     const privateWhatsappUrl = getPrivateWhatsappGroupUrl(funnel, env);
     if (!privateWhatsappUrl) {
-      await recordAdminAuditEvent({
-        email: admin.admin.email,
-        env,
-        reason: `missing_secret:${funnel.id}`,
-        request,
-        type: "private_link_reveal_failed"
-      });
       return adminJson({ ok: false, error: "Private WhatsApp link is not configured." }, 404);
     }
-
-    await recordAdminAuditEvent({
-      email: admin.admin.email,
-      env,
-      reason: `funnel:${funnel.id}`,
-      request,
-      type: "private_link_revealed"
-    });
 
     return adminJson({
       expiresInSeconds: 20,

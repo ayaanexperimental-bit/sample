@@ -35,6 +35,8 @@ export type AdminPaidMasterclassLink = {
   entryPath: string;
   paidPagePath: string;
   paymentStatus: string;
+  privateWhatsappLastChangedAt: string | null;
+  privateWhatsappLastChangedBy: string;
   privateWhatsappSecretName: string;
   privateWhatsappStatus: string;
   status: string;
@@ -372,6 +374,8 @@ function getPaidMasterclassLinks(): AdminPaidMasterclassLink[] {
           funnel.id === "gyana-pcos-51"
             ? "WHATSAPP_GROUP_URL_GYANA_PCOS_51"
             : `WHATSAPP_GROUP_URL_${funnel.id.replace(/[^a-z0-9]/gi, "_").toUpperCase()}`,
+        privateWhatsappLastChangedAt: null,
+        privateWhatsappLastChangedBy: "Not recorded yet",
         privateWhatsappStatus: "Server-side only",
         status: funnel.status,
         successPath: funnel.successPath || "Not configured"

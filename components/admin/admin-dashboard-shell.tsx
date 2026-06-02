@@ -531,6 +531,18 @@ function MasterclassLinksView({
     window.open(path, "_blank", "noopener,noreferrer");
   }
 
+  function formatPrivateWhatsappChangedAt(link: AdminPaidMasterclassLink) {
+    if (!link.privateWhatsappLastChangedAt) return "Not recorded yet";
+
+    const changedAt = new Date(link.privateWhatsappLastChangedAt);
+    if (Number.isNaN(changedAt.getTime())) return link.privateWhatsappLastChangedAt;
+
+    return new Intl.DateTimeFormat("en-IN", {
+      dateStyle: "medium",
+      timeStyle: "short"
+    }).format(changedAt);
+  }
+
   return (
     <AdminPageShell eyebrow="Paid Masterclass" title="Link Settings">
       <section className={styles.section}>
@@ -632,6 +644,17 @@ function MasterclassLinksView({
                 <dd>
                   {managedLink.privateWhatsappStatus}
                   <code>{managedLink.privateWhatsappSecretName}</code>
+                </dd>
+              </div>
+              <div>
+                <dt>Last changed</dt>
+                <dd>
+                  <span className={styles.metaValue}>
+                    {formatPrivateWhatsappChangedAt(managedLink)}
+                  </span>
+                  {managedLink.privateWhatsappLastChangedAt ? (
+                    <small>Changed by {managedLink.privateWhatsappLastChangedBy}</small>
+                  ) : null}
                 </dd>
               </div>
             </dl>
@@ -736,8 +759,8 @@ function MasterclassLinksView({
               ) : null}
             </div>
             <p className={styles.linkWarning}>
-              The real WhatsApp invite is not shown here. Only the secret name is visible so the
-              private paid group link stays server-side.
+              The real WhatsApp invite stays server-side and is only shown here after OTP. Link
+              change time is tracked separately from reveal attempts.
             </p>
           </div>
         ) : null}
