@@ -18,6 +18,12 @@
       "database_id": "a82c8785-b313-4c30-ac94-6bd9efa33712"
     }
   ],
+  "r2_buckets": [
+    {
+      "binding": "COACH_MEDIA_BUCKET",
+      "bucket_name": "ywcoach-media"
+    }
+  ],
   "durable_objects": {
     "bindings": [
       {
