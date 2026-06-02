@@ -3,6 +3,7 @@ import { demoCoachSites } from "../../../../lib/admin-coach-sites";
 import { adminControlCenterData } from "../../../../lib/admin-control-center";
 import { adminDashboardData } from "../../../../lib/admin-dashboard-data";
 import { adminJson, requireAdmin } from "../../../../lib/server/admin-auth";
+import { listCoachSitesFromDb } from "../../../../lib/server/coach-site-storage";
 
 type Env = {
   ADMIN_ALLOWED_EMAILS?: string;
@@ -28,11 +29,15 @@ export async function onRequest({ request, env }: PagesContext) {
     return admin.response;
   }
 
+  const persistedCoachSites = await listCoachSitesFromDb(env);
+
   return adminJson({
     admin: admin.admin,
-    coachSites: demoCoachSites,
+    coachSites:
+      persistedCoachSites && persistedCoachSites.length > 0 ? persistedCoachSites : demoCoachSites,
     controlCenter: adminControlCenterData,
     dashboard: adminDashboardData,
+    realCoachSiteStorage: Boolean(persistedCoachSites),
     ok: true
   });
 }

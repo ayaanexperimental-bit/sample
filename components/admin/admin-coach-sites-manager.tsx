@@ -34,6 +34,24 @@ type CoachDialog =
   | { nextStatus: "paused" | "published"; site: CoachSiteRecord; type: "status" }
   | { site: CoachSiteRecord; type: "remove" };
 
+type CoachSitesApiPayload = {
+  coachSite?: CoachSiteRecord;
+  coachSites?: CoachSiteRecord[];
+  configured?: boolean;
+  error?: string;
+  fallbackUsed?: boolean;
+  ok?: boolean;
+};
+
+type MediaUploadApiPayload = {
+  configured?: boolean;
+  error?: string;
+  media?: {
+    publicUrl?: string;
+  };
+  ok?: boolean;
+};
+
 const statusOptions: Array<"all" | CoachSiteStatus> = [
   "all",
   "draft",
@@ -76,12 +94,49 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   const [aiSubmitting, setAiSubmitting] = useState(false);
   const [removeConfirm, setRemoveConfirm] = useState("");
   const [removeReason, setRemoveReason] = useState(removalReasons[0]);
+  const [storageMessage, setStorageMessage] = useState("");
+  const [storageReady, setStorageReady] = useState(false);
 
   useEffect(() => {
     if (mode === "create") {
       openCreatorDialog();
     }
   }, [mode]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPersistedCoachSites() {
+      try {
+        const response = await fetch("/api/admin/coach-sites", {
+          cache: "no-store",
+          credentials: "include"
+        });
+        const payload = (await response.json().catch(() => ({}))) as CoachSitesApiPayload;
+
+        if (cancelled || !response.ok || !payload.ok || !payload.coachSites) return;
+
+        setSites(payload.coachSites);
+        setStorageReady(Boolean(payload.configured));
+        setStorageMessage(
+          payload.fallbackUsed
+            ? "Coach-site database connected. Showing fallback records until the first admin save."
+            : "Coach-site database connected."
+        );
+      } catch {
+        if (!cancelled) {
+          setStorageReady(false);
+          setStorageMessage("Using local fallback. Admin API is not reachable in this preview.");
+        }
+      }
+    }
+
+    void loadPersistedCoachSites();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filteredSites = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -168,7 +223,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     return true;
   }
 
-  function upsertSite(status: CoachSiteStatus) {
+  async function upsertSite(status: CoachSiteStatus) {
     const site = { ...buildPreviewSite(status), status };
     const existingIndex = sites.findIndex((item) => item.id === site.id || item.slug === site.slug);
     const nextSites =
@@ -182,9 +237,50 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     setPublishedSite(status === "published" ? site : null);
     setMessage(
       status === "published"
-        ? `Successfully Published. Stable public link: ${site.publicUrl}`
-        : `Draft saved. Stable public link reserved: ${site.publicUrl}`
+        ? `Successfully Published. Stable public link: ${site.publicUrl}. Saving to database...`
+        : `Draft saved. Stable public link reserved: ${site.publicUrl}. Saving to database...`
     );
+
+    try {
+      const response = await fetch("/api/admin/coach-sites", {
+        body: JSON.stringify({ site }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-yw-admin-csrf": csrfToken
+        },
+        method: "POST"
+      });
+      const payload = (await response.json().catch(() => ({}))) as CoachSitesApiPayload;
+
+      if (!response.ok || !payload.ok || !payload.coachSite) {
+        setStorageReady(Boolean(payload.configured));
+        setStorageMessage(
+          payload.error || "Could not save to coach-site database. Local preview is still updated."
+        );
+        return site;
+      }
+
+      setStorageReady(true);
+      setStorageMessage("Saved in coach-site database.");
+      setSites((current) =>
+        current.map((item) =>
+          item.id === site.id || item.slug === site.slug ? payload.coachSite! : item
+        )
+      );
+      setPreviewSite(payload.coachSite);
+      setPublishedSite(status === "published" ? payload.coachSite : null);
+      setMessage(
+        status === "published"
+          ? `Successfully Published. Stable public link: ${payload.coachSite.publicUrl}`
+          : `Draft saved. Stable public link reserved: ${payload.coachSite.publicUrl}`
+      );
+      return payload.coachSite;
+    } catch {
+      setStorageReady(false);
+      setStorageMessage("Could not reach coach-site database API. Local preview is still updated.");
+    }
 
     return site;
   }
@@ -282,6 +378,38 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         : `${site.coachName} resumed with the same public link: ${site.publicUrl}.`
     );
     setDialog(null);
+
+    void persistSiteStatus(site, status);
+  }
+
+  async function persistSiteStatus(site: CoachSiteRecord, status: "paused" | "published") {
+    try {
+      const response = await fetch("/api/admin/coach-sites", {
+        body: JSON.stringify({ siteId: site.id, status }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-yw-admin-csrf": csrfToken
+        },
+        method: "PATCH"
+      });
+      const payload = (await response.json().catch(() => ({}))) as CoachSitesApiPayload;
+
+      if (!response.ok || !payload.ok || !payload.coachSite) {
+        setStorageMessage(payload.error || "Status changed locally, but database update failed.");
+        return;
+      }
+
+      setStorageReady(true);
+      setStorageMessage("Coach-site status saved in database.");
+      setSites((current) =>
+        current.map((item) => (item.id === site.id ? payload.coachSite! : item))
+      );
+    } catch {
+      setStorageReady(false);
+      setStorageMessage("Status changed locally, but admin API was not reachable.");
+    }
   }
 
   async function copyPublicLink(site: CoachSiteRecord) {
@@ -403,10 +531,14 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       )}
 
       {message ? <p className={styles.inlineStatus}>{message}</p> : null}
+      {storageMessage ? (
+        <p className={storageReady ? styles.inlineStatus : styles.linkWarning}>{storageMessage}</p>
+      ) : null}
 
       <CoachDialogRenderer
         aiMessage={aiMessage}
         aiSubmitting={aiSubmitting}
+        csrfToken={csrfToken}
         dialog={dialog}
         form={form}
         onClose={() => setDialog(null)}
@@ -440,6 +572,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
 function CoachDialogRenderer({
   aiMessage,
   aiSubmitting,
+  csrfToken,
   dialog,
   form,
   onClose,
@@ -465,6 +598,7 @@ function CoachDialogRenderer({
 }: {
   aiMessage: string;
   aiSubmitting: boolean;
+  csrfToken: string;
   dialog: CoachDialog | null;
   form: CoachSiteFormState;
   onClose: () => void;
@@ -473,9 +607,9 @@ function CoachDialogRenderer({
   onGenerateAi: () => void;
   onOpenDialog: (dialog: CoachDialog) => void;
   onPreparePreview: () => boolean;
-  onPublish: () => CoachSiteRecord;
+  onPublish: () => Promise<CoachSiteRecord>;
   onRemoveCancel: () => void;
-  onSaveDraft: () => CoachSiteRecord;
+  onSaveDraft: () => Promise<CoachSiteRecord>;
   onStatusConfirm: (site: CoachSiteRecord, status: "paused" | "published") => void;
   onUpdateCoachName: (value: string) => void;
   onUpdateField: <Key extends keyof CoachSiteFormState>(
@@ -550,7 +684,9 @@ function CoachDialogRenderer({
               </>
             ) : null}
 
-            {wizardStep === 1 ? <HeroMediaStep form={form} onUpdateField={onUpdateField} /> : null}
+            {wizardStep === 1 ? (
+              <HeroMediaStep csrfToken={csrfToken} form={form} onUpdateField={onUpdateField} />
+            ) : null}
 
             {wizardStep === 2 ? (
               <div className={styles.copyEditorGrid}>
@@ -929,9 +1065,11 @@ function CoachDialogRenderer({
 }
 
 function HeroMediaStep({
+  csrfToken,
   form,
   onUpdateField
 }: {
+  csrfToken: string;
   form: CoachSiteFormState;
   onUpdateField: <Key extends keyof CoachSiteFormState>(
     key: Key,
@@ -968,11 +1106,46 @@ function HeroMediaStep({
       return;
     }
 
-    const dataUrl = await readFileAsDataUrl(file);
-    onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", dataUrl);
-    setUploadMessage(
-      `${file.name} uploaded for this draft. You can remove or replace it before publishing.`
-    );
+    const previewUrl = URL.createObjectURL(file);
+    onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", previewUrl);
+    setUploadMessage(`Uploading ${file.name}...`);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("mediaType", mediaType);
+      formData.append("slug", normalizeCoachSlug(form.slug || form.coachName) || "draft-coach");
+
+      const response = await fetch("/api/admin/coach-sites/media", {
+        body: formData,
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "x-yw-admin-csrf": csrfToken
+        },
+        method: "POST"
+      });
+      const payload = (await response.json().catch(() => ({}))) as MediaUploadApiPayload;
+
+      if (!response.ok || !payload.ok || !payload.media?.publicUrl) {
+        const fallbackPreview = await readFileAsDataUrl(file);
+        onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", fallbackPreview);
+        setUploadMessage(
+          payload.error ||
+            `${file.name} is preview-only until Cloudflare R2 media storage is enabled.`
+        );
+        return;
+      }
+
+      onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", payload.media.publicUrl);
+      setUploadMessage(`${file.name} uploaded and saved for this coach site.`);
+    } catch {
+      const fallbackPreview = await readFileAsDataUrl(file);
+      onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", fallbackPreview);
+      setUploadMessage(`${file.name} is preview-only because the upload API was not reachable.`);
+    } finally {
+      URL.revokeObjectURL(previewUrl);
+    }
   }
 
   return (
@@ -1107,8 +1280,8 @@ function WizardFooter({
 }: {
   onClose: () => void;
   onPreparePreview: () => boolean;
-  onPublish: () => CoachSiteRecord;
-  onSaveDraft: () => CoachSiteRecord;
+  onPublish: () => Promise<CoachSiteRecord>;
+  onSaveDraft: () => Promise<CoachSiteRecord>;
   setWizardStep: (step: number) => void;
   wizardStep: number;
 }) {
@@ -1138,7 +1311,7 @@ function WizardFooter({
       <button
         className={styles.secondaryAction}
         onClick={() => {
-          onSaveDraft();
+          void onSaveDraft();
           setWizardStep(6);
         }}
         type="button"
@@ -1157,7 +1330,7 @@ function WizardFooter({
         <button
           className={styles.primaryAction}
           onClick={() => {
-            onPublish();
+            void onPublish();
             setWizardStep(6);
           }}
           type="button"
