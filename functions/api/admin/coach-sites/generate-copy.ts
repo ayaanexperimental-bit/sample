@@ -34,6 +34,7 @@ type GenerateCopyBody = {
   location?: unknown;
   niche?: unknown;
   registerButtonText?: unknown;
+  scope?: unknown;
   supportText?: unknown;
   vision?: unknown;
 };
@@ -106,8 +107,20 @@ function parseGenerateCopyBody(body: GenerateCopyBody | null): CoachCopyAiInput 
       typeof body?.registerButtonText === "string"
         ? body.registerButtonText.trim().slice(0, 80)
         : "",
+    scope: parseCopyScope(body?.scope),
     supportText:
       typeof body?.supportText === "string" ? body.supportText.trim().slice(0, 400) : "",
     vision: typeof body?.vision === "string" ? body.vision.trim().slice(0, 1200) : ""
   };
+}
+
+function parseCopyScope(value: unknown): CoachCopyAiInput["scope"] {
+  return value === "benefits" ||
+    value === "cta" ||
+    value === "faq" ||
+    value === "hero" ||
+    value === "intro" ||
+    value === "vision"
+    ? value
+    : "all";
 }

@@ -5,6 +5,8 @@ export type CoachCopyAiEnv = {
   OPENAI_MODEL?: string;
 };
 
+export type CoachCopyScope = "all" | "benefits" | "cta" | "faq" | "hero" | "intro" | "vision";
+
 export type CoachCopyAiInput = {
   bio?: string;
   coachName: string;
@@ -14,14 +16,17 @@ export type CoachCopyAiInput = {
   location?: string;
   niche: string;
   registerButtonText?: string;
+  scope?: CoachCopyScope;
   supportText?: string;
   vision?: string;
 };
 
+export type GeneratedCoachSiteCopy = Partial<CoachSiteContent>;
+
 export type CoachCopyAiResult =
   | {
       configured: true;
-      content: CoachSiteContent;
+      content: GeneratedCoachSiteCopy;
       ok: true;
     }
   | {
@@ -116,6 +121,38 @@ const AI_COPY_SCHEMA = {
   type: "json_schema"
 };
 
+const AI_COPY_SCHEMA_PROPERTIES = AI_COPY_SCHEMA.schema.properties;
+
+const COPY_SCOPE_FIELDS: Record<CoachCopyScope, Array<keyof CoachSiteContent>> = {
+  all: [
+    "heroHeadline",
+    "subheadline",
+    "coachIntro",
+    "visionText",
+    "benefits",
+    "ctaText",
+    "faq",
+    "trustText",
+    "socialCopy"
+  ],
+  benefits: ["benefits"],
+  cta: ["ctaText", "trustText"],
+  faq: ["faq"],
+  hero: ["heroHeadline", "subheadline", "socialCopy"],
+  intro: ["coachIntro"],
+  vision: ["visionText"]
+};
+
+const COPY_SCOPE_MAX_OUTPUT_TOKENS: Record<CoachCopyScope, number> = {
+  all: 1200,
+  benefits: 450,
+  cta: 320,
+  faq: 650,
+  hero: 360,
+  intro: 300,
+  vision: 300
+};
+
 export async function generateCoachSiteCopyWithAi(
   input: CoachCopyAiInput,
   env: CoachCopyAiEnv
@@ -129,15 +166,22 @@ export async function generateCoachSiteCopyWithAi(
     };
   }
 
+  const scope = normalizeCopyScope(input.scope);
+
   try {
     const response = await fetch("https://api.openai.com/v1/responses", {
       body: JSON.stringify({
-        input: createCoachCopyPrompt(input),
+        input: createCoachCopyPrompt(input, scope),
         instructions:
           "Generate only editable website copy for a fixed coach referral page. Do not propose design changes, backend logic, database schema, security settings, payment changes, or third-party automation. Keep copy practical, ethical, and education-first.",
+        max_output_tokens: COPY_SCOPE_MAX_OUTPUT_TOKENS[scope],
         model: env.OPENAI_MODEL || "gpt-5-mini",
+        reasoning: {
+          effort: "minimal"
+        },
+        store: false,
         text: {
-          format: AI_COPY_SCHEMA
+          format: createCopySchemaForScope(scope)
         }
       }),
       headers: {
@@ -156,7 +200,7 @@ export async function generateCoachSiteCopyWithAi(
     }
 
     const payload = (await response.json()) as OpenAiResponse;
-    const content = parseCoachCopy(extractResponseText(payload));
+    const content = parseCoachCopy(extractResponseText(payload), scope);
     if (!content) {
       return {
         configured: true,
@@ -179,9 +223,29 @@ export async function generateCoachSiteCopyWithAi(
   }
 }
 
-function createCoachCopyPrompt(input: CoachCopyAiInput) {
+function createCopySchemaForScope(scope: CoachCopyScope) {
+  const fields = COPY_SCOPE_FIELDS[scope];
+  const properties = Object.fromEntries(
+    fields.map((field) => [field, AI_COPY_SCHEMA_PROPERTIES[field]])
+  );
+
+  return {
+    name: `coach_site_copy_${scope}`,
+    schema: {
+      additionalProperties: false,
+      properties,
+      required: fields,
+      type: "object"
+    },
+    strict: true,
+    type: "json_schema"
+  };
+}
+
+function createCoachCopyPrompt(input: CoachCopyAiInput, scope: CoachCopyScope) {
   return [
     "Create copy for a Yours Wellness fixed-template coach referral page.",
+    `Requested generation scope: ${getPromptScopeLabel(scope)}.`,
     `Coach name: ${input.coachName}`,
     `Coach niche: ${input.niche}`,
     `Coach location: ${input.location || "Not provided"}`,
@@ -195,8 +259,21 @@ function createCoachCopyPrompt(input: CoachCopyAiInput) {
     "The public page leads to a Google Form register button when configured. Do not claim form submissions are tracked.",
     "Do not publish coach phone, email, WhatsApp, or contact-support instructions in normal page copy.",
     "Tone: professional, supportive, clear, practical, and not medical-diagnosis oriented.",
+    scope === "all"
+      ? "Generate all fixed-template copy sections."
+      : "Generate only the requested section fields in the schema. Do not include unrelated fields.",
     "Return structured copy only in the requested JSON schema."
   ].join("\n");
+}
+
+function getPromptScopeLabel(scope: CoachCopyScope) {
+  if (scope === "benefits") return "benefits section only";
+  if (scope === "cta") return "CTA and trust section only";
+  if (scope === "faq") return "FAQ section only";
+  if (scope === "hero") return "hero headline and subheadline only";
+  if (scope === "intro") return "coach introduction section only";
+  if (scope === "vision") return "mission/vision section only";
+  return "all sections";
 }
 
 function extractResponseText(payload: OpenAiResponse) {
@@ -213,10 +290,10 @@ function extractResponseText(payload: OpenAiResponse) {
   );
 }
 
-function parseCoachCopy(value: string): CoachSiteContent | null {
+function parseCoachCopy(value: string, scope: CoachCopyScope): GeneratedCoachSiteCopy | null {
   try {
     const parsed = JSON.parse(value) as unknown;
-    if (!isCoachSiteContent(parsed)) return null;
+    if (!isCoachGeneratedCopy(parsed, scope)) return null;
 
     return parsed;
   } catch {
@@ -224,27 +301,44 @@ function parseCoachCopy(value: string): CoachSiteContent | null {
   }
 }
 
-function isCoachSiteContent(value: unknown): value is CoachSiteContent {
+function isCoachGeneratedCopy(
+  value: unknown,
+  scope: CoachCopyScope
+): value is GeneratedCoachSiteCopy {
   if (!isRecord(value)) return false;
 
-  return (
-    typeof value.heroHeadline === "string" &&
-    typeof value.subheadline === "string" &&
-    typeof value.coachIntro === "string" &&
-    typeof value.visionText === "string" &&
-    Array.isArray(value.benefits) &&
-    value.benefits.every((item) => typeof item === "string") &&
-    typeof value.ctaText === "string" &&
-    Array.isArray(value.faq) &&
-    value.faq.every(
-      (item) =>
-        isRecord(item) && typeof item.question === "string" && typeof item.answer === "string"
-    ) &&
-    typeof value.trustText === "string" &&
-    typeof value.socialCopy === "string"
-  );
+  return COPY_SCOPE_FIELDS[scope].every((field) => {
+    const fieldValue = value[field];
+
+    if (field === "benefits") {
+      return Array.isArray(fieldValue) && fieldValue.every((item) => typeof item === "string");
+    }
+
+    if (field === "faq") {
+      return (
+        Array.isArray(fieldValue) &&
+        fieldValue.every(
+          (item) =>
+            isRecord(item) && typeof item.question === "string" && typeof item.answer === "string"
+        )
+      );
+    }
+
+    return typeof fieldValue === "string";
+  });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizeCopyScope(value: unknown): CoachCopyScope {
+  return value === "benefits" ||
+    value === "cta" ||
+    value === "faq" ||
+    value === "hero" ||
+    value === "intro" ||
+    value === "vision"
+    ? value
+    : "all";
 }

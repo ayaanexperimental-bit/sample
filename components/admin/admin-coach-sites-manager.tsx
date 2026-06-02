@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type KeyboardEvent, type MouseEvent, useEffect, useMemo, useState } from "react";
 import { AdminActionDialog } from "./admin-dashboard-layout";
 import {
   EMPTY_COACH_SITE_FORM,
@@ -73,7 +73,8 @@ type GeneratedCoachCopy = {
   visionText?: string;
 };
 
-type CopyRegenerationScope = "all" | "benefits" | "faq" | "hero";
+type CopyRegenerationScope = "all" | "benefits" | "cta" | "faq" | "hero" | "intro" | "vision";
+type PreviewInspectSection = Exclude<CopyRegenerationScope, "all">;
 type CoachSiteDangerStatus = "archived" | "removed";
 
 const statusOptions: Array<"all" | CoachSiteStatus> = [
@@ -92,6 +93,15 @@ const wizardSteps = [
   "Links & Contact Support",
   "Preview & Edit",
   "Publish"
+];
+
+const previewInspectSections: PreviewInspectSection[] = [
+  "hero",
+  "intro",
+  "vision",
+  "benefits",
+  "faq",
+  "cta"
 ];
 
 const removalReasons = [
@@ -173,6 +183,28 @@ function applyGeneratedCopyToForm(
     };
   }
 
+  if (scope === "intro") {
+    return {
+      ...current,
+      coachIntro: content.coachIntro || current.coachIntro
+    };
+  }
+
+  if (scope === "vision") {
+    return {
+      ...current,
+      visionText: content.visionText || current.visionText
+    };
+  }
+
+  if (scope === "cta") {
+    return {
+      ...current,
+      ctaText: content.ctaText || current.ctaText,
+      trustText: content.trustText || current.trustText
+    };
+  }
+
   return {
     ...current,
     benefitsText,
@@ -190,8 +222,11 @@ function applyGeneratedCopyToForm(
 
 function getCopyScopeLabel(scope: CopyRegenerationScope) {
   if (scope === "benefits") return "Benefits";
+  if (scope === "cta") return "CTA section";
   if (scope === "faq") return "FAQ";
   if (scope === "hero") return "Hero copy";
+  if (scope === "intro") return "Coach introduction";
+  if (scope === "vision") return "Mission / vision";
   return "All copy";
 }
 
@@ -461,7 +496,10 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     };
   }
 
-  async function requestGeneratedCopy(sourceForm: CoachSiteFormState) {
+  async function requestGeneratedCopy(
+    sourceForm: CoachSiteFormState,
+    scope: CopyRegenerationScope = "all"
+  ) {
     const response = await fetch("/api/admin/coach-sites/generate-copy", {
       body: JSON.stringify({
         bio: sourceForm.bio,
@@ -476,6 +514,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         location: sourceForm.location,
         niche: sourceForm.niche,
         registerButtonText: sourceForm.registerButtonText,
+        scope,
         supportText: sourceForm.supportText,
         vision: sourceForm.vision
       }),
@@ -522,7 +561,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     let nextForm = validatedForm;
 
     try {
-      const result = await requestGeneratedCopy(validatedForm);
+      const result = await requestGeneratedCopy(validatedForm, "all");
 
       if (result.content) {
         nextForm = applyGeneratedCopyToForm(validatedForm, result.content, "all");
@@ -568,7 +607,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     const label = getCopyScopeLabel(scope);
 
     try {
-      const result = await requestGeneratedCopy(validatedForm);
+      const result = await requestGeneratedCopy(validatedForm, scope);
       if (!result.content) {
         setAiMessage(`${result.message} Manual editing remains available.`);
         return;
@@ -1443,6 +1482,14 @@ function PreviewAndEditStep({
   ) => void;
   previewSite: CoachSiteRecord | null;
 }) {
+  const [inspectMode, setInspectMode] = useState(false);
+  const [selectedInspectScope, setSelectedInspectScope] = useState<PreviewInspectSection | null>(
+    null
+  );
+  const selectedInspectLabel = selectedInspectScope
+    ? getCopyScopeLabel(selectedInspectScope)
+    : "";
+
   return (
     <div className={styles.previewEditStep}>
       <div className={styles.sectionHeader}>
@@ -1460,28 +1507,20 @@ function PreviewAndEditStep({
             Regenerate All Copy
           </button>
           <button
-            className={styles.secondaryAction}
+            aria-pressed={inspectMode}
+            className={styles.inspectToggleButton}
             disabled={aiSubmitting}
-            onClick={() => void onRegenerateCopy("hero")}
+            onClick={() => {
+              if (inspectMode) {
+                setSelectedInspectScope(null);
+              }
+              setInspectMode(!inspectMode);
+            }}
+            title="Select a preview section to regenerate"
             type="button"
           >
-            Regenerate Hero Copy
-          </button>
-          <button
-            className={styles.secondaryAction}
-            disabled={aiSubmitting}
-            onClick={() => void onRegenerateCopy("benefits")}
-            type="button"
-          >
-            Regenerate Benefits
-          </button>
-          <button
-            className={styles.secondaryAction}
-            disabled={aiSubmitting}
-            onClick={() => void onRegenerateCopy("faq")}
-            type="button"
-          >
-            Regenerate FAQ
+            <CursorInspectIcon />
+            <span>{inspectMode ? "Selecting" : "Inspect"}</span>
           </button>
         </div>
       </div>
@@ -1498,6 +1537,31 @@ function PreviewAndEditStep({
       ) : null}
 
       {!aiSubmitting && aiMessage ? <p className={styles.inlineStatus}>{aiMessage}</p> : null}
+
+      {inspectMode ? (
+        <div className={styles.previewInspectTray}>
+          <div>
+            {previewInspectSections.map((scope) => (
+              <button
+                data-active={selectedInspectScope === scope ? "true" : "false"}
+                key={scope}
+                onClick={() => setSelectedInspectScope(scope)}
+                type="button"
+              >
+                {getCopyScopeLabel(scope)}
+              </button>
+            ))}
+          </div>
+          <button
+            className={styles.primaryAction}
+            disabled={!selectedInspectScope || aiSubmitting}
+            onClick={() => selectedInspectScope && void onRegenerateCopy(selectedInspectScope)}
+            type="button"
+          >
+            {selectedInspectLabel ? `Regenerate ${selectedInspectLabel}` : "Select Section"}
+          </button>
+        </div>
+      ) : null}
 
       <div className={styles.copyEditorPanel}>
         <div>
@@ -1574,6 +1638,9 @@ function PreviewAndEditStep({
               selectedThemeId
             });
           }}
+          inspectMode={inspectMode}
+          onSelectInspectScope={setSelectedInspectScope}
+          selectedInspectScope={selectedInspectScope}
           site={previewSite}
         />
       ) : (
@@ -1583,6 +1650,24 @@ function PreviewAndEditStep({
         </div>
       )}
     </div>
+  );
+}
+
+function CursorInspectIcon() {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+      <path
+        d="M5.5 3.8 18.8 10l-5.2 1.7 3.1 5.8-2.8 1.5-3-5.8-4 4.2L5.5 3.8Z"
+        fill="currentColor"
+      />
+      <path
+        d="M16.4 4.1 18 2.5M19.5 7.2h2.2M16.8 14.5l1.6 1.6"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.7"
+      />
+    </svg>
   );
 }
 
@@ -1969,10 +2054,16 @@ function ThemeChoiceField({
 }
 
 function CoachSitePreview({
+  inspectMode = false,
   onThemeChange,
+  onSelectInspectScope,
+  selectedInspectScope,
   site
 }: {
+  inspectMode?: boolean;
   onThemeChange?: (value: CoachTemplateThemeId) => void;
+  onSelectInspectScope?: (value: PreviewInspectSection) => void;
+  selectedInspectScope?: PreviewInspectSection | null;
   site: CoachSiteRecord;
 }) {
   const canRegister = Boolean(site.googleFormUrl);
@@ -1982,6 +2073,35 @@ function CoachSitePreview({
   const previewUploadedVideoUrl =
     site.heroMediaType === "video" && isUploadedVideoSource(site.videoUrl) ? site.videoUrl : "";
   const selectedTheme = getCoachTemplateTheme(site.selectedThemeId);
+
+  function getInspectProps(scope: PreviewInspectSection) {
+    const selected = selectedInspectScope === scope;
+
+    if (!inspectMode) {
+      return {
+        "data-selected": selected ? "true" : "false"
+      };
+    }
+
+    return {
+      "aria-label": `Select ${getCopyScopeLabel(scope)} for regeneration`,
+      "data-inspect-mode": "true",
+      "data-selected": selected ? "true" : "false",
+      onClick: (event: MouseEvent<HTMLElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onSelectInspectScope?.(scope);
+      },
+      onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+
+        event.preventDefault();
+        onSelectInspectScope?.(scope);
+      },
+      role: "button",
+      tabIndex: 0
+    };
+  }
 
   return (
     <article className={styles.coachPreview} data-theme={selectedTheme.id}>
@@ -2005,7 +2125,14 @@ function CoachSitePreview({
           </div>
         ) : null}
       </div>
-      <div className={styles.previewHero} data-media={site.heroMediaType}>
+      <div
+        className={`${styles.previewHero} ${inspectMode ? styles.previewInspectable : ""}`}
+        data-media={site.heroMediaType}
+        {...getInspectProps("hero")}
+      >
+        {inspectMode ? (
+          <span className={styles.inspectHotspot}>{getCopyScopeLabel("hero")}</span>
+        ) : null}
         <div>
           <div className={styles.previewTemplateMark}>
             <span>Yours Wellness Coach</span>
@@ -2080,15 +2207,33 @@ function CoachSitePreview({
       </div>
 
       <div className={styles.previewGrid}>
-        <section>
+        <section
+          className={inspectMode ? styles.previewInspectable : ""}
+          {...getInspectProps("intro")}
+        >
+          {inspectMode ? (
+            <span className={styles.inspectHotspot}>{getCopyScopeLabel("intro")}</span>
+          ) : null}
           <h4>Coach introduction</h4>
           <p>{site.content.coachIntro}</p>
         </section>
-        <section>
+        <section
+          className={inspectMode ? styles.previewInspectable : ""}
+          {...getInspectProps("vision")}
+        >
+          {inspectMode ? (
+            <span className={styles.inspectHotspot}>{getCopyScopeLabel("vision")}</span>
+          ) : null}
           <h4>Vision</h4>
           <p>{site.content.visionText}</p>
         </section>
-        <section>
+        <section
+          className={inspectMode ? styles.previewInspectable : ""}
+          {...getInspectProps("benefits")}
+        >
+          {inspectMode ? (
+            <span className={styles.inspectHotspot}>{getCopyScopeLabel("benefits")}</span>
+          ) : null}
           <h4>What guests can expect</h4>
           <ul>
             {site.content.benefits.map((benefit) => (
@@ -2096,7 +2241,13 @@ function CoachSitePreview({
             ))}
           </ul>
         </section>
-        <section>
+        <section
+          className={inspectMode ? styles.previewInspectable : ""}
+          {...getInspectProps("faq")}
+        >
+          {inspectMode ? (
+            <span className={styles.inspectHotspot}>{getCopyScopeLabel("faq")}</span>
+          ) : null}
           <h4>FAQ</h4>
           {site.content.faq.map((item) => (
             <div key={item.question}>
@@ -2107,7 +2258,15 @@ function CoachSitePreview({
         </section>
       </div>
 
-      <section className={styles.previewRegisterBand}>
+      <section
+        className={`${styles.previewRegisterBand} ${
+          inspectMode ? styles.previewInspectable : ""
+        }`}
+        {...getInspectProps("cta")}
+      >
+        {inspectMode ? (
+          <span className={styles.inspectHotspot}>{getCopyScopeLabel("cta")}</span>
+        ) : null}
         <div>
           <p className={styles.previewNiche}>Register</p>
           <h4>{site.content.ctaText || "Register Now"}</h4>
