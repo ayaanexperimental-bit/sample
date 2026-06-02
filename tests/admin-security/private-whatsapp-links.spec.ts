@@ -29,7 +29,7 @@ test.describe("private WhatsApp links", () => {
     expect("whatsappGroupUrl" in (funnel as Record<string, unknown>)).toBe(false);
   });
 
-  test("resolves private WhatsApp URL from D1 table first, then legacy env fallback", async () => {
+  test("resolves private WhatsApp URL only from the D1 server table", async () => {
     const funnel = getFunnelById(PAID_FUNNEL_ID);
     if (!funnel) throw new Error("Missing paid funnel fixture.");
 
@@ -42,20 +42,9 @@ test.describe("private WhatsApp links", () => {
             updatedBy: ADMIN_EMAIL,
             whatsappGroupUrl: TABLE_WHATSAPP_URL
           }
-        }).db,
-        WHATSAPP_GROUP_URL_GYANA_PCOS_51: PRIVATE_WHATSAPP_URL
+        }).db
       })
     ).toBe(TABLE_WHATSAPP_URL);
-    await expect(
-      getPrivateWhatsappGroupUrl(funnel, {
-        WHATSAPP_GROUP_URL_GYANA_PCOS_51: PRIVATE_WHATSAPP_URL
-      })
-    ).resolves.toBe(PRIVATE_WHATSAPP_URL);
-    await expect(
-      getPrivateWhatsappGroupUrl(funnel, {
-        WHATSAPP_GROUP_URL_GYANA_PCOS_51: "https://example.com/not-whatsapp"
-      })
-    ).resolves.toBeNull();
 
     await expect(getPrivateWhatsappLinkMetadata(funnel, {})).resolves.toMatchObject({
       configured: false,
@@ -66,8 +55,14 @@ test.describe("private WhatsApp links", () => {
   test("paid WhatsApp API returns join URL only when env and funnel cookie match", async () => {
     const noCookie = await whatsappAccessRequest({
       env: {
-        FUNNEL_ACCESS_SECRET,
-        WHATSAPP_GROUP_URL_GYANA_PCOS_51: PRIVATE_WHATSAPP_URL
+        ADMIN_DB: createPrivateLinksDb({
+          [PAID_FUNNEL_ID]: {
+            updatedAt: 1780000000,
+            updatedBy: ADMIN_EMAIL,
+            whatsappGroupUrl: PRIVATE_WHATSAPP_URL
+          }
+        }).db,
+        FUNNEL_ACCESS_SECRET
       },
       request: new Request("https://ywcoach.com/api/whatsapp-access")
     });
@@ -85,8 +80,14 @@ test.describe("private WhatsApp links", () => {
     });
     const allowed = await whatsappAccessRequest({
       env: {
-        FUNNEL_ACCESS_SECRET,
-        WHATSAPP_GROUP_URL_GYANA_PCOS_51: PRIVATE_WHATSAPP_URL
+        ADMIN_DB: createPrivateLinksDb({
+          [PAID_FUNNEL_ID]: {
+            updatedAt: 1780000000,
+            updatedBy: ADMIN_EMAIL,
+            whatsappGroupUrl: PRIVATE_WHATSAPP_URL
+          }
+        }).db,
+        FUNNEL_ACCESS_SECRET
       },
       request: new Request("https://ywcoach.com/api/whatsapp-access", {
         headers: {
@@ -109,8 +110,7 @@ test.describe("private WhatsApp links", () => {
       ADMIN_AUTH_DEMO_ENABLED: "true",
       ADMIN_DB: privateLinksDb.db,
       ADMIN_DEV_OTP,
-      ADMIN_SESSION_SECRET,
-      WHATSAPP_GROUP_URL_GYANA_PCOS_51: PRIVATE_WHATSAPP_URL
+      ADMIN_SESSION_SECRET
     };
 
     const unauthenticated = await privateLinkRequest({

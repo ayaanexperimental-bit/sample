@@ -44,7 +44,7 @@ type PrivateLinkMetadata = {
   configured: boolean;
   entryCode: string;
   funnelId: string;
-  storageSource: "d1_table" | "legacy_env" | "none";
+  storageSource: "d1_table" | "none";
   updatedAt: string | null;
   updatedBy: string;
 };
@@ -468,16 +468,9 @@ function MasterclassLinksView({
       ...link,
       privateWhatsappLastChangedAt: metadata.updatedAt,
       privateWhatsappLastChangedBy: metadata.updatedBy,
-      privateWhatsappSecretName:
-        metadata.storageSource === "d1_table"
-          ? "private_funnel_links"
-          : link.privateWhatsappSecretName,
+      privateWhatsappSecretName: "private_funnel_links",
       privateWhatsappStorageSource: metadata.storageSource,
-      privateWhatsappStatus: metadata.configured
-        ? metadata.storageSource === "d1_table"
-          ? "D1 server table"
-          : "Legacy server fallback"
-        : "Not configured"
+      privateWhatsappStatus: metadata.configured ? "D1 server table" : "Not configured"
     };
   }
 
@@ -883,8 +876,8 @@ function MasterclassLinksView({
                 <p className={styles.kicker}>Server-Side Table</p>
                 <h4>Save private WhatsApp link</h4>
                 <p>
-                  Use the same OTP field above. The saved URL goes into D1 and replaces the legacy
-                  secret fallback for this masterclass.
+                  Use the same OTP field above. The saved URL goes into the protected D1 server
+                  table for this masterclass.
                 </p>
               </div>
               <label className={styles.compactField}>

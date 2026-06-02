@@ -10,8 +10,6 @@ type Env = {
   ADMIN_REQUIRE_DB_ADMIN_ROLES?: string;
   ADMIN_SESSION_SECRET?: string;
   RAZORPAY_PAYMENT_PAGE_URL?: string;
-  WHATSAPP_GROUP_URL_GYANA_PCOS_51?: string;
-  YW_PRIVATE_FUNNEL_LINKS_JSON?: string;
 };
 
 type PagesContext = {
@@ -32,10 +30,7 @@ export async function onRequest({ request, env }: PagesContext) {
       ok: true,
       paymentLinkConfigured: Boolean(env.RAZORPAY_PAYMENT_PAGE_URL?.trim()),
       privateLinkValuesExposed: false,
-      settings: getMasterclassSettingsWithEnvStatus({
-        WHATSAPP_GROUP_URL_GYANA_PCOS_51: env.WHATSAPP_GROUP_URL_GYANA_PCOS_51,
-        YW_PRIVATE_FUNNEL_LINKS_JSON: env.YW_PRIVATE_FUNNEL_LINKS_JSON
-      })
+      settings: getMasterclassSettingsWithEnvStatus()
     });
   }
 

@@ -73,12 +73,7 @@ SUCCESS_ACCESS_SECRET
 ```
 
 WhatsApp access is scoped by the active paid funnel session, not by payment webhook verification in v1.
-Private WhatsApp/group invite URLs must stay server-only. For the current Gyana paid funnel, set this in Cloudflare as a secret or encrypted variable before production deploy:
+Private WhatsApp/group invite URLs must stay server-only in D1. Do not maintain them as Cloudflare secrets/vars. Use Admin -> Paid Masterclass Links/Settings -> Manage -> Save Server Link, which writes to the `private_funnel_links` table in `ADMIN_DB`.
 
-```txt
-WHATSAPP_GROUP_URL_GYANA_PCOS_51
-```
-
-For future scale, use `YW_PRIVATE_FUNNEL_LINKS_JSON` as a server-only JSON map keyed by funnel id.
 Do not put secrets in `NEXT_PUBLIC_` variables unless the value is intentionally public.
 Do not reuse Razorpay secrets for funnel access.

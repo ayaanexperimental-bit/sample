@@ -40,7 +40,7 @@ export type AdminPaidMasterclassLink = {
   privateWhatsappLastChangedAt: string | null;
   privateWhatsappLastChangedBy: string;
   privateWhatsappSecretName: string;
-  privateWhatsappStorageSource: "d1_table" | "legacy_env" | "none";
+  privateWhatsappStorageSource: "d1_table" | "none";
   privateWhatsappStatus: string;
   status: string;
   successPath: string;
@@ -178,8 +178,7 @@ export const adminControlCenterData: AdminControlCenterData = {
       tone: "neutral"
     },
     {
-      description:
-        "Paid WhatsApp group URLs are stored server-side in D1. Legacy Cloudflare secrets are fallback only.",
+      description: "Paid WhatsApp group URLs are stored server-side in D1 only.",
       label: "Paid WhatsApp private link",
       status: "D1 server table",
       tone: "success"
@@ -375,10 +374,7 @@ function getPaidMasterclassLinks(): AdminPaidMasterclassLink[] {
         funnelId: funnel.id,
         paidPagePath: funnel.canonicalPath,
         paymentStatus: funnel.paymentUrl ? "Configured" : "Missing",
-        privateWhatsappSecretName:
-          funnel.id === "gyana-pcos-51"
-            ? "WHATSAPP_GROUP_URL_GYANA_PCOS_51"
-            : `WHATSAPP_GROUP_URL_${funnel.id.replace(/[^a-z0-9]/gi, "_").toUpperCase()}`,
+        privateWhatsappSecretName: "private_funnel_links",
         privateWhatsappLastChangedAt: null,
         privateWhatsappLastChangedBy: "Not recorded yet",
         privateWhatsappStorageSource: "none",
@@ -402,18 +398,14 @@ export function createErrorReportBugPrompt(report: AdminErrorReport) {
   ].join(" ");
 }
 
-export function getMasterclassSettingsWithEnvStatus(env: Record<string, string | undefined>) {
+export function getMasterclassSettingsWithEnvStatus() {
   return adminControlCenterData.masterclassSettings.map((item) => {
     if (item.label !== "Paid WhatsApp private link") return item;
 
-    const configured = Boolean(
-      env.WHATSAPP_GROUP_URL_GYANA_PCOS_51?.trim() || env.YW_PRIVATE_FUNNEL_LINKS_JSON?.trim()
-    );
-
     return {
       ...item,
-      status: configured ? "D1 table or legacy fallback configured" : item.status,
-      tone: configured ? ("success" as const) : item.tone
+      status: "D1 server table only",
+      tone: "success" as const
     };
   });
 }

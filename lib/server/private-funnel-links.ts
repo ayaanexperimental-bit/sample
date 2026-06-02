@@ -3,11 +3,9 @@ import type { Funnel } from "../coach-platform";
 
 export type PrivateFunnelLinkEnv = {
   ADMIN_DB?: D1Database;
-  YW_PRIVATE_FUNNEL_LINKS_JSON?: string;
-  [key: string]: D1Database | string | undefined;
 };
 
-export type PrivateWhatsappLinkStorageSource = "d1_table" | "legacy_env" | "none";
+export type PrivateWhatsappLinkStorageSource = "d1_table" | "none";
 
 export type PrivateWhatsappLinkMetadata = {
   configured: boolean;
@@ -20,15 +18,6 @@ export type PrivateWhatsappLinkMetadata = {
 export type PrivateWhatsappLinkRecord = PrivateWhatsappLinkMetadata & {
   whatsappGroupUrl: string;
 };
-
-type PrivateFunnelLinks = Record<
-  string,
-  {
-    updatedAt?: string;
-    updatedBy?: string;
-    whatsappGroupUrl?: string;
-  }
->;
 
 type PrivateFunnelLinkRow = {
   funnel_id: string;
@@ -75,10 +64,7 @@ export async function getPrivateWhatsappLinkRecord(
   funnel: Funnel,
   env: PrivateFunnelLinkEnv
 ): Promise<PrivateWhatsappLinkRecord | null> {
-  const dbRecord = await getPrivateWhatsappLinkFromDb(funnel.id, env.ADMIN_DB);
-  if (dbRecord) return dbRecord;
-
-  return getLegacyPrivateWhatsappLink(funnel.id, env);
+  return getPrivateWhatsappLinkFromDb(funnel.id, env.ADMIN_DB);
 }
 
 export async function upsertPrivateWhatsappGroupUrl({
@@ -138,10 +124,6 @@ export async function upsertPrivateWhatsappGroupUrl({
   };
 }
 
-export function getWhatsappEnvName(funnelId: string) {
-  return `WHATSAPP_GROUP_URL_${funnelId.toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`;
-}
-
 async function getPrivateWhatsappLinkFromDb(
   funnelId: string,
   db?: D1Database
@@ -180,41 +162,6 @@ async function ensurePrivateFunnelLinksSchema(db: D1Database) {
   }
 }
 
-function getLegacyPrivateWhatsappLink(
-  funnelId: string,
-  env: PrivateFunnelLinkEnv
-): PrivateWhatsappLinkRecord | null {
-  const directValue = env[getWhatsappEnvName(funnelId)];
-  const directUrl = typeof directValue === "string" ? directValue.trim() : "";
-  const mappedLink = getMappedWhatsappLink(funnelId, env);
-  const candidateUrl = directUrl || mappedLink?.whatsappGroupUrl || "";
-  if (!isAllowedWhatsappInviteUrl(candidateUrl)) return null;
-
-  return {
-    configured: true,
-    funnelId,
-    storageSource: "legacy_env",
-    updatedAt: mappedLink?.updatedAt || null,
-    updatedBy: mappedLink?.updatedBy || "Legacy env fallback",
-    whatsappGroupUrl: candidateUrl
-  };
-}
-
-function getMappedWhatsappLink(funnelId: string, env: PrivateFunnelLinkEnv) {
-  const raw = env.YW_PRIVATE_FUNNEL_LINKS_JSON;
-  if (!raw) return null;
-
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!isRecord(parsed)) return null;
-
-    const links = parsed as PrivateFunnelLinks;
-    return links[funnelId] || null;
-  } catch {
-    return null;
-  }
-}
-
 function isAllowedWhatsappInviteUrl(value: string) {
   if (!value) return false;
 
@@ -227,10 +174,6 @@ function isAllowedWhatsappInviteUrl(value: string) {
   } catch {
     return false;
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function getNowSeconds() {

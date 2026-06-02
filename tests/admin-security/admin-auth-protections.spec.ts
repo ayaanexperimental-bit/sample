@@ -242,7 +242,7 @@ test.describe("admin auth security protections", () => {
     await expectJson(backupCleanup, { ok: true, persistence: "placeholder" });
 
     const masterclassSettings = await masterclassSettingsRequest({
-      env: { ...env, WHATSAPP_GROUP_URL_GYANA_PCOS_51: "https://private.example.invalid/invite" },
+      env,
       request: new Request("https://ywcoach.com/api/admin/masterclass-settings", {
         headers: { cookie }
       })
