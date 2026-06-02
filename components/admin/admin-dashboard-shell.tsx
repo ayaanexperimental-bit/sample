@@ -397,6 +397,64 @@ function CoachAnalyticsView({ control }: { control: typeof adminControlCenterDat
 function MasterclassLinksView({ control }: { control: typeof adminControlCenterData }) {
   return (
     <AdminPageShell eyebrow="Paid Masterclass" title="Link Settings">
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.kicker}>Live Paid Websites</p>
+            <h2>Public links and private-link status</h2>
+          </div>
+        </div>
+        <div className={styles.tableWrap}>
+          <table className={styles.table} data-density="compact">
+            <thead>
+              <tr>
+                <th>Masterclass</th>
+                <th>Public entry</th>
+                <th>Paid page</th>
+                <th>Success page</th>
+                <th>Payment</th>
+                <th>Private WhatsApp</th>
+              </tr>
+            </thead>
+            <tbody>
+              {control.paidMasterclassLinks.map((link) => (
+                <tr key={link.entryPath}>
+                  <td>
+                    <strong>{link.displayName}</strong>
+                    <span>{link.coachName}</span>
+                  </td>
+                  <td>
+                    <code>{link.entryPath}</code>
+                  </td>
+                  <td>
+                    <code>{link.paidPagePath}</code>
+                  </td>
+                  <td>
+                    <code>{link.successPath}</code>
+                  </td>
+                  <td>
+                    <span
+                      className={styles.statusBadge}
+                      data-status={link.paymentStatus.toLowerCase()}
+                    >
+                      {link.paymentStatus}
+                    </span>
+                  </td>
+                  <td>
+                    <span>{link.privateWhatsappStatus}</span>
+                    <code>{link.privateWhatsappSecretName}</code>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className={styles.inlineNote}>
+          Public entry links can be shared. Private WhatsApp invite values are intentionally hidden
+          and resolved only by the server after paid access verification.
+        </p>
+      </section>
+
       <div className={styles.statusGrid}>
         {control.masterclassSettings.map((item) => (
           <article className={styles.statusCard} data-tone={item.tone} key={item.label}>

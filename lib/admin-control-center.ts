@@ -1,3 +1,5 @@
+import { coaches, funnels } from "./coach-platform";
+
 export type AdminStatusTone = "attention" | "disabled" | "neutral" | "success" | "warning";
 
 export type AdminCoachAnalyticsRecord = {
@@ -25,6 +27,18 @@ export type AdminMasterclassSettingsStatus = {
   label: string;
   status: string;
   tone: AdminStatusTone;
+};
+
+export type AdminPaidMasterclassLink = {
+  coachName: string;
+  displayName: string;
+  entryPath: string;
+  paidPagePath: string;
+  paymentStatus: string;
+  privateWhatsappSecretName: string;
+  privateWhatsappStatus: string;
+  status: string;
+  successPath: string;
 };
 
 export type AdminErrorReportStatus = "Fixed" | "Ignored" | "New" | "Reviewing";
@@ -94,6 +108,7 @@ export type AdminControlCenterData = {
   errorReports: AdminErrorReport[];
   eventTracking: AdminEventTrackingPlan;
   masterclassSettings: AdminMasterclassSettingsStatus[];
+  paidMasterclassLinks: AdminPaidMasterclassLink[];
   security: AdminSecurityStatusItem[];
 };
 
@@ -151,24 +166,28 @@ export const adminControlCenterData: AdminControlCenterData = {
       tone: "success"
     },
     {
-      description: "Success video remains configured in code until a database settings table is approved.",
+      description:
+        "Success video remains configured in code until a database settings table is approved.",
       label: "Success video",
       status: "Current page config",
       tone: "neutral"
     },
     {
-      description: "Paid WhatsApp group URL must stay server-side and must never be exposed in frontend code.",
+      description:
+        "Paid WhatsApp group URL must stay server-side and must never be exposed in frontend code.",
       label: "Paid WhatsApp private link",
       status: "Server-side secret only",
       tone: "success"
     },
     {
-      description: "Future paid Zoom/session/private resource links should be encrypted or server-only.",
+      description:
+        "Future paid Zoom/session/private resource links should be encrypted or server-only.",
       label: "Paid-only resources",
       status: "Planned secure storage",
       tone: "attention"
     }
   ],
+  paidMasterclassLinks: getPaidMasterclassLinks(),
   errorReports: [
     {
       browser: "Chrome",
@@ -336,6 +355,29 @@ export const adminControlCenterData: AdminControlCenterData = {
     }
   ]
 };
+
+function getPaidMasterclassLinks(): AdminPaidMasterclassLink[] {
+  return funnels
+    .filter((funnel) => funnel.type === "paidProgram")
+    .map((funnel) => {
+      const coach = coaches.find((item) => item.id === funnel.coachId);
+
+      return {
+        coachName: coach?.displayName || funnel.coachId,
+        displayName: funnel.displayName,
+        entryPath: `/go/${funnel.entryCode}`,
+        paidPagePath: funnel.canonicalPath,
+        paymentStatus: funnel.paymentUrl ? "Configured" : "Missing",
+        privateWhatsappSecretName:
+          funnel.id === "gyana-pcos-51"
+            ? "WHATSAPP_GROUP_URL_GYANA_PCOS_51"
+            : `WHATSAPP_GROUP_URL_${funnel.id.replace(/[^a-z0-9]/gi, "_").toUpperCase()}`,
+        privateWhatsappStatus: "Server-side only",
+        status: funnel.status,
+        successPath: funnel.successPath || "Not configured"
+      };
+    });
+}
 
 export function createErrorReportBugPrompt(report: AdminErrorReport) {
   return [
