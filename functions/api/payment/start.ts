@@ -1,14 +1,21 @@
+import type { D1Database } from "@cloudflare/workers-types";
 import {
   createPaymentAttemptCookie,
   createPaymentAttemptId,
   PAYMENT_ATTEMPT_FIELD
 } from "../../../lib/server/payment-access";
 import { getFunnelById, isPaidProgramFunnel } from "../../../lib/coach-platform";
+import { getSupportErrorDefinition } from "../../../lib/error-codes";
 import { blockedLinkResponse } from "../../../lib/server/blocked-response";
+import { insertWebsiteErrorReport } from "../../../lib/server/error-reports";
 import { verifyFunnelAccessFromCookie } from "../../../lib/server/funnel-access";
 
 type Env = {
+  ADMIN_DB?: D1Database;
   FUNNEL_ACCESS_SECRET?: string;
+  NEXT_PUBLIC_SUPPORT_EMAIL?: string;
+  NEXT_PUBLIC_SUPPORT_MESSAGE?: string;
+  NEXT_PUBLIC_SUPPORT_NAME?: string;
   RAZORPAY_KEY_SECRET?: string;
   RAZORPAY_PAYMENT_PAGE_URL?: string;
   SUCCESS_ACCESS_SECRET?: string;
@@ -38,7 +45,7 @@ export async function onRequest({ request, env }: PagesContext) {
 
   const accessSecret = env.SUCCESS_ACCESS_SECRET || env.RAZORPAY_KEY_SECRET;
   if (!accessSecret) {
-    return paymentUnavailable();
+    return paymentUnavailable(request, env);
   }
 
   const activeFunnel = await getActivePaidFunnel(request, env);
@@ -81,14 +88,44 @@ async function getActivePaidFunnel(request: Request, env: Env) {
   return isPaidProgramFunnel(funnel) ? funnel : null;
 }
 
-function paymentUnavailable() {
+async function paymentUnavailable(request: Request, env: Env) {
+  const definition = getSupportErrorDefinition("payment_flow_issue");
+  const referenceId = `${definition.code}-PAYMENT-START`;
+  await insertWebsiteErrorReport(
+    {
+      browser: request.headers.get("user-agent") || "",
+      category: "payment_flow_issue",
+      coachSlug: "",
+      digest: "payment_start_secret_missing",
+      errorCode: definition.code,
+      funnelStep: "payment_start",
+      missingSupportFields: [],
+      pagePath: new URL(request.url).pathname,
+      referenceId,
+      referrer: request.headers.get("referer") || "",
+      safeMessage: "Payment start configuration is unavailable.",
+      screenSize: "",
+      supportSource: "default",
+      technicalDetails: "Payment start access secret is not configured.",
+      userAction: "Open paid payment link"
+    },
+    env
+  );
+
+  const supportName = escapeHtml(env.NEXT_PUBLIC_SUPPORT_NAME || "Yours Wellness Support");
+  const supportEmail = escapeHtml(env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@ywcoach.com");
+  const supportMessage = escapeHtml(
+    env.NEXT_PUBLIC_SUPPORT_MESSAGE ||
+      "We could not complete this step. Please contact support for help."
+  );
+
   return new Response(
     `<!doctype html>
       <html lang="en">
         <head>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <title>Payment Temporarily Unavailable</title>
+          <title>Payment Support | YW Coach</title>
           <style>
             body {
               margin: 0;
@@ -113,17 +150,61 @@ function paymentUnavailable() {
               line-height: 1.05;
             }
             p {
-              margin: 0;
+              margin: 0 0 1rem;
               color: #60445e;
               font-size: 1rem;
               line-height: 1.6;
+            }
+            .code {
+              display: inline-flex;
+              align-items: center;
+              gap: 0.5rem;
+              border: 1px solid rgba(201, 33, 126, 0.18);
+              border-radius: 999px;
+              background: rgba(255, 255, 255, 0.72);
+              color: #8b174d;
+              font-weight: 800;
+              letter-spacing: 0.04em;
+              padding: 0.65rem 0.85rem;
+            }
+            .actions {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 0.75rem;
+              margin-top: 1.25rem;
+            }
+            a,
+            button {
+              min-height: 2.8rem;
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              border: 1px solid rgba(201, 33, 126, 0.18);
+              border-radius: 999px;
+              background: white;
+              color: #251126;
+              cursor: pointer;
+              font: inherit;
+              font-weight: 800;
+              padding: 0 1rem;
+              text-decoration: none;
+            }
+            a:first-child {
+              background: linear-gradient(135deg, #251126, #9f174d 58%, #a855f7);
+              color: white;
             }
           </style>
         </head>
         <body>
           <main>
             <h1>Payment is temporarily unavailable</h1>
-            <p>Please try again shortly. Registration is not confirmed until payment is completed.</p>
+            <p>${supportMessage}</p>
+            <p>Contact ${supportName} and share this code:</p>
+            <button class="code" type="button" onclick="navigator.clipboard && navigator.clipboard.writeText('${definition.code}')">${definition.code}</button>
+            <div class="actions">
+              <a href="mailto:${supportEmail}?subject=Payment%20support%20${definition.code}">Contact Support</a>
+              <a href="/">Go Back Home</a>
+            </div>
           </main>
         </body>
       </html>`,
@@ -132,4 +213,12 @@ function paymentUnavailable() {
       headers: HTML_HEADERS
     }
   );
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
