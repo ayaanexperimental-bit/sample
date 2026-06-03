@@ -582,7 +582,9 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       method: "POST"
     });
     const payload = (await response.json().catch(() => ({}))) as {
+      configured?: boolean;
       content?: GeneratedCoachCopy;
+      error?: string;
       message?: string;
       ok?: boolean;
     };
@@ -590,7 +592,12 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     if (!response.ok || !payload.ok || !payload.content) {
       return {
         content: null,
-        message: payload.message || "AI generation not configured yet."
+        message:
+          payload.message ||
+          payload.error ||
+          (payload.configured === false
+            ? "AI generation not configured yet."
+            : "AI copy generation failed.")
       };
     }
 
@@ -623,6 +630,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         setAiMessage("AI copy prepared. Review and edit before publishing.");
       } else {
         nextForm = fillMissingCopyFromTemplateFallback(validatedForm, status);
+        reportAiCopyIssue({
+          coachSlug: normalizeCoachSlug(validatedForm.slug || validatedForm.coachName),
+          safeMessage: result.message,
+          userAction: "Generate coach website preview copy"
+        });
         setAiMessage(`${result.message} Preview opened for manual editing.`);
       }
 
@@ -637,6 +649,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     } catch {
       nextForm = fillMissingCopyFromTemplateFallback(nextForm, status);
       const site = buildPreviewSite(status, nextForm);
+      reportAiCopyIssue({
+        coachSlug: site.slug,
+        safeMessage: "AI copy generation failed.",
+        userAction: "Generate coach website preview copy"
+      });
       setForm({
         ...nextForm,
         slug: site.slug
@@ -664,6 +681,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     try {
       const result = await requestGeneratedCopy(validatedForm, scope);
       if (!result.content) {
+        reportAiCopyIssue({
+          coachSlug: normalizeCoachSlug(validatedForm.slug || validatedForm.coachName),
+          safeMessage: result.message,
+          userAction: `Regenerate ${label}`
+        });
         setAiMessage(`${result.message} Manual editing remains available.`);
         return;
       }
@@ -677,6 +699,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       setPreviewSite(site);
       setAiMessage(`${label} regenerated. Review before publishing.`);
     } catch {
+      reportAiCopyIssue({
+        coachSlug: normalizeCoachSlug(validatedForm.slug || validatedForm.coachName),
+        safeMessage: `${label} regeneration failed.`,
+        userAction: `Regenerate ${label}`
+      });
       setAiMessage(`${label} regeneration failed. Manual editing remains available.`);
     } finally {
       stopProgress();
@@ -1027,6 +1054,31 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       safeMessage,
       supportSource: "default",
       technicalDetails,
+      userAction
+    });
+  }
+
+  function reportAiCopyIssue({
+    coachSlug,
+    safeMessage,
+    userAction
+  }: {
+    coachSlug?: string;
+    safeMessage: string;
+    userAction: string;
+  }) {
+    const errorCode = getPublicSupportErrorCode("ai_generation_issue");
+    const referenceId = createSupportErrorReference("ai_generation_issue", coachSlug || userAction);
+
+    void logWebsiteError({
+      category: "ai_generation_issue",
+      coachSlug,
+      errorCode,
+      funnelStep: "admin-coach-site-ai-copy",
+      referenceId,
+      safeMessage,
+      supportSource: "default",
+      technicalDetails: safeMessage,
       userAction
     });
   }
