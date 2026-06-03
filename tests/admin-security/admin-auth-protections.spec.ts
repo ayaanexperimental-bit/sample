@@ -333,6 +333,37 @@ test.describe("admin auth security protections", () => {
     expect(String(body.referenceId)).toMatch(/^YW-ERR-1001-[A-Z0-9]+-[A-Z0-9]{6}$/);
     expect(JSON.stringify(body)).not.toContain("should not be echoed");
   });
+
+  test("shows live empty D1 error reports instead of demo fallback rows", async () => {
+    const localDemoOtp = await verifyOtpRequest({
+      env,
+      request: jsonRequest("http://127.0.0.1/api/admin/auth/verify-otp", {
+        email: ADMIN_EMAIL,
+        otp: ADMIN_DEV_OTP
+      })
+    });
+    const cookie = extractCookie(localDemoOtp);
+
+    const response = await errorReportsRequest({
+      env: {
+        ...env,
+        ADMIN_DB: createEmptyErrorReportsDb() as never
+      },
+      request: new Request("https://ywcoach.com/api/admin/error-reports", {
+        headers: { cookie }
+      })
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      configured: true,
+      errorReports: [],
+      ok: true,
+      persistence: "d1_table"
+    });
+    expect(JSON.stringify(body)).not.toContain("YW-ERR-5001-SMPL");
+  });
 });
 
 async function expectDisabledAuthResponse(response: Response) {
@@ -372,4 +403,18 @@ function extractCookie(response: Response) {
   }
 
   return cookie;
+}
+
+function createEmptyErrorReportsDb() {
+  return {
+    prepare: () => {
+      const statement = {
+        all: async <T>() => ({ results: [] as T[] }),
+        bind: () => statement,
+        run: async () => ({ success: true })
+      };
+
+      return statement;
+    }
+  };
 }

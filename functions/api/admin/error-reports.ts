@@ -36,11 +36,13 @@ export async function onRequest({ request, env }: PagesContext) {
     if (!admin.ok) return admin.response;
 
     const reports = await listWebsiteErrorReports(env);
+    const hasLiveErrorReports = Array.isArray(reports);
 
     return adminJson({
-      errorReports: reports && reports.length > 0 ? reports : adminControlCenterData.errorReports,
+      configured: Boolean(env.ADMIN_DB),
+      errorReports: hasLiveErrorReports ? reports : adminControlCenterData.errorReports,
       ok: true,
-      persistence: reports ? "d1_table" : "demo_fallback"
+      persistence: hasLiveErrorReports ? "d1_table" : "demo_fallback"
     });
   }
 

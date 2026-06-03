@@ -94,7 +94,7 @@ export function AdminDashboardShell({
   const [activeView, setActiveView] = useState<AdminViewId>("overview");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [actionDialog, setActionDialog] = useState<ActionDialogState>(null);
-  const [errorReports, setErrorReports] = useState<AdminErrorReport[]>(control.errorReports);
+  const [errorReports, setErrorReports] = useState<AdminErrorReport[]>([]);
   const [errorReportSource, setErrorReportSource] = useState("loading");
 
   useEffect(() => {
@@ -970,6 +970,8 @@ function ErrorReportsView({
   const [selectedReport, setSelectedReport] = useState<AdminErrorReport | null>(null);
   const [copyMessage, setCopyMessage] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
+  const isLiveSource = source === "d1_table";
+  const isLoadingSource = source === "loading";
 
   useEffect(() => {
     if (!copyMessage) return;
@@ -1035,12 +1037,20 @@ function ErrorReportsView({
 
   return (
     <AdminPageShell eyebrow="Reports" title="Error Reports">
-      <div className={styles.noticeCard} data-tone={source === "d1_table" ? "success" : "warning"}>
-        <strong>{source === "d1_table" ? "Live D1 error reports" : "Demo fallback reports"}</strong>
+      <div className={styles.noticeCard} data-tone={isLiveSource ? "success" : "warning"}>
+        <strong>
+          {isLiveSource
+            ? "Live D1 error reports"
+            : isLoadingSource
+              ? "Loading error reports"
+              : "Demo fallback reports"}
+        </strong>
         <p>
-          {source === "d1_table"
+          {isLiveSource
             ? "Public fallback events are being saved server-side with safe details only."
-            : "D1 reports are not available in this environment, so these rows are placeholders."}
+            : isLoadingSource
+              ? "Checking the protected Admin Error Reports API."
+              : "D1 reports are not available in this environment, so these rows are placeholders."}
         </p>
       </div>
       <div className={styles.tableWrap}>
@@ -1059,50 +1069,62 @@ function ErrorReportsView({
             </tr>
           </thead>
           <tbody>
-            {errorReports.map((report) => (
-              <tr key={report.referenceId}>
-                <td>
-                  <div className={styles.codeStack}>
-                    <code>{report.errorCode || report.referenceId}</code>
-                    <small>{report.referenceId}</small>
-                    <button
-                      onClick={() =>
-                        void copyAdminText("Error code", report.errorCode || report.referenceId)
-                      }
-                      type="button"
-                    >
-                      Copy
-                    </button>
-                  </div>
-                </td>
-                <td>{report.status}</td>
-                <td>{report.severity}</td>
-                <td>{report.category}</td>
-                <td>{report.pagePath}</td>
-                <td>{report.supportSource || "default"}</td>
-                <td>{report.userAction}</td>
-                <td>{report.safeMessage}</td>
-                <td>
-                  <div className={styles.rowActions}>
-                    <button
-                      onClick={() => {
-                        setSelectedReport(report);
-                        setStatusMessage("");
-                      }}
-                      type="button"
-                    >
-                      View
-                    </button>
-                    <button
-                      onClick={() => void updateReportStatus(report, "Fixed")}
-                      type="button"
-                    >
-                      Mark Fixed
-                    </button>
-                  </div>
+            {errorReports.length > 0 ? (
+              errorReports.map((report) => (
+                <tr key={report.referenceId}>
+                  <td>
+                    <div className={styles.codeStack}>
+                      <code>{report.errorCode || report.referenceId}</code>
+                      <small>{report.referenceId}</small>
+                      <button
+                        onClick={() =>
+                          void copyAdminText("Error code", report.errorCode || report.referenceId)
+                        }
+                        type="button"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </td>
+                  <td>{report.status}</td>
+                  <td>{report.severity}</td>
+                  <td>{report.category}</td>
+                  <td>{report.pagePath}</td>
+                  <td>{report.supportSource || "default"}</td>
+                  <td>{report.userAction}</td>
+                  <td>{report.safeMessage}</td>
+                  <td>
+                    <div className={styles.rowActions}>
+                      <button
+                        onClick={() => {
+                          setSelectedReport(report);
+                          setStatusMessage("");
+                        }}
+                        type="button"
+                      >
+                        View
+                      </button>
+                      <button
+                        onClick={() => void updateReportStatus(report, "Fixed")}
+                        type="button"
+                      >
+                        Mark Fixed
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={9}>
+                  {isLiveSource
+                    ? "No live error reports yet. This is the correct production state until a fallback event is recorded."
+                    : isLoadingSource
+                      ? "Loading protected error reports..."
+                      : "No fallback reports available in this environment."}
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
