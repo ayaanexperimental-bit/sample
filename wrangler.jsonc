@@ -12,6 +12,10 @@
     "NEXT_PUBLIC_SUPPORT_MESSAGE": "We could not complete this step. Please contact support for help.",
     "NEXT_PUBLIC_SUPPORT_NAME": "Yours Wellness Support",
     "AI_ANALYTICS_MODEL": "gpt-5-nano",
+    "AI_EXTRACT_MODEL": "gpt-5-nano",
+    "AI_COPY_MODEL": "gpt-5-mini",
+    "AI_MAX_INPUT_TOKENS": "8000",
+    "AI_MAX_OUTPUT_TOKENS": "1200",
     "AI_ENABLE_CACHING": "true",
     "OPENAI_MODEL": "gpt-5-mini",
     "RAZORPAY_PAYMENT_PAGE_URL": "https://pages.razorpay.com/pl_SkURMJD4JJjdxO/view"
