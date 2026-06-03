@@ -50,6 +50,7 @@ const PUBLIC_PAGE_PATHS = new Set([
   "/disclaimer",
   "/privacy",
   "/refund",
+  "/support/error",
   "/terms"
 ]);
 
