@@ -1463,7 +1463,7 @@ function renderSupportFallbackHtml({
       header,.content{padding:clamp(1rem,4vw,2rem)}
       header{display:flex;align-items:center;justify-content:space-between;gap:1rem;border-bottom:1px solid rgb(222 190 208/.62)}
       .brand{display:inline-flex;align-items:center;gap:.75rem;color:inherit;font-weight:900;text-decoration:none}.brand img{width:2.6rem;height:2.6rem;object-fit:contain}.brand span{display:grid}.brand small{color:#8d637c;font-size:.76rem;font-weight:800}
-      code{border:1px solid rgb(189 143 178/.32);border-radius:999px;background:rgb(255 255 255/.64);color:#8f164f;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.84rem;font-weight:900;padding:.48rem .72rem}
+      .error-code{min-height:2.5rem;display:inline-flex;align-items:center;gap:.45rem;border:1px solid rgb(189 143 178/.32);border-radius:999px;background:rgb(255 255 255/.64);color:#8f164f;cursor:pointer;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.84rem;font-weight:900;padding:.48rem .72rem}.error-code span{color:#6c5165;font-family:"Segoe UI",ui-sans-serif,system-ui,sans-serif;font-size:.72rem}
       .content{display:grid;grid-template-columns:minmax(0,1fr) minmax(18rem,.78fr);gap:clamp(1rem,4vw,2rem)}
       h1{margin:0;color:#1c1726;font-family:Georgia,Cambria,"Times New Roman",serif;font-size:clamp(2.2rem,6vw,4.25rem);line-height:.98}p{color:#675466;font-size:clamp(1rem,2vw,1.12rem);font-weight:650;line-height:1.65}.kicker{color:#9b2f66;font-size:.76rem;font-weight:950;letter-spacing:.08em;text-transform:uppercase}
       .support-card{display:grid;gap:1rem;border:1px solid rgb(235 201 219/.78);border-radius:1.1rem;background:linear-gradient(145deg,rgb(255 255 255/.9),rgb(255 240 247/.72));padding:1rem}.support-identity{display:grid;grid-template-columns:3.6rem minmax(0,1fr);gap:.8rem;align-items:center}.avatar{width:3.6rem;height:3.6rem;display:grid;place-items:center;overflow:hidden;border-radius:999px;background:linear-gradient(135deg,#9f174d,#a855f7);color:#fff;font-weight:950}.avatar img{width:100%;height:100%;object-fit:cover}
@@ -1476,7 +1476,7 @@ function renderSupportFallbackHtml({
     <main>
       <header>
         <a class="brand" href="/"><img alt="YW Nutritech" src="/images/yw-nutritech-logo.png" /><span><strong>YW Nutritech</strong><small>Support fallback</small></span></a>
-        <code>Error Code: ${escapeHtml(errorCode)}</code>
+        <button class="error-code" data-error-code="${escapeAttribute(errorCode)}" type="button">Error Code: ${escapeHtml(errorCode)} <span>Copy</span></button>
       </header>
       <section class="content">
         <div><p class="kicker">Contact Support</p><h1>Something went wrong</h1><p>${escapeHtml(message)}</p></div>
@@ -1486,6 +1486,20 @@ function renderSupportFallbackHtml({
         </aside>
       </section>
     </main>
+    <script>
+      (function () {
+        var button = document.querySelector('.error-code');
+        if (!button) return;
+        button.addEventListener('click', function () {
+          var code = button.getAttribute('data-error-code') || '';
+          if (!code || !navigator.clipboard) return;
+          navigator.clipboard.writeText(code).then(function () {
+            var label = button.querySelector('span');
+            if (label) label.textContent = 'Copied';
+          }).catch(function () {});
+        });
+      })();
+    </script>
   </body>
 </html>`;
 }
