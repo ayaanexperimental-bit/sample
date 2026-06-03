@@ -1828,6 +1828,10 @@ function CoachAnalyticsDetailPanel({
     () => buildCoachCsvReport(coach, insights, analyticsRangeLabel),
     [analyticsRangeLabel, coach, insights]
   );
+  const excelReportText = useMemo(
+    () => buildCoachExcelReport(coach, reportFormat, insights, analyticsRangeLabel),
+    [analyticsRangeLabel, coach, insights, reportFormat]
+  );
   const reportText = useMemo(
     () => buildCoachReport(coach, reportFormat, insights, analyticsRangeLabel),
     [analyticsRangeLabel, coach, insights, reportFormat]
@@ -1916,6 +1920,18 @@ function CoachAnalyticsDetailPanel({
     URL.revokeObjectURL(url);
   }
 
+  function downloadExcelReport() {
+    const blob = new Blob([excelReportText], {
+      type: "application/vnd.ms-excel;charset=utf-8"
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${coach.coachSlug || "coach"}-analytics-report.xls`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function shareSummary() {
     const summary = buildCoachReport(coach, "whatsapp", insights, analyticsRangeLabel);
     if ("share" in navigator) {
@@ -2000,7 +2016,10 @@ function CoachAnalyticsDetailPanel({
           Download Report
         </button>
         <button className={styles.secondaryAction} onClick={downloadCsvReport} type="button">
-          Download CSV
+          Download Sheet CSV
+        </button>
+        <button className={styles.secondaryAction} onClick={downloadExcelReport} type="button">
+          Download Excel
         </button>
         <button
           className={styles.secondaryAction}
@@ -2411,8 +2430,123 @@ function buildCoachCsvReport(
   return rows.map((row) => row.map(escapeCsvCell).join(",")).join("\n");
 }
 
+function buildCoachExcelReport(
+  coach: CoachAnalyticsRow,
+  format: "admin" | "detailed" | "whatsapp",
+  insights: string[],
+  dateRangeLabel: string
+) {
+  const summaryRows = buildCoachReportRows(coach, insights, dateRangeLabel);
+  const funnelRows = [
+    ["Metric", "Free Guest Link", "Paid Masterclass", "Combined"],
+    [
+      "Visits",
+      String(coach.freeMetrics.visits),
+      String(coach.paidMetrics.visits),
+      String(coach.combined.visits)
+    ],
+    [
+      "Register/CTA clicks",
+      String(coach.freeMetrics.registerClicks),
+      String(coach.paidMetrics.registerClicks),
+      String(coach.combined.clicks)
+    ],
+    [
+      "WhatsApp/contact clicks",
+      String(coach.freeMetrics.whatsappClicks),
+      String(coach.paidMetrics.whatsappClicks),
+      String(coach.freeMetrics.whatsappClicks + coach.paidMetrics.whatsappClicks)
+    ],
+    ["Video plays", String(coach.freeMetrics.videoPlays), "0", String(coach.freeMetrics.videoPlays)],
+    ["Payment initiated", "0", String(coach.paidMetrics.paymentInitiated), String(coach.paidMetrics.paymentInitiated)],
+    ["Payment success", "0", String(coach.paidMetrics.paymentSuccess), String(coach.paidMetrics.paymentSuccess)],
+    ["Conversion rate", coach.freeMetrics.conversionRate, coach.paidMetrics.conversionRate, coach.combined.conversionRate]
+  ];
+  const reportRows = buildCoachReport(coach, format, insights, dateRangeLabel)
+    .split("\n")
+    .map((line) => [line]);
+
+  return [
+    '<?xml version="1.0"?>',
+    '<?mso-application progid="Excel.Sheet"?>',
+    '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"',
+    ' xmlns:o="urn:schemas-microsoft-com:office:office"',
+    ' xmlns:x="urn:schemas-microsoft-com:office:excel"',
+    ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">',
+    '<Styles>',
+    '<Style ss:ID="Header"><Font ss:Bold="1"/><Interior ss:Color="#F2F4F7" ss:Pattern="Solid"/></Style>',
+    '<Style ss:ID="Title"><Font ss:Bold="1" ss:Size="14"/><Interior ss:Color="#FFF4E6" ss:Pattern="Solid"/></Style>',
+    '</Styles>',
+    renderExcelWorksheet("Coach Summary", [["YW Coach Analytics Report"], ...summaryRows], true),
+    renderExcelWorksheet("Funnel Metrics", funnelRows, false),
+    renderExcelWorksheet("Shareable Report", reportRows, false),
+    "</Workbook>"
+  ].join("");
+}
+
+function buildCoachReportRows(
+  coach: CoachAnalyticsRow,
+  insights: string[],
+  dateRangeLabel: string
+) {
+  return [
+    ["Field", "Value"],
+    ["Coach name", coach.coachName],
+    ["Niche", coach.niche],
+    ["Date range", dateRangeLabel],
+    ["Active funnels", getCoachFunnelLabels(coach).join(", ") || "No active funnel"],
+    ["Total visits", String(coach.combined.visits)],
+    ["Register/CTA clicks", String(coach.combined.clicks)],
+    ["Free register clicks", String(coach.freeMetrics.registerClicks)],
+    ["Paid register clicks", String(coach.paidMetrics.registerClicks)],
+    [
+      "WhatsApp/contact clicks",
+      String(coach.freeMetrics.whatsappClicks + coach.paidMetrics.whatsappClicks)
+    ],
+    ["Payment success events", String(coach.paidMetrics.paymentSuccess)],
+    ["Conversion rate", coach.combined.conversionRate],
+    ["Top traffic source", coach.source],
+    ["Top region", coach.region],
+    ["Device breakdown", formatDeviceBreakdown(coach.deviceBreakdown)],
+    ["Trend summary", coach.trend],
+    ["AI insights", insights.length ? insights.join(" ") : "Not enough data for AI insights yet."],
+    [
+      "Recommended next actions",
+      coach.lowActivityReasons.join("; ") || "Continue weekly sharing and compare click-through."
+    ],
+    [
+      "Safety note",
+      "Coach-facing report excludes private links, payment details, OTPs, secrets, raw user data, and internal logs."
+    ]
+  ];
+}
+
+function renderExcelWorksheet(name: string, rows: string[][], titleFirstRow: boolean) {
+  const renderedRows = rows
+    .map((row, rowIndex) => {
+      const style = titleFirstRow && rowIndex === 0 ? ' ss:StyleID="Title"' : "";
+      return `<Row${style}>${row
+        .map((cell) => `<Cell><Data ss:Type="String">${escapeXmlCell(cell)}</Data></Cell>`)
+        .join("")}</Row>`;
+    })
+    .join("");
+
+  return `<Worksheet ss:Name="${escapeXmlAttribute(name)}"><Table>${renderedRows}</Table></Worksheet>`;
+}
+
 function escapeCsvCell(value: string) {
   return `"${value.replace(/"/g, '""')}"`;
+}
+
+function escapeXmlCell(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function escapeXmlAttribute(value: string) {
+  return escapeXmlCell(value).replace(/"/g, "&quot;");
 }
 
 function getCoachFunnelLabels(coach: CoachAnalyticsRow) {
