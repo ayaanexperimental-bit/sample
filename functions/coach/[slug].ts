@@ -35,6 +35,420 @@ type PagesContext = {
 const DEFAULT_SUPPORT_NAME = "Yours Wellness Support";
 const DEFAULT_SUPPORT_TEXT = "Need help? Contact Yours Wellness support.";
 
+function renderInlineYWLoaderCss() {
+  return `
+      .yw-global-loader {
+        --overlay-bg-a: rgb(240 250 255 / 0.98);
+        --overlay-bg-b: rgb(249 255 247 / 0.98);
+        --overlay-accent: rgb(20 128 184 / 0.1);
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        isolation: isolate;
+        background: linear-gradient(145deg, var(--overlay-bg-a), var(--overlay-bg-b)), #f9fcff;
+        padding: clamp(1rem, 4vw, 2.5rem);
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transition: opacity 220ms ease, visibility 220ms ease;
+        animation: yw-loader-auto-hide 240ms ease 1.35s forwards;
+      }
+      .yw-global-loader::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -2;
+        background:
+          linear-gradient(118deg, transparent 0 16%, rgb(255 255 255 / 0.62) 16% 23%, transparent 23% 100%),
+          linear-gradient(73deg, transparent 0 66%, var(--overlay-accent) 66% 74%, transparent 74% 100%),
+          repeating-linear-gradient(90deg, rgb(18 54 84 / 0.025) 0 1px, transparent 1px 9rem);
+      }
+      .yw-global-loader[data-state="hidden"] {
+        animation: none;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      .yw-inline-loader-layer {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        width: 100%;
+        min-height: min(100vh, 42rem);
+        place-items: center;
+      }
+      .yw-inline-atom {
+        --loader-size: min(84vw, 46rem);
+        width: var(--loader-size);
+        max-width: 100%;
+        aspect-ratio: 720 / 420;
+        background: transparent;
+        display: block;
+        position: relative;
+        pointer-events: none;
+      }
+      .yw-inline-fallback-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+      }
+      .yw-inline-stage {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        isolation: isolate;
+        transform-origin: 50% 52%;
+        animation: yw-atom-hover 4200ms ease-in-out infinite;
+      }
+      .yw-inline-aura {
+        position: absolute;
+        inset: 25% 16% 17%;
+        z-index: 0;
+        border-radius: 50%;
+        background:
+          radial-gradient(circle at 48% 48%, rgb(229 255 255 / 0.7), transparent 34%),
+          radial-gradient(circle at 42% 68%, rgb(50 139 255 / 0.36), transparent 48%),
+          radial-gradient(circle at 66% 44%, rgb(43 223 240 / 0.34), transparent 36%);
+        filter: blur(18px);
+        opacity: 0.72;
+        transform: translateZ(0);
+        animation: yw-glow-breathe 3600ms ease-in-out infinite;
+      }
+      .yw-inline-floor-shadow {
+        position: absolute;
+        left: 28%;
+        right: 28%;
+        bottom: 15%;
+        z-index: 1;
+        height: 8%;
+        border-radius: 50%;
+        background: radial-gradient(ellipse at center, rgb(26 100 202 / 0.26), transparent 70%);
+        filter: blur(10px);
+        opacity: 0.68;
+        animation: yw-shadow-breathe 4200ms ease-in-out infinite;
+      }
+      .yw-inline-rings {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+      .yw-inline-ring-rotor {
+        transform-box: view-box;
+        transform-origin: 360px 210px;
+      }
+      .yw-inline-ring-rotor-back {
+        animation: yw-ring-turn-back 14800ms linear infinite;
+      }
+      .yw-inline-ring-rotor-slow {
+        animation: yw-ring-turn-slow 11200ms linear infinite reverse;
+      }
+      .yw-inline-ring-glass,
+      .yw-inline-ring-blue,
+      .yw-inline-rear-sweep,
+      .yw-inline-front-sweep {
+        vector-effect: non-scaling-stroke;
+      }
+      .yw-inline-ring-glass {
+        opacity: 0.78;
+        filter: drop-shadow(0 0 6px rgb(120 180 255 / 0.28));
+      }
+      .yw-inline-ring-blue {
+        opacity: 0.74;
+        filter: drop-shadow(0 0 8px rgb(47 188 255 / 0.36));
+      }
+      .yw-inline-rear-sweep {
+        opacity: 0.34;
+      }
+      .yw-inline-front-sweep {
+        opacity: 0.78;
+      }
+      .yw-inline-badge {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        z-index: 7;
+        display: grid;
+        width: 29.5%;
+        aspect-ratio: 1;
+        place-items: center;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        animation: yw-badge-breathe 3200ms ease-in-out infinite;
+      }
+      .yw-inline-badge-rim,
+      .yw-inline-badge-glass {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+      }
+      .yw-inline-badge-rim {
+        background: conic-gradient(
+          from 226deg,
+          rgb(255 255 255 / 0.9),
+          rgb(92 151 255 / 0.34),
+          rgb(255 255 255 / 0.82),
+          rgb(42 210 247 / 0.28),
+          rgb(255 255 255 / 0.88)
+        );
+        box-shadow:
+          0 1.5rem 3.2rem rgb(13 82 166 / 0.18),
+          0 0 2.6rem rgb(67 198 255 / 0.2);
+      }
+      .yw-inline-badge-glass {
+        inset: 4.4%;
+        background:
+          radial-gradient(circle at 32% 24%, rgb(255 255 255 / 1), rgb(255 255 255 / 0.92) 31%, rgb(239 248 255 / 0.9) 72%),
+          linear-gradient(135deg, rgb(255 255 255 / 0.95), rgb(226 241 255 / 0.78));
+        box-shadow:
+          inset 0 1px 0 rgb(255 255 255 / 0.95),
+          inset 0 -1.1rem 2.6rem rgb(20 98 189 / 0.08);
+      }
+      .yw-inline-badge-glass::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background:
+          linear-gradient(90deg, transparent 0 47%, rgb(255 255 255 / 0.42) 47% 52%, transparent 52% 100%),
+          radial-gradient(circle at 26% 22%, rgb(255 255 255 / 0.9), transparent 34%);
+        opacity: 0.6;
+      }
+      .yw-inline-logo {
+        position: relative;
+        z-index: 2;
+        display: block;
+        width: 68%;
+        height: auto;
+        object-fit: contain;
+        transform: translate(1%, 1%);
+        user-select: none;
+      }
+      .yw-inline-svg-electron-layer {
+        transform-box: view-box;
+        transform-origin: 360px 210px;
+        opacity: 1;
+      }
+      .yw-inline-svg-electron {
+        opacity: 0.96;
+        will-change: transform;
+      }
+      .yw-inline-svg-electron-halo {
+        fill: rgb(43 223 240 / 0.18);
+      }
+      .yw-inline-svg-electron-core {
+        stroke: rgb(255 255 255 / 0.45);
+        stroke-width: 1.2;
+      }
+      .yw-inline-svg-electron-highlight {
+        fill: rgb(255 255 255 / 0.92);
+      }
+      .yw-inline-svg-electron-blue-large {
+        opacity: 0.98;
+      }
+      .yw-inline-svg-electron-blue-large .yw-inline-svg-electron-halo {
+        fill: rgb(34 122 255 / 0.24);
+      }
+      .yw-inline-svg-electron-blue-medium {
+        opacity: 0.94;
+      }
+      .yw-inline-svg-electron-blue-small {
+        opacity: 0.86;
+      }
+      .yw-inline-svg-electron-cyan {
+        opacity: 0.92;
+      }
+      .yw-inline-svg-electron-white {
+        opacity: 0.78;
+      }
+      .yw-inline-spark {
+        position: absolute;
+        z-index: 6;
+        width: 0.55rem;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: rgb(255 255 255 / 0.92);
+        box-shadow:
+          0 0 0.8rem rgb(38 202 255 / 0.55),
+          0 0 1.4rem rgb(38 202 255 / 0.28);
+        opacity: 0;
+        animation: yw-sparkle 4200ms ease-in-out infinite;
+      }
+      .yw-inline-spark-one {
+        left: 33%;
+        top: 34%;
+      }
+      .yw-inline-spark-two {
+        right: 30%;
+        top: 57%;
+        animation-delay: 1200ms;
+      }
+      .yw-inline-spark-three {
+        left: 43%;
+        bottom: 24%;
+        animation-delay: 2300ms;
+      }
+      @keyframes yw-atom-hover {
+        0%, 100% { transform: translateY(0) scale(1); }
+        50% { transform: translateY(-1.5%) scale(1.006); }
+      }
+      @keyframes yw-glow-breathe {
+        0%, 100% { opacity: 0.56; transform: scale(0.98); }
+        50% { opacity: 0.82; transform: scale(1.04); }
+      }
+      @keyframes yw-shadow-breathe {
+        0%, 100% { opacity: 0.48; transform: scaleX(0.94); }
+        50% { opacity: 0.72; transform: scaleX(1.06); }
+      }
+      @keyframes yw-badge-breathe {
+        0%, 100% { transform: translate(-50%, -50%) scale(1); }
+        50% { transform: translate(-50%, -51.5%) scale(1.018); }
+      }
+      @keyframes yw-ring-turn-back {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      @keyframes yw-ring-turn-slow {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      @keyframes yw-sparkle {
+        0%, 22%, 100% { opacity: 0; transform: scale(0.72); }
+        32%, 48% { opacity: 0.8; transform: scale(1); }
+      }
+      @media (max-width: 620px) {
+        .yw-global-loader { padding: 0.85rem; }
+        .yw-inline-loader-layer { min-height: min(100vh, 34rem); }
+        .yw-inline-atom { --loader-size: min(92vw, 25rem); }
+        .yw-inline-floor-shadow { left: 24%; right: 24%; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .yw-inline-stage,
+        .yw-inline-aura,
+        .yw-inline-floor-shadow,
+        .yw-inline-badge,
+        .yw-inline-ring-rotor-back,
+        .yw-inline-ring-rotor-slow,
+        .yw-inline-svg-electron-layer,
+        .yw-inline-spark {
+          animation: none !important;
+        }
+        .yw-inline-svg-electron { display: none; }
+        .yw-inline-aura { opacity: 0.66; }
+      }`;
+}
+
+function renderInlineYWLoader(label = "Loading YW Coach") {
+  return `
+    <div class="yw-global-loader" id="yw-global-loader" role="status" aria-live="polite" aria-label="${escapeAttribute(label)}">
+      <div class="yw-inline-loader-layer" aria-hidden="true">
+        <div class="yw-inline-atom">
+          <div class="yw-inline-fallback-layer">
+            <div class="yw-inline-stage">
+              <span class="yw-inline-aura" aria-hidden="true"></span>
+              <span class="yw-inline-floor-shadow" aria-hidden="true"></span>
+              <svg aria-hidden="true" class="yw-inline-rings" focusable="false" viewBox="0 0 720 420">
+                <defs>
+                  <linearGradient id="ywInlineLoaderRingBlue" x1="78" x2="642" y1="220" y2="178">
+                    <stop offset="0" stop-color="#48dff6" stop-opacity="0.95" />
+                    <stop offset="0.42" stop-color="#9fd4ff" stop-opacity="0.48" />
+                    <stop offset="0.72" stop-color="#4a8deb" stop-opacity="0.7" />
+                    <stop offset="1" stop-color="#ffffff" stop-opacity="0.34" />
+                  </linearGradient>
+                  <linearGradient id="ywInlineLoaderRingGlass" x1="170" x2="566" y1="40" y2="382">
+                    <stop offset="0" stop-color="#f7fbff" stop-opacity="0.78" />
+                    <stop offset="0.32" stop-color="#6aaaff" stop-opacity="0.28" />
+                    <stop offset="0.72" stop-color="#bcd9ff" stop-opacity="0.45" />
+                    <stop offset="1" stop-color="#ffffff" stop-opacity="0.72" />
+                  </linearGradient>
+                  <filter id="ywInlineLoaderGlow" color-interpolation-filters="sRGB" x="-20%" y="-40%" width="140%" height="180%">
+                    <feGaussianBlur stdDeviation="5" result="blur" />
+                    <feColorMatrix in="blur" result="blueGlow" type="matrix" values="0 0 0 0 0.05 0 0 0 0 0.42 0 0 0 0 1 0 0 0 .52 0" />
+                    <feMerge><feMergeNode in="blueGlow" /><feMergeNode in="SourceGraphic" /></feMerge>
+                  </filter>
+                  <radialGradient id="ywInlineElectronBlue" cx="32%" cy="24%" r="70%">
+                    <stop offset="0" stop-color="#ffffff" stop-opacity="1" />
+                    <stop offset="0.18" stop-color="#73e8ff" stop-opacity="0.92" />
+                    <stop offset="0.55" stop-color="#1479ff" stop-opacity="1" />
+                    <stop offset="1" stop-color="#043fc0" stop-opacity="1" />
+                  </radialGradient>
+                  <radialGradient id="ywInlineElectronCyan" cx="32%" cy="24%" r="70%">
+                    <stop offset="0" stop-color="#ffffff" stop-opacity="1" />
+                    <stop offset="0.2" stop-color="#7effff" stop-opacity="0.92" />
+                    <stop offset="0.58" stop-color="#12d5e8" stop-opacity="1" />
+                    <stop offset="1" stop-color="#057e9e" stop-opacity="1" />
+                  </radialGradient>
+                  <radialGradient id="ywInlineElectronWhite" cx="32%" cy="24%" r="70%">
+                    <stop offset="0" stop-color="#ffffff" stop-opacity="1" />
+                    <stop offset="0.55" stop-color="#f7fbff" stop-opacity="0.95" />
+                    <stop offset="1" stop-color="#b6d3fb" stop-opacity="0.9" />
+                  </radialGradient>
+                  <filter id="ywInlineElectronGlow" color-interpolation-filters="sRGB" x="-90%" y="-90%" width="280%" height="280%">
+                    <feGaussianBlur stdDeviation="5" result="softGlow" />
+                    <feMerge><feMergeNode in="softGlow" /><feMergeNode in="SourceGraphic" /></feMerge>
+                  </filter>
+                </defs>
+                <g class="yw-inline-ring-rotor yw-inline-ring-rotor-back">
+                  <ellipse class="yw-inline-ring-glass" cx="360" cy="210" fill="none" rx="104" ry="284" stroke="url(#ywInlineLoaderRingGlass)" stroke-width="4" transform="rotate(11 360 210)" />
+                </g>
+                <path class="yw-inline-rear-sweep" d="M112 225 C176 128 455 77 603 143 C674 176 658 252 558 303 C417 374 183 336 107 257" fill="none" stroke="url(#ywInlineLoaderRingGlass)" stroke-linecap="round" stroke-width="8" />
+                <g class="yw-inline-ring-rotor yw-inline-ring-rotor-slow">
+                  <ellipse class="yw-inline-ring-blue" cx="360" cy="210" fill="none" rx="286" ry="72" stroke="url(#ywInlineLoaderRingBlue)" stroke-width="6" transform="rotate(-9 360 210)" />
+                </g>
+                <path class="yw-inline-front-sweep" d="M98 246 C165 326 408 334 565 282 C660 249 698 192 624 156 C529 109 278 129 121 208" fill="none" filter="url(#ywInlineLoaderGlow)" stroke="url(#ywInlineLoaderRingBlue)" stroke-linecap="round" stroke-width="8" />
+                <g class="yw-inline-svg-electron-layer" filter="url(#ywInlineElectronGlow)">
+                  <g class="yw-inline-svg-electron yw-inline-svg-electron-cyan">
+                    <circle class="yw-inline-svg-electron-halo" r="16" />
+                    <circle class="yw-inline-svg-electron-core" fill="url(#ywInlineElectronCyan)" r="10" />
+                    <circle class="yw-inline-svg-electron-highlight" cx="-3.5" cy="-4" r="2.5" />
+                    <animateMotion calcMode="linear" dur="8.6s" path="M112 225 C176 128 455 77 603 143 C674 176 658 252 558 303 C417 374 183 336 107 257 C94 247 96 237 112 225" repeatCount="indefinite" />
+                  </g>
+                  <g class="yw-inline-svg-electron yw-inline-svg-electron-blue-large">
+                    <circle class="yw-inline-svg-electron-halo" r="26" />
+                    <circle class="yw-inline-svg-electron-core" fill="url(#ywInlineElectronBlue)" r="17" />
+                    <circle class="yw-inline-svg-electron-highlight" cx="-5.5" cy="-6.5" r="3.7" />
+                    <animateMotion calcMode="linear" dur="7.2s" keyPoints="1;0" keyTimes="0;1" path="M98 246 C165 326 408 334 565 282 C660 249 698 192 624 156 C529 109 278 129 121 208 C89 224 80 237 98 246" repeatCount="indefinite" />
+                  </g>
+                  <g class="yw-inline-svg-electron yw-inline-svg-electron-blue-medium">
+                    <circle class="yw-inline-svg-electron-halo" r="21" />
+                    <circle class="yw-inline-svg-electron-core" fill="url(#ywInlineElectronBlue)" r="13" />
+                    <circle class="yw-inline-svg-electron-highlight" cx="-4.3" cy="-5" r="3" />
+                    <animateMotion begin="-2.1s" calcMode="linear" dur="9.8s" path="M86 252 C159 336 422 351 588 289 C682 253 705 191 624 151 C513 96 253 122 103 216 C78 232 72 244 86 252" repeatCount="indefinite" />
+                  </g>
+                  <g class="yw-inline-svg-electron yw-inline-svg-electron-blue-small">
+                    <circle class="yw-inline-svg-electron-halo" r="15" />
+                    <circle class="yw-inline-svg-electron-core" fill="url(#ywInlineElectronBlue)" r="9.5" />
+                    <circle class="yw-inline-svg-electron-highlight" cx="-3.2" cy="-3.8" r="2.3" />
+                    <animateMotion begin="-3.4s" calcMode="linear" dur="11.8s" keyPoints="1;0" keyTimes="0;1" path="M245 352 C333 240 366 103 440 68 C502 38 550 83 514 178 C472 286 359 375 271 373 C241 372 229 366 245 352" repeatCount="indefinite" />
+                  </g>
+                  <g class="yw-inline-svg-electron yw-inline-svg-electron-white">
+                    <circle class="yw-inline-svg-electron-halo" r="17" />
+                    <circle class="yw-inline-svg-electron-core" fill="url(#ywInlineElectronWhite)" r="11" />
+                    <circle class="yw-inline-svg-electron-highlight" cx="-3.6" cy="-4.3" r="2.6" />
+                    <animateMotion begin="-4.6s" calcMode="linear" dur="13.2s" path="M474 353 C350 282 270 159 304 94 C338 30 472 77 551 179 C631 283 594 376 499 365 C490 364 482 360 474 353" repeatCount="indefinite" />
+                  </g>
+                </g>
+              </svg>
+              <span class="yw-inline-badge" aria-hidden="true">
+                <span class="yw-inline-badge-rim"></span>
+                <span class="yw-inline-badge-glass"></span>
+                <img alt="" class="yw-inline-logo" draggable="false" src="/images/yw-nutritech-logo.png" />
+              </span>
+              <span class="yw-inline-spark yw-inline-spark-one" aria-hidden="true"></span>
+              <span class="yw-inline-spark yw-inline-spark-two" aria-hidden="true"></span>
+              <span class="yw-inline-spark yw-inline-spark-three" aria-hidden="true"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
 export async function onRequest({ env, params, request }: PagesContext) {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return new Response("Method not allowed.", {
@@ -281,91 +695,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       a { color: inherit; }
       h1, h2, h3, p, strong, dd { overflow-wrap: anywhere; }
       button, a { -webkit-tap-highlight-color: transparent; }
-      .yw-global-loader {
-        position: fixed;
-        inset: 0;
-        z-index: 2147483000;
-        display: grid;
-        place-items: center;
-        padding: clamp(1rem, 4vw, 2rem);
-        background:
-          radial-gradient(circle at 18% 18%, rgb(255 211 232 / 0.74), transparent 24rem),
-          radial-gradient(circle at 82% 20%, rgb(196 181 253 / 0.46), transparent 24rem),
-          linear-gradient(135deg, #fffaf7 0%, #fff7fb 52%, #f9f7ff 100%);
-        color: #241624;
-        animation: yw-loader-auto-hide 240ms ease 1.35s forwards;
-        opacity: 1;
-        visibility: visible;
-        pointer-events: auto;
-        transition:
-          opacity 240ms ease,
-          visibility 240ms ease;
-      }
-      .yw-global-loader[data-state="hidden"] {
-        animation: none;
-        opacity: 0;
-        visibility: hidden;
-        pointer-events: none;
-      }
-      .yw-global-loader__shell {
-        position: relative;
-        width: min(100%, 25rem);
-        display: grid;
-        gap: 1rem;
-        justify-items: center;
-        border: 1px solid rgb(255 255 255 / 0.78);
-        border-radius: 1.5rem;
-        background: linear-gradient(145deg, rgb(255 255 255 / 0.82), rgb(255 246 251 / 0.66));
-        box-shadow: 0 24px 80px rgb(76 43 70 / 0.16), inset 0 1px 0 rgb(255 255 255 / 0.92);
-        padding: clamp(1.1rem, 4vw, 1.75rem);
-        text-align: center;
-        overflow: hidden;
-      }
-      .yw-global-loader__shell::before {
-        content: "";
-        position: absolute;
-        inset: -35%;
-        background: conic-gradient(from 90deg, transparent, rgb(216 181 111 / 0.26), rgb(167 139 250 / 0.22), transparent);
-        animation: yw-loader-orbit 6s linear infinite;
-      }
-      .yw-global-loader__mark,
-      .yw-global-loader__label {
-        position: relative;
-        z-index: 1;
-      }
-      .yw-global-loader__mark {
-        width: 4.5rem;
-        height: 4.5rem;
-        display: grid;
-        place-items: center;
-        border: 1px solid rgb(216 181 111 / 0.52);
-        border-radius: 999px;
-        background: linear-gradient(135deg, #251822, #9f174d 58%, #a855f7);
-        color: #fff;
-        font-family: var(--font-accent);
-        font-size: 1.6rem;
-        font-weight: 900;
-        letter-spacing: 0.02em;
-        box-shadow: 0 16px 44px rgb(159 23 77 / 0.22);
-      }
-      .yw-global-loader__label {
-        display: grid;
-        gap: 0.3rem;
-      }
-      .yw-global-loader__label strong {
-        color: #251822;
-        font-family: var(--font-display);
-        font-size: clamp(1.35rem, 4vw, 1.9rem);
-        line-height: 1;
-      }
-      .yw-global-loader__label span {
-        color: #865b78;
-        font-family: var(--font-conversion);
-        font-size: 0.78rem;
-        font-weight: 850;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
+      ${renderInlineYWLoaderCss()}
       .page {
         min-height: 100svh;
         position: relative;
@@ -1491,15 +1821,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
     </style>
   </head>
   <body>
-    <div class="yw-global-loader" id="yw-global-loader" role="status" aria-live="polite">
-      <div class="yw-global-loader__shell">
-        <div class="yw-global-loader__mark" aria-hidden="true">YW</div>
-        <div class="yw-global-loader__label">
-          <strong>YW Nutritech</strong>
-          <span>Loading coach site</span>
-        </div>
-      </div>
-    </div>
+    ${renderInlineYWLoader()}
     <main
       class="page"
       data-coach-slug="${escapeAttribute(site.slug)}"
@@ -1785,7 +2107,7 @@ function renderSupportFallbackHtml({
     <style>
       *{box-sizing:border-box}
       body{min-width:320px;min-height:100vh;display:grid;place-items:center;margin:0;background:radial-gradient(circle at 14% 10%,rgb(255 211 232/.7),transparent 25rem),radial-gradient(circle at 88% 18%,rgb(196 181 253/.42),transparent 25rem),linear-gradient(135deg,#fffaf7 0%,#fff7fb 48%,#f9f7ff 100%);color:#201628;font-family:"Segoe UI",ui-sans-serif,system-ui,sans-serif;padding:clamp(1rem,4vw,3rem)}
-      .yw-global-loader{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:clamp(1rem,4vw,2rem);background:radial-gradient(circle at 18% 18%,rgb(255 211 232/.74),transparent 24rem),radial-gradient(circle at 82% 20%,rgb(196 181 253/.46),transparent 24rem),linear-gradient(135deg,#fffaf7 0%,#fff7fb 52%,#f9f7ff 100%);color:#241624;animation:yw-loader-auto-hide 240ms ease 1.35s forwards;opacity:1;visibility:visible;pointer-events:auto;transition:opacity 240ms ease,visibility 240ms ease}.yw-global-loader[data-state=hidden]{animation:none;opacity:0;visibility:hidden;pointer-events:none}.yw-global-loader__shell{position:relative;width:min(100%,25rem);display:grid;gap:1rem;justify-items:center;border:1px solid rgb(255 255 255/.78);border-radius:1.5rem;background:linear-gradient(145deg,rgb(255 255 255/.82),rgb(255 246 251/.66));box-shadow:0 24px 80px rgb(76 43 70/.16),inset 0 1px 0 rgb(255 255 255/.92);padding:clamp(1.1rem,4vw,1.75rem);text-align:center;overflow:hidden}.yw-global-loader__shell:before{content:"";position:absolute;inset:-35%;background:conic-gradient(from 90deg,transparent,rgb(216 181 111/.26),rgb(167 139 250/.22),transparent);animation:yw-loader-orbit 6s linear infinite}.yw-global-loader__mark,.yw-global-loader__label{position:relative;z-index:1}.yw-global-loader__mark{width:4.5rem;height:4.5rem;display:grid;place-items:center;border:1px solid rgb(216 181 111/.52);border-radius:999px;background:linear-gradient(135deg,#251822,#9f174d 58%,#a855f7);color:#fff;font-family:Georgia,Cambria,"Times New Roman",serif;font-size:1.6rem;font-weight:900;letter-spacing:.02em;box-shadow:0 16px 44px rgb(159 23 77/.22)}.yw-global-loader__label{display:grid;gap:.3rem}.yw-global-loader__label strong{color:#251822;font-family:Georgia,Cambria,"Times New Roman",serif;font-size:clamp(1.35rem,4vw,1.9rem);line-height:1}.yw-global-loader__label span{color:#865b78;font-size:.78rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+      ${renderInlineYWLoaderCss()}
       main{width:min(100%,60rem);overflow:hidden;border:1px solid rgb(255 255 255/.78);border-radius:1.35rem;background:linear-gradient(145deg,rgb(255 255 255/.86),rgb(255 245 250/.72));box-shadow:0 24px 80px rgb(76 43 70/.16),inset 0 1px 0 rgb(255 255 255/.92)}
       header,.content{padding:clamp(1rem,4vw,2rem)}
       header{display:flex;align-items:center;justify-content:space-between;gap:1rem;border-bottom:1px solid rgb(222 190 208/.62)}
@@ -1802,7 +2124,7 @@ function renderSupportFallbackHtml({
     </style>
   </head>
   <body>
-    <div class="yw-global-loader" id="yw-global-loader" role="status" aria-live="polite"><div class="yw-global-loader__shell"><div class="yw-global-loader__mark" aria-hidden="true">YW</div><div class="yw-global-loader__label"><strong>YW Nutritech</strong><span>Loading support</span></div></div></div>
+    ${renderInlineYWLoader()}
     <main>
       <header>
         <a class="brand" href="/"><img alt="YW Nutritech" src="/images/yw-nutritech-logo.png" /><span><strong>YW Nutritech</strong><small>Support fallback</small></span></a>
