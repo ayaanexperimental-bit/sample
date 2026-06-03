@@ -2,6 +2,7 @@
   position: fixed;
   inset: 0;
   z-index: 2147483000;
+  animation: global-loader-auto-hide 220ms ease 900ms forwards;
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
@@ -11,6 +12,7 @@
 }
 
 .globalLoader[data-phase="hide"] {
+  animation: none;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -22,6 +24,16 @@
 
 @media (prefers-reduced-motion: reduce) {
   .globalLoader {
+    animation-duration: 80ms;
+    animation-delay: 220ms;
     transition-duration: 80ms;
+  }
+}
+
+@keyframes global-loader-auto-hide {
+  to {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
   }
 }

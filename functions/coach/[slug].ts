@@ -293,6 +293,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           radial-gradient(circle at 82% 20%, rgb(196 181 253 / 0.46), transparent 24rem),
           linear-gradient(135deg, #fffaf7 0%, #fff7fb 52%, #f9f7ff 100%);
         color: #241624;
+        animation: yw-loader-auto-hide 240ms ease 1.35s forwards;
         opacity: 1;
         visibility: visible;
         pointer-events: auto;
@@ -301,6 +302,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           visibility 240ms ease;
       }
       .yw-global-loader[data-state="hidden"] {
+        animation: none;
         opacity: 0;
         visibility: hidden;
         pointer-events: none;
@@ -1468,6 +1470,13 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       @keyframes yw-loader-orbit {
         to { transform: rotate(360deg); }
       }
+      @keyframes yw-loader-auto-hide {
+        to {
+          opacity: 0;
+          visibility: hidden;
+          pointer-events: none;
+        }
+      }
       @keyframes view-rise {
         from { opacity: 0.2; transform: translate3d(0, 1.4rem, 0); }
         to { opacity: 1; transform: translate3d(0, 0, 0); }
@@ -1627,7 +1636,10 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
     <script>
       (function () {
         var loader = document.getElementById('yw-global-loader');
+        var loaderHideStarted = false;
         function hideGlobalLoader() {
+          if (loaderHideStarted) return;
+          loaderHideStarted = true;
           if (!loader) return;
           window.setTimeout(function () {
             loader.setAttribute('data-state', 'hidden');
@@ -1636,11 +1648,15 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
             }, 280);
           }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 120 : 520);
         }
-        if (document.readyState === 'complete') {
-          hideGlobalLoader();
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+          window.setTimeout(hideGlobalLoader, 120);
         } else {
+          document.addEventListener('DOMContentLoaded', function () {
+            window.setTimeout(hideGlobalLoader, 120);
+          }, { once: true });
           window.addEventListener('load', hideGlobalLoader, { once: true });
         }
+        window.setTimeout(hideGlobalLoader, 1600);
         var slug = ${JSON.stringify(site.slug)};
         var root = document.documentElement;
         var progressFrame = 0;
@@ -1769,7 +1785,7 @@ function renderSupportFallbackHtml({
     <style>
       *{box-sizing:border-box}
       body{min-width:320px;min-height:100vh;display:grid;place-items:center;margin:0;background:radial-gradient(circle at 14% 10%,rgb(255 211 232/.7),transparent 25rem),radial-gradient(circle at 88% 18%,rgb(196 181 253/.42),transparent 25rem),linear-gradient(135deg,#fffaf7 0%,#fff7fb 48%,#f9f7ff 100%);color:#201628;font-family:"Segoe UI",ui-sans-serif,system-ui,sans-serif;padding:clamp(1rem,4vw,3rem)}
-      .yw-global-loader{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:clamp(1rem,4vw,2rem);background:radial-gradient(circle at 18% 18%,rgb(255 211 232/.74),transparent 24rem),radial-gradient(circle at 82% 20%,rgb(196 181 253/.46),transparent 24rem),linear-gradient(135deg,#fffaf7 0%,#fff7fb 52%,#f9f7ff 100%);color:#241624;opacity:1;visibility:visible;pointer-events:auto;transition:opacity 240ms ease,visibility 240ms ease}.yw-global-loader[data-state=hidden]{opacity:0;visibility:hidden;pointer-events:none}.yw-global-loader__shell{position:relative;width:min(100%,25rem);display:grid;gap:1rem;justify-items:center;border:1px solid rgb(255 255 255/.78);border-radius:1.5rem;background:linear-gradient(145deg,rgb(255 255 255/.82),rgb(255 246 251/.66));box-shadow:0 24px 80px rgb(76 43 70/.16),inset 0 1px 0 rgb(255 255 255/.92);padding:clamp(1.1rem,4vw,1.75rem);text-align:center;overflow:hidden}.yw-global-loader__shell:before{content:"";position:absolute;inset:-35%;background:conic-gradient(from 90deg,transparent,rgb(216 181 111/.26),rgb(167 139 250/.22),transparent);animation:yw-loader-orbit 6s linear infinite}.yw-global-loader__mark,.yw-global-loader__label{position:relative;z-index:1}.yw-global-loader__mark{width:4.5rem;height:4.5rem;display:grid;place-items:center;border:1px solid rgb(216 181 111/.52);border-radius:999px;background:linear-gradient(135deg,#251822,#9f174d 58%,#a855f7);color:#fff;font-family:Georgia,Cambria,"Times New Roman",serif;font-size:1.6rem;font-weight:900;letter-spacing:.02em;box-shadow:0 16px 44px rgb(159 23 77/.22)}.yw-global-loader__label{display:grid;gap:.3rem}.yw-global-loader__label strong{color:#251822;font-family:Georgia,Cambria,"Times New Roman",serif;font-size:clamp(1.35rem,4vw,1.9rem);line-height:1}.yw-global-loader__label span{color:#865b78;font-size:.78rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+      .yw-global-loader{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:clamp(1rem,4vw,2rem);background:radial-gradient(circle at 18% 18%,rgb(255 211 232/.74),transparent 24rem),radial-gradient(circle at 82% 20%,rgb(196 181 253/.46),transparent 24rem),linear-gradient(135deg,#fffaf7 0%,#fff7fb 52%,#f9f7ff 100%);color:#241624;animation:yw-loader-auto-hide 240ms ease 1.35s forwards;opacity:1;visibility:visible;pointer-events:auto;transition:opacity 240ms ease,visibility 240ms ease}.yw-global-loader[data-state=hidden]{animation:none;opacity:0;visibility:hidden;pointer-events:none}.yw-global-loader__shell{position:relative;width:min(100%,25rem);display:grid;gap:1rem;justify-items:center;border:1px solid rgb(255 255 255/.78);border-radius:1.5rem;background:linear-gradient(145deg,rgb(255 255 255/.82),rgb(255 246 251/.66));box-shadow:0 24px 80px rgb(76 43 70/.16),inset 0 1px 0 rgb(255 255 255/.92);padding:clamp(1.1rem,4vw,1.75rem);text-align:center;overflow:hidden}.yw-global-loader__shell:before{content:"";position:absolute;inset:-35%;background:conic-gradient(from 90deg,transparent,rgb(216 181 111/.26),rgb(167 139 250/.22),transparent);animation:yw-loader-orbit 6s linear infinite}.yw-global-loader__mark,.yw-global-loader__label{position:relative;z-index:1}.yw-global-loader__mark{width:4.5rem;height:4.5rem;display:grid;place-items:center;border:1px solid rgb(216 181 111/.52);border-radius:999px;background:linear-gradient(135deg,#251822,#9f174d 58%,#a855f7);color:#fff;font-family:Georgia,Cambria,"Times New Roman",serif;font-size:1.6rem;font-weight:900;letter-spacing:.02em;box-shadow:0 16px 44px rgb(159 23 77/.22)}.yw-global-loader__label{display:grid;gap:.3rem}.yw-global-loader__label strong{color:#251822;font-family:Georgia,Cambria,"Times New Roman",serif;font-size:clamp(1.35rem,4vw,1.9rem);line-height:1}.yw-global-loader__label span{color:#865b78;font-size:.78rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
       main{width:min(100%,60rem);overflow:hidden;border:1px solid rgb(255 255 255/.78);border-radius:1.35rem;background:linear-gradient(145deg,rgb(255 255 255/.86),rgb(255 245 250/.72));box-shadow:0 24px 80px rgb(76 43 70/.16),inset 0 1px 0 rgb(255 255 255/.92)}
       header,.content{padding:clamp(1rem,4vw,2rem)}
       header{display:flex;align-items:center;justify-content:space-between;gap:1rem;border-bottom:1px solid rgb(222 190 208/.62)}
@@ -1780,7 +1796,7 @@ function renderSupportFallbackHtml({
       .support-card{display:grid;gap:1rem;border:1px solid rgb(235 201 219/.78);border-radius:1.1rem;background:linear-gradient(145deg,rgb(255 255 255/.9),rgb(255 240 247/.72));padding:1rem}.support-identity{display:grid;grid-template-columns:3.6rem minmax(0,1fr);gap:.8rem;align-items:center}.avatar{width:3.6rem;height:3.6rem;display:grid;place-items:center;overflow:hidden;border-radius:999px;background:linear-gradient(135deg,#9f174d,#a855f7);color:#fff;font-weight:950}.avatar img{width:100%;height:100%;object-fit:cover}
       .support-grid{display:grid;gap:.65rem}.support-grid a,.pending{display:grid;gap:.22rem;border:1px solid rgb(242 201 218/.72);border-radius:.85rem;background:rgb(255 255 255/.68);color:inherit;padding:.78rem .85rem;text-decoration:none}.support-grid span{color:#8b6078;font-size:.75rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
       .support-actions{display:flex;flex-wrap:wrap;gap:.7rem}.support-actions a{min-height:2.9rem;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgb(242 201 218/.78);border-radius:999px;padding:0 1rem;color:#251822;font-weight:900;text-decoration:none}.support-actions a:first-child{background:linear-gradient(135deg,#251822,#9f174d 54%,#a855f7);color:#fff}
-      @keyframes yw-loader-orbit{to{transform:rotate(360deg)}}
+      @keyframes yw-loader-orbit{to{transform:rotate(360deg)}}@keyframes yw-loader-auto-hide{to{opacity:0;visibility:hidden;pointer-events:none}}
       @media(prefers-reduced-motion:reduce){.yw-global-loader,.yw-global-loader *{animation:none!important;transition-duration:80ms!important}}
       @media(max-width:720px){body{padding:.75rem}main{min-height:calc(100svh - 1.5rem);display:grid;align-content:center;border-radius:1rem}header{align-items:flex-start;flex-direction:column}.content{grid-template-columns:1fr}.support-actions a{width:100%}}
     </style>
@@ -1803,7 +1819,10 @@ function renderSupportFallbackHtml({
     <script>
       (function () {
         var loader = document.getElementById('yw-global-loader');
+        var loaderHideStarted = false;
         function hideGlobalLoader() {
+          if (loaderHideStarted) return;
+          loaderHideStarted = true;
           if (!loader) return;
           window.setTimeout(function () {
             loader.setAttribute('data-state', 'hidden');
@@ -1812,11 +1831,15 @@ function renderSupportFallbackHtml({
             }, 280);
           }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 120 : 520);
         }
-        if (document.readyState === 'complete') {
-          hideGlobalLoader();
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+          window.setTimeout(hideGlobalLoader, 120);
         } else {
+          document.addEventListener('DOMContentLoaded', function () {
+            window.setTimeout(hideGlobalLoader, 120);
+          }, { once: true });
           window.addEventListener('load', hideGlobalLoader, { once: true });
         }
+        window.setTimeout(hideGlobalLoader, 1600);
         var button = document.querySelector('.error-code');
         if (!button) return;
         button.addEventListener('click', function () {
