@@ -10,7 +10,6 @@ import {
   type CoachSiteStatus,
   createCoachSiteFromForm,
   createFormFromCoachSite,
-  demoCoachSites,
   normalizeCoachSlug
 } from "../../lib/admin-coach-sites";
 import {
@@ -231,7 +230,7 @@ function getCopyScopeLabel(scope: CopyRegenerationScope) {
 }
 
 export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachSitesManagerProps) {
-  const [sites, setSites] = useState<CoachSiteRecord[]>(demoCoachSites);
+  const [sites, setSites] = useState<CoachSiteRecord[]>([]);
   const [form, setForm] = useState<CoachSiteFormState>(EMPTY_COACH_SITE_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [previewSite, setPreviewSite] = useState<CoachSiteRecord | null>(null);
@@ -274,14 +273,14 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         setSites(payload.coachSites);
         setStorageReady(Boolean(payload.configured));
         setStorageMessage(
-          payload.fallbackUsed
-            ? "Coach-site database connected. Showing fallback records until the first admin save."
-            : "Coach-site database connected."
+          payload.configured
+            ? "Coach-site database connected."
+            : "Coach-site database is not configured. No production records are shown."
         );
       } catch {
         if (!cancelled) {
           setStorageReady(false);
-          setStorageMessage("Using local fallback. Admin API is not reachable in this preview.");
+          setStorageMessage("Admin API is not reachable. No production records are shown.");
         }
       }
     }
@@ -664,7 +663,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         method: "PATCH"
       });
       const payload = (await response.json().catch(() => ({}))) as CoachSitesApiPayload & {
-        demoMode?: boolean;
+        localOtpMode?: boolean;
         message?: string;
       };
 
@@ -674,8 +673,8 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       }
 
       setRemoveMessage(
-        payload.demoMode
-          ? "Local demo OTP is available for this action."
+        payload.localOtpMode
+          ? "Local OTP is available for this action."
           : payload.message || "OTP sent to the current admin email."
       );
     } catch {
@@ -847,38 +846,44 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
                 </tr>
               </thead>
               <tbody>
-                {filteredSites.map((site) => (
-                  <tr key={site.id}>
-                    <td>
-                      <strong>{site.coachName}</strong>
-                      <span>{site.niche}</span>
-                    </td>
-                    <td>
-                      <span className={styles.statusBadge} data-status={site.status}>
-                        {site.status}
-                      </span>
-                    </td>
-                    <td>
-                      <code>{site.publicUrl}</code>
-                    </td>
-                    <td>
-                      <span>{site.analytics.totalVisits.toLocaleString()} visits</span>
-                      <span>
-                        {site.analytics.totalRegisterClicks.toLocaleString()} clicks /{" "}
-                        {site.analytics.conversionRate}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        className={styles.secondaryAction}
-                        onClick={() => setDialog({ site, type: "manage" })}
-                        type="button"
-                      >
-                        Manage
-                      </button>
-                    </td>
+                {filteredSites.length > 0 ? (
+                  filteredSites.map((site) => (
+                    <tr key={site.id}>
+                      <td>
+                        <strong>{site.coachName}</strong>
+                        <span>{site.niche}</span>
+                      </td>
+                      <td>
+                        <span className={styles.statusBadge} data-status={site.status}>
+                          {site.status}
+                        </span>
+                      </td>
+                      <td>
+                        <code>{site.publicUrl}</code>
+                      </td>
+                      <td>
+                        <span>{site.analytics.totalVisits.toLocaleString()} visits</span>
+                        <span>
+                          {site.analytics.totalRegisterClicks.toLocaleString()} clicks /{" "}
+                          {site.analytics.conversionRate}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          className={styles.secondaryAction}
+                          onClick={() => setDialog({ site, type: "manage" })}
+                          type="button"
+                        >
+                          Manage
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5}>No coach sites available yet.</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -1349,7 +1354,7 @@ function CoachDialogRenderer({
   const removeActionsReady = removeConfirmationMatches && removeOtpValid && !removeBusy;
   const removeMessageIsSuccess =
     removeMessage.toLowerCase().includes("otp sent") ||
-    removeMessage.toLowerCase().includes("demo");
+    removeMessage.toLowerCase().includes("local otp");
 
   return (
     <AdminActionDialog

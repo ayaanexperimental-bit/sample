@@ -1,5 +1,4 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import { demoCoachSites } from "../../../../lib/admin-coach-sites";
 import { adminControlCenterData } from "../../../../lib/admin-control-center";
 import { adminDashboardData } from "../../../../lib/admin-dashboard-data";
 import { adminJson, requireAdmin } from "../../../../lib/server/admin-auth";
@@ -33,26 +32,10 @@ export async function onRequest({ request, env }: PagesContext) {
 
   return adminJson({
     admin: admin.admin,
-    coachSites: mergeCoachSitesWithStaticFallback(persistedCoachSites),
+    coachSites: persistedCoachSites || [],
     controlCenter: adminControlCenterData,
     dashboard: adminDashboardData,
     realCoachSiteStorage: Boolean(persistedCoachSites),
     ok: true
   });
-}
-
-function mergeCoachSitesWithStaticFallback(persistedCoachSites: typeof demoCoachSites | null) {
-  const merged = new Map<string, (typeof demoCoachSites)[number]>();
-
-  for (const site of persistedCoachSites || []) {
-    merged.set(site.slug, site);
-  }
-
-  for (const site of demoCoachSites) {
-    if (!merged.has(site.slug)) {
-      merged.set(site.slug, site);
-    }
-  }
-
-  return Array.from(merged.values());
 }

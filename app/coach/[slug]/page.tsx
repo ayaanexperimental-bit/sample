@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PublicCoachSitePage } from "../../../components/coach/public-coach-site-page";
-import { demoCoachSites, getPublicCoachSiteBySlug } from "../../../lib/admin-coach-sites";
+import { approvedCoachSites, getPublicCoachSiteBySlug } from "../../../lib/admin-coach-sites";
 
 export const dynamicParams = false;
 
@@ -12,7 +12,7 @@ type PublicCoachRouteProps = {
 };
 
 export function generateStaticParams() {
-  return demoCoachSites
+  return approvedCoachSites
     .filter((site) => site.status === "published" || site.status === "paused")
     .map((site) => ({
       slug: site.slug

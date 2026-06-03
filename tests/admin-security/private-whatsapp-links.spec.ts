@@ -152,7 +152,7 @@ test.describe("private WhatsApp links", () => {
     });
     expect(sendOtp.status).toBe(200);
     expect(await sendOtp.json()).toMatchObject({
-      demoMode: true,
+      localOtpMode: true,
       ok: true
     });
 

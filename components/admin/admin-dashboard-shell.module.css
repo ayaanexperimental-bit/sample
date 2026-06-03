@@ -211,8 +211,7 @@
 }
 
 .header h1,
-.section h2,
-.placeholderCard h2 {
+.section h2 {
   margin: 0;
   color: #251822;
   font-family: var(--font-serif-display);
@@ -226,8 +225,7 @@
 }
 
 .header p,
-.securityNote,
-.placeholderCard p {
+.securityNote {
   margin: 0.6rem 0 0;
   color: #6d5968;
   font-size: 0.98rem;
@@ -251,8 +249,7 @@
   gap: 0.6rem;
 }
 
-.sessionEmail,
-.sampleBadge {
+.sessionEmail {
   min-height: 2rem;
   display: inline-flex;
   align-items: center;
@@ -264,12 +261,6 @@
   font-size: 0.78rem;
   font-weight: 900;
   line-height: 1;
-}
-
-.sampleBadge {
-  border-color: rgb(159 23 77 / 0.14);
-  background: rgb(217 70 131 / 0.08);
-  color: #9f174d;
 }
 
 .logoutButton,
@@ -302,7 +293,7 @@
   padding: 0 0.9rem;
 }
 
-.demoNotice,
+.dataNotice,
 .securityNote {
   border: 1px solid rgb(183 121 31 / 0.18);
   border-radius: var(--radius-md);
@@ -338,8 +329,7 @@
 }
 
 .metricCard,
-.section,
-.placeholderCard {
+.section {
   border: 1px solid rgb(255 255 255 / 0.78);
   border-radius: var(--radius-md);
   background:
@@ -352,7 +342,6 @@
 
 .adminApp .metricCard,
 .adminApp .section,
-.adminApp .placeholderCard,
 .adminApp .managerSurface {
   border: 1px solid rgb(28 42 59 / 0.08);
   background: #ffffff;
@@ -361,8 +350,7 @@
 
 .adminApp .pageHeader h1,
 .adminApp .managerSurface h2,
-.adminApp .section h2,
-.adminApp .placeholderCard h2 {
+.adminApp .section h2 {
   font-family: var(--font-sans);
   line-height: 1.16;
 }
@@ -372,8 +360,7 @@
 }
 
 .adminApp .managerSurface h2,
-.adminApp .section h2,
-.adminApp .placeholderCard h2 {
+.adminApp .section h2 {
   font-size: clamp(1.08rem, 1.5vw, 1.25rem);
 }
 
@@ -428,8 +415,7 @@
     linear-gradient(145deg, rgb(255 255 255 / 0.8), rgb(253 226 239 / 0.58));
 }
 
-.section,
-.placeholderCard {
+.section {
   min-width: 0;
   padding: 1rem;
 }
@@ -442,8 +428,7 @@
   margin-bottom: 0.9rem;
 }
 
-.section h2,
-.placeholderCard h2 {
+.section h2 {
   font-size: clamp(1.35rem, 2.4vw, 2rem);
   line-height: 1.05;
 }
@@ -2174,22 +2159,6 @@
   white-space: normal;
 }
 
-.modulePlaceholders {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-}
-
-.placeholderCard {
-  display: grid;
-  align-content: start;
-  gap: 0.72rem;
-}
-
-.placeholderCard p {
-  margin-top: 0;
-}
-
 .securityNote {
   margin: 0;
 }
@@ -2233,10 +2202,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .modulePlaceholders {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .themeChoiceGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2277,7 +2242,6 @@
   .definitionGrid,
   .formGrid,
   .manageMetrics,
-  .modulePlaceholders,
   .paidLinkCard,
   .removalChoiceGrid,
   .statusGrid,

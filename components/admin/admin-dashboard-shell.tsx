@@ -115,10 +115,10 @@ export function AdminDashboardShell({
           setErrorReports(payload.errorReports);
           setErrorReportSource(payload.persistence || "unknown");
         } else {
-          setErrorReportSource("demo_fallback");
+          setErrorReportSource("unavailable");
         }
       } catch {
-        if (active) setErrorReportSource("demo_fallback");
+        if (active) setErrorReportSource("unavailable");
       }
     }
 
@@ -155,7 +155,7 @@ export function AdminDashboardShell({
           sessionEmail={sessionEmail}
         />
 
-        <p className={styles.demoNotice}>{data.demoNotice}</p>
+        <p className={styles.dataNotice}>{data.dataNotice}</p>
 
         {activeView === "overview" ? <OverviewView data={data} onSelect={setActiveView} /> : null}
 
@@ -254,7 +254,6 @@ function OverviewView({
           <article className={styles.metricCard} data-tone={metric.tone} key={metric.label}>
             <span>{metric.label}</span>
             <strong>{metric.value}</strong>
-            <em>Sample</em>
           </article>
         ))}
       </section>
@@ -275,15 +274,22 @@ function OverviewView({
             </button>
           </div>
           <div className={styles.compactList}>
-            {data.topCoaches.map((coach) => (
-              <div key={coach.rank}>
-                <span>{coach.rank}</span>
-                <strong>{coach.name}</strong>
-                <p>
-                  {coach.visits.toLocaleString()} visits / {coach.conversionRate}
-                </p>
+            {data.topCoaches.length > 0 ? (
+              data.topCoaches.map((coach) => (
+                <div key={coach.rank}>
+                  <span>{coach.rank}</span>
+                  <strong>{coach.name}</strong>
+                  <p>
+                    {coach.visits.toLocaleString()} visits / {coach.conversionRate}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <div>
+                <strong>No data available yet</strong>
+                <p>Top performers will appear after real coach-site traffic is recorded.</p>
               </div>
-            ))}
+            )}
           </div>
         </article>
 
@@ -302,12 +308,19 @@ function OverviewView({
             </button>
           </div>
           <div className={styles.alertList}>
-            {data.alerts.map((alert) => (
-              <div className={styles.alertItem} data-severity={alert.severity} key={alert.title}>
-                <strong>{alert.title}</strong>
-                <p>{alert.detail}</p>
+            {data.alerts.length > 0 ? (
+              data.alerts.map((alert) => (
+                <div className={styles.alertItem} data-severity={alert.severity} key={alert.title}>
+                  <strong>{alert.title}</strong>
+                  <p>{alert.detail}</p>
+                </div>
+              ))
+            ) : (
+              <div className={styles.alertItem} data-severity="low">
+                <strong>No recent issues</strong>
+                <p>Error reports will appear when production fallback events are recorded.</p>
               </div>
-            ))}
+            )}
           </div>
         </article>
       </section>
@@ -365,20 +378,26 @@ function TopCoachesView({ data }: { data: typeof adminDashboardData }) {
             </tr>
           </thead>
           <tbody>
-            {data.topCoaches.map((coach) => (
-              <tr key={coach.rank}>
-                <td>{coach.rank}</td>
-                <td>{coach.name}</td>
-                <td>{coach.niche}</td>
-                <td>
-                  <code>{coach.publicLink}</code>
-                </td>
-                <td>{coach.visits.toLocaleString()}</td>
-                <td>{coach.clicks.toLocaleString()}</td>
-                <td>{coach.conversionRate}</td>
-                <td>{coach.trend}</td>
+            {data.topCoaches.length > 0 ? (
+              data.topCoaches.map((coach) => (
+                <tr key={coach.rank}>
+                  <td>{coach.rank}</td>
+                  <td>{coach.name}</td>
+                  <td>{coach.niche}</td>
+                  <td>
+                    <code>{coach.publicLink}</code>
+                  </td>
+                  <td>{coach.visits.toLocaleString()}</td>
+                  <td>{coach.clicks.toLocaleString()}</td>
+                  <td>{coach.conversionRate}</td>
+                  <td>{coach.trend}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={8}>No top performer data available yet.</td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
@@ -410,32 +429,38 @@ function CoachAnalyticsView({ control }: { control: typeof adminControlCenterDat
             </tr>
           </thead>
           <tbody>
-            {control.coachAnalytics.map((coach) => (
-              <tr key={coach.slug}>
-                <td>
-                  <code>{coach.slug}</code>
-                </td>
-                <td>
-                  <span className={styles.statusBadge} data-status={coach.status}>
-                    {coach.status}
-                  </span>
-                </td>
-                <td>
-                  <code>{coach.publicUrl}</code>
-                </td>
-                <td>{coach.totalVisits.toLocaleString()}</td>
-                <td>{coach.dailyVisits.toLocaleString()}</td>
-                <td>{coach.weeklyVisits.toLocaleString()}</td>
-                <td>{coach.monthlyVisits.toLocaleString()}</td>
-                <td>{coach.registerClicks.toLocaleString()}</td>
-                <td>{coach.whatsappClicks.toLocaleString()}</td>
-                <td>{coach.videoPlays.toLocaleString()}</td>
-                <td>{coach.conversionRate}</td>
-                <td>{coach.deviceBreakdown}</td>
-                <td>{coach.regionBreakdown}</td>
-                <td>{coach.sourceBreakdown}</td>
+            {control.coachAnalytics.length > 0 ? (
+              control.coachAnalytics.map((coach) => (
+                <tr key={coach.slug}>
+                  <td>
+                    <code>{coach.slug}</code>
+                  </td>
+                  <td>
+                    <span className={styles.statusBadge} data-status={coach.status}>
+                      {coach.status}
+                    </span>
+                  </td>
+                  <td>
+                    <code>{coach.publicUrl}</code>
+                  </td>
+                  <td>{coach.totalVisits.toLocaleString()}</td>
+                  <td>{coach.dailyVisits.toLocaleString()}</td>
+                  <td>{coach.weeklyVisits.toLocaleString()}</td>
+                  <td>{coach.monthlyVisits.toLocaleString()}</td>
+                  <td>{coach.registerClicks.toLocaleString()}</td>
+                  <td>{coach.whatsappClicks.toLocaleString()}</td>
+                  <td>{coach.videoPlays.toLocaleString()}</td>
+                  <td>{coach.conversionRate}</td>
+                  <td>{coach.deviceBreakdown}</td>
+                  <td>{coach.regionBreakdown}</td>
+                  <td>{coach.sourceBreakdown}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={14}>No coach analytics available yet.</td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
@@ -1043,14 +1068,14 @@ function ErrorReportsView({
             ? "Live D1 error reports"
             : isLoadingSource
               ? "Loading error reports"
-              : "Demo fallback reports"}
+              : "Error report storage unavailable"}
         </strong>
         <p>
           {isLiveSource
             ? "Public fallback events are being saved server-side with safe details only."
             : isLoadingSource
               ? "Checking the protected Admin Error Reports API."
-              : "D1 reports are not available in this environment, so these rows are placeholders."}
+              : "D1 reports are not available in this environment. No fallback rows are shown."}
         </p>
       </div>
       <div className={styles.tableWrap}>

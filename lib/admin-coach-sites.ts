@@ -130,7 +130,7 @@ export const EMPTY_COACH_SITE_FORM: CoachSiteFormState = {
 
 export const COACH_PUBLIC_ROUTE_PREFIX = "/coach";
 
-export const demoCoachSites: CoachSiteRecord[] = [
+export const approvedCoachSites: CoachSiteRecord[] = [
   {
     id: "coach-site-gyana-ranjan",
     coachId: "coach-gyana",
@@ -184,86 +184,23 @@ export const demoCoachSites: CoachSiteRecord[] = [
       socialCopy: "Join Gyana Ranjan's PCOS lifestyle guidance page for a clear first step."
     },
     analytics: {
-      averageVisits: 140,
-      conversionRate: "17.5%",
-      dailyVisits: 186,
+      averageVisits: 0,
+      conversionRate: "0%",
+      dailyVisits: 0,
       deviceBreakdown: {
-        desktop: 14,
-        mobile: 80,
-        tablet: 6
+        desktop: 0,
+        mobile: 0,
+        tablet: 0
       },
-      lastUpdated: "Demo data",
-      monthlyVisits: 4210,
-      region: "Odisha",
-      source: "Coach social sharing",
-      totalRegisterClicks: 738,
-      totalVisits: 4210,
+      lastUpdated: "Not connected",
+      monthlyVisits: 0,
+      region: "Not available",
+      source: "Not available",
+      totalRegisterClicks: 0,
+      totalVisits: 0,
       totalWhatsappClicks: 0,
-      videoPlays: 392,
-      weeklyVisits: 980
-    }
-  },
-  {
-    id: "coach-site-sample-a",
-    coachId: "coach-sample-a",
-    coachName: "Sample Coach A",
-    niche: "Weight Loss",
-    location: "Kolkata",
-    bio: "Sample coach site record used for admin UI review only.",
-    vision: "Help guests take a practical first step toward daily wellness habits.",
-    coachEmail: "",
-    coachPhone: "",
-    whatsappLink: "",
-    photoUrl: "",
-    logoUrl: "",
-    videoUrl: "",
-    googleFormUrl: "",
-    heroMediaType: "none",
-    slug: "sample-coach-a",
-    publicUrl: "/coach/sample-coach-a",
-    status: "paused",
-    supportText: "",
-    registerButtonText: "Register Now",
-    selectedThemeId: DEFAULT_COACH_TEMPLATE_THEME_ID,
-    content: {
-      heroHeadline: "A practical first step with Sample Coach A.",
-      subheadline: "Demo coach referral site content for review.",
-      coachIntro:
-        "This is sample copy. Replace with real approved coach details before publishing.",
-      visionText: "Guide guests through clear, sustainable habits.",
-      benefits: [
-        "Simple routine clarity",
-        "Supportive coach introduction",
-        "Clear registration step"
-      ],
-      ctaText: "Register Now",
-      faq: [
-        {
-          question: "Is this real data?",
-          answer: "No. This is demo data for UI and workflow review."
-        }
-      ],
-      trustText: "Demo trust text for the fixed coach template.",
-      socialCopy: "Demo sharing copy for Sample Coach A."
-    },
-    analytics: {
-      averageVisits: 99,
-      conversionRate: "17.1%",
-      dailyVisits: 74,
-      deviceBreakdown: {
-        desktop: 17,
-        mobile: 77,
-        tablet: 6
-      },
-      lastUpdated: "Demo data",
-      monthlyVisits: 2980,
-      region: "Kolkata",
-      source: "Coach social sharing",
-      totalRegisterClicks: 511,
-      totalVisits: 2980,
-      totalWhatsappClicks: 12,
       videoPlays: 0,
-      weeklyVisits: 620
+      weeklyVisits: 0
     }
   }
 ];
@@ -275,7 +212,7 @@ export function getCoachPublicUrl(slug: string) {
 export function getPublicCoachSiteBySlug(slug: string) {
   const normalizedSlug = normalizeCoachSlug(slug);
   const site =
-    demoCoachSites.find(
+    approvedCoachSites.find(
       (record) =>
         record.slug === normalizedSlug &&
         (record.status === "published" || record.status === "paused")

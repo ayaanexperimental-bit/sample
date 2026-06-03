@@ -14,31 +14,26 @@ export function ProgramSuccessPage({ thankYouVideoUrl }: { thankYouVideoUrl: str
           group for session updates.
         </p>
 
-        <section className="success-video-card" aria-label="Thank you video">
-          {videoSource.kind === "youtube" ? (
-            <iframe
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="strict-origin-when-cross-origin"
-              src={videoSource.url}
-              title="Thank you message"
-            />
-          ) : null}
+        {videoSource.kind !== "none" ? (
+          <section className="success-video-card" aria-label="Thank you video">
+            {videoSource.kind === "youtube" ? (
+              <iframe
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="strict-origin-when-cross-origin"
+                src={videoSource.url}
+                title="Thank you message"
+              />
+            ) : null}
 
-          {videoSource.kind === "video" ? (
-            <video controls playsInline preload="metadata" src={videoSource.url}>
-              <track kind="captions" />
-            </video>
-          ) : null}
-
-          {videoSource.kind === "none" ? (
-            <div className="success-video-placeholder">
-              <span aria-hidden="true">{">"}</span>
-              <p>Thank you video coming soon.</p>
-            </div>
-          ) : null}
-        </section>
+            {videoSource.kind === "video" ? (
+              <video controls playsInline preload="metadata" src={videoSource.url}>
+                <track kind="captions" />
+              </video>
+            ) : null}
+          </section>
+        ) : null}
 
         <WhatsAppAccessButton />
 

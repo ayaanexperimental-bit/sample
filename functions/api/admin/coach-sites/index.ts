@@ -1,9 +1,5 @@
 import type { D1Database, R2Bucket } from "@cloudflare/workers-types";
-import {
-  demoCoachSites,
-  type CoachSiteRecord,
-  type CoachSiteStatus
-} from "../../../../lib/admin-coach-sites";
+import { type CoachSiteRecord, type CoachSiteStatus } from "../../../../lib/admin-coach-sites";
 import {
   adminJson,
   isAdminDemoAuthEnabled,
@@ -57,9 +53,9 @@ export async function onRequest({ request, env }: PagesContext) {
     const persistedSites = await listCoachSitesFromDb(env);
 
     return adminJson({
-      coachSites: mergeCoachSitesWithStaticFallback(persistedSites),
+      coachSites: persistedSites || [],
       configured: Boolean(env.ADMIN_DB),
-      fallbackUsed: !persistedSites || persistedSites.length === 0,
+      fallbackUsed: false,
       ok: true
     });
   }
@@ -124,8 +120,8 @@ export async function onRequest({ request, env }: PagesContext) {
 
         if (!result.ok && result.reason === "not_configured" && isLocalDemoOtpAvailable(request, env)) {
           return adminJson({
-            demoMode: true,
-            message: "Local demo OTP is available for this coach-site action.",
+            localOtpMode: true,
+            message: "Local OTP is available for this coach-site action.",
             ok: true
           });
         }
@@ -257,28 +253,4 @@ function isLocalHostname(hostname: string) {
     hostname === "::1" ||
     hostname === "[::1]"
   );
-}
-
-function mergeCoachSitesWithStaticFallback(persistedSites: CoachSiteRecord[] | null) {
-  const merged = new Map<string, CoachSiteRecord>();
-
-  for (const site of persistedSites || []) {
-    merged.set(site.slug, site);
-  }
-
-  for (const site of demoCoachSites) {
-    if (!merged.has(site.slug)) {
-      merged.set(site.slug, {
-        ...site,
-        analytics: {
-          ...site.analytics,
-          lastUpdated: persistedSites
-            ? "Static fallback; save this site to move it into D1"
-            : "Demo fallback until first admin save"
-        }
-      });
-    }
-  }
-
-  return Array.from(merged.values());
 }

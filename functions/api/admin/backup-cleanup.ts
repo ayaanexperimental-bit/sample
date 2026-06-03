@@ -32,7 +32,7 @@ export async function onRequest({ request, env }: PagesContext) {
         googleSheetsConfigured: Boolean(env.GOOGLE_SHEETS_BACKUP_CREDENTIALS_JSON?.trim())
       },
       ok: true,
-      persistence: "placeholder"
+      persistence: "disabled"
     });
   }
 

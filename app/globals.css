@@ -13469,37 +13469,6 @@ body:has(.levelup-clone) {
   width: 100%;
 }
 
-.success-video-placeholder {
-  align-items: center;
-  color: #5a465f;
-  display: grid;
-  gap: 0.8rem;
-  height: 100%;
-  justify-items: center;
-  padding: 2rem;
-}
-
-.success-video-placeholder span {
-  align-items: center;
-  background: linear-gradient(135deg, #d92f93, #ff7b48);
-  border-radius: 999px;
-  box-shadow: 0 12px 30px rgb(217 47 147 / 0.26);
-  color: #fff;
-  display: inline-flex;
-  font-size: 1.2rem;
-  height: 3.8rem;
-  justify-content: center;
-  padding-left: 0.18rem;
-  width: 3.8rem;
-}
-
-.success-video-placeholder p {
-  color: #6a556a !important;
-  font-size: clamp(1rem, 2.3vw, 1.18rem) !important;
-  font-weight: 700;
-  margin: 0 !important;
-}
-
 .success-actions {
   align-items: center;
   display: flex;
@@ -13608,10 +13577,6 @@ body:has(.levelup-clone) {
 
   .success-video-card {
     border-radius: 1rem;
-  }
-
-  .success-video-placeholder {
-    padding: 1.2rem;
   }
 
   .success-whatsapp-button {

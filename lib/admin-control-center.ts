@@ -127,51 +127,7 @@ export type AdminControlCenterData = {
 };
 
 export const adminControlCenterData: AdminControlCenterData = {
-  coachAnalytics: [
-    {
-      averageVisits: "602/day",
-      conversionRate: "17.5%",
-      dailyVisits: 186,
-      deviceBreakdown: "Mobile 81%, Desktop 14%, Tablet 5%",
-      lastUpdated: "Demo snapshot",
-      monthlyVisits: 4210,
-      publicUrl: "/coach/gyana-ranjan",
-      recentEvents: [
-        "coach_site_view",
-        "coach_register_click",
-        "coach_whatsapp_click",
-        "coach_video_play"
-      ],
-      registerClicks: 738,
-      regionBreakdown: "Bhubaneswar, Cuttack, Kolkata",
-      slug: "gyana-ranjan",
-      sourceBreakdown: "Instagram, WhatsApp, direct",
-      status: "published",
-      totalVisits: 4210,
-      videoPlays: 318,
-      weeklyVisits: 1284,
-      whatsappClicks: 246
-    },
-    {
-      averageVisits: "0/day",
-      conversionRate: "0%",
-      dailyVisits: 0,
-      deviceBreakdown: "No recent activity",
-      lastUpdated: "Demo snapshot",
-      monthlyVisits: 0,
-      publicUrl: "/coach/sample-coach-a",
-      recentEvents: ["coach_site_paused"],
-      registerClicks: 0,
-      regionBreakdown: "No recent activity",
-      slug: "sample-coach-a",
-      sourceBreakdown: "No recent activity",
-      status: "paused",
-      totalVisits: 0,
-      videoPlays: 0,
-      weeklyVisits: 0,
-      whatsappClicks: 0
-    }
-  ],
+  coachAnalytics: [],
   masterclassSettings: [
     {
       description: "Public Razorpay payment destination is used only through the server redirect.",
@@ -201,63 +157,7 @@ export const adminControlCenterData: AdminControlCenterData = {
     }
   ],
   paidMasterclassLinks: getPaidMasterclassLinks(),
-  errorReports: [
-    {
-      browser: "Chrome",
-      category: "Link missing",
-      coachSlug: "sample-coach-a",
-      createdAt: "Demo snapshot",
-      deviceType: "mobile",
-      funnelStep: "coach_register_click",
-      pagePath: "/coach/sample-coach-a",
-      errorCode: "YW-ERR-5001",
-      missingSupportFields: "coach email, coach phone, coach WhatsApp",
-      referenceId: "YW-ERR-5001-SMPL",
-      referrer: "direct",
-      safeMessage: "Google Form link missing. Register buttons disabled until configured.",
-      screenSize: "390x844",
-      sessionId: "demo-session",
-      severity: "high",
-      status: "Reviewing",
-      supportSource: "default",
-      userAction: "Tapped Register Now"
-    },
-    {
-      browser: "Safari",
-      category: "Payment flow issue",
-      createdAt: "Demo snapshot",
-      deviceType: "mobile",
-      funnelStep: "payment_redirect",
-      pagePath: "/gyana/pcos-51",
-      errorCode: "YW-ERR-5003",
-      referenceId: "YW-ERR-5003-PAY1",
-      referrer: "instagram",
-      safeMessage: "Payment redirect failed once, no sensitive details exposed.",
-      screenSize: "414x896",
-      sessionId: "demo-session",
-      severity: "medium",
-      status: "New",
-      supportSource: "default",
-      userAction: "Tapped payment CTA"
-    },
-    {
-      browser: "Chrome",
-      category: "AI generation issue",
-      createdAt: "Demo snapshot",
-      deviceType: "desktop",
-      pagePath: "/admin/dashboard",
-      errorCode: "YW-ERR-8001",
-      referenceId: "YW-ERR-8001-AI01",
-      referrer: "admin",
-      safeMessage: "AI generation not configured yet.",
-      screenSize: "1280x900",
-      sessionId: "admin-demo",
-      severity: "low",
-      status: "Fixed",
-      supportSource: "default",
-      userAction: "Clicked Generate with AI"
-    }
-  ],
+  errorReports: [],
   backupCleanup: {
     backupDestination: "Not configured",
     cleanupStatus: "Disabled until backup storage is configured",
@@ -329,7 +229,7 @@ export const adminControlCenterData: AdminControlCenterData = {
     {
       name: "error_reports",
       purpose: "Safe user-facing reference IDs with admin-only technical review fields.",
-      status: "API scaffold only"
+      status: "D1 table configured"
     },
     {
       name: "analytics_backups",

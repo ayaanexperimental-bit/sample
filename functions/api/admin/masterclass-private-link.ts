@@ -81,8 +81,8 @@ export async function onRequest({ request, env }: PagesContext) {
 
     if (!result.ok && result.reason === "not_configured" && isLocalDemoOtpAvailable(request, env)) {
       return adminJson({
-        demoMode: true,
-        message: "Local demo OTP is available for this reveal test.",
+        localOtpMode: true,
+        message: "Local OTP is available for this reveal test.",
         ok: true
       });
     }

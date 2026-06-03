@@ -208,20 +208,12 @@ test.describe("admin auth security protections", () => {
       email: ADMIN_EMAIL,
       role: "owner"
     });
-    expect(dashboardBody.dashboard.demoNotice).toContain("Demo/sample data only");
+    expect(dashboardBody.dashboard.dataNotice).toContain("Only production records are shown");
     expect(dashboardBody.dashboard.navigation).toHaveLength(10);
     expect(dashboardBody.dashboard.summary).toHaveLength(12);
-    expect(dashboardBody.dashboard.topCoaches[0]).toMatchObject({
-      name: "Gyana Ranjan",
-      publicLink: "/gyana"
-    });
-    expect(dashboardBody.controlCenter.errorReports[0]).toMatchObject({
-      referenceId: "YW-ERR-5001-SMPL"
-    });
-    expect(dashboardBody.coachSites[0]).toMatchObject({
-      publicUrl: "/coach/gyana-ranjan",
-      status: "published"
-    });
+    expect(dashboardBody.dashboard.topCoaches).toEqual([]);
+    expect(dashboardBody.controlCenter.errorReports).toEqual([]);
+    expect(dashboardBody.coachSites).toEqual([]);
 
     const errorReports = await errorReportsRequest({
       env,
@@ -230,7 +222,7 @@ test.describe("admin auth security protections", () => {
       })
     });
     expect(errorReports.status).toBe(200);
-    await expectJson(errorReports, { ok: true, persistence: "demo_fallback" });
+    await expectJson(errorReports, { ok: true, persistence: "unavailable" });
 
     const backupCleanup = await backupCleanupRequest({
       env,
@@ -239,7 +231,7 @@ test.describe("admin auth security protections", () => {
       })
     });
     expect(backupCleanup.status).toBe(200);
-    await expectJson(backupCleanup, { ok: true, persistence: "placeholder" });
+    await expectJson(backupCleanup, { ok: true, persistence: "disabled" });
 
     const masterclassSettings = await masterclassSettingsRequest({
       env,

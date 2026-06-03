@@ -85,7 +85,7 @@ test.describe("coach site dangerous actions", () => {
     });
     expect(sendOtp.status).toBe(200);
     expect(await sendOtp.json()).toMatchObject({
-      demoMode: true,
+      localOtpMode: true,
       ok: true
     });
 

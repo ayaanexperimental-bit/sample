@@ -42,7 +42,7 @@ export async function onRequest({ request, env }: PagesContext) {
       configured: Boolean(env.ADMIN_DB),
       errorReports: hasLiveErrorReports ? reports : adminControlCenterData.errorReports,
       ok: true,
-      persistence: hasLiveErrorReports ? "d1_table" : "demo_fallback"
+      persistence: hasLiveErrorReports ? "d1_table" : "unavailable"
     });
   }
 

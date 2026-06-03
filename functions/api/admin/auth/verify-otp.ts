@@ -75,16 +75,16 @@ export async function onRequest({ request, env }: PagesContext) {
   }
 
   // TODO: Connect real OTP/MFA provider with expiry, attempt limits, rate limiting, and audit logs.
-  const demoOtp = env.ADMIN_DEV_OTP?.trim();
-  const demoModeAllowsSession =
+  const localDevOtp = env.ADMIN_DEV_OTP?.trim();
+  const localDevAllowsSession =
     isAdminDemoAuthEnabled(env) &&
     isLocalDemoRequest(request) &&
-    typeof demoOtp === "string" &&
-    isValidOtp(demoOtp) &&
+    typeof localDevOtp === "string" &&
+    isValidOtp(localDevOtp) &&
     isAdminEmailAllowed(email, env) &&
-    otp === demoOtp;
+    otp === localDevOtp;
 
-  if (!demoModeAllowsSession) {
+  if (!localDevAllowsSession) {
     await recordAdminAuditEvent({
       email,
       env,
