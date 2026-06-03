@@ -1,0 +1,27 @@
+.globalLoader {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    opacity 220ms ease,
+    visibility 220ms ease;
+}
+
+.globalLoader[data-phase="hide"] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.globalLoader > * {
+  min-height: 100svh;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .globalLoader {
+    transition-duration: 80ms;
+  }
+}

@@ -7,6 +7,7 @@ import {
   Montserrat,
   Urbanist
 } from "next/font/google";
+import { GlobalYWLoader } from "@/components/loaders/GlobalYWLoader";
 import "./globals.css";
 
 const displayFont = Bodoni_Moda({
@@ -82,6 +83,7 @@ export default function RootLayout({
       <body
         className={`${displayFont.variable} ${accentFont.variable} ${editorialFont.variable} ${bodyFont.variable} ${conversionFont.variable} ${techDisplayFont.variable}`}
       >
+        <GlobalYWLoader />
         {children}
       </body>
     </html>
