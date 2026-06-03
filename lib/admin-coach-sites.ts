@@ -49,6 +49,7 @@ export type CoachSiteRecord = {
   coachName: string;
   coachPhone: string;
   content: CoachSiteContent;
+  archivedAt?: string;
   createdAt?: string;
   googleFormUrl: string;
   heroMediaType: CoachHeroMediaType;
@@ -57,6 +58,7 @@ export type CoachSiteRecord = {
   logoUrl: string;
   niche: string;
   photoUrl: string;
+  publishedAt?: string;
   publicUrl: string;
   registerButtonText: string;
   selectedThemeId: CoachTemplateThemeId;
@@ -72,7 +74,7 @@ export type CoachSiteRecord = {
 
 export type PublicCoachSiteRecord = Omit<
   CoachSiteRecord,
-  "analytics" | "coachId" | "createdAt" | "id" | "updatedAt"
+  "analytics" | "archivedAt" | "coachId" | "createdAt" | "id" | "publishedAt" | "updatedAt"
 >;
 
 export type CoachSiteFormState = {
@@ -308,6 +310,7 @@ export function createCoachSiteFromForm(input: {
     vision: input.form.vision.trim(),
     coachEmail: input.form.coachEmail.trim(),
     coachPhone: input.form.coachPhone.trim(),
+    archivedAt: input.status === "archived" || input.status === "removed" ? now : undefined,
     createdAt: now,
     whatsappLink: input.form.whatsappLink.trim(),
     photoUrl: input.form.photoUrl.trim(),
@@ -317,6 +320,7 @@ export function createCoachSiteFromForm(input: {
     heroMediaType: input.form.heroMediaType,
     slug,
     publicUrl: getCoachPublicUrl(slug),
+    publishedAt: input.status === "published" ? now : undefined,
     status: input.status,
     supportText: input.form.supportText.trim(),
     updatedAt: now,

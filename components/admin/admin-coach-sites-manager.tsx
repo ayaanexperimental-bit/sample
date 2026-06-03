@@ -42,6 +42,7 @@ type CoachDialog =
   | { site: CoachSiteRecord; type: "delete-draft" }
   | { type: "manage"; site: CoachSiteRecord }
   | { type: "preview"; site: CoachSiteRecord }
+  | { site: CoachSiteRecord; type: "reactivate" }
   | { nextStatus: "paused" | "published"; site: CoachSiteRecord; type: "status" }
   | { site: CoachSiteRecord; type: "remove" };
 
@@ -163,8 +164,7 @@ function applyGeneratedCopyToForm(
   scope: CopyRegenerationScope
 ): CoachSiteFormState {
   const faqText =
-    content.faq?.map((item) => `${item.question}\n${item.answer}`).join("\n\n") ||
-    current.faqText;
+    content.faq?.map((item) => `${item.question}\n${item.answer}`).join("\n\n") || current.faqText;
   const benefitsText = content.benefits?.join("\n") || current.benefitsText;
 
   if (scope === "hero") {
@@ -321,11 +321,17 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     () => filteredSites.filter((site) => site.status === "draft"),
     [filteredSites]
   );
+  const archivedSites = useMemo(
+    () => filteredSites.filter((site) => site.status === "archived"),
+    [filteredSites]
+  );
   const managedSites = useMemo(
     () =>
       filteredSites.filter(
         (site) =>
-          site.status !== "draft" && (statusFilter === "removed" || site.status !== "removed")
+          site.status !== "draft" &&
+          site.status !== "archived" &&
+          (statusFilter === "removed" || site.status !== "removed")
       ),
     [filteredSites, statusFilter]
   );
@@ -387,9 +393,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   }
 
   function syncPreviewFromForm(sourceForm: CoachSiteFormState) {
-    setPreviewSite((current) =>
-      current ? buildPreviewSite(current.status, sourceForm) : current
-    );
+    setPreviewSite((current) => (current ? buildPreviewSite(current.status, sourceForm) : current));
   }
 
   function validatePreviewForm(sourceForm: CoachSiteFormState) {
@@ -558,8 +562,8 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         hasGoogleFormUrl: Boolean(sourceForm.googleFormUrl.trim()),
         hasSupportContact: Boolean(
           sourceForm.whatsappLink.trim() ||
-            sourceForm.coachEmail.trim() ||
-            sourceForm.coachPhone.trim()
+          sourceForm.coachEmail.trim() ||
+          sourceForm.coachPhone.trim()
         ),
         heroMediaType: sourceForm.heroMediaType,
         location: sourceForm.location,
@@ -682,9 +686,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
 
   function updateSiteStatus(site: CoachSiteRecord, status: "paused" | "published") {
     const updatedSite = { ...site, status, updatedAt: new Date().toISOString() };
-    setSites((current) =>
-      current.map((item) => (item.id === site.id ? updatedSite : item))
-    );
+    setSites((current) => current.map((item) => (item.id === site.id ? updatedSite : item)));
     setPreviewSite((current) => (current?.id === site.id ? updatedSite : current));
     setMessage(
       status === "paused"
@@ -700,18 +702,86 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     const publishedDraft = {
       ...site,
       status: "published" as CoachSiteStatus,
+      archivedAt: undefined,
+      publishedAt: site.publishedAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    setSites((current) =>
-      current.map((item) => (item.id === site.id ? publishedDraft : item))
-    );
+    setSites((current) => current.map((item) => (item.id === site.id ? publishedDraft : item)));
     setPreviewSite((current) => (current?.id === site.id ? publishedDraft : current));
     setPublishedSite(publishedDraft);
     setMessage(`Successfully Published. Stable public link: ${site.publicUrl}`);
     setDialog(null);
 
     void persistSiteStatus(site, "published");
+  }
+
+  async function reactivateArchivedSite(site: CoachSiteRecord) {
+    const restoredStatus: CoachSiteStatus = site.publishedAt ? "published" : "draft";
+    const restoredSite = {
+      ...site,
+      archivedAt: undefined,
+      status: restoredStatus,
+      updatedAt: new Date().toISOString()
+    };
+
+    setSites((current) => current.map((item) => (item.id === site.id ? restoredSite : item)));
+    setPreviewSite((current) => (current?.id === site.id ? restoredSite : current));
+    setDialog(null);
+    setMessage("Coach site reactivated successfully.");
+
+    try {
+      const response = await fetch("/api/admin/coach-sites", {
+        body: JSON.stringify({
+          action: "reactivate",
+          siteId: site.id
+        }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-yw-admin-csrf": csrfToken
+        },
+        method: "PATCH"
+      });
+      const payload = (await response.json().catch(() => ({}))) as CoachSitesApiPayload;
+
+      if (!response.ok || !payload.ok || !payload.coachSite) {
+        setSites((current) => current.map((item) => (item.id === site.id ? site : item)));
+        setPreviewSite((current) => (current?.id === site.id ? site : current));
+        setStorageReady(Boolean(payload.configured));
+        setStorageMessage(payload.error || "Could not reactivate this coach site.");
+        reportAdminStorageIssue({
+          category: payload.configured === false ? "database_failure" : "admin_action_issue",
+          coachSlug: site.slug,
+          safeMessage: payload.error || "Archived coach site could not be reactivated.",
+          technicalDetails: `PATCH /api/admin/coach-sites reactivate failed with ${response.status}`,
+          userAction: "Reactivate archived coach site"
+        });
+        return;
+      }
+
+      setStorageReady(true);
+      setStorageErrorCode("");
+      setStorageMessage("Coach site reactivated successfully.");
+      setSites((current) =>
+        current.map((item) => (item.id === site.id ? payload.coachSite! : item))
+      );
+      setPreviewSite((current) => (current?.id === site.id ? payload.coachSite! : current));
+    } catch {
+      setSites((current) => current.map((item) => (item.id === site.id ? site : item)));
+      setPreviewSite((current) => (current?.id === site.id ? site : current));
+      setStorageReady(false);
+      setStorageMessage("Could not reach admin API to reactivate this coach site.");
+      reportAdminStorageIssue({
+        category: "network_or_server_failure",
+        coachSlug: site.slug,
+        safeMessage:
+          "Archived coach site could not be reactivated because the admin API was not reachable.",
+        technicalDetails: "PATCH /api/admin/coach-sites reactivate network failure",
+        userAction: "Reactivate archived coach site"
+      });
+    }
   }
 
   async function deleteDraftSite(site: CoachSiteRecord) {
@@ -853,7 +923,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       setStorageErrorCode("");
       setStorageMessage(
         status === "archived"
-          ? `${payload.coachSite.coachName} archived. The record stays visible in Admin.`
+          ? `${payload.coachSite.coachName} archived. It moved to the Archived list and can be reactivated later.`
           : `${payload.coachSite.coachName} removed. The record stays visible in Admin with removed status.`
       );
       setSites((current) =>
@@ -1085,6 +1155,88 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
             )}
           </section>
 
+          <section
+            className={`${styles.draftsPanel} ${styles.archivedPanel}`}
+            aria-label="Archived coach sites"
+          >
+            <div className={styles.sectionHeader}>
+              <div>
+                <p className={styles.kicker}>Archived</p>
+                <h2>Hidden coach websites ready to reactivate</h2>
+              </div>
+              <span className={styles.statusBadge} data-status="archived">
+                {archivedSites.length} Archived
+              </span>
+            </div>
+            {archivedSites.length > 0 ? (
+              <div className={styles.tableWrap}>
+                <table className={styles.table} data-density="compact">
+                  <thead>
+                    <tr>
+                      <th>Coach</th>
+                      <th>Niche</th>
+                      <th>Public URL</th>
+                      <th>Archived date</th>
+                      <th>Last activity</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {archivedSites.map((site) => (
+                      <tr key={site.id}>
+                        <td>
+                          <strong>{site.coachName || "Unnamed coach"}</strong>
+                          <span>{site.slug}</span>
+                        </td>
+                        <td>{site.niche || "Niche pending"}</td>
+                        <td>
+                          <code>{site.publicUrl}</code>
+                        </td>
+                        <td>{formatCoachArchivedDate(site)}</td>
+                        <td>{formatCoachLastActivity(site)}</td>
+                        <td>
+                          <div className={styles.rowActions}>
+                            <button
+                              onClick={() => setDialog({ site, type: "manage" })}
+                              type="button"
+                            >
+                              View
+                            </button>
+                            <button
+                              onClick={() => setDialog({ site, type: "preview" })}
+                              type="button"
+                            >
+                              Preview
+                            </button>
+                            <button
+                              data-tone="success"
+                              onClick={() => setDialog({ site, type: "reactivate" })}
+                              type="button"
+                            >
+                              Reactivate
+                            </button>
+                            <button
+                              data-tone="danger"
+                              onClick={() => setDialog({ site, type: "remove" })}
+                              type="button"
+                            >
+                              Delete Permanently
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className={styles.emptyState} data-compact="true">
+                <h3>No archived coach sites</h3>
+                <p>Archived coach websites will appear here without losing their saved data.</p>
+              </div>
+            )}
+          </section>
+
           <div className={styles.tableWrap}>
             <table className={styles.table} data-density="compact">
               <thead>
@@ -1132,7 +1284,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5}>No published, paused, or archived coach sites available yet.</td>
+                    <td colSpan={5}>No published or paused coach sites available yet.</td>
                   </tr>
                 )}
               </tbody>
@@ -1141,6 +1293,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
           <div className={styles.tableFooter}>
             <span>{managedSites.length} managed coach sites</span>
             <span>{draftSites.length} reusable drafts</span>
+            <span>{archivedSites.length} archived</span>
           </div>
         </>
       ) : (
@@ -1198,6 +1351,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
           setRemoveSubmitting(null);
           setDialog(null);
         }}
+        onReactivateSite={(site) => void reactivateArchivedSite(site)}
         onSendRemoveOtp={sendCoachSiteDangerOtp}
         onSaveDraft={() => upsertSite("draft")}
         onStatusConfirm={updateSiteStatus}
@@ -1236,6 +1390,7 @@ function CoachDialogRenderer({
   onPreviewSiteChange,
   onPublish,
   onPublishDraft,
+  onReactivateSite,
   onRegenerateCopy,
   onRemoveAction,
   onRemoveCancel,
@@ -1272,6 +1427,7 @@ function CoachDialogRenderer({
   onPreviewSiteChange: (site: CoachSiteRecord) => void;
   onPublish: () => Promise<CoachSiteRecord | null>;
   onPublishDraft: (site: CoachSiteRecord) => void;
+  onReactivateSite: (site: CoachSiteRecord) => void;
   onRegenerateCopy: (scope: CopyRegenerationScope) => Promise<void>;
   onRemoveAction: (site: CoachSiteRecord, status: CoachSiteDangerStatus) => Promise<void>;
   onRemoveCancel: () => void;
@@ -1517,12 +1673,21 @@ function CoachDialogRenderer({
                 {dialog.site.status === "paused" ? "Resume" : "Pause"}
               </button>
             ) : null}
+            {dialog.site.status === "archived" ? (
+              <button
+                className={styles.primaryAction}
+                onClick={() => onOpenDialog({ site: dialog.site, type: "reactivate" })}
+                type="button"
+              >
+                Reactivate
+              </button>
+            ) : null}
             <button
               className={styles.dangerAction}
               onClick={() => onOpenDialog({ site: dialog.site, type: "remove" })}
               type="button"
             >
-              Archive / Remove
+              {dialog.site.status === "archived" ? "Delete Permanently" : "Archive / Remove"}
             </button>
           </div>
         </div>
@@ -1579,6 +1744,55 @@ function CoachDialogRenderer({
           <div>
             <dt>Last edited</dt>
             <dd>{formatCoachLastEdited(dialog.site)}</dd>
+          </div>
+        </dl>
+      </AdminActionDialog>
+    );
+  }
+
+  if (dialog.type === "reactivate") {
+    const restoredStatus = dialog.site.publishedAt ? "Published" : "Draft";
+
+    return (
+      <AdminActionDialog
+        footer={
+          <>
+            <button className={styles.secondaryAction} onClick={onClose} type="button">
+              Cancel
+            </button>
+            <button
+              className={styles.primaryAction}
+              onClick={() => onReactivateSite(dialog.site)}
+              type="button"
+            >
+              Restore Site
+            </button>
+          </>
+        }
+        onClose={onClose}
+        open
+        title="Reactivate Coach Site"
+      >
+        <p className={styles.dialogCopy}>
+          This restores the same saved coach website and keeps the same public link:{" "}
+          {dialog.site.publicUrl}. The restored status will be {restoredStatus}.
+        </p>
+        <dl className={styles.definitionGrid}>
+          <div>
+            <dt>Coach</dt>
+            <dd>{dialog.site.coachName || "Unnamed coach"}</dd>
+          </div>
+          <div>
+            <dt>Niche</dt>
+            <dd>{dialog.site.niche || "Niche pending"}</dd>
+          </div>
+          <div>
+            <dt>Archived date</dt>
+            <dd>{formatCoachArchivedDate(dialog.site)}</dd>
+          </div>
+          <div>
+            <dt>Public link</dt>
+            <dd>{dialog.site.publicUrl}</dd>
           </div>
         </dl>
       </AdminActionDialog>
@@ -1681,6 +1895,7 @@ function CoachDialogRenderer({
   const removeOtpValid = /^\d{6}$/.test(removeOtp.trim());
   const removeBusy = Boolean(removeSubmitting);
   const removeActionsReady = removeConfirmationMatches && removeOtpValid && !removeBusy;
+  const archiveAlreadyDone = dialog.site.status === "archived";
   const removeMessageIsSuccess =
     removeMessage.toLowerCase().includes("otp sent") ||
     removeMessage.toLowerCase().includes("local otp");
@@ -1700,14 +1915,16 @@ function CoachDialogRenderer({
           >
             {removeOtpSending ? "Sending OTP..." : "Send OTP"}
           </button>
-          <button
-            className={removeActionsReady ? styles.primaryAction : styles.secondaryAction}
-            disabled={!removeConfirmationMatches || !removeOtpValid || removeBusy}
-            onClick={() => void onRemoveAction(dialog.site, "archived")}
-            type="button"
-          >
-            {removeSubmitting === "archived" ? "Archiving..." : "Archive Site"}
-          </button>
+          {!archiveAlreadyDone ? (
+            <button
+              className={removeActionsReady ? styles.primaryAction : styles.secondaryAction}
+              disabled={!removeConfirmationMatches || !removeOtpValid || removeBusy}
+              onClick={() => void onRemoveAction(dialog.site, "archived")}
+              type="button"
+            >
+              {removeSubmitting === "archived" ? "Archiving..." : "Archive Site"}
+            </button>
+          ) : null}
           <button
             className={`${styles.dangerAction} ${removeActionsReady ? styles.dangerActionReady : ""}`}
             disabled={!removeConfirmationMatches || !removeOtpValid || removeBusy}
@@ -1724,9 +1941,9 @@ function CoachDialogRenderer({
       tone="danger"
     >
       <p className={styles.dialogCopy}>
-        Archive keeps this coach record visible in Admin but removes the public coach page from
-        normal access. Remove marks it removed, keeps the admin record for audit, and prevents static
-        fallback from reappearing for the same slug.
+        {archiveAlreadyDone
+          ? "This coach site is already archived. Permanent removal is separate, destructive, and still requires OTP."
+          : "Archive keeps this coach record visible in Admin but removes the public coach page from normal access. Remove marks it removed, keeps the admin record for audit, and prevents static fallback from reappearing for the same slug."}
       </p>
       <dl className={styles.removeDetails}>
         <div>
@@ -1751,10 +1968,12 @@ function CoachDialogRenderer({
         </div>
       </dl>
       <div className={styles.removalChoiceGrid}>
-        <article>
-          <strong>Archive</strong>
-          <p>Use this when the coach may return later. The admin record stays manageable.</p>
-        </article>
+        {!archiveAlreadyDone ? (
+          <article>
+            <strong>Archive</strong>
+            <p>Use this when the coach may return later. The admin record stays manageable.</p>
+          </article>
+        ) : null}
         <article data-tone="danger">
           <strong>Remove</strong>
           <p>Use this when the site should be treated as removed. OTP is required.</p>
@@ -1795,11 +2014,12 @@ function CoachDialogRenderer({
           <small>Send OTP first, then enter the code sent to the current admin email.</small>
         </label>
       </div>
-      <div className={styles.removeUnlockChecklist} data-ready={removeActionsReady ? "true" : "false"}>
+      <div
+        className={styles.removeUnlockChecklist}
+        data-ready={removeActionsReady ? "true" : "false"}
+      >
         <span data-complete={removeConfirmationMatches ? "true" : "false"}>
-          {removeConfirmationMatches
-            ? "Coach confirmation matched"
-            : "Coach confirmation pending"}
+          {removeConfirmationMatches ? "Coach confirmation matched" : "Coach confirmation pending"}
         </span>
         <span data-complete={removeOtpValid ? "true" : "false"}>
           {removeOtpValid ? "6-digit OTP entered" : "6-digit OTP pending"}
@@ -1845,6 +2065,28 @@ function formatCoachLastEdited(site: CoachSiteRecord) {
   }).format(date);
 }
 
+function formatCoachArchivedDate(site: CoachSiteRecord) {
+  const rawValue = site.archivedAt || site.updatedAt;
+  if (!rawValue) return "Not archived yet";
+
+  const date = new Date(rawValue);
+  if (Number.isNaN(date.getTime())) return "Not archived yet";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(date);
+}
+
+function formatCoachLastActivity(site: CoachSiteRecord) {
+  const analyticsUpdated = site.analytics.lastUpdated;
+  if (analyticsUpdated && analyticsUpdated !== "Not connected") {
+    return analyticsUpdated;
+  }
+
+  return formatCoachLastEdited(site);
+}
+
 function PreviewAndEditStep({
   aiMessage,
   aiSubmitting,
@@ -1869,9 +2111,7 @@ function PreviewAndEditStep({
   const [selectedInspectScope, setSelectedInspectScope] = useState<PreviewInspectSection | null>(
     null
   );
-  const selectedInspectLabel = selectedInspectScope
-    ? getCopyScopeLabel(selectedInspectScope)
-    : "";
+  const selectedInspectLabel = selectedInspectScope ? getCopyScopeLabel(selectedInspectScope) : "";
 
   return (
     <div className={styles.previewEditStep}>
@@ -2096,7 +2336,9 @@ function HeroMediaStep({
       return;
     }
 
-    setUploadMessage(mediaType === "image" ? `Optimizing ${file.name}...` : `Uploading ${file.name}...`);
+    setUploadMessage(
+      mediaType === "image" ? `Optimizing ${file.name}...` : `Uploading ${file.name}...`
+    );
 
     const preparedMedia =
       mediaType === "image"
@@ -2159,7 +2401,9 @@ function HeroMediaStep({
     } catch {
       const fallbackPreview = await readFileAsDataUrl(uploadFile);
       onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", fallbackPreview);
-      setUploadMessage(`${uploadFile.name} is preview-only because the upload API was not reachable.`);
+      setUploadMessage(
+        `${uploadFile.name} is preview-only because the upload API was not reachable.`
+      );
     } finally {
       URL.revokeObjectURL(previewUrl);
     }
@@ -2641,9 +2885,7 @@ function CoachSitePreview({
       </div>
 
       <section
-        className={`${styles.previewRegisterBand} ${
-          inspectMode ? styles.previewInspectable : ""
-        }`}
+        className={`${styles.previewRegisterBand} ${inspectMode ? styles.previewInspectable : ""}`}
         {...getInspectProps("cta")}
       >
         {inspectMode ? (

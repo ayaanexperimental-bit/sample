@@ -19,6 +19,7 @@ export type CoachSiteStorageEnv = {
 
 type CoachSiteRow = {
   analytics_json: string;
+  archived_at: number | null;
   bio: string;
   coach_email: string;
   coach_id: string;
@@ -34,6 +35,7 @@ type CoachSiteRow = {
   logo_url: string;
   niche: string;
   photo_url: string;
+  published_at: number | null;
   public_url: string;
   register_button_text: string;
   selected_theme_id: string | null;
@@ -177,6 +179,22 @@ export async function getPublicCoachSiteFromDb(slug: string, env: CoachSiteStora
   return row ? toPublicCoachSiteRecord(rowToCoachSiteRecord(row)) : null;
 }
 
+export async function getCoachSiteBySlugFromDb(slug: string, env: CoachSiteStorageEnv) {
+  if (!env.ADMIN_DB) return null;
+  await ensureCoachSiteTables(env);
+
+  const normalizedSlug = normalizeCoachSlug(slug);
+  const row = await env.ADMIN_DB.prepare(
+    `SELECT * FROM coach_sites
+     WHERE slug = ?1
+     LIMIT 1`
+  )
+    .bind(normalizedSlug)
+    .first<CoachSiteRow>();
+
+  return row ? toPublicCoachSiteRecord(rowToCoachSiteRecord(row)) : null;
+}
+
 export async function upsertCoachSiteToDb({
   adminEmail,
   env,
@@ -308,7 +326,9 @@ export async function upsertCoachSiteToDb({
     ? rowToCoachSiteRecord(row)
     : {
         ...canonicalSite,
+        archivedAt: secondsToIso(archivedAt || 0),
         createdAt: secondsToIso(createdAt),
+        publishedAt: secondsToIso(publishedAt || 0),
         updatedAt: secondsToIso(now)
       };
 }
@@ -458,6 +478,7 @@ function rowToCoachSiteRecord(row: CoachSiteRow): CoachSiteRecord {
     coachName: row.coach_name,
     coachPhone: row.coach_phone,
     content: normalizeContent(parsedContent, fallbackContent),
+    archivedAt: secondsToIso(row.archived_at || 0),
     createdAt: secondsToIso(row.created_at),
     googleFormUrl: row.google_form_url,
     heroMediaType: normalizeHeroMediaType(row.hero_media_type),
@@ -466,6 +487,7 @@ function rowToCoachSiteRecord(row: CoachSiteRow): CoachSiteRecord {
     logoUrl: row.logo_url,
     niche: row.niche,
     photoUrl: row.photo_url,
+    publishedAt: secondsToIso(row.published_at || 0),
     publicUrl: row.public_url,
     registerButtonText: row.register_button_text,
     selectedThemeId: normalizeCoachTemplateThemeId(row.selected_theme_id),

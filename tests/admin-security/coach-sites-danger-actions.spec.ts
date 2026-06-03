@@ -4,6 +4,7 @@ import {
   createAdminSessionCookie,
   type AdminSessionPayload
 } from "../../lib/server/admin-auth";
+import { onRequest as coachPageRequest } from "../../functions/coach/[slug]";
 import { onRequest as coachSitesRequest } from "../../functions/api/admin/coach-sites/index";
 
 const ADMIN_EMAIL = "admin@example.com";
@@ -229,10 +230,123 @@ test.describe("coach site dangerous actions", () => {
       ok: true
     });
   });
+
+  test("reactivate restores archived coach sites without changing their public link", async () => {
+    const coachSitesDb = createCoachSitesDb();
+    coachSitesDb.records.set("coach-site-archived", {
+      ...coachSitesDb.records.get("coach-site-local")!,
+      archived_at: 1780000300,
+      id: "coach-site-archived",
+      public_url: "/coach/archived-coach",
+      slug: "archived-coach",
+      status: "archived",
+      updated_at: 1780000300
+    });
+    coachSitesDb.records.set("coach-site-archived-draft", {
+      ...coachSitesDb.records.get("coach-site-local")!,
+      archived_at: 1780000350,
+      id: "coach-site-archived-draft",
+      published_at: null,
+      public_url: "/coach/archived-draft",
+      slug: "archived-draft",
+      status: "archived",
+      updated_at: 1780000350
+    });
+    const env = {
+      ADMIN_ALLOWED_EMAILS: ADMIN_EMAIL,
+      ADMIN_AUTH_DEMO_ENABLED: "true",
+      ADMIN_DB: coachSitesDb.db,
+      ADMIN_DEV_OTP,
+      ADMIN_SESSION_SECRET
+    };
+    const { cookie, csrfToken } = await createAdminTestSession(env);
+
+    const restorePublished = await coachSitesRequest({
+      env,
+      request: jsonRequest(
+        "http://127.0.0.1/api/admin/coach-sites",
+        {
+          action: "reactivate",
+          siteId: "coach-site-archived"
+        },
+        { cookie, "x-yw-admin-csrf": csrfToken },
+        "PATCH"
+      )
+    });
+    expect(restorePublished.status).toBe(200);
+    expect(await restorePublished.json()).toMatchObject({
+      coachSite: {
+        id: "coach-site-archived",
+        publicUrl: "/coach/archived-coach",
+        status: "published"
+      },
+      ok: true
+    });
+    expect(coachSitesDb.records.get("coach-site-archived")?.archived_at).toBeNull();
+    expect(coachSitesDb.records.get("coach-site-archived")?.public_url).toBe(
+      "/coach/archived-coach"
+    );
+
+    const restoreDraft = await coachSitesRequest({
+      env,
+      request: jsonRequest(
+        "http://127.0.0.1/api/admin/coach-sites",
+        {
+          action: "reactivate",
+          siteId: "coach-site-archived-draft"
+        },
+        { cookie, "x-yw-admin-csrf": csrfToken },
+        "PATCH"
+      )
+    });
+    expect(restoreDraft.status).toBe(200);
+    expect(await restoreDraft.json()).toMatchObject({
+      coachSite: {
+        id: "coach-site-archived-draft",
+        publicUrl: "/coach/archived-draft",
+        status: "draft"
+      },
+      ok: true
+    });
+    expect(coachSitesDb.records.get("coach-site-archived-draft")?.archived_at).toBeNull();
+  });
+
+  test("public archived coach page shows temporary unavailable support fallback", async () => {
+    const coachSitesDb = createCoachSitesDb();
+    coachSitesDb.records.set("coach-site-archived", {
+      ...coachSitesDb.records.get("coach-site-local")!,
+      archived_at: 1780000300,
+      id: "coach-site-archived",
+      public_url: "/coach/archived-coach",
+      slug: "archived-coach",
+      status: "archived",
+      updated_at: 1780000300
+    });
+
+    const response = await coachPageRequest({
+      env: {
+        ADMIN_DB: coachSitesDb.db
+      },
+      params: {
+        slug: "archived-coach"
+      },
+      request: new Request("http://127.0.0.1/coach/archived-coach", {
+        headers: {
+          host: "127.0.0.1"
+        }
+      })
+    });
+
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain("This coach page is temporarily unavailable.");
+    expect(html).toContain("Error Code:");
+  });
 });
 
 type CoachSiteRowRecord = {
   analytics_json: string;
+  archived_at: number | null;
   bio: string;
   coach_email: string;
   coach_id: string;
@@ -248,6 +362,7 @@ type CoachSiteRowRecord = {
   logo_url: string;
   niche: string;
   photo_url: string;
+  published_at: number | null;
   public_url: string;
   register_button_text: string;
   selected_theme_id: string;
@@ -280,6 +395,7 @@ function createCoachSitesDb() {
           videoPlays: 0,
           weeklyVisits: 0
         }),
+        archived_at: null,
         bio: "Test coach bio.",
         coach_email: "",
         coach_id: "coach-local",
@@ -305,6 +421,7 @@ function createCoachSitesDb() {
         logo_url: "",
         niche: "Wellness",
         photo_url: "",
+        published_at: 1780000005,
         public_url: "/coach/local-coach",
         register_button_text: "Register Now",
         selected_theme_id: "default-current",
@@ -347,6 +464,13 @@ function createCoachSitesStatement(
         return records.get(String(values[0] || "")) || null;
       }
 
+      if (statement.includes("SELECT * FROM coach_sites") && statement.includes("WHERE slug")) {
+        return (
+          Array.from(records.values()).find((record) => record.slug === String(values[0] || "")) ||
+          null
+        );
+      }
+
       return null;
     },
     run: async () => {
@@ -354,11 +478,19 @@ function createCoachSitesStatement(
         const [status, updatedAt, updatedBy, id] = values;
         const existing = records.get(String(id || ""));
         if (existing) {
+          const nextStatus = String(status || existing.status);
+          const nextUpdatedAt = Number(updatedAt || 0);
           records.set(existing.id, {
             ...existing,
             created_by: existing.created_by || String(updatedBy || ""),
-            status: String(status || existing.status),
-            updated_at: Number(updatedAt || 0),
+            archived_at:
+              nextStatus === "archived" || nextStatus === "removed" ? nextUpdatedAt : null,
+            published_at:
+              nextStatus === "published" && !existing.published_at
+                ? nextUpdatedAt
+                : existing.published_at,
+            status: nextStatus,
+            updated_at: nextUpdatedAt,
             updated_by: String(updatedBy || "")
           } as CoachSiteRowRecord & { updated_by: string });
         }

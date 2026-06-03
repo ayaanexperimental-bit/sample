@@ -59,7 +59,7 @@ export function PublicCoachSitePage({
     }
   }, [enableTracking, site.slug]);
 
-  if (site.status === "paused") {
+  if (site.status === "paused" || site.status === "archived") {
     return (
       <ContactSupportFallback
         category="coach_site_issue"
@@ -67,8 +67,10 @@ export function PublicCoachSitePage({
         contact={getFallbackSupportContact(site)}
         message="This coach page is temporarily unavailable. Please contact support for help."
         referenceId={referenceId}
-        safeMessage="Coach page is paused."
-        userAction="coach_site_paused"
+        safeMessage={
+          site.status === "archived" ? "Coach page is archived." : "Coach page is paused."
+        }
+        userAction={site.status === "archived" ? "coach_site_archived" : "coach_site_paused"}
       />
     );
   }

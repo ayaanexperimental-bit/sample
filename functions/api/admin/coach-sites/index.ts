@@ -99,11 +99,56 @@ export async function onRequest({ request, env }: PagesContext) {
     const siteId = typeof body?.siteId === "string" ? body.siteId.trim() : "";
     const status = parseCoachStatus(body?.status);
 
-    if (!siteId || !status) {
+    if (!siteId || (action !== "reactivate" && !status)) {
       return adminJson({ ok: false, error: "Coach site id and status are required." }, 400);
     }
 
+    if (action === "reactivate") {
+      if (!env.ADMIN_DB) {
+        return adminJson(
+          { configured: false, error: "Coach site database is not configured.", ok: false },
+          503
+        );
+      }
+
+      const coachSites = await listCoachSitesFromDb(env);
+      const currentSite = coachSites?.find((site) => site.id === siteId);
+
+      if (!currentSite) {
+        return adminJson({ configured: true, error: "Coach site not found.", ok: false }, 404);
+      }
+
+      if (currentSite.status !== "archived") {
+        return adminJson(
+          { configured: true, error: "Only archived coach sites can be reactivated.", ok: false },
+          400
+        );
+      }
+
+      const nextStatus: CoachSiteStatus = currentSite.publishedAt ? "published" : "draft";
+      const updatedSite = await updateCoachSiteStatusInDb({
+        adminEmail: admin.admin.email,
+        env,
+        id: siteId,
+        status: nextStatus
+      });
+
+      if (!updatedSite) {
+        return adminJson({ configured: true, error: "Coach site not found.", ok: false }, 404);
+      }
+
+      return adminJson({
+        coachSite: updatedSite,
+        configured: true,
+        ok: true
+      });
+    }
+
     if (action === "delete_draft") {
+      if (!status) {
+        return adminJson({ ok: false, error: "Coach site id and status are required." }, 400);
+      }
+
       if (status !== "removed") {
         return adminJson({ ok: false, error: "Draft delete must use removed status." }, 400);
       }
@@ -119,10 +164,7 @@ export async function onRequest({ request, env }: PagesContext) {
       const currentSite = coachSites?.find((site) => site.id === siteId);
 
       if (!currentSite) {
-        return adminJson(
-          { configured: true, error: "Coach draft not found.", ok: false },
-          404
-        );
+        return adminJson({ configured: true, error: "Coach draft not found.", ok: false }, 404);
       }
 
       if (currentSite.status !== "draft") {
@@ -140,10 +182,7 @@ export async function onRequest({ request, env }: PagesContext) {
       });
 
       if (!updatedSite) {
-        return adminJson(
-          { configured: true, error: "Coach draft not found.", ok: false },
-          404
-        );
+        return adminJson({ configured: true, error: "Coach draft not found.", ok: false }, 404);
       }
 
       return adminJson({
@@ -151,6 +190,10 @@ export async function onRequest({ request, env }: PagesContext) {
         configured: true,
         ok: true
       });
+    }
+
+    if (!status) {
+      return adminJson({ ok: false, error: "Coach site id and status are required." }, 400);
     }
 
     if (isDangerousStatus(status)) {
@@ -168,7 +211,11 @@ export async function onRequest({ request, env }: PagesContext) {
           request
         });
 
-        if (!result.ok && result.reason === "not_configured" && isLocalDemoOtpAvailable(request, env)) {
+        if (
+          !result.ok &&
+          result.reason === "not_configured" &&
+          isLocalDemoOtpAvailable(request, env)
+        ) {
           return adminJson({
             localOtpMode: true,
             message: "Local OTP is available for this coach-site action.",

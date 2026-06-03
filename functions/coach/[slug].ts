@@ -16,7 +16,7 @@ import {
   getPublicSupportErrorCode,
   type PublicWebsiteErrorCategory
 } from "../../lib/error-reporting";
-import { getPublicCoachSiteFromDb } from "../../lib/server/coach-site-storage";
+import { getCoachSiteBySlugFromDb } from "../../lib/server/coach-site-storage";
 import { insertWebsiteErrorReport } from "../../lib/server/error-reports";
 import { isUploadedVideoSource, normalizeVideoEmbedUrl } from "../../lib/video-links";
 
@@ -70,8 +70,32 @@ export async function onRequest({ env, params, request }: PagesContext) {
     );
   }
 
-  const site = (await getPublicCoachSiteFromDb(slug, env)) || getPublicCoachSiteBySlug(slug);
-  if (!site || site.status === "draft" || site.status === "archived" || site.status === "removed") {
+  const site = (await getCoachSiteBySlugFromDb(slug, env)) || getPublicCoachSiteBySlug(slug);
+  if (site?.status === "archived") {
+    const referenceId = createSupportErrorReference("coach_site_issue", slug);
+    await logCoachFallbackError({
+      category: "coach_site_issue",
+      coachSlug: slug,
+      env,
+      referenceId,
+      request,
+      safeMessage: "Coach site is archived.",
+      site,
+      userAction: "coach_site_archived"
+    });
+
+    return new Response(
+      renderSupportFallbackHtml({
+        category: "coach_site_issue",
+        message: "This coach page is temporarily unavailable. Please contact support for help.",
+        referenceId,
+        site
+      }),
+      { headers: getHtmlHeaders(true), status: 200 }
+    );
+  }
+
+  if (!site || site.status === "draft" || site.status === "removed") {
     const referenceId = createSupportErrorReference("coach_site_issue", slug);
     await logCoachFallbackError({
       category: "coach_site_issue",
@@ -80,7 +104,7 @@ export async function onRequest({ env, params, request }: PagesContext) {
       referenceId,
       request,
       safeMessage: "Coach site not available.",
-      site,
+      site: null,
       userAction: "coach_site_not_available"
     });
 
@@ -89,7 +113,7 @@ export async function onRequest({ env, params, request }: PagesContext) {
         category: "coach_site_issue",
         message: "This coach page is not available. Please contact support for help.",
         referenceId,
-        site
+        site: null
       }),
       { headers: getHtmlHeaders(true), status: 404 }
     );
@@ -172,9 +196,24 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
     )
     .join("");
   const journey = [
-    ["01", "Profile", "Meet the coach", "Guests understand the coach story, niche, mission, and guidance style."],
-    ["02", "Focus", "See the wellness focus", "The page explains the coach lens in a clear, trustworthy tone."],
-    ["03", "Action", "Open registration", "The CTA sends visitors to the coach registration form when configured."]
+    [
+      "01",
+      "Profile",
+      "Meet the coach",
+      "Guests understand the coach story, niche, mission, and guidance style."
+    ],
+    [
+      "02",
+      "Focus",
+      "See the wellness focus",
+      "The page explains the coach lens in a clear, trustworthy tone."
+    ],
+    [
+      "03",
+      "Action",
+      "Open registration",
+      "The CTA sends visitors to the coach registration form when configured."
+    ]
   ]
     .map(
       ([number, label, title, text]) => `
@@ -1356,11 +1395,7 @@ function renderPausedHtml(site: PublicCoachSiteRecord, support: SupportDetails) 
     </section>`;
 }
 
-function renderSupportHtml(
-  site: PublicCoachSiteRecord,
-  support: SupportDetails,
-  compact = false
-) {
+function renderSupportHtml(site: PublicCoachSiteRecord, support: SupportDetails, compact = false) {
   return `
     <section class="support" id="coach-contact-support">
       <article class="support-card">
@@ -1629,7 +1664,8 @@ async function logCoachFallbackError({
   site?: PublicCoachSiteRecord | null;
   userAction: string;
 }) {
-  const supportSource = site && (site.coachEmail || site.coachPhone || site.whatsappLink) ? "coach" : "default";
+  const supportSource =
+    site && (site.coachEmail || site.coachPhone || site.whatsappLink) ? "coach" : "default";
 
   await insertWebsiteErrorReport(
     {
