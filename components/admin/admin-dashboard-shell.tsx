@@ -483,6 +483,7 @@ function CoachAnalyticsView({
     "active" | "all" | "archived" | "draft" | "paused" | "published" | "removed"
   >("all");
   const rows = useMemo(() => buildCoachAnalyticsRows(coachSites), [coachSites]);
+  const currentRows = useMemo(() => rows.filter((row) => row.status !== "removed"), [rows]);
   const filteredRows = useMemo(
     () =>
       filterCoachAnalyticsRows({
@@ -497,14 +498,14 @@ function CoachAnalyticsView({
       }),
     [dateRange, funnelFilter, performanceFilter, query, regionFilter, rows, sortBy, statusFilter]
   );
-  const topRows = useMemo(() => getTopCoachAnalyticsRows(rows), [rows]);
-  const needsAttentionRows = useMemo(() => getNeedsAttentionRows(rows), [rows]);
+  const topRows = useMemo(() => getTopCoachAnalyticsRows(currentRows), [currentRows]);
+  const needsAttentionRows = useMemo(() => getNeedsAttentionRows(currentRows), [currentRows]);
   const regions = useMemo(
     () =>
       Array.from(
-        new Set(rows.map((row) => row.region).filter((region) => region !== "Not available"))
+        new Set(currentRows.map((row) => row.region).filter((region) => region !== "Not available"))
       ),
-    [rows]
+    [currentRows]
   );
 
   function openCoachAnalytics(row: CoachAnalyticsRow) {
@@ -521,14 +522,14 @@ function CoachAnalyticsView({
       </p>
 
       <section className={styles.analyticsKpiGrid} aria-label="Coach analytics summary">
-        <AnalyticsKpiCard label="Total coaches" value={rows.length.toLocaleString()} />
+        <AnalyticsKpiCard label="Total coaches" value={currentRows.length.toLocaleString()} />
         <AnalyticsKpiCard
           label="Paid funnels"
-          value={rows.filter((row) => row.hasPaidMasterclass).length.toLocaleString()}
+          value={currentRows.filter((row) => row.hasPaidMasterclass).length.toLocaleString()}
         />
         <AnalyticsKpiCard
           label="Free guest links"
-          value={rows.filter((row) => row.hasFreeGuestLink).length.toLocaleString()}
+          value={currentRows.filter((row) => row.hasFreeGuestLink).length.toLocaleString()}
         />
         <AnalyticsKpiCard
           label="Needs attention"
@@ -565,7 +566,7 @@ function CoachAnalyticsView({
             onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
             value={statusFilter}
           >
-            <option value="all">All statuses</option>
+            <option value="all">Current records</option>
             <option value="active">Active</option>
             <option value="draft">Draft</option>
             <option value="published">Published</option>
@@ -733,9 +734,9 @@ function CoachAnalyticsView({
       </section>
 
       <p className={styles.inlineNote}>
-        Google Form submissions are not claimed here. Current free-funnel analytics stop at tracked
-        clicks until Google Sheets/Form integration is connected. Paid payment-sensitive data is not
-        displayed.
+        Free-funnel analytics track visits, register clicks, and Google Form opens. Actual Google
+        Form submissions stay in the connected Form/Sheet unless a Sheets sync is intentionally
+        added later. Paid payment truth remains in the existing Razorpay-to-Sheet analytics system.
       </p>
 
       <AdminActionDialog
@@ -916,8 +917,8 @@ function PaidAnalyticsTab({ coach }: { coach: CoachAnalyticsRow }) {
         ]}
       />
       <p className={styles.inlineNote}>
-        Paid event storage is not showing sensitive payment/card data. Possible drop-offs appear
-        only when payment and success events are persisted.
+        This panel does not expose or replace paid payment data. Completed payment and paid
+        registration truth should stay in the existing Razorpay-to-Sheet analytics system.
       </p>
     </section>
   );
@@ -956,8 +957,9 @@ function FreeAnalyticsTab({ coach }: { coach: CoachAnalyticsRow }) {
         <span>Device: {formatDeviceBreakdown(coach.deviceBreakdown)}</span>
       </div>
       <p className={styles.inlineNote}>
-        Google Form submissions require Google Forms/Sheets integration. This dashboard only treats
-        form opens/clicks as tracked free-funnel data.
+        This panel tracks the visitor opening the Google Form from the coach site. Actual submitted
+        Form responses remain inside the connected Google Form/Sheet unless a Sheets sync is added
+        later.
       </p>
     </section>
   );

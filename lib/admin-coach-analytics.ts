@@ -162,7 +162,8 @@ export function filterCoachAnalyticsRows({
         (funnelFilter === "paid" && row.hasPaidMasterclass && !row.hasFreeGuestLink) ||
         (funnelFilter === "free" && row.hasFreeGuestLink && !row.hasPaidMasterclass) ||
         (funnelFilter === "none" && !row.hasFreeGuestLink && !row.hasPaidMasterclass);
-      const matchesStatus = statusFilter === "all" || row.status === statusFilter;
+      const matchesStatus =
+        statusFilter === "all" ? row.status !== "removed" : row.status === statusFilter;
       const matchesRegion =
         !normalizedRegion ||
         normalizedRegion === "all" ||

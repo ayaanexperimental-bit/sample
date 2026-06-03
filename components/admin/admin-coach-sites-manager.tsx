@@ -120,6 +120,11 @@ const statusOptions: Array<"all" | CoachSiteStatus> = [
   "removed"
 ];
 
+function getCoachSiteStatusFilterLabel(status: "all" | CoachSiteStatus) {
+  if (status === "all") return "current records";
+  return status;
+}
+
 const wizardSteps = [
   "Coach Basic Details",
   "Hero Media",
@@ -347,7 +352,8 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     const query = search.trim().toLowerCase();
 
     return sites.filter((site) => {
-      const matchesStatus = statusFilter === "all" || site.status === statusFilter;
+      const matchesStatus =
+        statusFilter === "all" ? site.status !== "removed" : site.status === statusFilter;
       const matchesSearch =
         !query ||
         site.coachName.toLowerCase().includes(query) ||
@@ -367,8 +373,14 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     [filteredSites]
   );
   const managedSites = useMemo(
-    () => filteredSites.filter((site) => site.status !== "draft" && site.status !== "archived"),
-    [filteredSites]
+    () =>
+      filteredSites.filter(
+        (site) =>
+          site.status !== "draft" &&
+          site.status !== "archived" &&
+          (site.status !== "removed" || statusFilter === "removed")
+      ),
+    [filteredSites, statusFilter]
   );
 
   function updateFormField<Key extends keyof CoachSiteFormState>(
@@ -1479,7 +1491,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
               >
                 {statusOptions.map((status) => (
                   <option key={status} value={status}>
-                    {status}
+                    {getCoachSiteStatusFilterLabel(status)}
                   </option>
                 ))}
               </select>
