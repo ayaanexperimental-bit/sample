@@ -1,5 +1,7 @@
 export type AnalyticsFunnelType = "free_guest_link" | "paid_masterclass";
 
+export type AnalyticsDateRangeId = "7d" | "30d" | "90d" | "all" | "today";
+
 export type AnalyticsEventName =
   | "coach_google_form_click"
   | "coach_register_click"
@@ -50,6 +52,28 @@ export type AnalyticsMetricSummary = {
   whatsappClicks: number;
 };
 
+export type AnalyticsEventRange = {
+  id: AnalyticsDateRangeId;
+  label: string;
+  previousEnd: string | null;
+  previousStart: string | null;
+  start: string | null;
+  end: string;
+};
+
+export type AnalyticsRecentEvent = {
+  coachId: string;
+  coachSlug: string;
+  createdAt: string;
+  deviceType: AnalyticsDeviceType;
+  eventName: AnalyticsEventName;
+  funnelId: string;
+  funnelType: AnalyticsFunnelType;
+  pagePath: string;
+  region: string;
+  source: string;
+};
+
 export const ANALYTICS_EVENT_NAMES = new Set<AnalyticsEventName>([
   "coach_google_form_click",
   "coach_register_click",
@@ -72,4 +96,3 @@ export const ANALYTICS_EVENT_NAMES = new Set<AnalyticsEventName>([
   "payment_success",
   "success_page_view"
 ]);
-

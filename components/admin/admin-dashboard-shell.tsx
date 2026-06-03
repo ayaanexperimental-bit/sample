@@ -16,7 +16,12 @@ import {
   type AdminPaidMasterclassLink,
   createErrorReportBugPrompt
 } from "../../lib/admin-control-center";
-import type { AnalyticsMetricSummary } from "../../lib/analytics-events";
+import type {
+  AnalyticsDateRangeId,
+  AnalyticsEventRange,
+  AnalyticsMetricSummary,
+  AnalyticsRecentEvent
+} from "../../lib/analytics-events";
 import type { CoachSiteRecord } from "../../lib/admin-coach-sites";
 import {
   buildCoachAnalyticsRows,
@@ -70,8 +75,19 @@ type AnalyticsEventsApiPayload = {
   analyticsSummaries?: AnalyticsMetricSummary[];
   configured?: boolean;
   ok?: boolean;
+  previousAnalyticsSummaries?: AnalyticsMetricSummary[];
+  range?: AnalyticsEventRange;
+  recentEvents?: AnalyticsRecentEvent[];
   source?: string;
 };
+
+const analyticsRangeOptions: Array<{ label: string; value: AnalyticsDateRangeId }> = [
+  { label: "Today", value: "today" },
+  { label: "7 days", value: "7d" },
+  { label: "30 days", value: "30d" },
+  { label: "90 days", value: "90d" },
+  { label: "All stored", value: "all" }
+];
 
 const navSections: AdminNavSection[] = [
   {
@@ -119,8 +135,14 @@ export function AdminDashboardShell({
   const [actionDialog, setActionDialog] = useState<ActionDialogState>(null);
   const [errorReports, setErrorReports] = useState<AdminErrorReport[]>([]);
   const [errorReportSource, setErrorReportSource] = useState("loading");
+  const [analyticsRange, setAnalyticsRange] = useState<AnalyticsDateRangeId>("7d");
+  const [analyticsRangeMeta, setAnalyticsRangeMeta] = useState<AnalyticsEventRange | null>(null);
   const [analyticsSource, setAnalyticsSource] = useState("loading");
   const [analyticsSummaries, setAnalyticsSummaries] = useState<AnalyticsMetricSummary[]>([]);
+  const [previousAnalyticsSummaries, setPreviousAnalyticsSummaries] = useState<
+    AnalyticsMetricSummary[]
+  >([]);
+  const [recentAnalyticsEvents, setRecentAnalyticsEvents] = useState<AnalyticsRecentEvent[]>([]);
   const [liveCoachSites, setLiveCoachSites] = useState<CoachSiteRecord[]>([]);
   const [coachSiteSource, setCoachSiteSource] = useState("loading");
 
@@ -161,7 +183,7 @@ export function AdminDashboardShell({
 
     async function loadAnalyticsEvents() {
       try {
-        const response = await fetch("/api/admin/analytics-events", {
+        const response = await fetch(`/api/admin/analytics-events?range=${analyticsRange}`, {
           cache: "no-store",
           credentials: "include"
         });
@@ -170,14 +192,23 @@ export function AdminDashboardShell({
         if (!active) return;
         if (response.ok && payload.ok && Array.isArray(payload.analyticsSummaries)) {
           setAnalyticsSummaries(payload.analyticsSummaries);
+          setPreviousAnalyticsSummaries(payload.previousAnalyticsSummaries || []);
+          setRecentAnalyticsEvents(payload.recentEvents || []);
+          setAnalyticsRangeMeta(payload.range || null);
           setAnalyticsSource(payload.source || (payload.configured ? "d1_analytics_events" : "not-configured"));
         } else {
           setAnalyticsSummaries([]);
+          setPreviousAnalyticsSummaries([]);
+          setRecentAnalyticsEvents([]);
+          setAnalyticsRangeMeta(null);
           setAnalyticsSource("unavailable");
         }
       } catch {
         if (active) {
           setAnalyticsSummaries([]);
+          setPreviousAnalyticsSummaries([]);
+          setRecentAnalyticsEvents([]);
+          setAnalyticsRangeMeta(null);
           setAnalyticsSource("unavailable");
         }
       }
@@ -188,7 +219,7 @@ export function AdminDashboardShell({
     return () => {
       active = false;
     };
-  }, []);
+  }, [analyticsRange]);
 
   useEffect(() => {
     let active = true;
@@ -254,11 +285,16 @@ export function AdminDashboardShell({
 
         {activeView === "overview" ? (
           <OverviewView
+            analyticsRange={analyticsRange}
+            analyticsRangeMeta={analyticsRangeMeta}
             analyticsSource={analyticsSource}
             analyticsSummaries={analyticsSummaries}
             coachSites={liveCoachSites}
             errorReports={errorReports}
             onSelect={setActiveView}
+            onAnalyticsRangeChange={setAnalyticsRange}
+            previousAnalyticsSummaries={previousAnalyticsSummaries}
+            recentEvents={recentAnalyticsEvents}
             source={coachSiteSource}
           />
         ) : null}
@@ -288,13 +324,19 @@ export function AdminDashboardShell({
         ) : null}
 
         {activeView === "top-coaches" ? (
-          <TopCoachesView analyticsSummaries={analyticsSummaries} coachSites={liveCoachSites} />
-        ) : null}
-        {activeView === "coach-analytics" ? (
-          <CoachAnalyticsView
+          <TopCoachesView
             analyticsSource={analyticsSource}
             analyticsSummaries={analyticsSummaries}
             coachSites={liveCoachSites}
+          />
+        ) : null}
+        {activeView === "coach-analytics" ? (
+          <CoachAnalyticsView
+            analyticsRange={analyticsRange}
+            analyticsSource={analyticsSource}
+            analyticsSummaries={analyticsSummaries}
+            coachSites={liveCoachSites}
+            onAnalyticsRangeChange={setAnalyticsRange}
             onSelect={setActiveView}
             source={coachSiteSource}
           />
@@ -331,40 +373,93 @@ export function AdminDashboardShell({
 }
 
 function OverviewView({
+  analyticsRange,
+  analyticsRangeMeta,
   analyticsSource,
   analyticsSummaries,
   coachSites,
   errorReports,
   onSelect,
+  onAnalyticsRangeChange,
+  previousAnalyticsSummaries,
+  recentEvents,
   source
 }: {
+  analyticsRange: AnalyticsDateRangeId;
+  analyticsRangeMeta: AnalyticsEventRange | null;
   analyticsSource: string;
   analyticsSummaries: AnalyticsMetricSummary[];
   coachSites: CoachSiteRecord[];
   errorReports: AdminErrorReport[];
+  onAnalyticsRangeChange: (value: AnalyticsDateRangeId) => void;
   onSelect: (view: AdminViewId) => void;
+  previousAnalyticsSummaries: AnalyticsMetricSummary[];
+  recentEvents: AnalyticsRecentEvent[];
   source: string;
 }) {
+  const preferEventSummaries = analyticsSource === "d1_analytics_events";
   const rows = useMemo(
-    () => buildCoachAnalyticsRows(coachSites, analyticsSummaries),
-    [analyticsSummaries, coachSites]
+    () => buildCoachAnalyticsRows(coachSites, analyticsSummaries, { preferEventSummaries }),
+    [analyticsSummaries, coachSites, preferEventSummaries]
+  );
+  const previousRows = useMemo(
+    () =>
+      buildCoachAnalyticsRows(coachSites, previousAnalyticsSummaries, {
+        preferEventSummaries
+      }),
+    [coachSites, preferEventSummaries, previousAnalyticsSummaries]
   );
   const currentRows = useMemo(() => getCurrentAnalyticsRows(rows), [rows]);
+  const previousCurrentRows = useMemo(() => getCurrentAnalyticsRows(previousRows), [previousRows]);
   const overview = useMemo(
-    () => buildOverviewAnalytics(currentRows, errorReports, source, analyticsSource),
-    [analyticsSource, currentRows, errorReports, source]
+    () =>
+      buildOverviewAnalytics(
+        currentRows,
+        errorReports,
+        source,
+        analyticsSource,
+        previousCurrentRows,
+        recentEvents,
+        analyticsRangeMeta
+      ),
+    [
+      analyticsRangeMeta,
+      analyticsSource,
+      currentRows,
+      errorReports,
+      previousCurrentRows,
+      recentEvents,
+      source
+    ]
   );
 
   return (
     <AdminPageShell
       actions={
-        <button
-          className={styles.primaryAction}
-          onClick={() => onSelect("create-coach-site")}
-          type="button"
-        >
-          Create Coach Site
-        </button>
+        <div className={styles.pageActionCluster}>
+          <label className={styles.compactSelectLabel}>
+            Date range
+            <select
+              onChange={(event) =>
+                onAnalyticsRangeChange(event.target.value as AnalyticsDateRangeId)
+              }
+              value={analyticsRange}
+            >
+              {analyticsRangeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            className={styles.primaryAction}
+            onClick={() => onSelect("create-coach-site")}
+            type="button"
+          >
+            Create Coach Site
+          </button>
+        </div>
       }
       eyebrow="Verified Admin Session"
       title="Admin Overview"
@@ -375,7 +470,7 @@ function OverviewView({
           <h2>Today&apos;s production snapshot</h2>
           <p>
             {overview.sourceLabel}. Metrics below come from live coach-site records and stored
-            analytics counters only.
+            analytics events for {overview.rangeLabel.toLowerCase()}.
           </p>
         </div>
         <div className={styles.analyticsHeroStats}>
@@ -471,6 +566,11 @@ function OverviewView({
           items={overview.breakdownNotes}
           title="Audience signal"
         />
+        <AnalyticsWidget
+          eyebrow="Recent Activity"
+          items={overview.recentActivity}
+          title="Latest stored events"
+        />
       </section>
 
       <section className={styles.section}>
@@ -533,18 +633,23 @@ function OverviewView({
 }
 
 function TopCoachesView({
+  analyticsSource,
   analyticsSummaries,
   coachSites
 }: {
+  analyticsSource: string;
   analyticsSummaries: AnalyticsMetricSummary[];
   coachSites: CoachSiteRecord[];
 }) {
+  const preferEventSummaries = analyticsSource === "d1_analytics_events";
   const rows = useMemo(
     () =>
       getTopCoachAnalyticsRows(
-        getCurrentAnalyticsRows(buildCoachAnalyticsRows(coachSites, analyticsSummaries))
+        getCurrentAnalyticsRows(
+          buildCoachAnalyticsRows(coachSites, analyticsSummaries, { preferEventSummaries })
+        )
       ),
-    [analyticsSummaries, coachSites]
+    [analyticsSummaries, coachSites, preferEventSummaries]
   );
 
   return (
@@ -599,27 +704,29 @@ function buildOverviewAnalytics(
   rows: CoachAnalyticsRow[],
   errorReports: AdminErrorReport[],
   source: string,
-  analyticsSource: string
+  analyticsSource: string,
+  previousRows: CoachAnalyticsRow[],
+  recentEvents: AnalyticsRecentEvent[],
+  analyticsRangeMeta: AnalyticsEventRange | null
 ) {
   const topRows = getTopCoachAnalyticsRows(rows);
   const needsAttentionRows = getNeedsAttentionRows(rows);
   const totalVisits = sumNumbers(rows.map((row) => row.combined.visits));
+  const previousVisits = sumNumbers(previousRows.map((row) => row.combined.visits));
   const totalRegisterClicks = sumNumbers(
     rows.map((row) => row.freeMetrics.registerClicks + row.paidMetrics.registerClicks)
   );
+  const previousRegisterClicks = sumNumbers(
+    previousRows.map((row) => row.freeMetrics.registerClicks + row.paidMetrics.registerClicks)
+  );
   const totalClicks = sumNumbers(rows.map((row) => row.combined.clicks));
+  const previousClicks = sumNumbers(previousRows.map((row) => row.combined.clicks));
   const totalWhatsappClicks = sumNumbers(
     rows.map((row) => row.freeMetrics.whatsappClicks + row.paidMetrics.whatsappClicks)
   );
   const totalPaidConversions = sumNumbers(rows.map((row) => row.paidMetrics.paymentSuccess));
-  const weeklyVisits = sumNumbers(
-    rows.flatMap((row) => row.freeGuestLinks.map((site) => site.analytics.weeklyVisits))
-  );
-  const monthlyVisits = sumNumbers(
-    rows.flatMap((row) => row.freeGuestLinks.map((site) => site.analytics.monthlyVisits))
-  );
-  const dailyVisits = sumNumbers(
-    rows.flatMap((row) => row.freeGuestLinks.map((site) => site.analytics.dailyVisits))
+  const previousPaidConversions = sumNumbers(
+    previousRows.map((row) => row.paidMetrics.paymentSuccess)
   );
   const publishedCoaches = rows.filter(
     (row) => row.status === "published" || row.status === "active"
@@ -656,6 +763,11 @@ function buildOverviewAnalytics(
   }, {});
   const topRegion = getTopBreakdownLabel(regionCounts, "No region data yet");
   const enoughActivity = totalVisits > 0 || totalClicks > 0;
+  const rangeLabel = analyticsRangeMeta?.label || "Selected period";
+  const visitDelta = getDeltaLabel(totalVisits, previousVisits);
+  const clickDelta = getDeltaLabel(totalClicks, previousClicks);
+  const registerDelta = getDeltaLabel(totalRegisterClicks, previousRegisterClicks);
+  const conversionDelta = getDeltaLabel(totalPaidConversions, previousPaidConversions);
 
   return {
     activeFunnels,
@@ -685,13 +797,13 @@ function buildOverviewAnalytics(
     ],
     kpis: [
       {
-        detail: `${dailyVisits.toLocaleString()} today / ${weeklyVisits.toLocaleString()} weekly / ${monthlyVisits.toLocaleString()} monthly`,
+        detail: `${rangeLabel}; ${visitDelta} vs previous period`,
         label: "Total visitors",
         tone: "neutral" as const,
         value: totalVisits.toLocaleString()
       },
       {
-        detail: "Free Google Form opens plus paid page register CTA clicks.",
+        detail: `Free Google Form opens plus paid register CTA clicks; ${registerDelta}.`,
         label: "Register clicks",
         tone: totalRegisterClicks ? ("success" as const) : ("neutral" as const),
         value: totalRegisterClicks.toLocaleString()
@@ -699,7 +811,7 @@ function buildOverviewAnalytics(
       {
         detail:
           totalPaidConversions > 0
-            ? "Recorded from paid success events."
+            ? `Recorded from paid success events; ${conversionDelta}.`
             : "No paid success events recorded in this admin yet.",
         label: "Paid conversions",
         tone: totalPaidConversions ? ("success" as const) : ("neutral" as const),
@@ -718,7 +830,7 @@ function buildOverviewAnalytics(
         value: activeFunnels.toLocaleString()
       },
       {
-        detail: "Based on current coach referral click/open counters.",
+        detail: `Based on selected event range; ${clickDelta} total-click movement.`,
         label: "Click-through rate",
         tone: totalRegisterClicks ? ("success" as const) : ("neutral" as const),
         value: conversionRate
@@ -731,6 +843,9 @@ function buildOverviewAnalytics(
       topRows[0]
         ? `Use ${topRows[0].coachName}'s strongest funnel as the current benchmark.`
         : "Share published coach links to start collecting performance data.",
+      previousVisits > totalVisits && analyticsRangeMeta?.id !== "all"
+        ? "Traffic is lower than the previous matched period. Check share activity and CTA visibility."
+        : "Keep comparing the selected range against the previous period before making changes.",
       unresolvedErrors
         ? "Review Error Reports before the next public launch."
         : "Keep monitoring error reports after each publish."
@@ -738,21 +853,30 @@ function buildOverviewAnalytics(
     aiSummary: enoughActivity
       ? [
           `Likely trend: ${conversionRate} click-through from recorded coach referral visits.`,
+          analyticsRangeMeta?.id === "all"
+            ? "Comparison: all stored data selected, so previous-period comparison is disabled."
+            : `Comparison: visits are ${visitDelta} and clicks are ${clickDelta}.`,
           topRows[0]
             ? `Best current signal: ${topRows[0].coachName} leads by recorded activity.`
             : "No coach has enough activity for a performer ranking yet.",
           "Prediction quality is limited until more visits and click events are recorded."
         ]
       : ["Not enough data for AI insights yet.", "Publish/share coach links to collect signal."],
+    rangeLabel,
+    recentActivity:
+      recentEvents.length > 0
+        ? recentEvents.slice(0, 6).map(formatAnalyticsEventActivity)
+        : ["No recent analytics events recorded yet."],
     sourceLabel,
     topRows,
     totalRegisterClicks,
     totalVisits,
     totalWhatsappClicks,
     trendBars: [
-      { label: "Today", value: dailyVisits },
-      { label: "7 days", value: weeklyVisits },
-      { label: "30 days", value: monthlyVisits },
+      { label: "Selected visits", value: totalVisits },
+      { label: "Previous visits", value: previousVisits },
+      { label: "Selected clicks", value: totalClicks },
+      { label: "Previous clicks", value: previousClicks },
       { label: "Register clicks", value: totalRegisterClicks },
       { label: "WhatsApp clicks", value: totalWhatsappClicks }
     ]
@@ -787,25 +911,74 @@ function getRate(clicks: number, visits: number) {
   return `${((clicks / visits) * 100).toFixed(1)}%`;
 }
 
+function getDeltaLabel(current: number, previous: number) {
+  if (!previous && !current) return "no change";
+  if (!previous) return `${current.toLocaleString()} new`;
+  const delta = current - previous;
+  const percent = Math.abs((delta / previous) * 100).toFixed(1);
+  if (delta === 0) return "flat";
+  return `${delta > 0 ? "+" : "-"}${percent}%`;
+}
+
+function formatAnalyticsEventActivity(event: AnalyticsRecentEvent) {
+  const label = getEventDisplayName(event.eventName);
+  const coach = event.coachSlug || event.coachId || "system";
+  const when = event.createdAt ? new Date(event.createdAt).toLocaleString() : "recently";
+  const funnel = event.funnelType === "paid_masterclass" ? "Paid" : "Free";
+  const device = event.deviceType !== "unknown" ? ` / ${event.deviceType}` : "";
+
+  return `${label} - ${coach} - ${funnel}${device} - ${when}`;
+}
+
+function getEventDisplayName(eventName: AnalyticsRecentEvent["eventName"]) {
+  const labels: Record<AnalyticsRecentEvent["eventName"], string> = {
+    coach_google_form_click: "Google Form opened",
+    coach_register_click: "Register CTA clicked",
+    coach_register_missing_link: "Register link missing",
+    coach_site_archived: "Coach site archived",
+    coach_site_created: "Coach site created",
+    coach_site_paused: "Coach site paused",
+    coach_site_published: "Coach site published",
+    coach_site_removed: "Coach site removed",
+    coach_site_resumed: "Coach site resumed",
+    coach_site_updated: "Coach site updated",
+    coach_site_view: "Coach page viewed",
+    coach_video_play: "Coach video played",
+    coach_whatsapp_click: "Coach WhatsApp clicked",
+    paid_landing_view: "Paid landing viewed",
+    paid_payment_click: "Payment CTA clicked",
+    paid_register_click: "Paid register clicked",
+    paid_whatsapp_click: "Paid WhatsApp clicked",
+    payment_initiated: "Payment initiated",
+    payment_success: "Payment success recorded",
+    success_page_view: "Success page viewed"
+  };
+
+  return labels[eventName] || "Analytics event";
+}
+
 function sumNumbers(values: number[]) {
   return values.reduce((total, value) => total + value, 0);
 }
 
 function CoachAnalyticsView({
+  analyticsRange,
   analyticsSource,
   analyticsSummaries,
   coachSites,
+  onAnalyticsRangeChange,
   onSelect,
   source
 }: {
+  analyticsRange: AnalyticsDateRangeId;
   analyticsSource: string;
   analyticsSummaries: AnalyticsMetricSummary[];
   coachSites: CoachSiteRecord[];
+  onAnalyticsRangeChange: (value: AnalyticsDateRangeId) => void;
   onSelect: (view: AdminViewId) => void;
   source: string;
 }) {
   const [activeTab, setActiveTab] = useState<CoachAnalyticsFunnelType>("free");
-  const [dateRange, setDateRange] = useState("all");
   const [funnelFilter, setFunnelFilter] = useState<"all" | "both" | "free" | "none" | "paid">(
     "all"
   );
@@ -814,16 +987,17 @@ function CoachAnalyticsView({
   >("all");
   const [query, setQuery] = useState("");
   const [regionFilter, setRegionFilter] = useState("all");
-  const [selectedCoach, setSelectedCoach] = useState<CoachAnalyticsRow | null>(null);
+  const [selectedCoachId, setSelectedCoachId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<
     "clicks" | "conversion" | "monthly" | "recent" | "visits" | "weekly"
   >("visits");
   const [statusFilter, setStatusFilter] = useState<
     "active" | "all" | "draft" | "paused" | "published"
   >("all");
+  const preferEventSummaries = analyticsSource === "d1_analytics_events";
   const rows = useMemo(
-    () => buildCoachAnalyticsRows(coachSites, analyticsSummaries),
-    [analyticsSummaries, coachSites]
+    () => buildCoachAnalyticsRows(coachSites, analyticsSummaries, { preferEventSummaries }),
+    [analyticsSummaries, coachSites, preferEventSummaries]
   );
   const currentRows = useMemo(
     () => rows.filter((row) => row.status !== "archived" && row.status !== "removed"),
@@ -832,7 +1006,7 @@ function CoachAnalyticsView({
   const filteredRows = useMemo(
     () =>
       filterCoachAnalyticsRows({
-        dateRange,
+        dateRange: analyticsRange,
         funnelFilter,
         performanceFilter,
         query,
@@ -842,8 +1016,8 @@ function CoachAnalyticsView({
         statusFilter
       }),
     [
+      analyticsRange,
       currentRows,
-      dateRange,
       funnelFilter,
       performanceFilter,
       query,
@@ -861,9 +1035,13 @@ function CoachAnalyticsView({
       ),
     [currentRows]
   );
+  const selectedCoach = useMemo(
+    () => currentRows.find((row) => row.coachId === selectedCoachId) || null,
+    [currentRows, selectedCoachId]
+  );
 
   function openCoachAnalytics(row: CoachAnalyticsRow) {
-    setSelectedCoach(row);
+    setSelectedCoachId(row.coachId);
     setActiveTab(row.availableTabs[0] || "free");
   }
 
@@ -877,8 +1055,11 @@ function CoachAnalyticsView({
       <p className={styles.inlineNote}>
         Source:{" "}
         {source === "live-database" ? "Live coach-site database + paid funnel config" : source}.
-        Analytics stream: {analyticsSource}. Every coach is detected dynamically from coach-site
-        records and paid funnel configuration.
+        Analytics stream: {analyticsSource}. Selected range:{" "}
+        {analyticsRangeOptions.find((option) => option.value === analyticsRange)?.label ||
+          analyticsRange}
+        . Every coach is detected dynamically from coach-site records and paid funnel
+        configuration.
       </p>
 
       <section className={styles.analyticsKpiGrid} aria-label="Coach analytics summary">
@@ -949,10 +1130,17 @@ function CoachAnalyticsView({
         </label>
         <label>
           Date range
-          <select onChange={(event) => setDateRange(event.target.value)} value={dateRange}>
-            <option value="all">All stored data</option>
-            <option value="weekly">Weekly summary</option>
-            <option value="monthly">Monthly summary</option>
+          <select
+            onChange={(event) =>
+              onAnalyticsRangeChange(event.target.value as AnalyticsDateRangeId)
+            }
+            value={analyticsRange}
+          >
+            {analyticsRangeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </label>
         <label>
@@ -1129,7 +1317,7 @@ function CoachAnalyticsView({
       </p>
 
       <AdminActionDialog
-        onClose={() => setSelectedCoach(null)}
+        onClose={() => setSelectedCoachId(null)}
         open={Boolean(selectedCoach)}
         size="large"
         title={selectedCoach ? `${selectedCoach.coachName} Analytics` : "Coach Analytics"}

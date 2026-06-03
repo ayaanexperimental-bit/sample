@@ -2,9 +2,12 @@ import type { D1Database } from "@cloudflare/workers-types";
 import {
   ANALYTICS_EVENT_NAMES,
   type AnalyticsDeviceType,
+  type AnalyticsDateRangeId,
   type AnalyticsEventName,
+  type AnalyticsEventRange,
   type AnalyticsFunnelType,
-  type AnalyticsMetricSummary
+  type AnalyticsMetricSummary,
+  type AnalyticsRecentEvent
 } from "../analytics-events";
 import { getFunnelById } from "../coach-platform";
 import {
@@ -39,8 +42,24 @@ type AnalyticsEventRow = {
   event_name: AnalyticsEventName;
   funnel_id: string;
   funnel_type: AnalyticsFunnelType;
+  page_path: string;
   region: string;
   source: string;
+};
+
+type AnalyticsSummaryOptions = {
+  limit?: number;
+  rangeEnd?: number;
+  rangeStart?: number;
+};
+
+type AnalyticsRangeWindow = {
+  id: AnalyticsDateRangeId;
+  label: string;
+  previousEnd?: number;
+  previousStart?: number;
+  rangeEnd: number;
+  rangeStart?: number;
 };
 
 const ANALYTICS_TABLE_SQL = [
@@ -199,20 +218,121 @@ export async function recordAnalyticsEvent(input: AnalyticsEventInput, env: Anal
 }
 
 export async function getAnalyticsMetricSummaries(
-  env: AnalyticsEventStorageEnv
+  env: AnalyticsEventStorageEnv,
+  options: AnalyticsSummaryOptions = {}
 ): Promise<AnalyticsMetricSummary[]> {
   if (!env.ADMIN_DB) return [];
 
   await ensureAnalyticsEventTables(env);
 
+  const { limit = 20000, rangeEnd, rangeStart } = options;
+  const where: string[] = [];
+  const params: number[] = [];
+
+  if (rangeStart) {
+    where.push("created_at >= ?");
+    params.push(rangeStart);
+  }
+  if (rangeEnd) {
+    where.push("created_at < ?");
+    params.push(rangeEnd);
+  }
+
   const result = await env.ADMIN_DB.prepare(
-    `SELECT event_name, funnel_type, coach_slug, coach_id, funnel_id, device_type, region, source, created_at
+    `SELECT event_name, funnel_type, coach_slug, coach_id, funnel_id, page_path, device_type, region, source, created_at
      FROM analytics_events
+     ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
      ORDER BY created_at DESC
-     LIMIT 20000`
-  ).all<AnalyticsEventRow>();
+     LIMIT ?`
+  )
+    .bind(...params, limit)
+    .all<AnalyticsEventRow>();
 
   return summarizeEventRows(result.results || []);
+}
+
+export async function getRecentAnalyticsEvents(
+  env: AnalyticsEventStorageEnv,
+  limit = 12
+): Promise<AnalyticsRecentEvent[]> {
+  if (!env.ADMIN_DB) return [];
+
+  await ensureAnalyticsEventTables(env);
+
+  const result = await env.ADMIN_DB.prepare(
+    `SELECT event_name, funnel_type, coach_slug, coach_id, funnel_id, page_path, device_type, region, source, created_at
+     FROM analytics_events
+     ORDER BY created_at DESC
+     LIMIT ?1`
+  )
+    .bind(Math.max(1, Math.min(40, Math.floor(limit))))
+    .all<AnalyticsEventRow>();
+
+  return (result.results || []).map((row) => ({
+    coachId: row.coach_id || "",
+    coachSlug: row.coach_slug || "",
+    createdAt: row.created_at ? new Date(row.created_at * 1000).toISOString() : "",
+    deviceType: row.device_type || "unknown",
+    eventName: row.event_name,
+    funnelId: row.funnel_id || "",
+    funnelType: row.funnel_type,
+    pagePath: row.page_path || "",
+    region: row.region || "Not available",
+    source: row.source || "direct"
+  }));
+}
+
+export function getAnalyticsRangeWindow(value: unknown): AnalyticsRangeWindow {
+  const id = normalizeAnalyticsDateRange(value);
+  const now = Math.floor(Date.now() / 1000);
+  const todayStart = getUtcDayStart(now);
+
+  if (id === "today") {
+    const duration = Math.max(1, now - todayStart);
+    return {
+      id,
+      label: "Today",
+      previousEnd: todayStart,
+      previousStart: todayStart - duration,
+      rangeEnd: now + 1,
+      rangeStart: todayStart
+    };
+  }
+
+  if (id === "all") {
+    return {
+      id,
+      label: "All stored data",
+      rangeEnd: now + 1
+    };
+  }
+
+  const days = id === "90d" ? 90 : id === "30d" ? 30 : 7;
+  const duration = days * 86400;
+
+  return {
+    id,
+    label: `${days} days`,
+    previousEnd: now - duration,
+    previousStart: now - duration * 2,
+    rangeEnd: now + 1,
+    rangeStart: now - duration
+  };
+}
+
+export function serializeAnalyticsRange(window: AnalyticsRangeWindow): AnalyticsEventRange {
+  return {
+    end: new Date(window.rangeEnd * 1000).toISOString(),
+    id: window.id,
+    label: window.label,
+    previousEnd: window.previousEnd
+      ? new Date(window.previousEnd * 1000).toISOString()
+      : null,
+    previousStart: window.previousStart
+      ? new Date(window.previousStart * 1000).toISOString()
+      : null,
+    start: window.rangeStart ? new Date(window.rangeStart * 1000).toISOString() : null
+  };
 }
 
 async function updateCoachSiteAnalyticsFromEvents({
@@ -227,7 +347,7 @@ async function updateCoachSiteAnalyticsFromEvents({
   if (!env.ADMIN_DB) return;
 
   const result = await env.ADMIN_DB.prepare(
-    `SELECT event_name, funnel_type, coach_slug, coach_id, funnel_id, device_type, region, source, created_at
+    `SELECT event_name, funnel_type, coach_slug, coach_id, funnel_id, page_path, device_type, region, source, created_at
      FROM analytics_events
      WHERE coach_slug = ?1 AND funnel_type = 'free_guest_link'
      ORDER BY created_at DESC
@@ -374,6 +494,19 @@ function normalizeFunnelType(value: unknown, eventName: AnalyticsEventName): Ana
   return "free_guest_link";
 }
 
+function normalizeAnalyticsDateRange(value: unknown): AnalyticsDateRangeId {
+  return value === "today" || value === "30d" || value === "90d" || value === "all"
+    ? value
+    : "7d";
+}
+
+function getUtcDayStart(timestamp: number) {
+  const date = new Date(timestamp * 1000);
+  return Math.floor(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 1000
+  );
+}
+
 function getDeviceType(userAgent: string): AnalyticsDeviceType {
   const value = userAgent.toLowerCase();
   if (!value) return "unknown";
@@ -510,4 +643,3 @@ function safeJson<T>(value: string, fallback: T): T {
     return fallback;
   }
 }
-

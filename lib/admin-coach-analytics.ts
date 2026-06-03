@@ -67,6 +67,10 @@ export type CoachAnalyticsRow = CoachAvailableFunnels & {
   trend: string;
 };
 
+export type CoachAnalyticsBuildOptions = {
+  preferEventSummaries?: boolean;
+};
+
 const EMPTY_DEVICE_BREAKDOWN = {
   desktop: 0,
   mobile: 0,
@@ -75,7 +79,8 @@ const EMPTY_DEVICE_BREAKDOWN = {
 
 export function buildCoachAnalyticsRows(
   coachSites: CoachSiteRecord[],
-  analyticsSummaries: AnalyticsMetricSummary[] = []
+  analyticsSummaries: AnalyticsMetricSummary[] = [],
+  options: CoachAnalyticsBuildOptions = {}
 ): CoachAnalyticsRow[] {
   const currentCoachSites = coachSites.filter(isCurrentCoachSite);
   const coachIds = new Set<string>();
@@ -87,7 +92,9 @@ export function buildCoachAnalyticsRows(
   funnels.forEach((funnel) => coachIds.add(funnel.coachId));
 
   return Array.from(coachIds)
-    .map((coachId) => buildCoachAnalyticsRow(coachId, currentCoachSites, analyticsSummaries))
+    .map((coachId) =>
+      buildCoachAnalyticsRow(coachId, currentCoachSites, analyticsSummaries, options)
+    )
     .sort((a, b) => {
       if (b.combined.visits !== a.combined.visits) return b.combined.visits - a.combined.visits;
       return a.coachName.localeCompare(b.coachName);
@@ -203,13 +210,19 @@ export function getNeedsAttentionRows(rows: CoachAnalyticsRow[]) {
 function buildCoachAnalyticsRow(
   coachId: string,
   coachSites: CoachSiteRecord[],
-  analyticsSummaries: AnalyticsMetricSummary[]
+  analyticsSummaries: AnalyticsMetricSummary[],
+  options: CoachAnalyticsBuildOptions
 ): CoachAnalyticsRow {
   const funnelInfo = getCoachAvailableFunnels(coachId, coachSites);
   const platformCoach = coaches.find((coach) => coach.id === coachId);
   const allSites = coachSites.filter((site) => site.coachId === coachId && isCurrentCoachSite(site));
   const primarySite = funnelInfo.freeGuestLinks[0] || allSites[0];
-  const freeMetrics = buildFreeMetrics(funnelInfo.freeGuestLinks);
+  const coachSummaries = getCoachSummaries(analyticsSummaries, coachId, allSites);
+  const freeMetrics = buildFreeMetrics(
+    funnelInfo.freeGuestLinks,
+    coachSummaries,
+    options.preferEventSummaries
+  );
   const paidMetrics = buildPaidMetrics(funnelInfo.paidFunnels, analyticsSummaries, coachId);
   const combinedVisits = freeMetrics.visits + paidMetrics.visits;
   const combinedClicks = freeMetrics.clicks + paidMetrics.clicks;
@@ -239,7 +252,12 @@ function buildCoachAnalyticsRow(
     bestFunnel: getBestFunnel(freeMetrics, paidMetrics),
     coachName: primarySite?.coachName || platformCoach?.displayName || coachId,
     combined,
-    deviceBreakdown: sumDeviceBreakdown(funnelInfo.freeGuestLinks, analyticsSummaries, coachId),
+    deviceBreakdown: sumDeviceBreakdown(
+      funnelInfo.freeGuestLinks,
+      analyticsSummaries,
+      coachId,
+      options.preferEventSummaries
+    ),
     freeMetrics,
     location: primarySite?.location || "",
     lowActivityReasons,
@@ -249,21 +267,27 @@ function buildCoachAnalyticsRow(
     photoUrl: primarySite?.photoUrl || platformCoach?.guestProfile.imageSrc || "",
     publicLink: primarySite?.publicUrl || "",
     region: getFirstAvailableValue(
-      [
-        ...funnelInfo.freeGuestLinks.map((site) => site.analytics.region),
-        ...analyticsSummaries
-          .filter((summary) => summary.coachId === coachId)
-          .map((summary) => summary.region)
-      ],
+      options.preferEventSummaries
+        ? [
+            ...coachSummaries.map((summary) => summary.region),
+            ...funnelInfo.freeGuestLinks.map((site) => site.analytics.region)
+          ]
+        : [
+            ...funnelInfo.freeGuestLinks.map((site) => site.analytics.region),
+            ...coachSummaries.map((summary) => summary.region)
+          ],
       "Not available"
     ),
     source: getFirstAvailableValue(
-      [
-        ...funnelInfo.freeGuestLinks.map((site) => site.analytics.source),
-        ...analyticsSummaries
-          .filter((summary) => summary.coachId === coachId)
-          .map((summary) => summary.source)
-      ],
+      options.preferEventSummaries
+        ? [
+            ...coachSummaries.map((summary) => summary.source),
+            ...funnelInfo.freeGuestLinks.map((site) => site.analytics.source)
+          ]
+        : [
+            ...funnelInfo.freeGuestLinks.map((site) => site.analytics.source),
+            ...coachSummaries.map((summary) => summary.source)
+          ],
       "Not available"
     ),
     status,
@@ -275,11 +299,24 @@ function isCurrentCoachSite(site: CoachSiteRecord) {
   return site.status !== "archived" && site.status !== "removed";
 }
 
-function buildFreeMetrics(sites: CoachSiteRecord[]): FreeGuestLinkMetrics {
-  const visits = sum(sites.map((site) => site.analytics.totalVisits));
-  const registerClicks = sum(sites.map((site) => site.analytics.totalRegisterClicks));
-  const whatsappClicks = sum(sites.map((site) => site.analytics.totalWhatsappClicks));
-  const videoPlays = sum(sites.map((site) => site.analytics.videoPlays));
+function buildFreeMetrics(
+  sites: CoachSiteRecord[],
+  coachSummaries: AnalyticsMetricSummary[],
+  preferEventSummaries?: boolean
+): FreeGuestLinkMetrics {
+  const freeSummaries = coachSummaries.filter((summary) => summary.funnelType === "free_guest_link");
+  const visits = preferEventSummaries
+    ? sum(freeSummaries.map((summary) => summary.totalVisits))
+    : sum(sites.map((site) => site.analytics.totalVisits));
+  const registerClicks = preferEventSummaries
+    ? sum(freeSummaries.map((summary) => summary.registerClicks))
+    : sum(sites.map((site) => site.analytics.totalRegisterClicks));
+  const whatsappClicks = preferEventSummaries
+    ? sum(freeSummaries.map((summary) => summary.whatsappClicks))
+    : sum(sites.map((site) => site.analytics.totalWhatsappClicks));
+  const videoPlays = preferEventSummaries
+    ? sum(freeSummaries.map((summary) => summary.videoPlays))
+    : sum(sites.map((site) => site.analytics.videoPlays));
   const googleFormConfigured = sites.some((site) => Boolean(site.googleFormUrl.trim()));
   const supportConfigured = sites.some((site) =>
     Boolean(site.coachEmail.trim() || site.coachPhone.trim() || site.whatsappLink.trim())
@@ -396,23 +433,11 @@ function compareCoachAnalyticsRows(
   if (sortBy === "clicks") return b.combined.clicks - a.combined.clicks;
   if (sortBy === "conversion")
     return percentToNumber(b.combined.conversionRate) - percentToNumber(a.combined.conversionRate);
-  if (sortBy === "weekly")
-    return (
-      sum(b.freeGuestLinks.map((site) => site.analytics.weeklyVisits)) -
-      sum(a.freeGuestLinks.map((site) => site.analytics.weeklyVisits))
-    );
-  if (sortBy === "monthly")
-    return (
-      sum(b.freeGuestLinks.map((site) => site.analytics.monthlyVisits)) -
-      sum(a.freeGuestLinks.map((site) => site.analytics.monthlyVisits))
-    );
+  if (sortBy === "weekly" || sortBy === "monthly") return b.combined.visits - a.combined.visits;
   if (sortBy === "recent")
     return getDateValue(b.combined.lastActivity) - getDateValue(a.combined.lastActivity);
-  if (dateRange === "monthly")
-    return (
-      sum(b.freeGuestLinks.map((site) => site.analytics.monthlyVisits)) -
-      sum(a.freeGuestLinks.map((site) => site.analytics.monthlyVisits))
-    );
+  if (dateRange === "30d" || dateRange === "90d" || dateRange === "7d" || dateRange === "today")
+    return b.combined.visits - a.combined.visits;
   return b.combined.visits - a.combined.visits;
 }
 
@@ -432,8 +457,22 @@ function getPerformanceBand(visits: number, conversionRate: string): CoachAnalyt
 function sumDeviceBreakdown(
   sites: CoachSiteRecord[],
   analyticsSummaries: AnalyticsMetricSummary[],
-  coachId: string
+  coachId: string,
+  preferEventSummaries?: boolean
 ) {
+  if (preferEventSummaries) {
+    return analyticsSummaries
+      .filter((summary) => summary.coachId === coachId)
+      .reduce(
+        (acc, summary) => ({
+          desktop: acc.desktop + summary.deviceBreakdown.desktop,
+          mobile: acc.mobile + summary.deviceBreakdown.mobile,
+          tablet: acc.tablet + summary.deviceBreakdown.tablet
+        }),
+        { ...EMPTY_DEVICE_BREAKDOWN }
+      );
+  }
+
   const freeDevices = sites.reduce(
     (acc, site) => ({
       desktop: acc.desktop + site.analytics.deviceBreakdown.desktop,
@@ -453,6 +492,19 @@ function sumDeviceBreakdown(
       }),
       freeDevices
     );
+}
+
+function getCoachSummaries(
+  analyticsSummaries: AnalyticsMetricSummary[],
+  coachId: string,
+  sites: CoachSiteRecord[]
+) {
+  const slugs = new Set(sites.map((site) => site.slug).filter(Boolean));
+
+  return analyticsSummaries.filter(
+    (summary) =>
+      summary.coachId === coachId || Boolean(summary.coachSlug && slugs.has(summary.coachSlug))
+  );
 }
 
 function getFirstAvailableValue(values: Array<string | undefined>, fallback: string) {

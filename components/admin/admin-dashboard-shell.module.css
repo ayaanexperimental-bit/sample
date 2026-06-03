@@ -145,6 +145,38 @@
   gap: 0.55rem;
 }
 
+.pageActionCluster {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.compactSelectLabel {
+  min-height: 2.35rem;
+  display: inline-grid;
+  grid-template-columns: auto minmax(8rem, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid rgb(28 42 59 / 0.1);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  color: #475467;
+  padding: 0.3rem 0.45rem 0.3rem 0.7rem;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.compactSelectLabel select {
+  min-height: 1.85rem;
+  border: 1px solid rgb(28 42 59 / 0.1);
+  border-radius: 0.55rem;
+  background: #f9fafb;
+  color: #1d2939;
+  font: inherit;
+  padding: 0 0.55rem;
+}
+
 .menuButton {
   display: none;
   min-height: 2.35rem;
@@ -2892,7 +2924,8 @@
   }
 
   .topbarActions,
-  .pageActions {
+  .pageActions,
+  .pageActionCluster {
     justify-content: start;
   }
 
@@ -3048,6 +3081,7 @@
 
   .quickActions a,
   .quickActions button,
+  .compactSelectLabel,
   .logoutButton,
   .menuButton,
   .formActions button,
@@ -3077,6 +3111,10 @@
   .previewActions code {
     width: 100%;
     text-align: center;
+  }
+
+  .compactSelectLabel {
+    grid-template-columns: 1fr;
   }
 }
 

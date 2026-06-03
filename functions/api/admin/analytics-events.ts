@@ -2,7 +2,10 @@ import type { D1Database } from "@cloudflare/workers-types";
 import { adminJson, requireAdmin } from "../../../lib/server/admin-auth";
 import {
   ensureAnalyticsEventTables,
-  getAnalyticsMetricSummaries
+  getAnalyticsMetricSummaries,
+  getAnalyticsRangeWindow,
+  getRecentAnalyticsEvents,
+  serializeAnalyticsRange
 } from "../../../lib/server/analytics-events";
 
 type Env = {
@@ -38,12 +41,29 @@ export async function onRequest({ request, env }: PagesContext) {
 
   try {
     await ensureAnalyticsEventTables(env);
-    const analyticsSummaries = await getAnalyticsMetricSummaries(env);
+    const url = new URL(request.url);
+    const rangeWindow = getAnalyticsRangeWindow(url.searchParams.get("range"));
+    const [analyticsSummaries, previousAnalyticsSummaries, recentEvents] = await Promise.all([
+      getAnalyticsMetricSummaries(env, {
+        rangeEnd: rangeWindow.rangeEnd,
+        rangeStart: rangeWindow.rangeStart
+      }),
+      rangeWindow.previousStart && rangeWindow.previousEnd
+        ? getAnalyticsMetricSummaries(env, {
+            rangeEnd: rangeWindow.previousEnd,
+            rangeStart: rangeWindow.previousStart
+          })
+        : Promise.resolve([]),
+      getRecentAnalyticsEvents(env, 14)
+    ]);
 
     return adminJson({
       analyticsSummaries,
       configured: true,
       ok: true,
+      previousAnalyticsSummaries,
+      range: serializeAnalyticsRange(rangeWindow),
+      recentEvents,
       source: "d1_analytics_events"
     });
   } catch {
@@ -59,4 +79,3 @@ export async function onRequest({ request, env }: PagesContext) {
     );
   }
 }
-
