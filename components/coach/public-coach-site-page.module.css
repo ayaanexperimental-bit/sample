@@ -253,10 +253,11 @@
   z-index: 2;
   display: grid;
   gap: 0.75rem;
-  border: 1px solid var(--template-card-border);
+  border: 1px solid rgb(235 201 219 / 0.78);
   border-radius: var(--template-radius);
-  background: var(--template-card);
+  background: rgb(255 255 255 / 0.82);
   box-shadow: var(--template-shadow);
+  color: #151827;
   margin-top: 1rem;
   padding: 1rem;
   backdrop-filter: blur(18px);
@@ -269,9 +270,9 @@
 }
 
 .themeSwitcher a {
-  border: 1px solid var(--template-card-border);
-  background: var(--template-card-strong);
-  color: var(--template-ink);
+  border: 1px solid rgb(235 201 219 / 0.74);
+  background: rgb(255 255 255 / 0.88);
+  color: #151827;
   padding: 0 0.9rem;
 }
 
@@ -501,13 +502,16 @@
   left: 0.8rem;
   display: grid;
   gap: 0.15rem;
-  color: var(--template-inverted-ink);
+  background: linear-gradient(135deg, rgb(8 11 23 / 0.84), rgb(49 29 50 / 0.76));
+  color: #fffdf9;
   padding: 0.85rem;
+  box-shadow: 0 0.9rem 2rem rgb(0 0 0 / 0.16);
+  text-shadow: 0 1px 1px rgb(0 0 0 / 0.28);
 }
 
 .mediaCaption small,
 .signalPanel small {
-  color: var(--template-muted-inverted);
+  color: rgb(255 255 255 / 0.82);
 }
 
 .signalPanel {
@@ -516,6 +520,7 @@
   gap: 0.2rem;
   justify-self: end;
   margin-top: -2.2rem;
+  background: linear-gradient(135deg, rgb(8 11 23 / 0.74), rgb(255 255 255 / 0.1));
   color: var(--template-inverted-ink);
   padding: 0.8rem;
 }
@@ -523,18 +528,23 @@
 .heroMetrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-top: -4rem;
-  color: var(--template-inverted-ink);
+  gap: 0.8rem;
+  margin-top: 1rem;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--template-ink);
+  backdrop-filter: none;
 }
 
 .heroMetrics div {
   min-width: 0;
-  border-right: 1px solid rgb(255 255 255 / 0.12);
-  padding: 0.9rem;
-}
-
-.heroMetrics div:last-child {
-  border-right: 0;
+  border: 1px solid var(--template-card-border);
+  border-radius: var(--template-radius);
+  background: var(--template-card-strong);
+  box-shadow: var(--template-shadow);
+  color: var(--template-ink);
+  padding: 0.95rem;
 }
 
 .heroMetrics dt {
@@ -547,6 +557,7 @@
 
 .heroMetrics dd {
   margin: 0.25rem 0 0;
+  color: var(--template-ink);
   font-weight: 900;
 }
 
@@ -599,7 +610,7 @@
 .faqList details {
   border: 1px solid var(--template-card-border);
   border-radius: var(--template-radius);
-  background: var(--template-card);
+  background: var(--template-card-strong);
   box-shadow: var(--template-shadow);
   color: var(--template-ink);
   padding: clamp(1rem, 3vw, 1.35rem);
@@ -1007,6 +1018,22 @@
   }
 }
 
+@media (hover: none), (pointer: coarse) {
+  .card:hover,
+  .supportCard:hover,
+  .faqList details:hover,
+  .navCta:hover,
+  .primaryAction:hover,
+  .secondaryAction:hover,
+  .stickyRegister:hover,
+  .footerLinks a:hover,
+  .themeSwitcher a:hover,
+  .supportActions a:hover,
+  .retryButton:hover {
+    transform: none;
+  }
+}
+
 @media (max-width: 1080px) {
   .hero,
   .problemSection,
@@ -1027,6 +1054,42 @@
   }
 }
 
+@media (min-width: 761px) and (max-width: 1080px) {
+  .hero {
+    min-height: min(650px, calc(100svh - 4rem));
+    grid-template-columns: minmax(0, 0.98fr) minmax(16.5rem, 0.72fr);
+    gap: 1.2rem;
+    padding: clamp(1rem, 2.6vw, 2rem);
+  }
+
+  .hero h1 {
+    max-width: 13ch;
+    font-size: clamp(2.05rem, 5.2vw, 3.8rem);
+  }
+
+  .hero .lead {
+    font-size: 0.96rem;
+    line-height: 1.48;
+  }
+
+  .brandAssurance {
+    margin-top: 0.85rem;
+  }
+
+  .heroActions {
+    margin-top: 0.9rem;
+  }
+
+  .mediaStage {
+    width: min(100%, 21rem);
+    justify-self: center;
+  }
+
+  .heroMetrics {
+    margin-top: 0.75rem;
+  }
+}
+
 @media (max-width: 760px) {
   .nav,
   .hero,
@@ -1041,9 +1104,9 @@
 
   .nav {
     top: 0.5rem;
-    min-height: 3.6rem;
+    min-height: 3.25rem;
     grid-template-columns: minmax(0, 1fr) auto;
-    padding: 0.55rem 0.6rem;
+    padding: 0.45rem 0.55rem;
   }
 
   .navLinks {
@@ -1051,61 +1114,121 @@
   }
 
   .brand img {
-    width: 2rem;
-    height: 2rem;
+    width: 1.8rem;
+    height: 1.8rem;
   }
 
   .navCta {
-    min-width: 5rem;
-    min-height: 2.35rem;
+    min-width: 4.8rem;
+    min-height: 2.25rem;
+    font-size: 0.8rem;
     padding: 0 0.65rem;
   }
 
   .hero {
-    gap: 1.25rem;
-    padding: 1rem;
+    gap: 0.85rem;
+    margin-top: 0.55rem;
+    padding: 0.8rem;
+  }
+
+  .auroraLayer {
+    opacity: 0.42;
+    animation: none;
   }
 
   .trustRow {
-    gap: 0.35rem;
-    margin-bottom: 0.7rem;
+    gap: 0.3rem;
+    margin-bottom: 0.5rem;
   }
 
   .trustRow span {
-    padding: 0.35rem 0.45rem;
-    font-size: 0.68rem;
+    padding: 0.3rem 0.42rem;
+    font-size: 0.62rem;
+  }
+
+  .trustRow span:nth-child(2) {
+    display: none;
+  }
+
+  .kicker {
+    margin-bottom: 0.35rem;
+    font-size: 0.64rem;
   }
 
   .hero h1 {
     max-width: 100%;
-    font-size: clamp(1.9rem, 9vw, 2.45rem);
-    line-height: 1.02;
+    font-size: clamp(1.55rem, 7.8vw, 2.05rem);
+    line-height: 1.04;
   }
 
   .hero .lead {
-    margin-top: 0.7rem;
-    font-size: 0.93rem;
-    line-height: 1.48;
+    display: -webkit-box;
+    margin: 0.48rem 0 0;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    font-size: 0.84rem;
+    line-height: 1.38;
   }
 
   .brandAssurance,
-  .heroActions,
   .signalPanel {
     display: none;
   }
 
+  .heroActions {
+    margin-top: 0.65rem;
+  }
+
+  .heroActions .primaryAction,
+  .heroActions button {
+    width: auto;
+    min-height: 2.35rem;
+    font-size: 0.84rem;
+    padding: 0 0.85rem;
+  }
+
   .mediaStage {
-    width: min(100%, 19rem);
+    width: min(100%, 16.5rem);
     justify-self: center;
+    animation: none;
   }
 
   .heroMedia {
     width: 100%;
-    aspect-ratio: 4 / 4.35;
+    display: block;
+    aspect-ratio: auto;
+    overflow: visible;
+  }
+
+  .heroMedia > img,
+  .heroMedia > video,
+  .heroMedia > iframe {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 3.55;
+    overflow: hidden;
+    border-radius: var(--template-radius);
+    object-fit: cover;
+  }
+
+  .mediaCaption {
+    position: static;
+    margin-top: 0.45rem;
+    padding: 0.62rem 0.68rem;
+  }
+
+  .mediaCaption span {
+    font-size: 0.62rem;
+  }
+
+  .mediaCaption strong,
+  .mediaCaption small {
+    line-height: 1.15;
   }
 
   .heroMetrics {
-    margin-top: -1rem;
+    margin-top: 0.5rem;
   }
 
   .introGrid,
@@ -1124,14 +1247,15 @@
   .coachSupport h2,
   .footer h2 {
     max-width: 100%;
-    font-size: clamp(1.8rem, 8vw, 2.45rem);
+    font-size: clamp(1.45rem, 7vw, 2rem);
+    line-height: 1.05;
   }
 
   .problemSection,
   .mediaSection,
   .registerSection,
   .footer {
-    padding: 1rem;
+    padding: 0.9rem;
   }
 
   .registerSection a,
@@ -1147,9 +1271,84 @@
 
 @media (max-width: 420px) {
   .stickyRegister {
-    right: 0.75rem;
-    bottom: 0.75rem;
-    min-width: 9.5rem;
+    right: 0.55rem;
+    bottom: 0.55rem;
+    min-width: 8.4rem;
+    min-height: 2.45rem;
+    font-size: 0.84rem;
+    padding-inline: 0.85rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .nav,
+  .hero,
+  .heroMetrics,
+  .section,
+  .coachSupport,
+  .footer,
+  .unavailablePanel,
+  .themeSwitcher {
+    width: min(calc(100% - 0.7rem), 84rem);
+  }
+
+  .brand strong {
+    font-size: 0.82rem;
+  }
+
+  .brand small {
+    display: none;
+  }
+
+  .navCta {
+    min-width: 4.4rem;
+    padding-inline: 0.52rem;
+  }
+
+  .hero {
+    padding: 0.68rem;
+  }
+
+  .hero h1 {
+    font-size: clamp(1.42rem, 7.2vw, 1.72rem);
+  }
+
+  .hero .lead {
+    -webkit-line-clamp: 2;
+    font-size: 0.8rem;
+  }
+
+  .mediaStage {
+    width: min(100%, 14.6rem);
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .nav {
+    position: relative;
+    top: auto;
+  }
+
+  .hero {
+    grid-template-columns: minmax(0, 1fr) minmax(13rem, 0.72fr);
+    gap: 0.8rem;
+    align-items: center;
+  }
+
+  .hero h1 {
+    font-size: clamp(1.45rem, 4vw, 2rem);
+  }
+
+  .hero .lead {
+    -webkit-line-clamp: 2;
+  }
+
+  .mediaStage {
+    width: min(100%, 15rem);
+  }
+
+  .stickyRegister {
+    display: none;
   }
 }
 

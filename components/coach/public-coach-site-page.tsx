@@ -108,7 +108,9 @@ export function PublicCoachSitePage({
       style={themeStyle}
     >
       <div className={styles.auroraLayer} aria-hidden="true" />
-      <StickyRegisterAction onMissingRegisterLink={showMissingRegisterFallback} site={site} />
+      {previewMode ? null : (
+        <StickyRegisterAction onMissingRegisterLink={showMissingRegisterFallback} site={site} />
+      )}
 
       {previewMode ? <ThemePreviewSwitcher activeThemeId={theme.id} /> : null}
 

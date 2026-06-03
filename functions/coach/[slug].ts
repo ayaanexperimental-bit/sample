@@ -643,6 +643,8 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         color: #fff;
         padding: 0.85rem;
         backdrop-filter: blur(16px);
+        box-shadow: 0 0.9rem 2rem rgb(0 0 0 / 0.16);
+        text-shadow: 0 1px 1px rgb(0 0 0 / 0.28);
       }
       .media-caption span {
         color: var(--template-accent);
@@ -660,7 +662,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         gap: 0.2rem;
         border: 1px solid rgb(255 255 255 / 0.18);
         border-radius: var(--template-radius);
-        background: rgb(255 255 255 / 0.08);
+        background: linear-gradient(135deg, rgb(8 11 23 / 0.74), rgb(255 255 255 / 0.1));
         color: var(--template-inverted-ink);
         padding: 0.95rem;
         backdrop-filter: blur(16px);
@@ -692,7 +694,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         overflow: hidden;
         border: 1px solid var(--template-card-border);
         border-radius: var(--template-radius);
-        background: var(--template-card);
+        background: var(--template-card-strong);
         box-shadow: var(--template-shadow);
         color: var(--template-ink);
       }
@@ -820,6 +822,8 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         grid-template-columns: auto minmax(0, 1fr);
         gap: 0.75rem;
         align-items: center;
+        background: rgb(255 255 255 / 0.1);
+        color: var(--template-inverted-ink);
       }
       .problem-item span {
         width: 2rem;
@@ -1065,6 +1069,35 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
+      @media (min-width: 761px) and (max-width: 1080px) {
+        .hero {
+          min-height: min(650px, calc(100svh - 4rem));
+          grid-template-columns: minmax(0, 0.98fr) minmax(16.5rem, 0.72fr);
+          gap: 1.2rem;
+          padding: clamp(1rem, 2.6vw, 2rem);
+        }
+        .hero h1 {
+          max-width: 13ch;
+          font-size: clamp(2.05rem, 5.2vw, 3.8rem);
+        }
+        .lead {
+          font-size: 0.96rem;
+          line-height: 1.48;
+        }
+        .brand-assurance {
+          margin-top: 0.85rem;
+        }
+        .actions {
+          margin-top: 0.9rem;
+        }
+        .media-stage {
+          width: min(100%, 21rem);
+          justify-self: center;
+        }
+        .hero-metrics {
+          margin-top: 0.75rem;
+        }
+      }
       @media (max-width: 760px) {
         .nav,
         .hero,
@@ -1077,48 +1110,101 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         }
         .nav {
           top: 0.45rem;
+          min-height: 3.25rem;
           grid-template-columns: minmax(0, 1fr) auto;
+          padding: 0.45rem 0.55rem;
         }
         .nav-links {
           display: none;
         }
         .button.nav-cta {
-          min-width: 6.6rem;
-          padding-inline: 0.7rem;
+          min-width: 4.8rem;
+          min-height: 2.25rem;
+          padding-inline: 0.65rem;
+          font-size: 0.8rem;
         }
         .hero {
-          margin-top: 0.7rem;
-          padding: 1rem;
+          margin-top: 0.55rem;
+          gap: 0.85rem;
+          padding: 0.8rem;
+        }
+        .aurora {
+          opacity: 0.42;
+          animation: none;
         }
         .trust-row {
-          gap: 0.35rem;
-          margin-bottom: 0.7rem;
+          gap: 0.3rem;
+          margin-bottom: 0.5rem;
         }
         .trust-row span {
-          padding: 0.35rem 0.45rem;
-          font-size: 0.68rem;
+          padding: 0.3rem 0.42rem;
+          font-size: 0.62rem;
+        }
+        .trust-row span:nth-child(2) {
+          display: none;
+        }
+        .kicker {
+          margin-bottom: 0.35rem;
+          font-size: 0.64rem;
         }
         .hero h1 {
-          font-size: clamp(1.9rem, 9vw, 2.45rem);
-          line-height: 1.02;
+          max-width: 100%;
+          font-size: clamp(1.55rem, 7.8vw, 2.05rem);
+          line-height: 1.04;
         }
         .lead {
-          margin-top: 0.7rem;
-          font-size: 0.93rem;
-          line-height: 1.48;
+          display: -webkit-box;
+          margin: 0.48rem 0 0;
+          overflow: hidden;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 3;
+          font-size: 0.84rem;
+          line-height: 1.38;
         }
         .brand-assurance,
-        .actions,
         .signal-panel {
           display: none;
         }
+        .actions {
+          margin-top: 0.65rem;
+        }
+        .actions .button {
+          min-height: 2.35rem;
+          font-size: 0.84rem;
+          padding-inline: 0.85rem;
+        }
         .media-stage {
-          width: min(100%, 19rem);
+          width: min(100%, 16.5rem);
           justify-self: center;
+          animation: none;
         }
         .hero-media {
           width: 100%;
-          aspect-ratio: 4 / 4.35;
+          display: block;
+          aspect-ratio: auto;
+          overflow: visible;
+        }
+        .hero-media img,
+        .hero-media video,
+        .hero-media iframe {
+          width: 100%;
+          height: auto;
+          aspect-ratio: 4 / 3.55;
+          overflow: hidden;
+          border-radius: var(--template-radius);
+          object-fit: cover;
+        }
+        .media-caption {
+          position: static;
+          margin-top: 0.45rem;
+          padding: 0.62rem 0.68rem;
+        }
+        .media-caption span {
+          font-size: 0.62rem;
+        }
+        .media-caption strong,
+        .media-caption small {
+          line-height: 1.15;
         }
         .intro-grid,
         .hero-metrics,
@@ -1131,7 +1217,8 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         .section h2,
         .support h2,
         .footer h2 {
-          font-size: clamp(1.55rem, 8vw, 2.35rem);
+          font-size: clamp(1.45rem, 7vw, 2rem);
+          line-height: 1.05;
         }
       }
       @media (max-width: 430px) {
@@ -1146,14 +1233,79 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         .support-actions a {
           width: 100%;
         }
+        .nav .button,
+        .actions .button {
+          width: auto;
+        }
         .sticky-register {
-          right: 0.5rem;
-          bottom: 0.5rem;
-          left: 0.5rem;
-          min-width: 0;
+          right: 0.55rem;
+          bottom: 0.55rem;
+          left: auto;
+          width: auto;
+          min-width: 8.4rem;
+          min-height: 2.45rem;
+          font-size: 0.84rem;
+          padding-inline: 0.85rem;
         }
         .support-identity {
           grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 360px) {
+        .nav,
+        .hero,
+        .hero-metrics,
+        .section,
+        .support,
+        .footer,
+        .unavailable-panel {
+          width: min(calc(100% - 0.7rem), 84rem);
+        }
+        .brand strong {
+          font-size: 0.82rem;
+        }
+        .brand small {
+          display: none;
+        }
+        .button.nav-cta {
+          min-width: 4.4rem;
+          padding-inline: 0.52rem;
+        }
+        .hero {
+          padding: 0.68rem;
+        }
+        .hero h1 {
+          font-size: clamp(1.42rem, 7.2vw, 1.72rem);
+        }
+        .lead {
+          -webkit-line-clamp: 2;
+          font-size: 0.8rem;
+        }
+        .media-stage {
+          width: min(100%, 14.6rem);
+        }
+      }
+      @media (max-height: 520px) and (orientation: landscape) {
+        .nav {
+          position: relative;
+          top: auto;
+        }
+        .hero {
+          grid-template-columns: minmax(0, 1fr) minmax(13rem, 0.72fr);
+          gap: 0.8rem;
+          align-items: center;
+        }
+        .hero h1 {
+          font-size: clamp(1.45rem, 4vw, 2rem);
+        }
+        .lead {
+          -webkit-line-clamp: 2;
+        }
+        .media-stage {
+          width: min(100%, 15rem);
+        }
+        .sticky-register {
+          display: none;
         }
       }
       @media (hover: none), (pointer: coarse) {
