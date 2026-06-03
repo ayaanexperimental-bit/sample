@@ -2404,6 +2404,12 @@
   list-style: none;
 }
 
+.analyticsWidgetActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
 .analyticsWidget li {
   position: relative;
   padding-left: 1rem;

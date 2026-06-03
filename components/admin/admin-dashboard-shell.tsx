@@ -81,6 +81,30 @@ type AnalyticsEventsApiPayload = {
   source?: string;
 };
 
+type AdminAiAnalyticsInsight = {
+  dataHash: string;
+  generatedAt: string;
+  keyTrends: string[];
+  model: string;
+  predictions: string[];
+  recommendations: string[];
+  summary: string;
+  warnings: string[];
+};
+
+type AdminAiAnalyticsPayload = {
+  cache?: "hit" | "miss";
+  configured?: boolean;
+  insight?: AdminAiAnalyticsInsight;
+  message?: string;
+  ok?: boolean;
+  usageEstimate?: {
+    approximateCostLevel: "High" | "Low" | "Medium";
+    estimatedInputTokens: number;
+    estimatedOutputTokens: number;
+  };
+};
+
 const analyticsRangeOptions: Array<{ label: string; value: AnalyticsDateRangeId }> = [
   { label: "Today", value: "today" },
   { label: "7 days", value: "7d" },
@@ -300,6 +324,7 @@ export function AdminDashboardShell({
             analyticsSource={analyticsSource}
             analyticsSummaries={analyticsSummaries}
             coachSites={liveCoachSites}
+            csrfToken={csrfToken}
             errorReports={errorReports}
             onSelect={setActiveView}
             onAnalyticsRangeChange={setAnalyticsRange}
@@ -350,6 +375,7 @@ export function AdminDashboardShell({
             analyticsSource={analyticsSource}
             analyticsSummaries={analyticsSummaries}
             coachSites={liveCoachSites}
+            csrfToken={csrfToken}
             onAnalyticsCustomEndChange={setAnalyticsCustomEnd}
             onAnalyticsCustomStartChange={setAnalyticsCustomStart}
             onAnalyticsRangeChange={setAnalyticsRange}
@@ -396,6 +422,7 @@ function OverviewView({
   analyticsSource,
   analyticsSummaries,
   coachSites,
+  csrfToken,
   errorReports,
   onSelect,
   onAnalyticsRangeChange,
@@ -412,6 +439,7 @@ function OverviewView({
   analyticsSource: string;
   analyticsSummaries: AnalyticsMetricSummary[];
   coachSites: CoachSiteRecord[];
+  csrfToken: string;
   errorReports: AdminErrorReport[];
   onAnalyticsCustomEndChange: (value: string) => void;
   onAnalyticsCustomStartChange: (value: string) => void;
@@ -421,6 +449,11 @@ function OverviewView({
   recentEvents: AnalyticsRecentEvent[];
   source: string;
 }) {
+  const [overviewAiCache, setOverviewAiCache] = useState("");
+  const [overviewAiInsight, setOverviewAiInsight] = useState<AdminAiAnalyticsInsight | null>(null);
+  const [overviewAiStatus, setOverviewAiStatus] = useState("");
+  const [overviewAiUsage, setOverviewAiUsage] =
+    useState<AdminAiAnalyticsPayload["usageEstimate"]>(undefined);
   const preferEventSummaries = analyticsSource === "d1_analytics_events";
   const rows = useMemo(
     () => buildCoachAnalyticsRows(coachSites, analyticsSummaries, { preferEventSummaries }),
@@ -456,6 +489,57 @@ function OverviewView({
       source
     ]
   );
+
+  async function generateOverviewAiInsights(forceRefresh = false) {
+    if (!csrfToken) {
+      setOverviewAiStatus("Admin verification token is not ready yet.");
+      return;
+    }
+
+    setOverviewAiStatus(forceRefresh ? "Refreshing AI overview..." : "Generating AI overview...");
+
+    try {
+      const response = await fetch("/api/admin/analytics-insights", {
+        body: JSON.stringify({
+          dateRange: overview.rangeLabel,
+          forceRefresh,
+          payload: buildOverviewAiPayload({
+            analyticsRangeMeta,
+            errorReports,
+            overview,
+            rows: currentRows
+          }),
+          scope: "overview"
+        }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-yw-admin-csrf": csrfToken
+        },
+        method: "POST"
+      });
+      const payload = (await response.json().catch(() => ({}))) as AdminAiAnalyticsPayload;
+
+      if (response.ok && payload.ok && payload.insight) {
+        setOverviewAiInsight(payload.insight);
+        setOverviewAiCache(payload.cache || "");
+        setOverviewAiUsage(payload.usageEstimate);
+        setOverviewAiStatus(
+          `${payload.cache === "hit" ? "Cached" : "Generated"} with ${payload.insight.model}.`
+        );
+        return;
+      }
+
+      setOverviewAiStatus(
+        payload.configured === false
+          ? "AI Analytics is not configured yet."
+          : payload.message || "AI overview could not be generated right now."
+      );
+    } catch {
+      setOverviewAiStatus("AI overview could not be generated right now.");
+    }
+  }
 
   return (
     <AdminPageShell
@@ -590,10 +674,20 @@ function OverviewView({
       </section>
 
       <section className={styles.analyticsDashboardGrid}>
-        <AnalyticsWidget
+        <AnalyticsAiWidget
+          cacheLabel={overviewAiCache}
           eyebrow="AI Executive Summary"
-          items={overview.aiSummary}
-          title="Based on available data"
+          fallbackItems={overview.aiSummary}
+          insight={overviewAiInsight}
+          onGenerate={() => void generateOverviewAiInsights(false)}
+          onRefresh={() => void generateOverviewAiInsights(true)}
+          status={overviewAiStatus}
+          title={
+            overviewAiInsight
+              ? `Last generated ${new Date(overviewAiInsight.generatedAt).toLocaleString()}`
+              : "On-demand aggregate analysis"
+          }
+          usageEstimate={overviewAiUsage}
         />
         <AnalyticsWidget
           eyebrow="Recommended Actions"
@@ -927,6 +1021,52 @@ function buildOverviewAnalytics(
   };
 }
 
+function buildOverviewAiPayload({
+  analyticsRangeMeta,
+  errorReports,
+  overview,
+  rows
+}: {
+  analyticsRangeMeta: AnalyticsEventRange | null;
+  errorReports: AdminErrorReport[];
+  overview: ReturnType<typeof buildOverviewAnalytics>;
+  rows: CoachAnalyticsRow[];
+}) {
+  const unresolvedErrors = errorReports.filter((report) => report.status !== "Fixed");
+
+  return {
+    activeFunnels: overview.activeFunnels,
+    dateRange: analyticsRangeMeta?.label || overview.rangeLabel,
+    funnelSplit: overview.funnelSplit,
+    healthAlerts: overview.healthAlerts,
+    lowPerformingCoaches: getNeedsAttentionRows(rows).map((row) => ({
+      coachName: row.coachName,
+      issues: row.lowActivityReasons.slice(0, 3),
+      slug: row.coachSlug
+    })),
+    recentActivity: overview.recentActivity,
+    regionDeviceNotes: overview.breakdownNotes,
+    systemIssues: {
+      unresolvedCount: unresolvedErrors.length,
+      unresolvedCategories: Array.from(new Set(unresolvedErrors.map((report) => report.category))).slice(0, 8)
+    },
+    topCoaches: overview.topRows.slice(0, 5).map((row) => ({
+      bestFunnel: row.bestFunnel,
+      coachName: row.coachName,
+      clicks: row.combined.clicks,
+      conversionRate: row.combined.conversionRate,
+      slug: row.coachSlug,
+      visits: row.combined.visits
+    })),
+    totals: {
+      registerClicks: overview.totalRegisterClicks,
+      visits: overview.totalVisits,
+      whatsappClicks: overview.totalWhatsappClicks
+    },
+    trendBars: overview.trendBars
+  };
+}
+
 function getFunnelSplit(items: Array<[string, number]>) {
   const total = Math.max(1, sumNumbers(items.map(([, value]) => value)));
   return items.map(([label, value]) => ({
@@ -1012,6 +1152,7 @@ function CoachAnalyticsView({
   analyticsSource,
   analyticsSummaries,
   coachSites,
+  csrfToken,
   onAnalyticsCustomEndChange,
   onAnalyticsCustomStartChange,
   onAnalyticsRangeChange,
@@ -1024,6 +1165,7 @@ function CoachAnalyticsView({
   analyticsSource: string;
   analyticsSummaries: AnalyticsMetricSummary[];
   coachSites: CoachSiteRecord[];
+  csrfToken: string;
   onAnalyticsCustomEndChange: (value: string) => void;
   onAnalyticsCustomStartChange: (value: string) => void;
   onAnalyticsRangeChange: (value: AnalyticsDateRangeId) => void;
@@ -1397,7 +1539,9 @@ function CoachAnalyticsView({
         {selectedCoach ? (
           <CoachAnalyticsDetailPanel
             activeTab={activeTab}
+            analyticsRange={analyticsRange}
             coach={selectedCoach}
+            csrfToken={csrfToken}
             onTabChange={setActiveTab}
           />
         ) : null}
@@ -1448,6 +1592,56 @@ function AnalyticsWidget({
   );
 }
 
+function AnalyticsAiWidget({
+  cacheLabel,
+  eyebrow,
+  fallbackItems,
+  insight,
+  onGenerate,
+  onRefresh,
+  status,
+  title,
+  usageEstimate
+}: {
+  cacheLabel: string;
+  eyebrow: string;
+  fallbackItems: string[];
+  insight: AdminAiAnalyticsInsight | null;
+  onGenerate: () => void;
+  onRefresh: () => void;
+  status: string;
+  title: string;
+  usageEstimate?: AdminAiAnalyticsPayload["usageEstimate"];
+}) {
+  const items = insight ? formatAiInsightItems(insight) : fallbackItems;
+
+  return (
+    <article className={styles.analyticsWidget}>
+      <p className={styles.kicker}>{eyebrow}</p>
+      <h3>{title}</h3>
+      <ul>
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <div className={styles.analyticsWidgetActions}>
+        <button className={styles.primaryAction} onClick={insight ? onRefresh : onGenerate} type="button">
+          {insight ? "Refresh AI Overview" : "Generate AI Overview"}
+        </button>
+      </div>
+      {status || usageEstimate ? (
+        <p className={styles.inlineNote}>
+          {status || "AI ready."}
+          {cacheLabel ? ` Cache: ${cacheLabel}.` : ""}
+          {usageEstimate
+            ? ` Estimate: ${usageEstimate.approximateCostLevel}, ${usageEstimate.estimatedInputTokens} input / ${usageEstimate.estimatedOutputTokens} output tokens.`
+            : ""}
+        </p>
+      ) : null}
+    </article>
+  );
+}
+
 function FunnelBadges({ row }: { row: CoachAnalyticsRow }) {
   if (!row.hasPaidMasterclass && !row.hasFreeGuestLink) {
     return (
@@ -1480,32 +1674,85 @@ function FunnelBadges({ row }: { row: CoachAnalyticsRow }) {
 
 function CoachAnalyticsDetailPanel({
   activeTab,
+  analyticsRange,
   coach,
+  csrfToken,
   onTabChange
 }: {
   activeTab: CoachAnalyticsFunnelType;
+  analyticsRange: AnalyticsDateRangeId;
   coach: CoachAnalyticsRow;
+  csrfToken: string;
   onTabChange: (tab: CoachAnalyticsFunnelType) => void;
 }) {
   const [copyMessage, setCopyMessage] = useState("");
+  const [insightCache, setInsightCache] = useState("");
   const [insightGeneratedAt, setInsightGeneratedAt] = useState("");
+  const [insightStatus, setInsightStatus] = useState("");
+  const [insightUsage, setInsightUsage] =
+    useState<AdminAiAnalyticsPayload["usageEstimate"]>(undefined);
   const [insights, setInsights] = useState<string[]>([]);
   const [reportFormat, setReportFormat] = useState<"admin" | "detailed" | "whatsapp">("whatsapp");
+  const analyticsRangeLabel =
+    analyticsRangeOptions.find((option) => option.value === analyticsRange)?.label ||
+    analyticsRange;
   const reportText = useMemo(
-    () => buildCoachReport(coach, reportFormat, insights),
-    [coach, insights, reportFormat]
+    () => buildCoachReport(coach, reportFormat, insights, analyticsRangeLabel),
+    [analyticsRangeLabel, coach, insights, reportFormat]
   );
   const hasEnoughData = coach.combined.visits > 0 || coach.combined.clicks > 0;
 
-  function generateInsights() {
+  async function generateInsights(forceRefresh = false) {
     if (!hasEnoughData) {
       setInsights(["Not enough data for AI insights yet."]);
       setInsightGeneratedAt(new Date().toLocaleString());
       return;
     }
 
-    setInsights(buildCoachInsightItems(coach));
-    setInsightGeneratedAt(new Date().toLocaleString());
+    if (!csrfToken) {
+      setInsightStatus("Admin verification token is not ready yet.");
+      return;
+    }
+
+    setInsightStatus(forceRefresh ? "Refreshing AI insights..." : "Generating AI insights...");
+
+    try {
+      const response = await fetch("/api/admin/analytics-insights", {
+        body: JSON.stringify({
+          dateRange: analyticsRange,
+          forceRefresh,
+          payload: buildCoachAiPayload(coach, activeTab),
+          scope: "coach"
+        }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-yw-admin-csrf": csrfToken
+        },
+        method: "POST"
+      });
+      const payload = (await response.json().catch(() => ({}))) as AdminAiAnalyticsPayload;
+
+      if (response.ok && payload.ok && payload.insight) {
+        setInsights(formatAiInsightItems(payload.insight));
+        setInsightCache(payload.cache || "");
+        setInsightGeneratedAt(new Date(payload.insight.generatedAt).toLocaleString());
+        setInsightUsage(payload.usageEstimate);
+        setInsightStatus(
+          `${payload.cache === "hit" ? "Cached" : "Generated"} with ${payload.insight.model}.`
+        );
+        return;
+      }
+
+      setInsightStatus(
+        payload.configured === false
+          ? "AI Analytics is not configured yet."
+          : payload.message || "AI insights could not be generated right now."
+      );
+    } catch {
+      setInsightStatus("AI insights could not be generated right now.");
+    }
   }
 
   async function copyReport() {
@@ -1528,7 +1775,7 @@ function CoachAnalyticsDetailPanel({
   }
 
   async function shareSummary() {
-    const summary = buildCoachReport(coach, "whatsapp", insights);
+    const summary = buildCoachReport(coach, "whatsapp", insights, analyticsRangeLabel);
     if ("share" in navigator) {
       try {
         await (navigator as Navigator & { share: (data: ShareData) => Promise<void> }).share({
@@ -1579,7 +1826,11 @@ function CoachAnalyticsDetailPanel({
       </header>
 
       <section className={styles.analyticsDetailActions}>
-        <button className={styles.primaryAction} onClick={generateInsights} type="button">
+        <button
+          className={styles.primaryAction}
+          onClick={() => void generateInsights(Boolean(insightGeneratedAt))}
+          type="button"
+        >
           {insightGeneratedAt ? "Refresh AI Insights" : "Generate AI Insights"}
         </button>
         <label>
@@ -1616,8 +1867,24 @@ function CoachAnalyticsDetailPanel({
               ? insights
               : ["Click Generate AI Insights to analyze compact aggregate data."]
           }
-          title={insightGeneratedAt ? `Last generated ${insightGeneratedAt}` : "On-demand only"}
+          title={
+            insightGeneratedAt
+              ? `Last generated ${insightGeneratedAt}${insightCache ? ` / ${insightCache}` : ""}`
+              : "On-demand only"
+          }
         />
+        {insightStatus || insightUsage ? (
+          <AnalyticsWidget
+            eyebrow="AI Status"
+            items={[
+              insightStatus || "No AI request made yet.",
+              insightUsage
+                ? `Estimate: ${insightUsage.approximateCostLevel} / ${insightUsage.estimatedInputTokens} input tokens / ${insightUsage.estimatedOutputTokens} output tokens.`
+                : "Token estimate appears after generation."
+            ]}
+            title="Server-side only"
+          />
+        ) : null}
         <AnalyticsWidget
           eyebrow="Prediction"
           items={buildCoachPredictionItems(coach)}
@@ -1839,23 +2106,59 @@ function InsightList({ coach }: { coach: CoachAnalyticsRow }) {
   );
 }
 
-function buildCoachInsightItems(coach: CoachAnalyticsRow) {
-  if (coach.combined.visits === 0 && coach.combined.clicks === 0) {
-    return ["Not enough data for AI insights yet."];
-  }
-
+function formatAiInsightItems(insight: AdminAiAnalyticsInsight) {
   return [
-    `Likely trend: ${coach.combined.conversionRate} click-through from ${coach.combined.visits.toLocaleString()} recorded visits.`,
-    coach.bestFunnel === "No funnel yet"
-      ? "Suggested action: connect a paid or free funnel before judging performance."
-      : `Strongest current funnel: ${coach.bestFunnel}.`,
-    coach.deviceBreakdown.mobile > coach.deviceBreakdown.desktop
-      ? "Mobile appears important for this coach. Keep CTA and hero visible on small screens."
-      : "Device trend is not strongly mobile-led yet.",
-    coach.lowActivityReasons.length
-      ? `Watch item: ${coach.lowActivityReasons[0]}.`
-      : "No immediate configuration warning detected from current records."
-  ];
+    `Summary: ${insight.summary}`,
+    ...insight.keyTrends.map((item) => `Trend: ${item}`),
+    ...insight.recommendations.map((item) => `Action: ${item}`),
+    ...insight.predictions.map((item) => `Likely prediction: ${item}`),
+    ...insight.warnings.map((item) => `Warning: ${item}`)
+  ].slice(0, 10);
+}
+
+function buildCoachAiPayload(coach: CoachAnalyticsRow, activeTab: CoachAnalyticsFunnelType) {
+  return {
+    activeTab,
+    coach: {
+      funnelTypes: getCoachFunnelLabels(coach),
+      name: coach.coachName,
+      niche: coach.niche,
+      slug: coach.coachSlug,
+      status: coach.status
+    },
+    combined: {
+      clicks: coach.combined.clicks,
+      conversionRate: coach.combined.conversionRate,
+      lastActivity: coach.combined.lastActivity,
+      visits: coach.combined.visits
+    },
+    deviceBreakdown: coach.deviceBreakdown,
+    freeFunnel: coach.hasFreeGuestLink
+      ? {
+          googleFormStatus: coach.freeMetrics.googleFormStatus,
+          registerClicks: coach.freeMetrics.registerClicks,
+          supportStatus: coach.freeMetrics.supportStatus,
+          videoPlays: coach.freeMetrics.videoPlays,
+          visits: coach.freeMetrics.visits,
+          whatsappClicks: coach.freeMetrics.whatsappClicks
+        }
+      : null,
+    lowActivityReasons: coach.lowActivityReasons,
+    paidFunnel: coach.hasPaidMasterclass
+      ? {
+          paymentButtonClicks: coach.paidMetrics.paymentButtonClicks,
+          paymentInitiated: coach.paidMetrics.paymentInitiated,
+          paymentSuccess: coach.paidMetrics.paymentSuccess,
+          paymentToSuccessDropOff: coach.paidMetrics.paymentToSuccessDropOff,
+          registerClicks: coach.paidMetrics.registerClicks,
+          successPageViews: coach.paidMetrics.successPageViews,
+          visits: coach.paidMetrics.visits,
+          whatsappClicks: coach.paidMetrics.whatsappClicks
+        }
+      : null,
+    region: coach.region,
+    source: coach.source
+  };
 }
 
 function buildCoachPredictionItems(coach: CoachAnalyticsRow) {
@@ -1878,7 +2181,8 @@ function buildCoachPredictionItems(coach: CoachAnalyticsRow) {
 function buildCoachReport(
   coach: CoachAnalyticsRow,
   format: "admin" | "detailed" | "whatsapp",
-  insights: string[]
+  insights: string[],
+  dateRangeLabel: string
 ) {
   const activeFunnels = getCoachFunnelLabels(coach).join(", ") || "No active funnel";
   const topDevice = formatDeviceBreakdown(coach.deviceBreakdown);
@@ -1887,6 +2191,7 @@ function buildCoachReport(
   if (format === "whatsapp") {
     return [
       `${coach.coachName} performance summary`,
+      `Date range: ${dateRangeLabel}`,
       `Visits: ${coach.combined.visits.toLocaleString()}`,
       `Register/CTA clicks: ${coach.combined.clicks.toLocaleString()}`,
       `Click-through: ${coach.combined.conversionRate}`,
@@ -1899,7 +2204,7 @@ function buildCoachReport(
   const common = [
     `Coach: ${coach.coachName}`,
     `Niche: ${coach.niche}`,
-    `Date range: Current stored analytics counters`,
+    `Date range: ${dateRangeLabel}`,
     `Active funnel types: ${activeFunnels}`,
     `Total visits: ${coach.combined.visits.toLocaleString()}`,
     `Register/CTA clicks: ${coach.combined.clicks.toLocaleString()}`,
