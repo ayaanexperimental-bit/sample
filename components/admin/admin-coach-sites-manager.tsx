@@ -110,19 +110,28 @@ type PaidFunnelAnalysis = {
 type CopyRegenerationScope = "all" | "benefits" | "cta" | "faq" | "hero" | "intro" | "vision";
 type PreviewInspectSection = Exclude<CopyRegenerationScope, "all">;
 type CoachSiteDangerStatus = "archived" | "removed";
+type CurrentCoachSiteStatus = Exclude<CoachSiteStatus, "archived" | "removed">;
 
-const statusOptions: Array<"all" | CoachSiteStatus> = [
+const statusOptions: Array<"all" | CurrentCoachSiteStatus> = [
   "all",
   "draft",
   "published",
-  "paused",
-  "archived",
-  "removed"
+  "paused"
 ];
 
-function getCoachSiteStatusFilterLabel(status: "all" | CoachSiteStatus) {
+function getCoachSiteStatusFilterLabel(status: "all" | CurrentCoachSiteStatus) {
   if (status === "all") return "current records";
   return status;
+}
+
+function matchesCoachSiteSearch(site: CoachSiteRecord, query: string) {
+  if (!query) return true;
+
+  return (
+    site.coachName.toLowerCase().includes(query) ||
+    site.niche.toLowerCase().includes(query) ||
+    site.slug.toLowerCase().includes(query)
+  );
 }
 
 const wizardSteps = [
@@ -278,7 +287,8 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   const [dialog, setDialog] = useState<CoachDialog | null>(null);
   const [wizardStep, setWizardStep] = useState(0);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | CoachSiteStatus>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | CurrentCoachSiteStatus>("all");
+  const [archivedMenuOpen, setArchivedMenuOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [aiMessage, setAiMessage] = useState("");
   const [aiSubmitting, setAiSubmitting] = useState(false);
@@ -348,39 +358,38 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     };
   }, []);
 
+  const visibleSites = useMemo(() => sites.filter((site) => site.status !== "removed"), [sites]);
+
   const filteredSites = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    return sites.filter((site) => {
+    return visibleSites.filter((site) => {
       const matchesStatus =
-        statusFilter === "all" ? site.status !== "removed" : site.status === statusFilter;
-      const matchesSearch =
-        !query ||
-        site.coachName.toLowerCase().includes(query) ||
-        site.niche.toLowerCase().includes(query) ||
-        site.slug.toLowerCase().includes(query);
+        site.status !== "archived" &&
+        (statusFilter === "all" || site.status === statusFilter);
+      const matchesSearch = matchesCoachSiteSearch(site, query);
 
       return matchesStatus && matchesSearch;
     });
-  }, [search, sites, statusFilter]);
+  }, [search, statusFilter, visibleSites]);
 
   const draftSites = useMemo(
     () => filteredSites.filter((site) => site.status === "draft"),
     [filteredSites]
   );
-  const archivedSites = useMemo(
-    () => filteredSites.filter((site) => site.status === "archived"),
-    [filteredSites]
-  );
+  const archivedSites = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return visibleSites.filter(
+      (site) => site.status === "archived" && matchesCoachSiteSearch(site, query)
+    );
+  }, [search, visibleSites]);
   const managedSites = useMemo(
     () =>
       filteredSites.filter(
-        (site) =>
-          site.status !== "draft" &&
-          site.status !== "archived" &&
-          (site.status !== "removed" || statusFilter === "removed")
+        (site) => site.status !== "draft" && site.status !== "archived" && site.status !== "removed"
       ),
-    [filteredSites, statusFilter]
+    [filteredSites]
   );
 
   function updateFormField<Key extends keyof CoachSiteFormState>(
@@ -1228,8 +1237,8 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       setStorageErrorCode("");
       setStorageMessage(
         status === "archived"
-          ? `${payload.coachSite.coachName} archived. It moved to the Archived list and can be reactivated later.`
-          : `${payload.coachSite.coachName} removed. The record stays visible in Admin with removed status.`
+          ? `${payload.coachSite.coachName} archived. It moved behind Archived Coaches and can be reactivated later.`
+          : `${payload.coachSite.coachName} removed. Removed records are hidden from Admin lists and analytics.`
       );
       setSites((current) =>
         current.map((item) => (item.id === site.id ? payload.coachSite! : item))
@@ -1486,7 +1495,9 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
             <label className={styles.compactField}>
               <span>Status</span>
               <select
-                onChange={(event) => setStatusFilter(event.target.value as "all" | CoachSiteStatus)}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as "all" | CurrentCoachSiteStatus)
+                }
                 value={statusFilter}
               >
                 {statusOptions.map((status) => (
@@ -1496,6 +1507,103 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
                 ))}
               </select>
             </label>
+          </div>
+
+          <div className={styles.archiveMenuShell}>
+            <button
+              aria-controls="archived-coaches-menu"
+              aria-expanded={archivedMenuOpen}
+              className={styles.secondaryAction}
+              onClick={() => setArchivedMenuOpen((current) => !current)}
+              type="button"
+            >
+              Archived Coaches ({archivedSites.length})
+            </button>
+            {archivedMenuOpen ? (
+              <div
+                className={styles.archiveMenu}
+                id="archived-coaches-menu"
+                role="region"
+                aria-label="Archived coach sites"
+              >
+                <div className={styles.sectionHeader}>
+                  <div>
+                    <p className={styles.kicker}>Archived Coaches</p>
+                    <h2>Hidden coach websites</h2>
+                  </div>
+                  <span className={styles.statusBadge} data-status="archived">
+                    {archivedSites.length} Archived
+                  </span>
+                </div>
+                {archivedSites.length > 0 ? (
+                  <div className={styles.tableWrap}>
+                    <table className={styles.table} data-density="compact">
+                      <thead>
+                        <tr>
+                          <th>Coach</th>
+                          <th>Niche</th>
+                          <th>Public URL</th>
+                          <th>Archived date</th>
+                          <th>Last activity</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {archivedSites.map((site) => (
+                          <tr key={site.id}>
+                            <td>
+                              <strong>{site.coachName || "Unnamed coach"}</strong>
+                              <span>{site.slug}</span>
+                            </td>
+                            <td>{site.niche || "Niche pending"}</td>
+                            <td>
+                              <code>{site.publicUrl}</code>
+                            </td>
+                            <td>{formatCoachArchivedDate(site)}</td>
+                            <td>{formatCoachLastActivity(site)}</td>
+                            <td>
+                              <div className={styles.rowActions}>
+                                <button
+                                  onClick={() => setDialog({ site, type: "manage" })}
+                                  type="button"
+                                >
+                                  View
+                                </button>
+                                <button
+                                  onClick={() => setDialog({ site, type: "preview" })}
+                                  type="button"
+                                >
+                                  Preview
+                                </button>
+                                <button
+                                  data-tone="success"
+                                  onClick={() => setDialog({ site, type: "reactivate" })}
+                                  type="button"
+                                >
+                                  Reactivate
+                                </button>
+                                <button
+                                  data-tone="danger"
+                                  onClick={() => setDialog({ site, type: "remove" })}
+                                  type="button"
+                                >
+                                  Delete Permanently
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className={styles.emptyState} data-compact="true">
+                    <h3>No archived coach sites</h3>
+                    <p>Archived coach websites will appear here only after opening this menu.</p>
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
 
           <section className={styles.draftsPanel} aria-label="Coach site drafts">
@@ -1575,88 +1683,6 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
             )}
           </section>
 
-          <section
-            className={`${styles.draftsPanel} ${styles.archivedPanel}`}
-            aria-label="Archived coach sites"
-          >
-            <div className={styles.sectionHeader}>
-              <div>
-                <p className={styles.kicker}>Archived</p>
-                <h2>Hidden coach websites ready to reactivate</h2>
-              </div>
-              <span className={styles.statusBadge} data-status="archived">
-                {archivedSites.length} Archived
-              </span>
-            </div>
-            {archivedSites.length > 0 ? (
-              <div className={styles.tableWrap}>
-                <table className={styles.table} data-density="compact">
-                  <thead>
-                    <tr>
-                      <th>Coach</th>
-                      <th>Niche</th>
-                      <th>Public URL</th>
-                      <th>Archived date</th>
-                      <th>Last activity</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {archivedSites.map((site) => (
-                      <tr key={site.id}>
-                        <td>
-                          <strong>{site.coachName || "Unnamed coach"}</strong>
-                          <span>{site.slug}</span>
-                        </td>
-                        <td>{site.niche || "Niche pending"}</td>
-                        <td>
-                          <code>{site.publicUrl}</code>
-                        </td>
-                        <td>{formatCoachArchivedDate(site)}</td>
-                        <td>{formatCoachLastActivity(site)}</td>
-                        <td>
-                          <div className={styles.rowActions}>
-                            <button
-                              onClick={() => setDialog({ site, type: "manage" })}
-                              type="button"
-                            >
-                              View
-                            </button>
-                            <button
-                              onClick={() => setDialog({ site, type: "preview" })}
-                              type="button"
-                            >
-                              Preview
-                            </button>
-                            <button
-                              data-tone="success"
-                              onClick={() => setDialog({ site, type: "reactivate" })}
-                              type="button"
-                            >
-                              Reactivate
-                            </button>
-                            <button
-                              data-tone="danger"
-                              onClick={() => setDialog({ site, type: "remove" })}
-                              type="button"
-                            >
-                              Delete Permanently
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className={styles.emptyState} data-compact="true">
-                <h3>No archived coach sites</h3>
-                <p>Archived coach websites will appear here without losing their saved data.</p>
-              </div>
-            )}
-          </section>
-
           <div className={styles.tableWrap}>
             <table className={styles.table} data-density="compact">
               <thead>
@@ -1713,7 +1739,6 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
           <div className={styles.tableFooter}>
             <span>{managedSites.length} managed coach sites</span>
             <span>{draftSites.length} reusable drafts</span>
-            <span>{archivedSites.length} archived</span>
           </div>
         </>
       ) : (
@@ -2404,7 +2429,7 @@ function CoachDialogRenderer({
       <p className={styles.dialogCopy}>
         {archiveAlreadyDone
           ? "This coach site is already archived. Permanent removal is separate, destructive, and still requires OTP."
-          : "Archive keeps this coach record visible in Admin but removes the public coach page from normal access. Remove marks it removed, keeps the admin record for audit, and prevents static fallback from reappearing for the same slug."}
+          : "Archive hides this coach site from normal lists and keeps it restorable from Archived Coaches. Remove marks it removed, hides it from Admin lists and analytics, and prevents static fallback from reappearing for the same slug."}
       </p>
       <dl className={styles.removeDetails}>
         <div>
@@ -2437,7 +2462,7 @@ function CoachDialogRenderer({
         ) : null}
         <article data-tone="danger">
           <strong>Remove</strong>
-          <p>Use this when the site should be treated as removed. OTP is required.</p>
+          <p>Use this when the site should disappear from Admin lists and analytics. OTP is required.</p>
         </article>
       </div>
       <div className={styles.formGrid}>

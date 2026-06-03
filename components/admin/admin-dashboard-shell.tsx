@@ -480,10 +480,13 @@ function CoachAnalyticsView({
     "clicks" | "conversion" | "monthly" | "recent" | "visits" | "weekly"
   >("visits");
   const [statusFilter, setStatusFilter] = useState<
-    "active" | "all" | "archived" | "draft" | "paused" | "published" | "removed"
+    "active" | "all" | "draft" | "paused" | "published"
   >("all");
   const rows = useMemo(() => buildCoachAnalyticsRows(coachSites), [coachSites]);
-  const currentRows = useMemo(() => rows.filter((row) => row.status !== "removed"), [rows]);
+  const currentRows = useMemo(
+    () => rows.filter((row) => row.status !== "archived" && row.status !== "removed"),
+    [rows]
+  );
   const filteredRows = useMemo(
     () =>
       filterCoachAnalyticsRows({
@@ -571,8 +574,6 @@ function CoachAnalyticsView({
             <option value="draft">Draft</option>
             <option value="published">Published</option>
             <option value="paused">Paused</option>
-            <option value="archived">Archived</option>
-            <option value="removed">Removed</option>
           </select>
         </label>
         <label>

@@ -163,6 +163,7 @@ export async function listCoachSitesFromDb(env: CoachSiteStorageEnv) {
 
   const result = await env.ADMIN_DB.prepare(
     `SELECT * FROM coach_sites
+     WHERE status <> 'removed'
      ORDER BY updated_at DESC`
   ).all<CoachSiteRow>();
 

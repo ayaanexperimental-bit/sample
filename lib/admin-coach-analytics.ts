@@ -73,13 +73,14 @@ const EMPTY_DEVICE_BREAKDOWN = {
 };
 
 export function buildCoachAnalyticsRows(coachSites: CoachSiteRecord[]): CoachAnalyticsRow[] {
+  const currentCoachSites = coachSites.filter(isCurrentCoachSite);
   const coachIds = new Set<string>();
   coaches.forEach((coach) => coachIds.add(coach.id));
-  coachSites.forEach((site) => coachIds.add(site.coachId));
+  currentCoachSites.forEach((site) => coachIds.add(site.coachId));
   funnels.forEach((funnel) => coachIds.add(funnel.coachId));
 
   return Array.from(coachIds)
-    .map((coachId) => buildCoachAnalyticsRow(coachId, coachSites))
+    .map((coachId) => buildCoachAnalyticsRow(coachId, currentCoachSites))
     .sort((a, b) => {
       if (b.combined.visits !== a.combined.visits) return b.combined.visits - a.combined.visits;
       return a.coachName.localeCompare(b.coachName);
@@ -91,7 +92,7 @@ export function getCoachAvailableFunnels(
   coachSites: CoachSiteRecord[]
 ): CoachAvailableFunnels {
   const freeGuestLinks = coachSites.filter(
-    (site) => site.coachId === coachId && site.status !== "removed"
+    (site) => site.coachId === coachId && isCurrentCoachSite(site)
   );
   const paidFunnels = funnels.filter(
     (funnel) =>
@@ -163,7 +164,9 @@ export function filterCoachAnalyticsRows({
         (funnelFilter === "free" && row.hasFreeGuestLink && !row.hasPaidMasterclass) ||
         (funnelFilter === "none" && !row.hasFreeGuestLink && !row.hasPaidMasterclass);
       const matchesStatus =
-        statusFilter === "all" ? row.status !== "removed" : row.status === statusFilter;
+        statusFilter === "all"
+          ? row.status !== "archived" && row.status !== "removed"
+          : row.status === statusFilter;
       const matchesRegion =
         !normalizedRegion ||
         normalizedRegion === "all" ||
@@ -193,7 +196,7 @@ export function getNeedsAttentionRows(rows: CoachAnalyticsRow[]) {
 function buildCoachAnalyticsRow(coachId: string, coachSites: CoachSiteRecord[]): CoachAnalyticsRow {
   const funnelInfo = getCoachAvailableFunnels(coachId, coachSites);
   const platformCoach = coaches.find((coach) => coach.id === coachId);
-  const allSites = coachSites.filter((site) => site.coachId === coachId);
+  const allSites = coachSites.filter((site) => site.coachId === coachId && isCurrentCoachSite(site));
   const primarySite = funnelInfo.freeGuestLinks[0] || allSites[0];
   const freeMetrics = buildFreeMetrics(funnelInfo.freeGuestLinks);
   const paidMetrics = buildPaidMetrics(funnelInfo.paidFunnels);
@@ -245,6 +248,10 @@ function buildCoachAnalyticsRow(coachId: string, coachSites: CoachSiteRecord[]):
     status,
     trend: combined.visits > 0 ? "Tracking" : "No activity yet"
   };
+}
+
+function isCurrentCoachSite(site: CoachSiteRecord) {
+  return site.status !== "archived" && site.status !== "removed";
 }
 
 function buildFreeMetrics(sites: CoachSiteRecord[]): FreeGuestLinkMetrics {
