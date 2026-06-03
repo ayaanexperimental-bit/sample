@@ -1901,35 +1901,50 @@ function CoachAnalyticsDetailPanel({
   }
 
   function downloadReport() {
-    const blob = new Blob([reportText], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${coach.coachSlug || "coach"}-analytics-report.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
+    try {
+      const blob = new Blob([reportText], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${coach.coachSlug || "coach"}-analytics-report.txt`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setCopyMessage("Text report downloaded.");
+    } catch {
+      setCopyMessage("Download unavailable. Report remains visible.");
+    }
   }
 
   function downloadCsvReport() {
-    const blob = new Blob([csvReportText], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${coach.coachSlug || "coach"}-analytics-report.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    try {
+      const blob = new Blob([csvReportText], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${coach.coachSlug || "coach"}-analytics-report.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setCopyMessage("Sheet CSV downloaded.");
+    } catch {
+      setCopyMessage("Sheet CSV download unavailable. Report remains visible.");
+    }
   }
 
   function downloadExcelReport() {
-    const blob = new Blob([excelReportText], {
-      type: "application/vnd.ms-excel;charset=utf-8"
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${coach.coachSlug || "coach"}-analytics-report.xls`;
-    link.click();
-    URL.revokeObjectURL(url);
+    try {
+      const blob = new Blob([excelReportText], {
+        type: "application/vnd.ms-excel;charset=utf-8"
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${coach.coachSlug || "coach"}-analytics-report.xls`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setCopyMessage("Excel workbook downloaded.");
+    } catch {
+      setCopyMessage("Excel download unavailable. Report remains visible.");
+    }
   }
 
   async function shareSummary() {
