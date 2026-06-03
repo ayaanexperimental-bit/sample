@@ -12,6 +12,12 @@ type Env = {
   ADMIN_DEV_OTP?: string;
   ADMIN_REQUIRE_DB_ADMIN_ROLES?: string;
   ADMIN_SESSION_SECRET?: string;
+  AI_ANALYTICS_MODEL?: string;
+  AI_COPY_MODEL?: string;
+  AI_ENABLE_CACHING?: string;
+  AI_EXTRACT_MODEL?: string;
+  AI_MAX_INPUT_TOKENS?: string;
+  AI_MAX_OUTPUT_TOKENS?: string;
   OPENAI_API_KEY?: string;
   OPENAI_MODEL?: string;
 };
@@ -77,9 +83,11 @@ export async function onRequest({ request, env }: PagesContext) {
   }
 
   return adminJson({
+    cache: result.cache,
     configured: true,
     content: result.content,
-    ok: true
+    ok: true,
+    usageEstimate: result.usageEstimate
   });
 }
 

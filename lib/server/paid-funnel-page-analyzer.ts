@@ -1,4 +1,5 @@
 import { funnels, normalizePathname } from "../coach-platform";
+import { compressAiContext } from "./ai-context-compressor";
 
 export type PaidFunnelPageAnalysis = {
   cleanText: string;
@@ -125,7 +126,7 @@ function createAnalyzerHeaders() {
 export function createPaidFunnelAiContext(analysis?: PaidFunnelPageAnalysis | null) {
   if (!analysis) return "";
 
-  return [
+  const context = [
     `Existing paid funnel page URL: ${analysis.sourceUrl}`,
     analysis.title ? `Page title: ${analysis.title}` : "",
     analysis.coachName ? `Coach name found: ${analysis.coachName}` : "",
@@ -137,6 +138,8 @@ export function createPaidFunnelAiContext(analysis?: PaidFunnelPageAnalysis | nu
   ]
     .filter(Boolean)
     .join("\n");
+
+  return compressAiContext(context).compactText;
 }
 
 function normalizeAnalyzableUrl(value: string) {

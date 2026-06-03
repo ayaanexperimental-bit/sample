@@ -95,6 +95,13 @@ type GeneratedCoachCopy = {
   visionText?: string;
 };
 
+type GeneratedCoachCopyUsage = {
+  approximateCostLevel: "High" | "Low" | "Medium";
+  estimatedInputTokens: number;
+  estimatedOutputTokens: number;
+  warning: string;
+};
+
 type PaidFunnelAnalysis = {
   cleanText: string;
   coachName?: string;
@@ -365,8 +372,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
 
     return visibleSites.filter((site) => {
       const matchesStatus =
-        site.status !== "archived" &&
-        (statusFilter === "all" || site.status === statusFilter);
+        site.status !== "archived" && (statusFilter === "all" || site.status === statusFilter);
       const matchesSearch = matchesCoachSiteSearch(site, query);
 
       return matchesStatus && matchesSearch;
@@ -725,11 +731,13 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       method: "POST"
     });
     const payload = (await response.json().catch(() => ({}))) as {
+      cache?: "hit" | "miss";
       configured?: boolean;
       content?: GeneratedCoachCopy;
       error?: string;
       message?: string;
       ok?: boolean;
+      usageEstimate?: GeneratedCoachCopyUsage;
     };
 
     if (!response.ok || !payload.ok || !payload.content) {
@@ -746,8 +754,14 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
 
     return {
       content: payload.content,
-      message: ""
+      message: formatAiUsageMessage(payload.usageEstimate, payload.cache)
     };
+  }
+
+  function formatAiUsageMessage(usageEstimate?: GeneratedCoachCopyUsage, cache?: "hit" | "miss") {
+    if (!usageEstimate) return "";
+
+    return `Estimate: ${usageEstimate.estimatedInputTokens.toLocaleString()} input tokens / ${usageEstimate.estimatedOutputTokens.toLocaleString()} output tokens, ${usageEstimate.approximateCostLevel.toLowerCase()} cost${cache === "hit" ? ", cached result reused" : ""}.${usageEstimate.warning ? ` ${usageEstimate.warning}` : ""}`;
   }
 
   async function requestPaidFunnelAnalysis(sourceForm: CoachSiteFormState) {
@@ -882,7 +896,9 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
 
       if (result.content) {
         nextForm = applyGeneratedCopyToForm(validatedForm, result.content, "all");
-        setAiMessage("AI copy prepared. Review and edit before publishing.");
+        setAiMessage(
+          `AI copy prepared. Review and edit before publishing.${result.message ? ` ${result.message}` : ""}`
+        );
       } else {
         nextForm = fillMissingCopyFromTemplateFallback(validatedForm, status);
         reportAiCopyIssue({
@@ -955,7 +971,9 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         slug: site.slug
       });
       setPreviewSite(site);
-      setAiMessage(`${label} regenerated. Review before publishing.`);
+      setAiMessage(
+        `${label} regenerated. Review before publishing.${result.message ? ` ${result.message}` : ""}`
+      );
     } catch {
       reportAiCopyIssue({
         coachSlug: normalizeCoachSlug(validatedForm.slug || validatedForm.coachName),
@@ -2462,7 +2480,9 @@ function CoachDialogRenderer({
         ) : null}
         <article data-tone="danger">
           <strong>Remove</strong>
-          <p>Use this when the site should disappear from Admin lists and analytics. OTP is required.</p>
+          <p>
+            Use this when the site should disappear from Admin lists and analytics. OTP is required.
+          </p>
         </article>
       </div>
       <div className={styles.formGrid}>

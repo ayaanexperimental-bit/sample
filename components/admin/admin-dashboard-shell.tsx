@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { AdminCoachSitesManager } from "./admin-coach-sites-manager";
 import {
   AdminActionDialog,
@@ -208,7 +208,14 @@ export function AdminDashboardShell({
 
         <p className={styles.dataNotice}>{data.dataNotice}</p>
 
-        {activeView === "overview" ? <OverviewView data={data} onSelect={setActiveView} /> : null}
+        {activeView === "overview" ? (
+          <OverviewView
+            coachSites={liveCoachSites}
+            errorReports={errorReports}
+            onSelect={setActiveView}
+            source={coachSiteSource}
+          />
+        ) : null}
 
         {activeView === "coach-sites" ? (
           <AdminPageShell
@@ -234,9 +241,13 @@ export function AdminDashboardShell({
           </AdminPageShell>
         ) : null}
 
-        {activeView === "top-coaches" ? <TopCoachesView data={data} /> : null}
+        {activeView === "top-coaches" ? <TopCoachesView coachSites={liveCoachSites} /> : null}
         {activeView === "coach-analytics" ? (
-          <CoachAnalyticsView coachSites={liveCoachSites} source={coachSiteSource} />
+          <CoachAnalyticsView
+            coachSites={liveCoachSites}
+            onSelect={setActiveView}
+            source={coachSiteSource}
+          />
         ) : null}
         {activeView === "paid-masterclass-settings" ? (
           <MasterclassLinksView control={control} csrfToken={csrfToken} />
@@ -270,22 +281,21 @@ export function AdminDashboardShell({
 }
 
 function OverviewView({
-  data,
-  onSelect
+  coachSites,
+  errorReports,
+  onSelect,
+  source
 }: {
-  data: typeof adminDashboardData;
+  coachSites: CoachSiteRecord[];
+  errorReports: AdminErrorReport[];
   onSelect: (view: AdminViewId) => void;
+  source: string;
 }) {
-  const overviewMetrics = data.summary.filter((metric) =>
-    [
-      "Total site visits",
-      "Today's visits",
-      "Weekly visits",
-      "Monthly visits",
-      "Total register CTA clicks",
-      "Total WhatsApp clicks",
-      "Recent error reports"
-    ].includes(metric.label)
+  const rows = useMemo(() => buildCoachAnalyticsRows(coachSites), [coachSites]);
+  const currentRows = useMemo(() => getCurrentAnalyticsRows(rows), [rows]);
+  const overview = useMemo(
+    () => buildOverviewAnalytics(currentRows, errorReports, source),
+    [currentRows, errorReports, source]
   );
 
   return (
@@ -302,12 +312,40 @@ function OverviewView({
       eyebrow="Verified Admin Session"
       title="Admin Overview"
     >
-      <section className={styles.summaryGrid} aria-label="Top summary cards">
-        {overviewMetrics.map((metric) => (
-          <article className={styles.metricCard} data-tone={metric.tone} key={metric.label}>
-            <span>{metric.label}</span>
-            <strong>{metric.value}</strong>
-          </article>
+      <section className={styles.analyticsHeroPanel} aria-label="Executive analytics summary">
+        <div>
+          <p className={styles.kicker}>Business command center</p>
+          <h2>Today&apos;s production snapshot</h2>
+          <p>
+            {overview.sourceLabel}. Metrics below come from live coach-site records and stored
+            analytics counters only.
+          </p>
+        </div>
+        <div className={styles.analyticsHeroStats}>
+          <span>
+            <strong>{overview.totalVisits.toLocaleString()}</strong>
+            Total visits
+          </span>
+          <span>
+            <strong>{overview.totalRegisterClicks.toLocaleString()}</strong>
+            Register clicks
+          </span>
+          <span>
+            <strong>{overview.conversionRate}</strong>
+            Click-through
+          </span>
+        </div>
+      </section>
+
+      <section className={styles.analyticsKpiGrid} aria-label="KPI summary row">
+        {overview.kpis.map((metric) => (
+          <AnalyticsKpiCard
+            detail={metric.detail}
+            key={metric.label}
+            label={metric.label}
+            tone={metric.tone}
+            value={metric.value}
+          />
         ))}
       </section>
 
@@ -315,105 +353,134 @@ function OverviewView({
         <article className={styles.section}>
           <div className={styles.sectionHeader}>
             <div>
-              <p className={styles.kicker}>Top Performing Coaches</p>
-              <h2>Fast ranking</h2>
+              <p className={styles.kicker}>Performance Trends</p>
+              <h2>Visits and click momentum</h2>
             </div>
             <button
               className={styles.secondaryAction}
-              onClick={() => onSelect("top-coaches")}
+              onClick={() => onSelect("coach-analytics")}
               type="button"
             >
-              Open Details
+              Open Analytics
             </button>
           </div>
-          <div className={styles.compactList}>
-            {data.topCoaches.length > 0 ? (
-              data.topCoaches.map((coach) => (
-                <div key={coach.rank}>
-                  <span>{coach.rank}</span>
-                  <strong>{coach.name}</strong>
-                  <p>
-                    {coach.visits.toLocaleString()} visits / {coach.conversionRate} click-through
-                  </p>
-                </div>
-              ))
-            ) : (
-              <div>
-                <strong>No data available yet</strong>
-                <p>Top performers will appear after real coach-site traffic is recorded.</p>
-              </div>
-            )}
-          </div>
+          <ComparisonBars items={overview.trendBars} />
         </article>
 
         <article className={styles.section}>
           <div className={styles.sectionHeader}>
             <div>
-              <p className={styles.kicker}>Alerts</p>
-              <h2>Needs attention</h2>
+              <p className={styles.kicker}>Funnel Intelligence</p>
+              <h2>Paid vs free split</h2>
             </div>
             <button
               className={styles.secondaryAction}
-              onClick={() => onSelect("error-reports")}
+              onClick={() => onSelect("paid-masterclass-settings")}
               type="button"
             >
-              View Reports
+              Link Settings
             </button>
           </div>
-          <div className={styles.alertList}>
-            {data.alerts.length > 0 ? (
-              data.alerts.map((alert) => (
-                <div className={styles.alertItem} data-severity={alert.severity} key={alert.title}>
-                  <strong>{alert.title}</strong>
-                  <p>{alert.detail}</p>
-                </div>
-              ))
-            ) : (
-              <div className={styles.alertItem} data-severity="low">
-                <strong>No recent issues</strong>
-                <p>Error reports will appear when production fallback events are recorded.</p>
-              </div>
-            )}
+          <div className={styles.analyticsDonutGrid}>
+            {overview.funnelSplit.map((item) => (
+              <article key={item.label}>
+                <span style={{ "--value": item.percent } as CSSProperties} />
+                <strong>{item.value.toLocaleString()}</strong>
+                <p>{item.label}</p>
+              </article>
+            ))}
           </div>
         </article>
+      </section>
+
+      <section className={styles.analyticsDashboardGrid}>
+        <AnalyticsWidget
+          eyebrow="AI Executive Summary"
+          items={overview.aiSummary}
+          title="Based on available data"
+        />
+        <AnalyticsWidget
+          eyebrow="Recommended Actions"
+          items={overview.recommendations}
+          title="Highest-leverage next moves"
+        />
+        <AnalyticsWidget
+          eyebrow="System Health"
+          items={overview.healthAlerts}
+          title="Alerts and quality checks"
+        />
+        <AnalyticsWidget
+          eyebrow="Regions / Devices"
+          items={overview.breakdownNotes}
+          title="Audience signal"
+        />
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.kicker}>Top Performing Coaches</p>
+            <h2>Real recorded activity</h2>
+          </div>
+          <button
+            className={styles.secondaryAction}
+            onClick={() => onSelect("top-coaches")}
+            type="button"
+          >
+            Open Details
+          </button>
+        </div>
+        <div className={styles.analyticsRankList}>
+          {overview.topRows.length > 0 ? (
+            overview.topRows.map((row, index) => (
+              <button key={row.coachId} onClick={() => onSelect("coach-analytics")} type="button">
+                <span>#{index + 1}</span>
+                <strong>{row.coachName}</strong>
+                <small>
+                  {row.combined.visits.toLocaleString()} visits / {row.combined.conversionRate}{" "}
+                  click-through / {row.bestFunnel}
+                </small>
+              </button>
+            ))
+          ) : (
+            <p>No top performer data available yet.</p>
+          )}
+        </div>
       </section>
 
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <div>
             <p className={styles.kicker}>Quick Actions</p>
-            <h2>Focused shortcuts</h2>
+            <h2>Action center</h2>
           </div>
         </div>
         <div className={styles.quickActions}>
-          <button onClick={() => onSelect("create-coach-site")} type="button">
-            Create Coach Site
-          </button>
-          <button onClick={() => onSelect("coach-sites")} type="button">
-            Coach Sites
-          </button>
-          <button onClick={() => onSelect("coach-analytics")} type="button">
-            View Coach Analytics
-          </button>
-          <button onClick={() => onSelect("top-coaches")} type="button">
-            Top Performers
-          </button>
-          <button onClick={() => onSelect("paid-masterclass-settings")} type="button">
-            Update Masterclass Links
-          </button>
-          <button onClick={() => onSelect("error-reports")} type="button">
-            Error Reports
-          </button>
-          <button onClick={() => onSelect("backup-cleanup")} type="button">
-            Backup Analytics
-          </button>
+          {[
+            ["Create Coach Site", "create-coach-site"],
+            ["Coach Sites", "coach-sites"],
+            ["Coach Analytics", "coach-analytics"],
+            ["Top Performers", "top-coaches"],
+            ["Paid Settings", "paid-masterclass-settings"],
+            ["Error Reports", "error-reports"],
+            ["Backup/Cleanup", "backup-cleanup"]
+          ].map(([label, view]) => (
+            <button key={view} onClick={() => onSelect(view as AdminViewId)} type="button">
+              {label}
+            </button>
+          ))}
         </div>
       </section>
     </AdminPageShell>
   );
 }
 
-function TopCoachesView({ data }: { data: typeof adminDashboardData }) {
+function TopCoachesView({ coachSites }: { coachSites: CoachSiteRecord[] }) {
+  const rows = useMemo(
+    () => getTopCoachAnalyticsRows(getCurrentAnalyticsRows(buildCoachAnalyticsRows(coachSites))),
+    [coachSites]
+  );
+
   return (
     <AdminPageShell eyebrow="Coach Sites" title="Top Performing Coaches">
       <div className={styles.tableWrap}>
@@ -431,18 +498,18 @@ function TopCoachesView({ data }: { data: typeof adminDashboardData }) {
             </tr>
           </thead>
           <tbody>
-            {data.topCoaches.length > 0 ? (
-              data.topCoaches.map((coach) => (
-                <tr key={coach.rank}>
-                  <td>{coach.rank}</td>
-                  <td>{coach.name}</td>
+            {rows.length > 0 ? (
+              rows.map((coach, index) => (
+                <tr key={coach.coachId}>
+                  <td>{index + 1}</td>
+                  <td>{coach.coachName}</td>
                   <td>{coach.niche}</td>
                   <td>
-                    <code>{coach.publicLink}</code>
+                    <code>{coach.publicLink || coach.coachSlug}</code>
                   </td>
-                  <td>{coach.visits.toLocaleString()}</td>
-                  <td>{coach.clicks.toLocaleString()}</td>
-                  <td>{coach.conversionRate}</td>
+                  <td>{coach.combined.visits.toLocaleString()}</td>
+                  <td>{coach.combined.clicks.toLocaleString()}</td>
+                  <td>{coach.combined.conversionRate}</td>
                   <td>{coach.trend}</td>
                 </tr>
               ))
@@ -458,11 +525,202 @@ function TopCoachesView({ data }: { data: typeof adminDashboardData }) {
   );
 }
 
+function getCurrentAnalyticsRows(rows: CoachAnalyticsRow[]) {
+  return rows.filter((row) => row.status !== "archived" && row.status !== "removed");
+}
+
+function buildOverviewAnalytics(
+  rows: CoachAnalyticsRow[],
+  errorReports: AdminErrorReport[],
+  source: string
+) {
+  const topRows = getTopCoachAnalyticsRows(rows);
+  const needsAttentionRows = getNeedsAttentionRows(rows);
+  const totalVisits = sumNumbers(rows.map((row) => row.combined.visits));
+  const totalRegisterClicks = sumNumbers(rows.map((row) => row.freeMetrics.registerClicks));
+  const totalClicks = sumNumbers(rows.map((row) => row.combined.clicks));
+  const totalWhatsappClicks = sumNumbers(rows.map((row) => row.freeMetrics.whatsappClicks));
+  const weeklyVisits = sumNumbers(
+    rows.flatMap((row) => row.freeGuestLinks.map((site) => site.analytics.weeklyVisits))
+  );
+  const monthlyVisits = sumNumbers(
+    rows.flatMap((row) => row.freeGuestLinks.map((site) => site.analytics.monthlyVisits))
+  );
+  const dailyVisits = sumNumbers(
+    rows.flatMap((row) => row.freeGuestLinks.map((site) => site.analytics.dailyVisits))
+  );
+  const publishedCoaches = rows.filter(
+    (row) => row.status === "published" || row.status === "active"
+  ).length;
+  const paidOnly = rows.filter((row) => row.hasPaidMasterclass && !row.hasFreeGuestLink).length;
+  const freeOnly = rows.filter((row) => row.hasFreeGuestLink && !row.hasPaidMasterclass).length;
+  const bothFunnels = rows.filter((row) => row.combinedAvailable).length;
+  const noFunnel = rows.filter((row) => !row.hasFreeGuestLink && !row.hasPaidMasterclass).length;
+  const activeFunnels =
+    rows.filter((row) => row.hasPaidMasterclass).length +
+    rows.filter((row) => row.hasFreeGuestLink).length;
+  const unresolvedErrors = errorReports.filter((report) => report.status !== "Fixed").length;
+  const conversionRate = getRate(totalRegisterClicks, totalVisits);
+  const sourceLabel =
+    source === "live-database"
+      ? "Live coach-site database is connected"
+      : source === "loading"
+        ? "Loading live coach-site data"
+        : "Live coach-site source is unavailable";
+  const deviceTotals = rows.reduce(
+    (total, row) => ({
+      desktop: total.desktop + row.deviceBreakdown.desktop,
+      mobile: total.mobile + row.deviceBreakdown.mobile,
+      tablet: total.tablet + row.deviceBreakdown.tablet
+    }),
+    { desktop: 0, mobile: 0, tablet: 0 }
+  );
+  const topDevice = getTopBreakdownLabel(deviceTotals, "No device data yet");
+  const regionCounts = rows.reduce<Record<string, number>>((acc, row) => {
+    if (row.region !== "Not available") acc[row.region] = (acc[row.region] || 0) + 1;
+    return acc;
+  }, {});
+  const topRegion = getTopBreakdownLabel(regionCounts, "No region data yet");
+  const enoughActivity = totalVisits > 0 || totalClicks > 0;
+
+  return {
+    activeFunnels,
+    breakdownNotes: [
+      `Top device: ${topDevice}.`,
+      `Top region: ${topRegion}.`,
+      `Traffic source signal: ${getTopSource(rows)}.`,
+      "Visitor-level personal data is not shown in this dashboard."
+    ],
+    conversionRate,
+    funnelSplit: getFunnelSplit([
+      ["Paid only", paidOnly],
+      ["Free only", freeOnly],
+      ["Both", bothFunnels],
+      ["No funnel", noFunnel]
+    ]),
+    healthAlerts: [
+      unresolvedErrors
+        ? `${unresolvedErrors} unresolved fallback/error report${unresolvedErrors === 1 ? "" : "s"} need review.`
+        : "No unresolved fallback reports in the current admin list.",
+      needsAttentionRows.length
+        ? `${needsAttentionRows.length} coach record${needsAttentionRows.length === 1 ? "" : "s"} need configuration or activity review.`
+        : "No coach-level configuration warning detected.",
+      noFunnel
+        ? `${noFunnel} coach record${noFunnel === 1 ? "" : "s"} have no active funnel connected.`
+        : "Every listed coach has at least one active funnel."
+    ],
+    kpis: [
+      {
+        detail: `${dailyVisits.toLocaleString()} today / ${weeklyVisits.toLocaleString()} weekly / ${monthlyVisits.toLocaleString()} monthly`,
+        label: "Total visitors",
+        tone: "neutral" as const,
+        value: totalVisits.toLocaleString()
+      },
+      {
+        detail: "Google Form opens are click/open counts only.",
+        label: "Register clicks",
+        tone: totalRegisterClicks ? ("success" as const) : ("neutral" as const),
+        value: totalRegisterClicks.toLocaleString()
+      },
+      {
+        detail: "Paid payment outcomes stay in Razorpay/Sheets unless connected here.",
+        label: "Paid conversions",
+        tone: "neutral" as const,
+        value: "No data"
+      },
+      {
+        detail: `${publishedCoaches.toLocaleString()} active/current coach records`,
+        label: "Active coaches",
+        tone: publishedCoaches ? ("success" as const) : ("neutral" as const),
+        value: publishedCoaches.toLocaleString()
+      },
+      {
+        detail: `${paidOnly} paid-only / ${freeOnly} free-only / ${bothFunnels} both`,
+        label: "Active funnels",
+        tone: activeFunnels ? ("success" as const) : ("neutral" as const),
+        value: activeFunnels.toLocaleString()
+      },
+      {
+        detail: "Based on current coach referral click/open counters.",
+        label: "Click-through rate",
+        tone: totalRegisterClicks ? ("success" as const) : ("neutral" as const),
+        value: conversionRate
+      }
+    ],
+    recommendations: [
+      needsAttentionRows[0]?.lowActivityReasons[0]
+        ? `Fix ${needsAttentionRows[0].coachName}: ${needsAttentionRows[0].lowActivityReasons[0]}.`
+        : "No urgent coach-site configuration fix found.",
+      topRows[0]
+        ? `Use ${topRows[0].coachName}'s strongest funnel as the current benchmark.`
+        : "Share published coach links to start collecting performance data.",
+      unresolvedErrors
+        ? "Review Error Reports before the next public launch."
+        : "Keep monitoring error reports after each publish."
+    ],
+    aiSummary: enoughActivity
+      ? [
+          `Likely trend: ${conversionRate} click-through from recorded coach referral visits.`,
+          topRows[0]
+            ? `Best current signal: ${topRows[0].coachName} leads by recorded activity.`
+            : "No coach has enough activity for a performer ranking yet.",
+          "Prediction quality is limited until more visits and click events are recorded."
+        ]
+      : ["Not enough data for AI insights yet.", "Publish/share coach links to collect signal."],
+    sourceLabel,
+    topRows,
+    totalRegisterClicks,
+    totalVisits,
+    totalWhatsappClicks,
+    trendBars: [
+      { label: "Today", value: dailyVisits },
+      { label: "7 days", value: weeklyVisits },
+      { label: "30 days", value: monthlyVisits },
+      { label: "Register clicks", value: totalRegisterClicks },
+      { label: "WhatsApp clicks", value: totalWhatsappClicks }
+    ]
+  };
+}
+
+function getFunnelSplit(items: Array<[string, number]>) {
+  const total = Math.max(1, sumNumbers(items.map(([, value]) => value)));
+  return items.map(([label, value]) => ({
+    label,
+    percent: Math.max(0, Math.round((value / total) * 100)),
+    value
+  }));
+}
+
+function getTopSource(rows: CoachAnalyticsRow[]) {
+  const counts = rows.reduce<Record<string, number>>((acc, row) => {
+    if (row.source !== "Not available") acc[row.source] = (acc[row.source] || 0) + 1;
+    return acc;
+  }, {});
+
+  return getTopBreakdownLabel(counts, "No source data yet");
+}
+
+function getTopBreakdownLabel(values: Record<string, number>, fallback: string) {
+  const [label, value] = Object.entries(values).sort(([, a], [, b]) => b - a)[0] || [];
+  return label ? `${label} (${value})` : fallback;
+}
+
+function getRate(clicks: number, visits: number) {
+  if (!visits) return "0%";
+  return `${((clicks / visits) * 100).toFixed(1)}%`;
+}
+
+function sumNumbers(values: number[]) {
+  return values.reduce((total, value) => total + value, 0);
+}
+
 function CoachAnalyticsView({
   coachSites,
+  onSelect,
   source
 }: {
   coachSites: CoachSiteRecord[];
+  onSelect: (view: AdminViewId) => void;
   source: string;
 }) {
   const [activeTab, setActiveTab] = useState<CoachAnalyticsFunnelType>("free");
@@ -495,11 +753,20 @@ function CoachAnalyticsView({
         performanceFilter,
         query,
         regionFilter,
-        rows,
+        rows: currentRows,
         sortBy,
         statusFilter
       }),
-    [dateRange, funnelFilter, performanceFilter, query, regionFilter, rows, sortBy, statusFilter]
+    [
+      currentRows,
+      dateRange,
+      funnelFilter,
+      performanceFilter,
+      query,
+      regionFilter,
+      sortBy,
+      statusFilter
+    ]
   );
   const topRows = useMemo(() => getTopCoachAnalyticsRows(currentRows), [currentRows]);
   const needsAttentionRows = useMemo(() => getNeedsAttentionRows(currentRows), [currentRows]);
@@ -516,6 +783,11 @@ function CoachAnalyticsView({
     setActiveTab(row.availableTabs[0] || "free");
   }
 
+  function openPublicSite(row: CoachAnalyticsRow) {
+    if (!row.publicLink) return;
+    window.open(row.publicLink, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <AdminPageShell eyebrow="Coach Sites" title="Coach Analytics">
       <p className={styles.inlineNote}>
@@ -527,12 +799,26 @@ function CoachAnalyticsView({
       <section className={styles.analyticsKpiGrid} aria-label="Coach analytics summary">
         <AnalyticsKpiCard label="Total coaches" value={currentRows.length.toLocaleString()} />
         <AnalyticsKpiCard
-          label="Paid funnels"
-          value={currentRows.filter((row) => row.hasPaidMasterclass).length.toLocaleString()}
+          label="Paid only"
+          value={currentRows
+            .filter((row) => row.hasPaidMasterclass && !row.hasFreeGuestLink)
+            .length.toLocaleString()}
         />
         <AnalyticsKpiCard
-          label="Free guest links"
-          value={currentRows.filter((row) => row.hasFreeGuestLink).length.toLocaleString()}
+          label="Free only"
+          value={currentRows
+            .filter((row) => row.hasFreeGuestLink && !row.hasPaidMasterclass)
+            .length.toLocaleString()}
+        />
+        <AnalyticsKpiCard
+          label="Both funnels"
+          value={currentRows.filter((row) => row.combinedAvailable).length.toLocaleString()}
+        />
+        <AnalyticsKpiCard
+          label="No funnel"
+          value={currentRows
+            .filter((row) => !row.hasPaidMasterclass && !row.hasFreeGuestLink)
+            .length.toLocaleString()}
         />
         <AnalyticsKpiCard
           label="Needs attention"
@@ -672,13 +958,30 @@ function CoachAnalyticsView({
                 <span>Region: {row.region}</span>
                 <span>Source: {row.source}</span>
               </div>
-              <button
-                className={styles.primaryAction}
-                onClick={() => openCoachAnalytics(row)}
-                type="button"
-              >
-                View Analytics
-              </button>
+              <div className={styles.analyticsCardActions}>
+                <button
+                  className={styles.primaryAction}
+                  onClick={() => openCoachAnalytics(row)}
+                  type="button"
+                >
+                  View Analytics
+                </button>
+                <button
+                  className={styles.secondaryAction}
+                  onClick={() => onSelect("coach-sites")}
+                  type="button"
+                >
+                  Manage
+                </button>
+                <button
+                  className={styles.secondaryAction}
+                  disabled={!row.publicLink}
+                  onClick={() => openPublicSite(row)}
+                  type="button"
+                >
+                  Open Site
+                </button>
+              </div>
             </article>
           ))
         ) : (
@@ -758,11 +1061,44 @@ function CoachAnalyticsView({
   );
 }
 
-function AnalyticsKpiCard({ label, value }: { label: string; value: string }) {
+function AnalyticsKpiCard({
+  detail,
+  label,
+  tone = "neutral",
+  value
+}: {
+  detail?: string;
+  label: string;
+  tone?: "attention" | "neutral" | "success" | "warning";
+  value: string;
+}) {
   return (
-    <article className={styles.metricCard} data-tone="neutral">
+    <article className={styles.metricCard} data-tone={tone}>
       <span>{label}</span>
       <strong>{value}</strong>
+      {detail ? <em>{detail}</em> : null}
+    </article>
+  );
+}
+
+function AnalyticsWidget({
+  eyebrow,
+  items,
+  title
+}: {
+  eyebrow: string;
+  items: string[];
+  title: string;
+}) {
+  return (
+    <article className={styles.analyticsWidget}>
+      <p className={styles.kicker}>{eyebrow}</p>
+      <h3>{title}</h3>
+      <ul>
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
     </article>
   );
 }
@@ -806,6 +1142,69 @@ function CoachAnalyticsDetailPanel({
   coach: CoachAnalyticsRow;
   onTabChange: (tab: CoachAnalyticsFunnelType) => void;
 }) {
+  const [copyMessage, setCopyMessage] = useState("");
+  const [insightGeneratedAt, setInsightGeneratedAt] = useState("");
+  const [insights, setInsights] = useState<string[]>([]);
+  const [reportFormat, setReportFormat] = useState<"admin" | "detailed" | "whatsapp">("whatsapp");
+  const reportText = useMemo(
+    () => buildCoachReport(coach, reportFormat, insights),
+    [coach, insights, reportFormat]
+  );
+  const hasEnoughData = coach.combined.visits > 0 || coach.combined.clicks > 0;
+
+  function generateInsights() {
+    if (!hasEnoughData) {
+      setInsights(["Not enough data for AI insights yet."]);
+      setInsightGeneratedAt(new Date().toLocaleString());
+      return;
+    }
+
+    setInsights(buildCoachInsightItems(coach));
+    setInsightGeneratedAt(new Date().toLocaleString());
+  }
+
+  async function copyReport() {
+    try {
+      await navigator.clipboard.writeText(reportText);
+      setCopyMessage("Coach report copied.");
+    } catch {
+      setCopyMessage("Copy unavailable. Report remains visible.");
+    }
+  }
+
+  function downloadReport() {
+    const blob = new Blob([reportText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${coach.coachSlug || "coach"}-analytics-report.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function shareSummary() {
+    const summary = buildCoachReport(coach, "whatsapp", insights);
+    if ("share" in navigator) {
+      try {
+        await (navigator as Navigator & { share: (data: ShareData) => Promise<void> }).share({
+          text: summary,
+          title: `${coach.coachName} coach report`
+        });
+        setCopyMessage("Share sheet opened.");
+        return;
+      } catch {
+        // Fall back to clipboard below.
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(summary);
+      setCopyMessage("Share summary copied.");
+    } catch {
+      setCopyMessage("Share unavailable. Summary remains visible.");
+    }
+  }
+
   return (
     <div className={styles.analyticsDetail}>
       <header className={styles.analyticsDetailHeader}>
@@ -828,8 +1227,64 @@ function CoachAnalyticsDetailPanel({
         </div>
         <div className={styles.funnelBadgeRow}>
           <FunnelBadges row={coach} />
+          <span className={styles.statusBadge} data-status={coach.status}>
+            {coach.status}
+          </span>
         </div>
       </header>
+
+      <section className={styles.analyticsDetailActions}>
+        <button className={styles.primaryAction} onClick={generateInsights} type="button">
+          {insightGeneratedAt ? "Refresh AI Insights" : "Generate AI Insights"}
+        </button>
+        <label>
+          Report format
+          <select
+            onChange={(event) => setReportFormat(event.target.value as typeof reportFormat)}
+            value={reportFormat}
+          >
+            <option value="whatsapp">Short WhatsApp summary</option>
+            <option value="detailed">Detailed coach report</option>
+            <option value="admin">Admin internal report</option>
+          </select>
+        </label>
+        <button className={styles.secondaryAction} onClick={() => void copyReport()} type="button">
+          Copy Report
+        </button>
+        <button className={styles.secondaryAction} onClick={downloadReport} type="button">
+          Download Report
+        </button>
+        <button
+          className={styles.secondaryAction}
+          onClick={() => void shareSummary()}
+          type="button"
+        >
+          Share Summary
+        </button>
+      </section>
+
+      <section className={styles.analyticsDashboardGrid}>
+        <AnalyticsWidget
+          eyebrow="AI Coach Summary"
+          items={
+            insights.length
+              ? insights
+              : ["Click Generate AI Insights to analyze compact aggregate data."]
+          }
+          title={insightGeneratedAt ? `Last generated ${insightGeneratedAt}` : "On-demand only"}
+        />
+        <AnalyticsWidget
+          eyebrow="Prediction"
+          items={buildCoachPredictionItems(coach)}
+          title="Based on available counters"
+        />
+        <article className={styles.analyticsReportCard}>
+          <p className={styles.kicker}>Coach Report</p>
+          <h3>Safe to copy after review</h3>
+          <pre>{reportText}</pre>
+          {copyMessage ? <p className={styles.inlineStatus}>{copyMessage}</p> : null}
+        </article>
+      </section>
 
       {coach.availableTabs.length > 0 ? (
         <div className={styles.analyticsTabs} role="tablist" aria-label="Coach analytics tabs">
@@ -1037,6 +1492,96 @@ function InsightList({ coach }: { coach: CoachAnalyticsRow }) {
       ))}
     </div>
   );
+}
+
+function buildCoachInsightItems(coach: CoachAnalyticsRow) {
+  if (coach.combined.visits === 0 && coach.combined.clicks === 0) {
+    return ["Not enough data for AI insights yet."];
+  }
+
+  return [
+    `Likely trend: ${coach.combined.conversionRate} click-through from ${coach.combined.visits.toLocaleString()} recorded visits.`,
+    coach.bestFunnel === "No funnel yet"
+      ? "Suggested action: connect a paid or free funnel before judging performance."
+      : `Strongest current funnel: ${coach.bestFunnel}.`,
+    coach.deviceBreakdown.mobile > coach.deviceBreakdown.desktop
+      ? "Mobile appears important for this coach. Keep CTA and hero visible on small screens."
+      : "Device trend is not strongly mobile-led yet.",
+    coach.lowActivityReasons.length
+      ? `Watch item: ${coach.lowActivityReasons[0]}.`
+      : "No immediate configuration warning detected from current records."
+  ];
+}
+
+function buildCoachPredictionItems(coach: CoachAnalyticsRow) {
+  if (coach.combined.visits === 0) {
+    return ["Not enough data for prediction yet."];
+  }
+
+  const weeklyVisits = sumNumbers(coach.freeGuestLinks.map((site) => site.analytics.weeklyVisits));
+  const projectedClicks = Math.round(
+    weeklyVisits * (Number.parseFloat(coach.combined.conversionRate) / 100)
+  );
+
+  return [
+    `Likely next 7 days: ${weeklyVisits.toLocaleString()} visits if current weekly pace holds.`,
+    `Projected register clicks: ${Number.isFinite(projectedClicks) ? projectedClicks : 0}.`,
+    `Best-performing funnel signal: ${coach.bestFunnel}.`
+  ];
+}
+
+function buildCoachReport(
+  coach: CoachAnalyticsRow,
+  format: "admin" | "detailed" | "whatsapp",
+  insights: string[]
+) {
+  const activeFunnels = getCoachFunnelLabels(coach).join(", ") || "No active funnel";
+  const topDevice = formatDeviceBreakdown(coach.deviceBreakdown);
+  const insightText = insights.length ? insights.join(" ") : "Not enough data for AI insights yet.";
+
+  if (format === "whatsapp") {
+    return [
+      `${coach.coachName} performance summary`,
+      `Visits: ${coach.combined.visits.toLocaleString()}`,
+      `Register/CTA clicks: ${coach.combined.clicks.toLocaleString()}`,
+      `Click-through: ${coach.combined.conversionRate}`,
+      `Active funnel: ${activeFunnels}`,
+      `Top region/device: ${coach.region} / ${topDevice}`,
+      `Suggested next step: ${coach.lowActivityReasons[0] || "keep sharing the coach link and monitor clicks weekly."}`
+    ].join("\n");
+  }
+
+  const common = [
+    `Coach: ${coach.coachName}`,
+    `Niche: ${coach.niche}`,
+    `Date range: Current stored analytics counters`,
+    `Active funnel types: ${activeFunnels}`,
+    `Total visits: ${coach.combined.visits.toLocaleString()}`,
+    `Register/CTA clicks: ${coach.combined.clicks.toLocaleString()}`,
+    `WhatsApp/contact clicks: ${coach.freeMetrics.whatsappClicks.toLocaleString()}`,
+    `Conversion rate: ${coach.combined.conversionRate}`,
+    `Top traffic source: ${coach.source}`,
+    `Top region/device: ${coach.region} / ${topDevice}`,
+    `Trend summary: ${coach.trend}`,
+    `AI insights: ${insightText}`,
+    `Recommended next actions: ${coach.lowActivityReasons.join("; ") || "Continue weekly sharing and compare click-through."}`
+  ];
+
+  if (format === "admin") {
+    common.push(
+      `Admin notes: ${coach.lowActivityReasons.join("; ") || "No current admin-only warning."}`,
+      "Private data, payment details, OTPs, secrets, raw user data, and private WhatsApp links are intentionally excluded."
+    );
+  }
+
+  return common.join("\n");
+}
+
+function getCoachFunnelLabels(coach: CoachAnalyticsRow) {
+  return [
+    coach.hasPaidMasterclass ? "Paid Masterclass" : "",
+    coach.hasFreeGuestLink ? "Free Guest Link" : ""
+  ].filter(Boolean);
 }
 
 function getAnalyticsTabLabel(tab: CoachAnalyticsFunnelType) {

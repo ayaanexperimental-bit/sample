@@ -1,8 +1,11 @@
 import type { CoachSiteContent } from "../admin-coach-sites";
+import { getCachedAiResult, setCachedAiResult, createStableAiHash } from "./ai-cache-service";
+import { compressAiContext } from "./ai-context-compressor";
+import { getAiModelConfig, type AiModelConfigEnv } from "./ai-model-config";
+import { estimateAiTokens, type AiUsageEstimate } from "./ai-token-estimator";
 
-export type CoachCopyAiEnv = {
+export type CoachCopyAiEnv = AiModelConfigEnv & {
   OPENAI_API_KEY?: string;
-  OPENAI_MODEL?: string;
 };
 
 export type CoachCopyScope = "all" | "benefits" | "cta" | "faq" | "hero" | "intro" | "vision";
@@ -27,9 +30,11 @@ export type GeneratedCoachSiteCopy = Partial<CoachSiteContent>;
 
 export type CoachCopyAiResult =
   | {
+      cache: "hit" | "miss";
       configured: true;
       content: GeneratedCoachSiteCopy;
       ok: true;
+      usageEstimate: AiUsageEstimate;
     }
   | {
       configured: false;
@@ -169,15 +174,38 @@ export async function generateCoachSiteCopyWithAi(
   }
 
   const scope = normalizeCopyScope(input.scope);
+  const config = getAiModelConfig(env);
+  const normalizedInput = normalizeAiInput(input, config.maxInputTokens);
+  const prompt = createCoachCopyPrompt(normalizedInput, scope);
+  const maxOutputTokens = Math.min(COPY_SCOPE_MAX_OUTPUT_TOKENS[scope], config.maxOutputTokens);
+  const usageEstimate = estimateAiTokens(prompt, maxOutputTokens);
+  const cacheKey = createStableAiHash(
+    JSON.stringify({
+      model: config.copyModel,
+      prompt,
+      scope
+    })
+  );
+  const cached = config.cachingEnabled ? getCachedAiResult<GeneratedCoachSiteCopy>(cacheKey) : null;
+
+  if (cached) {
+    return {
+      cache: "hit",
+      configured: true,
+      content: cached,
+      ok: true,
+      usageEstimate
+    };
+  }
 
   try {
     const response = await fetch("https://api.openai.com/v1/responses", {
       body: JSON.stringify({
-        input: createCoachCopyPrompt(input, scope),
+        input: prompt,
         instructions:
           "Generate only editable website copy for a fixed coach referral page. Do not propose design changes, backend logic, database schema, security settings, payment changes, or third-party automation. Keep copy practical, ethical, and education-first.",
-        max_output_tokens: COPY_SCOPE_MAX_OUTPUT_TOKENS[scope],
-        model: env.OPENAI_MODEL || "gpt-5-mini",
+        max_output_tokens: maxOutputTokens,
+        model: config.copyModel,
         reasoning: {
           effort: "minimal"
         },
@@ -211,10 +239,14 @@ export async function generateCoachSiteCopyWithAi(
       };
     }
 
+    if (config.cachingEnabled) setCachedAiResult(cacheKey, content);
+
     return {
+      cache: "miss",
       configured: true,
       content,
-      ok: true
+      ok: true,
+      usageEstimate
     };
   } catch {
     return {
@@ -223,6 +255,31 @@ export async function generateCoachSiteCopyWithAi(
       ok: false
     };
   }
+}
+
+function normalizeAiInput(input: CoachCopyAiInput, maxInputTokens: number): CoachCopyAiInput {
+  const compressedPaidFunnel = compressAiContext(input.paidFunnelContext || "", maxInputTokens);
+
+  return {
+    ...input,
+    bio: sanitizeAiField(input.bio, 1200),
+    coachName: sanitizeAiField(input.coachName, 160),
+    existingPaidFunnelUrl: sanitizeAiField(input.existingPaidFunnelUrl, 1200),
+    location: sanitizeAiField(input.location, 160),
+    niche: sanitizeAiField(input.niche, 160),
+    paidFunnelContext: compressedPaidFunnel.compactText,
+    registerButtonText: sanitizeAiField(input.registerButtonText, 80),
+    supportText: sanitizeAiField(input.supportText, 400),
+    vision: sanitizeAiField(input.vision, 1200)
+  };
+}
+
+function sanitizeAiField(value: string | undefined, maxLength: number) {
+  return (value || "")
+    .replace(/\b(?:token|secret|otp|password|authorization|cookie)\s*[:=]\s*\S+/gi, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
 }
 
 function createCopySchemaForScope(scope: CoachCopyScope) {
