@@ -1,3 +1,5 @@
+import { funnels, normalizePathname } from "../coach-platform";
+
 export type PaidFunnelPageAnalysis = {
   cleanText: string;
   coachName?: string;
@@ -32,13 +34,7 @@ export async function analyzePaidFunnelPage(
   if (!url) return failedAnalysis();
 
   try {
-    const response = await fetch(url.toString(), {
-      headers: {
-        accept: "text/html,application/xhtml+xml,text/plain;q=0.8",
-        "user-agent": "YWCoachAdminAnalyzer/1.0"
-      },
-      redirect: "follow"
-    });
+    const response = await fetchAnalyzablePage(url);
 
     if (!response.ok) return failedAnalysis();
 
@@ -73,6 +69,57 @@ export async function analyzePaidFunnelPage(
   } catch {
     return failedAnalysis();
   }
+}
+
+async function fetchAnalyzablePage(url: URL) {
+  const internalFunnel = getInternalPaidFunnel(url);
+  if (!internalFunnel) {
+    return fetch(url.toString(), {
+      headers: createAnalyzerHeaders(),
+      redirect: "follow"
+    });
+  }
+
+  const entryUrl = new URL(`/go/${internalFunnel.entryCode}`, url.origin);
+  const entryResponse = await fetch(entryUrl.toString(), {
+    headers: createAnalyzerHeaders(),
+    redirect: "manual"
+  });
+  const location = entryResponse.headers.get("location");
+  const setCookie = entryResponse.headers.get("set-cookie");
+  if (!location || !setCookie) return entryResponse;
+
+  const cookie = setCookie.split(";")[0];
+  const destinationUrl = new URL(location, entryUrl);
+  return fetch(destinationUrl.toString(), {
+    headers: {
+      ...createAnalyzerHeaders(),
+      cookie
+    },
+    redirect: "follow"
+  });
+}
+
+function getInternalPaidFunnel(url: URL) {
+  if (url.hostname !== "ywcoach.com" && !url.hostname.endsWith(".ywcoach.pages.dev")) return null;
+  const pathname = normalizePathname(url.pathname);
+
+  return (
+    funnels.find(
+      (funnel) =>
+        funnel.type === "paidProgram" &&
+        funnel.status === "active" &&
+        (normalizePathname(funnel.canonicalPath) === pathname ||
+          normalizePathname(`/go/${funnel.entryCode}`) === pathname)
+    ) || null
+  );
+}
+
+function createAnalyzerHeaders() {
+  return {
+    accept: "text/html,application/xhtml+xml,text/plain;q=0.8",
+    "user-agent": "YWCoachAdminAnalyzer/1.0"
+  };
 }
 
 export function createPaidFunnelAiContext(analysis?: PaidFunnelPageAnalysis | null) {
