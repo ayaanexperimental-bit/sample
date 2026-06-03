@@ -2426,6 +2426,89 @@
   content: "";
 }
 
+.analyticsHeatmapGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.analyticsHeatmapGrid article {
+  --score: 8;
+  min-width: 0;
+  display: grid;
+  gap: 0.48rem;
+  border: 1px solid rgb(232 221 235);
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 0% 0%, rgb(255 237 246 / 0.66), transparent 9rem),
+    linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(249 250 251 / 0.88));
+  box-shadow: 0 0.85rem 2rem rgb(31 41 55 / 0.055);
+  padding: 0.85rem;
+}
+
+.analyticsHeatmapGrid article > span {
+  width: 100%;
+  height: 0.52rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(238 229 236);
+}
+
+.analyticsHeatmapGrid article > span::after {
+  display: block;
+  width: calc(var(--score) * 1%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #252d4e, #c85b91, #e0b85b);
+  content: "";
+}
+
+.analyticsHeatmapGrid strong,
+.analyticsHeatmapGrid p,
+.analyticsHeatmapGrid small,
+.analyticsHeatmapGrid em {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.analyticsHeatmapGrid strong {
+  color: #1d2939;
+  font-size: 0.94rem;
+}
+
+.analyticsHeatmapGrid small,
+.analyticsHeatmapGrid p,
+.analyticsHeatmapGrid em {
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.analyticsHeatmapGrid p {
+  margin: 0;
+}
+
+.analyticsHeatmapGrid em {
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 999px;
+  background: rgb(117 96 108 / 0.08);
+  padding: 0.28rem 0.5rem;
+  font-style: normal;
+}
+
+.analyticsHeatmapGrid article[data-band="high"] em {
+  background: rgb(8 122 115 / 0.1);
+  color: #075f5b;
+}
+
+.analyticsHeatmapGrid article[data-band="low"] em,
+.analyticsHeatmapGrid article[data-band="none"] em {
+  background: rgb(183 121 31 / 0.1);
+  color: #765215;
+}
+
 .analyticsDonutGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2897,6 +2980,10 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .analyticsHeatmapGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .analyticsKpiGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2968,6 +3055,7 @@
   }
 
   .analyticsDonutGrid,
+  .analyticsHeatmapGrid,
   .analyticsHeroStats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3058,6 +3146,7 @@
   .analyticsFilters,
   .analyticsDashboardGrid,
   .analyticsDonutGrid,
+  .analyticsHeatmapGrid,
   .analyticsHeroStats,
   .analyticsKpiGrid,
   .analyticsMetaGrid,

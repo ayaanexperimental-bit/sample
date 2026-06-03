@@ -29,6 +29,7 @@ import {
   getNeedsAttentionRows,
   getTopCoachAnalyticsRows,
   type CoachAnalyticsFunnelType,
+  type CoachAnalyticsPerformanceBand,
   type CoachAnalyticsRow
 } from "../../lib/admin-coach-analytics";
 import { adminDashboardData } from "../../lib/admin-dashboard-data";
@@ -709,6 +710,33 @@ function OverviewView({
           items={overview.recentActivity}
           title="Latest stored events"
         />
+        <AnalyticsWidget
+          eyebrow="Data Quality"
+          items={overview.dataQualityWarnings}
+          title="Production readiness"
+        />
+        <AnalyticsWidget
+          eyebrow="Anomaly Watch"
+          items={overview.anomalySignals}
+          title="Signals to review"
+        />
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.kicker}>Coach Performance Heatmap</p>
+            <h2>Conversion opportunity map</h2>
+          </div>
+          <button
+            className={styles.secondaryAction}
+            onClick={() => onSelect("coach-analytics")}
+            type="button"
+          >
+            Open Coach Analytics
+          </button>
+        </div>
+        <PerformanceHeatmap rows={overview.heatmapRows} />
       </section>
 
       <section className={styles.section}>
@@ -906,9 +934,28 @@ function buildOverviewAnalytics(
   const clickDelta = getDeltaLabel(totalClicks, previousClicks);
   const registerDelta = getDeltaLabel(totalRegisterClicks, previousRegisterClicks);
   const conversionDelta = getDeltaLabel(totalPaidConversions, previousPaidConversions);
+  const highVisitNoClickRows = rows.filter((row) => row.combined.visits >= 10 && row.combined.clicks === 0);
+  const missingFormRows = rows.filter(
+    (row) => row.hasFreeGuestLink && row.freeMetrics.googleFormStatus === "missing"
+  );
+  const missingSupportRows = rows.filter(
+    (row) => row.hasFreeGuestLink && row.freeMetrics.supportStatus === "fallback support used"
+  );
+  const inactiveRows = rows.filter((row) => row.combined.visits === 0 && row.combined.clicks === 0);
 
   return {
     activeFunnels,
+    anomalySignals: [
+      highVisitNoClickRows.length
+        ? `${highVisitNoClickRows.length} coach page${highVisitNoClickRows.length === 1 ? "" : "s"} have visits but no clicks.`
+        : "No high-visit/no-click anomaly in the selected period.",
+      analyticsRangeMeta?.id !== "all" && previousVisits > totalVisits
+        ? `Visits are down versus previous period: ${visitDelta}.`
+        : "No previous-period traffic drop signal detected.",
+      unresolvedErrors
+        ? `${unresolvedErrors} unresolved error report${unresolvedErrors === 1 ? "" : "s"} remain open.`
+        : "No unresolved error-report spike visible."
+    ],
     breakdownNotes: [
       `Top device: ${topDevice}.`,
       `Top region: ${topRegion}.`,
@@ -922,6 +969,18 @@ function buildOverviewAnalytics(
       ["Both", bothFunnels],
       ["No funnel", noFunnel]
     ]),
+    dataQualityWarnings: [
+      missingFormRows.length
+        ? `${missingFormRows.length} free coach site${missingFormRows.length === 1 ? "" : "s"} missing Google Form link.`
+        : "All current free coach sites have Google Form status resolved.",
+      missingSupportRows.length
+        ? `${missingSupportRows.length} coach site${missingSupportRows.length === 1 ? "" : "s"} using default support fallback.`
+        : "Coach-specific support fallback is configured where needed.",
+      inactiveRows.length
+        ? `${inactiveRows.length} current coach record${inactiveRows.length === 1 ? "" : "s"} have no activity in this range.`
+        : "Every current coach has some activity in this range."
+    ],
+    heatmapRows: buildCoachHeatmapRows(rows),
     healthAlerts: [
       unresolvedErrors
         ? `${unresolvedErrors} unresolved fallback/error report${unresolvedErrors === 1 ? "" : "s"} need review.`
@@ -1067,6 +1126,29 @@ function buildOverviewAiPayload({
   };
 }
 
+function buildCoachHeatmapRows(rows: CoachAnalyticsRow[]) {
+  return rows
+    .map((row) => {
+      const conversion = percentToNumber(row.combined.conversionRate);
+      const activityScore = Math.min(55, Math.log10(row.combined.visits + 1) * 22);
+      const clickScore = Math.min(35, conversion * 1.4);
+      const issuePenalty = Math.min(30, row.lowActivityReasons.length * 10);
+
+      return {
+        band: row.performanceBand,
+        clickRate: row.combined.conversionRate,
+        coachName: row.coachName,
+        funnel: getCoachFunnelLabels(row).join(" + ") || "No funnel",
+        issues: row.lowActivityReasons,
+        score: Math.max(8, Math.min(100, Math.round(activityScore + clickScore + 10 - issuePenalty))),
+        slug: row.coachSlug,
+        visits: row.combined.visits
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 12);
+}
+
 function getFunnelSplit(items: Array<[string, number]>) {
   const total = Math.max(1, sumNumbers(items.map(([, value]) => value)));
   return items.map(([label, value]) => ({
@@ -1093,6 +1175,11 @@ function getTopBreakdownLabel(values: Record<string, number>, fallback: string) 
 function getRate(clicks: number, visits: number) {
   if (!visits) return "0%";
   return `${((clicks / visits) * 100).toFixed(1)}%`;
+}
+
+function percentToNumber(value: string) {
+  const parsed = Number.parseFloat(value.replace("%", ""));
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function getDeltaLabel(current: number, previous: number) {
@@ -1642,6 +1729,47 @@ function AnalyticsAiWidget({
   );
 }
 
+function PerformanceHeatmap({
+  rows
+}: {
+  rows: Array<{
+    band: CoachAnalyticsPerformanceBand;
+    clickRate: string;
+    coachName: string;
+    funnel: string;
+    issues: string[];
+    score: number;
+    slug: string;
+    visits: number;
+  }>;
+}) {
+  if (rows.length === 0) {
+    return <p className={styles.inlineNote}>No heatmap data available yet.</p>;
+  }
+
+  return (
+    <div className={styles.analyticsHeatmapGrid}>
+      {rows.map((row) => (
+        <article
+          data-band={row.band}
+          key={row.slug || row.coachName}
+          style={{ "--score": row.score } as CSSProperties}
+        >
+          <span />
+          <div>
+            <strong>{row.coachName}</strong>
+            <small>{row.funnel}</small>
+          </div>
+          <p>
+            {row.visits.toLocaleString()} visits / {row.clickRate}
+          </p>
+          <em>{row.issues[0] || "Stable"}</em>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function FunnelBadges({ row }: { row: CoachAnalyticsRow }) {
   if (!row.hasPaidMasterclass && !row.hasFreeGuestLink) {
     return (
@@ -1696,6 +1824,10 @@ function CoachAnalyticsDetailPanel({
   const analyticsRangeLabel =
     analyticsRangeOptions.find((option) => option.value === analyticsRange)?.label ||
     analyticsRange;
+  const csvReportText = useMemo(
+    () => buildCoachCsvReport(coach, insights, analyticsRangeLabel),
+    [analyticsRangeLabel, coach, insights]
+  );
   const reportText = useMemo(
     () => buildCoachReport(coach, reportFormat, insights, analyticsRangeLabel),
     [analyticsRangeLabel, coach, insights, reportFormat]
@@ -1774,6 +1906,16 @@ function CoachAnalyticsDetailPanel({
     URL.revokeObjectURL(url);
   }
 
+  function downloadCsvReport() {
+    const blob = new Blob([csvReportText], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${coach.coachSlug || "coach"}-analytics-report.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function shareSummary() {
     const summary = buildCoachReport(coach, "whatsapp", insights, analyticsRangeLabel);
     if ("share" in navigator) {
@@ -1844,11 +1986,21 @@ function CoachAnalyticsDetailPanel({
             <option value="admin">Admin internal report</option>
           </select>
         </label>
+        <button
+          className={styles.secondaryAction}
+          onClick={() => setCopyMessage("Coach report generated from current selected range.")}
+          type="button"
+        >
+          Generate Coach Report
+        </button>
         <button className={styles.secondaryAction} onClick={() => void copyReport()} type="button">
           Copy Report
         </button>
         <button className={styles.secondaryAction} onClick={downloadReport} type="button">
           Download Report
+        </button>
+        <button className={styles.secondaryAction} onClick={downloadCsvReport} type="button">
+          Download CSV
         </button>
         <button
           className={styles.secondaryAction}
@@ -2225,6 +2377,42 @@ function buildCoachReport(
   }
 
   return common.join("\n");
+}
+
+function buildCoachCsvReport(
+  coach: CoachAnalyticsRow,
+  insights: string[],
+  dateRangeLabel: string
+) {
+  const rows = [
+    ["Field", "Value"],
+    ["Coach name", coach.coachName],
+    ["Niche", coach.niche],
+    ["Date range", dateRangeLabel],
+    ["Active funnels", getCoachFunnelLabels(coach).join(", ") || "No active funnel"],
+    ["Total visits", String(coach.combined.visits)],
+    ["Register/CTA clicks", String(coach.combined.clicks)],
+    ["Free register clicks", String(coach.freeMetrics.registerClicks)],
+    ["Paid register clicks", String(coach.paidMetrics.registerClicks)],
+    ["WhatsApp/contact clicks", String(coach.freeMetrics.whatsappClicks + coach.paidMetrics.whatsappClicks)],
+    ["Payment success events", String(coach.paidMetrics.paymentSuccess)],
+    ["Conversion rate", coach.combined.conversionRate],
+    ["Top traffic source", coach.source],
+    ["Top region", coach.region],
+    ["Device breakdown", formatDeviceBreakdown(coach.deviceBreakdown)],
+    ["Trend summary", coach.trend],
+    ["AI insights", insights.length ? insights.join(" ") : "Not enough data for AI insights yet."],
+    [
+      "Recommended next actions",
+      coach.lowActivityReasons.join("; ") || "Continue weekly sharing and compare click-through."
+    ]
+  ];
+
+  return rows.map((row) => row.map(escapeCsvCell).join(",")).join("\n");
+}
+
+function escapeCsvCell(value: string) {
+  return `"${value.replace(/"/g, '""')}"`;
 }
 
 function getCoachFunnelLabels(coach: CoachAnalyticsRow) {
