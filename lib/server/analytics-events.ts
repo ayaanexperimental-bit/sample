@@ -282,7 +282,11 @@ export async function getRecentAnalyticsEvents(
   }));
 }
 
-export function getAnalyticsRangeWindow(value: unknown): AnalyticsRangeWindow {
+export function getAnalyticsRangeWindow(
+  value: unknown,
+  customStartValue?: unknown,
+  customEndValue?: unknown
+): AnalyticsRangeWindow {
   const id = normalizeAnalyticsDateRange(value);
   const now = Math.floor(Date.now() / 1000);
   const todayStart = getUtcDayStart(now);
@@ -304,6 +308,31 @@ export function getAnalyticsRangeWindow(value: unknown): AnalyticsRangeWindow {
       id,
       label: "All stored data",
       rangeEnd: now + 1
+    };
+  }
+
+  if (id === "custom") {
+    const customStart = parseDateInputStart(customStartValue);
+    const customEnd = parseDateInputEnd(customEndValue);
+    if (customStart && customEnd && customEnd > customStart) {
+      const duration = customEnd - customStart;
+      return {
+        id,
+        label: `${formatShortDate(customStart)} to ${formatShortDate(customEnd - 1)}`,
+        previousEnd: customStart,
+        previousStart: customStart - duration,
+        rangeEnd: Math.min(customEnd, now + 1),
+        rangeStart: customStart
+      };
+    }
+
+    return {
+      id: "7d",
+      label: "7 days",
+      previousEnd: now - 7 * 86400,
+      previousStart: now - 14 * 86400,
+      rangeEnd: now + 1,
+      rangeStart: now - 7 * 86400
     };
   }
 
@@ -495,7 +524,11 @@ function normalizeFunnelType(value: unknown, eventName: AnalyticsEventName): Ana
 }
 
 function normalizeAnalyticsDateRange(value: unknown): AnalyticsDateRangeId {
-  return value === "today" || value === "30d" || value === "90d" || value === "all"
+  return value === "today" ||
+    value === "30d" ||
+    value === "90d" ||
+    value === "all" ||
+    value === "custom"
     ? value
     : "7d";
 }
@@ -505,6 +538,24 @@ function getUtcDayStart(timestamp: number) {
   return Math.floor(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 1000
   );
+}
+
+function parseDateInputStart(value: unknown) {
+  const raw = sanitizeText(value, 32);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return 0;
+  const timestamp = Math.floor(Date.parse(`${raw}T00:00:00.000Z`) / 1000);
+  return Number.isFinite(timestamp) && timestamp > 0 ? timestamp : 0;
+}
+
+function parseDateInputEnd(value: unknown) {
+  const raw = sanitizeText(value, 32);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return 0;
+  const timestamp = Math.floor(Date.parse(`${raw}T00:00:00.000Z`) / 1000);
+  return Number.isFinite(timestamp) && timestamp > 0 ? timestamp + 86400 : 0;
+}
+
+function formatShortDate(timestamp: number) {
+  return new Date(timestamp * 1000).toISOString().slice(0, 10);
 }
 
 function getDeviceType(userAgent: string): AnalyticsDeviceType {

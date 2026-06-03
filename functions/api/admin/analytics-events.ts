@@ -42,7 +42,11 @@ export async function onRequest({ request, env }: PagesContext) {
   try {
     await ensureAnalyticsEventTables(env);
     const url = new URL(request.url);
-    const rangeWindow = getAnalyticsRangeWindow(url.searchParams.get("range"));
+    const rangeWindow = getAnalyticsRangeWindow(
+      url.searchParams.get("range"),
+      url.searchParams.get("customStart"),
+      url.searchParams.get("customEnd")
+    );
     const [analyticsSummaries, previousAnalyticsSummaries, recentEvents] = await Promise.all([
       getAnalyticsMetricSummaries(env, {
         rangeEnd: rangeWindow.rangeEnd,

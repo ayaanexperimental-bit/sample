@@ -86,6 +86,7 @@ const analyticsRangeOptions: Array<{ label: string; value: AnalyticsDateRangeId 
   { label: "7 days", value: "7d" },
   { label: "30 days", value: "30d" },
   { label: "90 days", value: "90d" },
+  { label: "Custom", value: "custom" },
   { label: "All stored", value: "all" }
 ];
 
@@ -135,6 +136,8 @@ export function AdminDashboardShell({
   const [actionDialog, setActionDialog] = useState<ActionDialogState>(null);
   const [errorReports, setErrorReports] = useState<AdminErrorReport[]>([]);
   const [errorReportSource, setErrorReportSource] = useState("loading");
+  const [analyticsCustomEnd, setAnalyticsCustomEnd] = useState("");
+  const [analyticsCustomStart, setAnalyticsCustomStart] = useState("");
   const [analyticsRange, setAnalyticsRange] = useState<AnalyticsDateRangeId>("7d");
   const [analyticsRangeMeta, setAnalyticsRangeMeta] = useState<AnalyticsEventRange | null>(null);
   const [analyticsSource, setAnalyticsSource] = useState("loading");
@@ -183,7 +186,12 @@ export function AdminDashboardShell({
 
     async function loadAnalyticsEvents() {
       try {
-        const response = await fetch(`/api/admin/analytics-events?range=${analyticsRange}`, {
+        const params = new URLSearchParams({ range: analyticsRange });
+        if (analyticsRange === "custom") {
+          if (analyticsCustomStart) params.set("customStart", analyticsCustomStart);
+          if (analyticsCustomEnd) params.set("customEnd", analyticsCustomEnd);
+        }
+        const response = await fetch(`/api/admin/analytics-events?${params.toString()}`, {
           cache: "no-store",
           credentials: "include"
         });
@@ -219,7 +227,7 @@ export function AdminDashboardShell({
     return () => {
       active = false;
     };
-  }, [analyticsRange]);
+  }, [analyticsCustomEnd, analyticsCustomStart, analyticsRange]);
 
   useEffect(() => {
     let active = true;
@@ -285,6 +293,8 @@ export function AdminDashboardShell({
 
         {activeView === "overview" ? (
           <OverviewView
+            analyticsCustomEnd={analyticsCustomEnd}
+            analyticsCustomStart={analyticsCustomStart}
             analyticsRange={analyticsRange}
             analyticsRangeMeta={analyticsRangeMeta}
             analyticsSource={analyticsSource}
@@ -293,6 +303,8 @@ export function AdminDashboardShell({
             errorReports={errorReports}
             onSelect={setActiveView}
             onAnalyticsRangeChange={setAnalyticsRange}
+            onAnalyticsCustomEndChange={setAnalyticsCustomEnd}
+            onAnalyticsCustomStartChange={setAnalyticsCustomStart}
             previousAnalyticsSummaries={previousAnalyticsSummaries}
             recentEvents={recentAnalyticsEvents}
             source={coachSiteSource}
@@ -332,10 +344,14 @@ export function AdminDashboardShell({
         ) : null}
         {activeView === "coach-analytics" ? (
           <CoachAnalyticsView
+            analyticsCustomEnd={analyticsCustomEnd}
+            analyticsCustomStart={analyticsCustomStart}
             analyticsRange={analyticsRange}
             analyticsSource={analyticsSource}
             analyticsSummaries={analyticsSummaries}
             coachSites={liveCoachSites}
+            onAnalyticsCustomEndChange={setAnalyticsCustomEnd}
+            onAnalyticsCustomStartChange={setAnalyticsCustomStart}
             onAnalyticsRangeChange={setAnalyticsRange}
             onSelect={setActiveView}
             source={coachSiteSource}
@@ -373,6 +389,8 @@ export function AdminDashboardShell({
 }
 
 function OverviewView({
+  analyticsCustomEnd,
+  analyticsCustomStart,
   analyticsRange,
   analyticsRangeMeta,
   analyticsSource,
@@ -381,16 +399,22 @@ function OverviewView({
   errorReports,
   onSelect,
   onAnalyticsRangeChange,
+  onAnalyticsCustomEndChange,
+  onAnalyticsCustomStartChange,
   previousAnalyticsSummaries,
   recentEvents,
   source
 }: {
+  analyticsCustomEnd: string;
+  analyticsCustomStart: string;
   analyticsRange: AnalyticsDateRangeId;
   analyticsRangeMeta: AnalyticsEventRange | null;
   analyticsSource: string;
   analyticsSummaries: AnalyticsMetricSummary[];
   coachSites: CoachSiteRecord[];
   errorReports: AdminErrorReport[];
+  onAnalyticsCustomEndChange: (value: string) => void;
+  onAnalyticsCustomStartChange: (value: string) => void;
   onAnalyticsRangeChange: (value: AnalyticsDateRangeId) => void;
   onSelect: (view: AdminViewId) => void;
   previousAnalyticsSummaries: AnalyticsMetricSummary[];
@@ -452,6 +476,26 @@ function OverviewView({
               ))}
             </select>
           </label>
+          {analyticsRange === "custom" ? (
+            <>
+              <label className={styles.compactSelectLabel}>
+                Start
+                <input
+                  onChange={(event) => onAnalyticsCustomStartChange(event.target.value)}
+                  type="date"
+                  value={analyticsCustomStart}
+                />
+              </label>
+              <label className={styles.compactSelectLabel}>
+                End
+                <input
+                  onChange={(event) => onAnalyticsCustomEndChange(event.target.value)}
+                  type="date"
+                  value={analyticsCustomEnd}
+                />
+              </label>
+            </>
+          ) : null}
           <button
             className={styles.primaryAction}
             onClick={() => onSelect("create-coach-site")}
@@ -962,18 +1006,26 @@ function sumNumbers(values: number[]) {
 }
 
 function CoachAnalyticsView({
+  analyticsCustomEnd,
+  analyticsCustomStart,
   analyticsRange,
   analyticsSource,
   analyticsSummaries,
   coachSites,
+  onAnalyticsCustomEndChange,
+  onAnalyticsCustomStartChange,
   onAnalyticsRangeChange,
   onSelect,
   source
 }: {
+  analyticsCustomEnd: string;
+  analyticsCustomStart: string;
   analyticsRange: AnalyticsDateRangeId;
   analyticsSource: string;
   analyticsSummaries: AnalyticsMetricSummary[];
   coachSites: CoachSiteRecord[];
+  onAnalyticsCustomEndChange: (value: string) => void;
+  onAnalyticsCustomStartChange: (value: string) => void;
   onAnalyticsRangeChange: (value: AnalyticsDateRangeId) => void;
   onSelect: (view: AdminViewId) => void;
   source: string;
@@ -1143,6 +1195,26 @@ function CoachAnalyticsView({
             ))}
           </select>
         </label>
+        {analyticsRange === "custom" ? (
+          <>
+            <label>
+              Start date
+              <input
+                onChange={(event) => onAnalyticsCustomStartChange(event.target.value)}
+                type="date"
+                value={analyticsCustomStart}
+              />
+            </label>
+            <label>
+              End date
+              <input
+                onChange={(event) => onAnalyticsCustomEndChange(event.target.value)}
+                type="date"
+                value={analyticsCustomEnd}
+              />
+            </label>
+          </>
+        ) : null}
         <label>
           Region
           <select onChange={(event) => setRegionFilter(event.target.value)} value={regionFilter}>

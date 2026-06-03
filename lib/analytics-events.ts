@@ -1,6 +1,6 @@
 export type AnalyticsFunnelType = "free_guest_link" | "paid_masterclass";
 
-export type AnalyticsDateRangeId = "7d" | "30d" | "90d" | "all" | "today";
+export type AnalyticsDateRangeId = "7d" | "30d" | "90d" | "all" | "custom" | "today";
 
 export type AnalyticsEventName =
   | "coach_google_form_click"
