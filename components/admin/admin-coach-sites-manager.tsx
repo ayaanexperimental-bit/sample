@@ -1687,8 +1687,8 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
                       <td>
                         <span>{site.analytics.totalVisits.toLocaleString()} visits</span>
                         <span>
-                          {site.analytics.totalRegisterClicks.toLocaleString()} clicks /{" "}
-                          {site.analytics.conversionRate}
+                          {site.analytics.totalRegisterClicks.toLocaleString()} CTA clicks /{" "}
+                          {site.analytics.conversionRate} click-through
                         </span>
                       </td>
                       <td>
@@ -2082,9 +2082,9 @@ function CoachDialogRenderer({
           <div className={styles.manageMetrics}>
             <span>{dialog.site.analytics.totalVisits.toLocaleString()} visits</span>
             <span>
-              {dialog.site.analytics.totalRegisterClicks.toLocaleString()} register clicks
+              {dialog.site.analytics.totalRegisterClicks.toLocaleString()} register CTA clicks
             </span>
-            <span>{dialog.site.analytics.conversionRate} conversion</span>
+            <span>{dialog.site.analytics.conversionRate} click-through</span>
           </div>
           <div className={styles.formActions}>
             <button
@@ -2275,7 +2275,7 @@ function CoachDialogRenderer({
             <dd>{dialog.site.analytics.totalVisits.toLocaleString()}</dd>
           </div>
           <div>
-            <dt>Register clicks</dt>
+            <dt>Register CTA clicks</dt>
             <dd>{dialog.site.analytics.totalRegisterClicks.toLocaleString()}</dd>
           </div>
           <div>
@@ -2283,7 +2283,7 @@ function CoachDialogRenderer({
             <dd>{dialog.site.analytics.totalWhatsappClicks.toLocaleString()}</dd>
           </div>
           <div>
-            <dt>Conversion</dt>
+            <dt>Click-through rate</dt>
             <dd>{dialog.site.analytics.conversionRate}</dd>
           </div>
         </dl>

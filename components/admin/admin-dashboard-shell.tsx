@@ -282,7 +282,7 @@ function OverviewView({
       "Today's visits",
       "Weekly visits",
       "Monthly visits",
-      "Total register button clicks",
+      "Total register CTA clicks",
       "Total WhatsApp clicks",
       "Recent error reports"
     ].includes(metric.label)
@@ -333,7 +333,7 @@ function OverviewView({
                   <span>{coach.rank}</span>
                   <strong>{coach.name}</strong>
                   <p>
-                    {coach.visits.toLocaleString()} visits / {coach.conversionRate}
+                    {coach.visits.toLocaleString()} visits / {coach.conversionRate} click-through
                   </p>
                 </div>
               ))
@@ -426,7 +426,7 @@ function TopCoachesView({ data }: { data: typeof adminDashboardData }) {
               <th>Public link</th>
               <th>Visits</th>
               <th>Clicks</th>
-              <th>Conversion</th>
+              <th>Click-through</th>
               <th>Trend</th>
             </tr>
           </thead>
@@ -617,7 +617,7 @@ function CoachAnalyticsView({
           >
             <option value="visits">Visits</option>
             <option value="clicks">Clicks</option>
-            <option value="conversion">Conversion rate</option>
+            <option value="conversion">Click-through rate</option>
             <option value="recent">Recent activity</option>
             <option value="weekly">Weekly growth</option>
             <option value="monthly">Monthly performance</option>
@@ -662,7 +662,7 @@ function CoachAnalyticsView({
                 </span>
                 <span>
                   <strong>{row.combined.conversionRate}</strong>
-                  Conversion
+                  Click-through
                 </span>
               </div>
               <div className={styles.analyticsMetaGrid}>
@@ -701,7 +701,7 @@ function CoachAnalyticsView({
                   <strong>{row.coachName}</strong>
                   <small>
                     {row.bestFunnel} / {row.combined.visits.toLocaleString()} visits /{" "}
-                    {row.combined.conversionRate}
+                    {row.combined.conversionRate} click-through
                   </small>
                 </button>
               ))
@@ -734,9 +734,9 @@ function CoachAnalyticsView({
       </section>
 
       <p className={styles.inlineNote}>
-        Free-funnel analytics track visits, register clicks, and Google Form opens. Actual Google
-        Form submissions stay in the connected Form/Sheet unless a Sheets sync is intentionally
-        added later. Paid payment truth remains in the existing Razorpay-to-Sheet analytics system.
+        Free-funnel analytics track visits, register CTA clicks, and Google Form opens only. These
+        numbers are not treated as form fills or submitted registrations. Paid payment truth remains
+        in the existing Razorpay-to-Sheet analytics system.
       </p>
 
       <AdminActionDialog
@@ -869,7 +869,7 @@ function CombinedAnalyticsTab({ coach }: { coach: CoachAnalyticsRow }) {
       <div className={styles.analyticsKpiGrid}>
         <AnalyticsKpiCard label="Combined visits" value={coach.combined.visits.toLocaleString()} />
         <AnalyticsKpiCard label="Combined clicks" value={coach.combined.clicks.toLocaleString()} />
-        <AnalyticsKpiCard label="Conversion" value={coach.combined.conversionRate} />
+        <AnalyticsKpiCard label="Click-through rate" value={coach.combined.conversionRate} />
         <AnalyticsKpiCard label="Best funnel" value={coach.bestFunnel} />
       </div>
       <ComparisonBars
@@ -893,7 +893,10 @@ function PaidAnalyticsTab({ coach }: { coach: CoachAnalyticsRow }) {
     <section className={styles.analyticsTabPanel}>
       <div className={styles.analyticsKpiGrid}>
         <AnalyticsKpiCard label="Landing visits" value={metrics.visits.toLocaleString()} />
-        <AnalyticsKpiCard label="Register clicks" value={metrics.registerClicks.toLocaleString()} />
+        <AnalyticsKpiCard
+          label="Register CTA clicks"
+          value={metrics.registerClicks.toLocaleString()}
+        />
         <AnalyticsKpiCard
           label="Payment clicks"
           value={metrics.paymentButtonClicks.toLocaleString()}
@@ -908,7 +911,7 @@ function PaidAnalyticsTab({ coach }: { coach: CoachAnalyticsRow }) {
       <FunnelSteps
         steps={[
           ["Landing page visit", metrics.visits],
-          ["Register click", metrics.registerClicks],
+          ["Register CTA click", metrics.registerClicks],
           ["Payment click", metrics.paymentButtonClicks],
           ["Payment initiated", metrics.paymentInitiated],
           ["Payment success", metrics.paymentSuccess],
@@ -931,7 +934,10 @@ function FreeAnalyticsTab({ coach }: { coach: CoachAnalyticsRow }) {
     <section className={styles.analyticsTabPanel}>
       <div className={styles.analyticsKpiGrid}>
         <AnalyticsKpiCard label="Coach page visits" value={metrics.visits.toLocaleString()} />
-        <AnalyticsKpiCard label="Register clicks" value={metrics.registerClicks.toLocaleString()} />
+        <AnalyticsKpiCard
+          label="Register CTA clicks"
+          value={metrics.registerClicks.toLocaleString()}
+        />
         <AnalyticsKpiCard
           label="Google Form opens"
           value={metrics.googleFormClicks.toLocaleString()}
@@ -941,12 +947,12 @@ function FreeAnalyticsTab({ coach }: { coach: CoachAnalyticsRow }) {
           value={metrics.whatsappClicks.toLocaleString()}
         />
         <AnalyticsKpiCard label="Video plays" value={metrics.videoPlays.toLocaleString()} />
-        <AnalyticsKpiCard label="Conversion" value={metrics.conversionRate} />
+        <AnalyticsKpiCard label="Click-through rate" value={metrics.conversionRate} />
       </div>
       <FunnelSteps
         steps={[
           ["Coach public page visit", metrics.visits],
-          ["Register button click", metrics.registerClicks],
+          ["Register CTA click", metrics.registerClicks],
           ["Google Form opened", metrics.googleFormClicks]
         ]}
       />
@@ -957,9 +963,8 @@ function FreeAnalyticsTab({ coach }: { coach: CoachAnalyticsRow }) {
         <span>Device: {formatDeviceBreakdown(coach.deviceBreakdown)}</span>
       </div>
       <p className={styles.inlineNote}>
-        This panel tracks the visitor opening the Google Form from the coach site. Actual submitted
-        Form responses remain inside the connected Google Form/Sheet unless a Sheets sync is added
-        later.
+        This panel tracks only the visitor opening the Google Form from the coach site. It does not
+        count submitted forms or completed registrations.
       </p>
     </section>
   );

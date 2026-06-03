@@ -90,11 +90,11 @@ export const adminDashboardData: AdminDashboardData = {
     { label: "Monthly visits", value: "0", tone: "neutral" },
     { label: "Total coach referral sites", value: "0", tone: "neutral" },
     { label: "Active coach sites", value: "0", tone: "neutral" },
-    { label: "Total register button clicks", value: "0", tone: "neutral" },
+    { label: "Total register CTA clicks", value: "0", tone: "neutral" },
     { label: "Total WhatsApp clicks", value: "0", tone: "neutral" },
     { label: "Paid masterclass visits", value: "0", tone: "neutral" },
-    { label: "Paid masterclass conversions", value: "0", tone: "neutral" },
-    { label: "Overall conversion rate", value: "0%", tone: "neutral" },
+    { label: "Paid masterclass payment success", value: "0", tone: "neutral" },
+    { label: "Overall click-through rate", value: "0%", tone: "neutral" },
     { label: "Recent error reports", value: "0", tone: "neutral" }
   ],
   topCoaches: [],
@@ -103,16 +103,16 @@ export const adminDashboardData: AdminDashboardData = {
       name: "Free Coach Referral Funnel",
       steps: [
         { label: "Coach page visits", value: "0" },
-        { label: "Register button clicks", value: "0" },
-        { label: "Google Form link clicks", value: "0" },
-        { label: "Coach-wise conversion rate", value: "0%" }
+        { label: "Register CTA clicks", value: "0" },
+        { label: "Google Form opens", value: "0" },
+        { label: "Coach-wise click-through rate", value: "0%" }
       ]
     },
     {
       name: "Paid Masterclass Funnel",
       steps: [
         { label: "Landing page visits", value: "0" },
-        { label: "Register button clicks", value: "0" },
+        { label: "Register CTA clicks", value: "0" },
         { label: "Payment clicks", value: "0" },
         { label: "Payment success", value: "0" },
         { label: "Success page views", value: "0" },
