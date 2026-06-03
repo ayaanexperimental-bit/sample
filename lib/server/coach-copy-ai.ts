@@ -10,11 +10,13 @@ export type CoachCopyScope = "all" | "benefits" | "cta" | "faq" | "hero" | "intr
 export type CoachCopyAiInput = {
   bio?: string;
   coachName: string;
+  existingPaidFunnelUrl?: string;
   hasGoogleFormUrl?: boolean;
   hasSupportContact?: boolean;
   heroMediaType?: "image" | "none" | "video";
   location?: string;
   niche: string;
+  paidFunnelContext?: string;
   registerButtonText?: string;
   scope?: CoachCopyScope;
   supportText?: string;
@@ -251,12 +253,20 @@ function createCoachCopyPrompt(input: CoachCopyAiInput, scope: CoachCopyScope) {
     `Coach location: ${input.location || "Not provided"}`,
     `Coach short bio: ${input.bio || "Not provided"}`,
     `Coach vision/mission: ${input.vision || "Not provided"}`,
+    input.existingPaidFunnelUrl
+      ? `Existing paid funnel page URL analyzed by admin: ${input.existingPaidFunnelUrl}`
+      : "Existing paid funnel page URL: Not provided",
+    input.paidFunnelContext
+      ? `Clean visible context extracted from the existing paid funnel page:\n${input.paidFunnelContext.slice(0, 7000)}`
+      : "Extracted paid funnel page context: Not provided",
     `Hero media type selected: ${input.heroMediaType || "none"}`,
     `Registration link configured: ${input.hasGoogleFormUrl ? "yes" : "no"}`,
     `Preferred register button text: ${input.registerButtonText || "Register Now"}`,
     `Hidden fallback support text configured: ${input.supportText ? "yes" : "no"}`,
     `Hidden fallback support contact configured: ${input.hasSupportContact ? "yes" : "no"}`,
     "The public page leads to a Google Form register button when configured. Do not claim form submissions are tracked.",
+    "If paid funnel page context is provided, adapt it into a free guest/referral page. Do not copy paid funnel text word-for-word.",
+    "Do not invent coach credentials, medical claims, contact details, or outcomes that are not supported by admin fields or extracted page context.",
     "Do not publish coach phone, email, WhatsApp, or contact-support instructions in normal page copy.",
     "Tone: professional, supportive, clear, practical, and not medical-diagnosis oriented.",
     scope === "all"

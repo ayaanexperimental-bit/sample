@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AdminCoachSitesManager } from "./admin-coach-sites-manager";
 import {
   AdminActionDialog,
@@ -17,6 +17,14 @@ import {
   createErrorReportBugPrompt
 } from "../../lib/admin-control-center";
 import type { CoachSiteRecord } from "../../lib/admin-coach-sites";
+import {
+  buildCoachAnalyticsRows,
+  filterCoachAnalyticsRows,
+  getNeedsAttentionRows,
+  getTopCoachAnalyticsRows,
+  type CoachAnalyticsFunnelType,
+  type CoachAnalyticsRow
+} from "../../lib/admin-coach-analytics";
 import { adminDashboardData } from "../../lib/admin-dashboard-data";
 
 type AdminDashboardShellProps = {
@@ -457,74 +465,576 @@ function CoachAnalyticsView({
   coachSites: CoachSiteRecord[];
   source: string;
 }) {
+  const [activeTab, setActiveTab] = useState<CoachAnalyticsFunnelType>("free");
+  const [dateRange, setDateRange] = useState("all");
+  const [funnelFilter, setFunnelFilter] = useState<"all" | "both" | "free" | "none" | "paid">(
+    "all"
+  );
+  const [performanceFilter, setPerformanceFilter] = useState<
+    "all" | "high" | "low" | "medium" | "none"
+  >("all");
+  const [query, setQuery] = useState("");
+  const [regionFilter, setRegionFilter] = useState("all");
+  const [selectedCoach, setSelectedCoach] = useState<CoachAnalyticsRow | null>(null);
+  const [sortBy, setSortBy] = useState<
+    "clicks" | "conversion" | "monthly" | "recent" | "visits" | "weekly"
+  >("visits");
+  const [statusFilter, setStatusFilter] = useState<
+    "active" | "all" | "archived" | "draft" | "paused" | "published" | "removed"
+  >("all");
+  const rows = useMemo(() => buildCoachAnalyticsRows(coachSites), [coachSites]);
+  const filteredRows = useMemo(
+    () =>
+      filterCoachAnalyticsRows({
+        dateRange,
+        funnelFilter,
+        performanceFilter,
+        query,
+        regionFilter,
+        rows,
+        sortBy,
+        statusFilter
+      }),
+    [dateRange, funnelFilter, performanceFilter, query, regionFilter, rows, sortBy, statusFilter]
+  );
+  const topRows = useMemo(() => getTopCoachAnalyticsRows(rows), [rows]);
+  const needsAttentionRows = useMemo(() => getNeedsAttentionRows(rows), [rows]);
+  const regions = useMemo(
+    () =>
+      Array.from(
+        new Set(rows.map((row) => row.region).filter((region) => region !== "Not available"))
+      ),
+    [rows]
+  );
+
+  function openCoachAnalytics(row: CoachAnalyticsRow) {
+    setSelectedCoach(row);
+    setActiveTab(row.availableTabs[0] || "free");
+  }
+
   return (
     <AdminPageShell eyebrow="Coach Sites" title="Coach Analytics">
       <p className={styles.inlineNote}>
-        Source: {source === "live-database" ? "Live coach-site database" : source}. Free guest link
-        analytics show tracked page views, register clicks, WhatsApp clicks, and video plays.
+        Source:{" "}
+        {source === "live-database" ? "Live coach-site database + paid funnel config" : source}.
+        Every coach is detected dynamically from coach-site records and paid funnel configuration.
       </p>
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Coach slug</th>
-              <th>Status</th>
-              <th>Public URL</th>
-              <th>Total visits</th>
-              <th>Daily</th>
-              <th>Weekly</th>
-              <th>Monthly</th>
-              <th>Register clicks</th>
-              <th>WhatsApp clicks</th>
-              <th>Video plays</th>
-              <th>Conversion</th>
-              <th>Device</th>
-              <th>Region</th>
-              <th>Source</th>
-            </tr>
-          </thead>
-          <tbody>
-            {coachSites.length > 0 ? (
-              coachSites.map((site) => (
-                <tr key={site.id}>
-                  <td>
-                    <code>{site.slug}</code>
-                  </td>
-                  <td>
-                    <span className={styles.statusBadge} data-status={site.status}>
-                      {site.status}
-                    </span>
-                  </td>
-                  <td>
-                    <code>{site.publicUrl}</code>
-                  </td>
-                  <td>{site.analytics.totalVisits.toLocaleString()}</td>
-                  <td>{site.analytics.dailyVisits.toLocaleString()}</td>
-                  <td>{site.analytics.weeklyVisits.toLocaleString()}</td>
-                  <td>{site.analytics.monthlyVisits.toLocaleString()}</td>
-                  <td>{site.analytics.totalRegisterClicks.toLocaleString()}</td>
-                  <td>{site.analytics.totalWhatsappClicks.toLocaleString()}</td>
-                  <td>{site.analytics.videoPlays.toLocaleString()}</td>
-                  <td>{site.analytics.conversionRate}</td>
-                  <td>{formatDeviceBreakdown(site.analytics.deviceBreakdown)}</td>
-                  <td>{site.analytics.region}</td>
-                  <td>{site.analytics.source}</td>
-                </tr>
+
+      <section className={styles.analyticsKpiGrid} aria-label="Coach analytics summary">
+        <AnalyticsKpiCard label="Total coaches" value={rows.length.toLocaleString()} />
+        <AnalyticsKpiCard
+          label="Paid funnels"
+          value={rows.filter((row) => row.hasPaidMasterclass).length.toLocaleString()}
+        />
+        <AnalyticsKpiCard
+          label="Free guest links"
+          value={rows.filter((row) => row.hasFreeGuestLink).length.toLocaleString()}
+        />
+        <AnalyticsKpiCard
+          label="Needs attention"
+          value={needsAttentionRows.length.toLocaleString()}
+        />
+      </section>
+
+      <section className={styles.analyticsFilters} aria-label="Coach analytics filters">
+        <label>
+          Search coach
+          <input
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Name, niche, or slug"
+            type="search"
+            value={query}
+          />
+        </label>
+        <label>
+          Funnel type
+          <select
+            onChange={(event) => setFunnelFilter(event.target.value as typeof funnelFilter)}
+            value={funnelFilter}
+          >
+            <option value="all">All funnels</option>
+            <option value="paid">Paid only</option>
+            <option value="free">Free only</option>
+            <option value="both">Both</option>
+            <option value="none">No funnel</option>
+          </select>
+        </label>
+        <label>
+          Status
+          <select
+            onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+            value={statusFilter}
+          >
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+            <option value="paused">Paused</option>
+            <option value="archived">Archived</option>
+            <option value="removed">Removed</option>
+          </select>
+        </label>
+        <label>
+          Date range
+          <select onChange={(event) => setDateRange(event.target.value)} value={dateRange}>
+            <option value="all">All stored data</option>
+            <option value="weekly">Weekly summary</option>
+            <option value="monthly">Monthly summary</option>
+          </select>
+        </label>
+        <label>
+          Region
+          <select onChange={(event) => setRegionFilter(event.target.value)} value={regionFilter}>
+            <option value="all">All regions</option>
+            {regions.map((region) => (
+              <option key={region} value={region}>
+                {region}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Performance
+          <select
+            onChange={(event) =>
+              setPerformanceFilter(event.target.value as typeof performanceFilter)
+            }
+            value={performanceFilter}
+          >
+            <option value="all">All performance</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+            <option value="none">No activity</option>
+          </select>
+        </label>
+        <label>
+          Sort by
+          <select
+            onChange={(event) => setSortBy(event.target.value as typeof sortBy)}
+            value={sortBy}
+          >
+            <option value="visits">Visits</option>
+            <option value="clicks">Clicks</option>
+            <option value="conversion">Conversion rate</option>
+            <option value="recent">Recent activity</option>
+            <option value="weekly">Weekly growth</option>
+            <option value="monthly">Monthly performance</option>
+          </select>
+        </label>
+      </section>
+
+      <section className={styles.analyticsGrid} aria-label="Coach analytics list">
+        {filteredRows.length > 0 ? (
+          filteredRows.map((row) => (
+            <article className={styles.analyticsCoachCard} key={row.coachId}>
+              <div className={styles.analyticsCoachIdentity}>
+                {row.photoUrl ? (
+                  <span
+                    aria-hidden="true"
+                    className={styles.analyticsAvatar}
+                    style={{ backgroundImage: `url(${row.photoUrl})` }}
+                  />
+                ) : (
+                  <span>{row.coachName[0]}</span>
+                )}
+                <div>
+                  <h3>{row.coachName}</h3>
+                  <p>{row.niche}</p>
+                  <small>{row.location || row.coachSlug}</small>
+                </div>
+              </div>
+              <div className={styles.funnelBadgeRow}>
+                <FunnelBadges row={row} />
+                <span className={styles.statusBadge} data-status={row.status}>
+                  {row.status}
+                </span>
+              </div>
+              <div className={styles.analyticsMiniMetrics}>
+                <span>
+                  <strong>{row.combined.visits.toLocaleString()}</strong>
+                  Visits
+                </span>
+                <span>
+                  <strong>{row.combined.clicks.toLocaleString()}</strong>
+                  Clicks
+                </span>
+                <span>
+                  <strong>{row.combined.conversionRate}</strong>
+                  Conversion
+                </span>
+              </div>
+              <div className={styles.analyticsMetaGrid}>
+                <span>Best funnel: {row.bestFunnel}</span>
+                <span>Last activity: {row.combined.lastActivity}</span>
+                <span>Region: {row.region}</span>
+                <span>Source: {row.source}</span>
+              </div>
+              <button
+                className={styles.primaryAction}
+                onClick={() => openCoachAnalytics(row)}
+                type="button"
+              >
+                View Analytics
+              </button>
+            </article>
+          ))
+        ) : (
+          <div className={styles.emptyState}>No coaches match this filter.</div>
+        )}
+      </section>
+
+      <section className={styles.twoColumn}>
+        <article className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <p className={styles.kicker}>Top Performers</p>
+              <h2>Real recorded activity</h2>
+            </div>
+          </div>
+          <div className={styles.analyticsRankList}>
+            {topRows.length > 0 ? (
+              topRows.map((row, index) => (
+                <button key={row.coachId} onClick={() => openCoachAnalytics(row)} type="button">
+                  <span>#{index + 1}</span>
+                  <strong>{row.coachName}</strong>
+                  <small>
+                    {row.bestFunnel} / {row.combined.visits.toLocaleString()} visits /{" "}
+                    {row.combined.conversionRate}
+                  </small>
+                </button>
               ))
             ) : (
-              <tr>
-                <td colSpan={14}>No coach analytics available yet.</td>
-              </tr>
+              <p>No top performer data available yet.</p>
             )}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </article>
+
+        <article className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <p className={styles.kicker}>Needs Attention</p>
+              <h2>Coach-level action list</h2>
+            </div>
+          </div>
+          <div className={styles.analyticsAttentionList}>
+            {needsAttentionRows.length > 0 ? (
+              needsAttentionRows.map((row) => (
+                <button key={row.coachId} onClick={() => openCoachAnalytics(row)} type="button">
+                  <strong>{row.coachName}</strong>
+                  <span>{row.lowActivityReasons.join(" / ")}</span>
+                </button>
+              ))
+            ) : (
+              <p>No coach-level issues detected from current records.</p>
+            )}
+          </div>
+        </article>
+      </section>
+
       <p className={styles.inlineNote}>
         Google Form submissions are not claimed here. Current free-funnel analytics stop at tracked
-        clicks until Google Sheets/Form integration is approved.
+        clicks until Google Sheets/Form integration is connected. Paid payment-sensitive data is not
+        displayed.
       </p>
+
+      <AdminActionDialog
+        onClose={() => setSelectedCoach(null)}
+        open={Boolean(selectedCoach)}
+        size="large"
+        title={selectedCoach ? `${selectedCoach.coachName} Analytics` : "Coach Analytics"}
+      >
+        {selectedCoach ? (
+          <CoachAnalyticsDetailPanel
+            activeTab={activeTab}
+            coach={selectedCoach}
+            onTabChange={setActiveTab}
+          />
+        ) : null}
+      </AdminActionDialog>
     </AdminPageShell>
   );
+}
+
+function AnalyticsKpiCard({ label, value }: { label: string; value: string }) {
+  return (
+    <article className={styles.metricCard} data-tone="neutral">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </article>
+  );
+}
+
+function FunnelBadges({ row }: { row: CoachAnalyticsRow }) {
+  if (!row.hasPaidMasterclass && !row.hasFreeGuestLink) {
+    return (
+      <span className={styles.funnelBadge} data-funnel="none">
+        None
+      </span>
+    );
+  }
+
+  return (
+    <>
+      {row.hasPaidMasterclass ? (
+        <span className={styles.funnelBadge} data-funnel="paid">
+          Paid
+        </span>
+      ) : null}
+      {row.hasFreeGuestLink ? (
+        <span className={styles.funnelBadge} data-funnel="free">
+          Free
+        </span>
+      ) : null}
+      {row.combinedAvailable ? (
+        <span className={styles.funnelBadge} data-funnel="both">
+          Both
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+function CoachAnalyticsDetailPanel({
+  activeTab,
+  coach,
+  onTabChange
+}: {
+  activeTab: CoachAnalyticsFunnelType;
+  coach: CoachAnalyticsRow;
+  onTabChange: (tab: CoachAnalyticsFunnelType) => void;
+}) {
+  return (
+    <div className={styles.analyticsDetail}>
+      <header className={styles.analyticsDetailHeader}>
+        <div className={styles.analyticsCoachIdentity}>
+          {coach.photoUrl ? (
+            <span
+              aria-hidden="true"
+              className={styles.analyticsAvatar}
+              style={{ backgroundImage: `url(${coach.photoUrl})` }}
+            />
+          ) : (
+            <span>{coach.coachName[0]}</span>
+          )}
+          <div>
+            <p className={styles.kicker}>Coach-wise analytics</p>
+            <h3>{coach.coachName}</h3>
+            <p>{coach.niche}</p>
+            <code>{coach.publicLink || coach.coachSlug}</code>
+          </div>
+        </div>
+        <div className={styles.funnelBadgeRow}>
+          <FunnelBadges row={coach} />
+        </div>
+      </header>
+
+      {coach.availableTabs.length > 0 ? (
+        <div className={styles.analyticsTabs} role="tablist" aria-label="Coach analytics tabs">
+          {coach.availableTabs.map((tab) => (
+            <button
+              aria-selected={activeTab === tab}
+              data-active={activeTab === tab ? "true" : "false"}
+              key={tab}
+              onClick={() => onTabChange(tab)}
+              role="tab"
+              type="button"
+            >
+              {getAnalyticsTabLabel(tab)}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {coach.availableTabs.length === 0 ? (
+        <div className={styles.emptyState}>
+          No funnel connected yet. This coach can stay listed here until a paid funnel or free guest
+          website is connected.
+        </div>
+      ) : null}
+
+      {activeTab === "combined" && coach.combinedAvailable ? (
+        <CombinedAnalyticsTab coach={coach} />
+      ) : null}
+      {activeTab === "paid" && coach.hasPaidMasterclass ? <PaidAnalyticsTab coach={coach} /> : null}
+      {activeTab === "free" && coach.hasFreeGuestLink ? <FreeAnalyticsTab coach={coach} /> : null}
+    </div>
+  );
+}
+
+function CombinedAnalyticsTab({ coach }: { coach: CoachAnalyticsRow }) {
+  return (
+    <section className={styles.analyticsTabPanel}>
+      <div className={styles.analyticsKpiGrid}>
+        <AnalyticsKpiCard label="Combined visits" value={coach.combined.visits.toLocaleString()} />
+        <AnalyticsKpiCard label="Combined clicks" value={coach.combined.clicks.toLocaleString()} />
+        <AnalyticsKpiCard label="Conversion" value={coach.combined.conversionRate} />
+        <AnalyticsKpiCard label="Best funnel" value={coach.bestFunnel} />
+      </div>
+      <ComparisonBars
+        items={[
+          { label: "Paid visits", value: coach.paidMetrics.visits },
+          { label: "Free visits", value: coach.freeMetrics.visits },
+          { label: "Paid clicks", value: coach.paidMetrics.clicks },
+          { label: "Free clicks", value: coach.freeMetrics.clicks }
+        ]}
+      />
+      <BreakdownGrid coach={coach} />
+      <InsightList coach={coach} />
+    </section>
+  );
+}
+
+function PaidAnalyticsTab({ coach }: { coach: CoachAnalyticsRow }) {
+  const metrics = coach.paidMetrics;
+
+  return (
+    <section className={styles.analyticsTabPanel}>
+      <div className={styles.analyticsKpiGrid}>
+        <AnalyticsKpiCard label="Landing visits" value={metrics.visits.toLocaleString()} />
+        <AnalyticsKpiCard label="Register clicks" value={metrics.registerClicks.toLocaleString()} />
+        <AnalyticsKpiCard
+          label="Payment clicks"
+          value={metrics.paymentButtonClicks.toLocaleString()}
+        />
+        <AnalyticsKpiCard label="Payment success" value={metrics.paymentSuccess.toLocaleString()} />
+        <AnalyticsKpiCard
+          label="Success page views"
+          value={metrics.successPageViews.toLocaleString()}
+        />
+        <AnalyticsKpiCard label="WhatsApp clicks" value={metrics.whatsappClicks.toLocaleString()} />
+      </div>
+      <FunnelSteps
+        steps={[
+          ["Landing page visit", metrics.visits],
+          ["Register click", metrics.registerClicks],
+          ["Payment click", metrics.paymentButtonClicks],
+          ["Payment initiated", metrics.paymentInitiated],
+          ["Payment success", metrics.paymentSuccess],
+          ["Success page viewed", metrics.successPageViews],
+          ["WhatsApp clicked", metrics.whatsappClicks]
+        ]}
+      />
+      <p className={styles.inlineNote}>
+        Paid event storage is not showing sensitive payment/card data. Possible drop-offs appear
+        only when payment and success events are persisted.
+      </p>
+    </section>
+  );
+}
+
+function FreeAnalyticsTab({ coach }: { coach: CoachAnalyticsRow }) {
+  const metrics = coach.freeMetrics;
+
+  return (
+    <section className={styles.analyticsTabPanel}>
+      <div className={styles.analyticsKpiGrid}>
+        <AnalyticsKpiCard label="Coach page visits" value={metrics.visits.toLocaleString()} />
+        <AnalyticsKpiCard label="Register clicks" value={metrics.registerClicks.toLocaleString()} />
+        <AnalyticsKpiCard
+          label="Google Form opens"
+          value={metrics.googleFormClicks.toLocaleString()}
+        />
+        <AnalyticsKpiCard
+          label="WhatsApp/contact clicks"
+          value={metrics.whatsappClicks.toLocaleString()}
+        />
+        <AnalyticsKpiCard label="Video plays" value={metrics.videoPlays.toLocaleString()} />
+        <AnalyticsKpiCard label="Conversion" value={metrics.conversionRate} />
+      </div>
+      <FunnelSteps
+        steps={[
+          ["Coach public page visit", metrics.visits],
+          ["Register button click", metrics.registerClicks],
+          ["Google Form opened", metrics.googleFormClicks]
+        ]}
+      />
+      <div className={styles.analyticsMetaGrid}>
+        <span>Public URL: {coach.publicLink || "Not published"}</span>
+        <span>Google Form: {metrics.googleFormStatus}</span>
+        <span>Support: {metrics.supportStatus}</span>
+        <span>Device: {formatDeviceBreakdown(coach.deviceBreakdown)}</span>
+      </div>
+      <p className={styles.inlineNote}>
+        Google Form submissions require Google Forms/Sheets integration. This dashboard only treats
+        form opens/clicks as tracked free-funnel data.
+      </p>
+    </section>
+  );
+}
+
+function ComparisonBars({ items }: { items: Array<{ label: string; value: number }> }) {
+  const maxValue = Math.max(1, ...items.map((item) => item.value));
+
+  return (
+    <div className={styles.analyticsBars}>
+      {items.map((item) => (
+        <div key={item.label}>
+          <span>{item.label}</span>
+          <strong>{item.value.toLocaleString()}</strong>
+          <i style={{ width: `${Math.max(4, (item.value / maxValue) * 100)}%` }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FunnelSteps({ steps }: { steps: Array<[string, number]> }) {
+  const maxValue = Math.max(1, ...steps.map(([, value]) => value));
+
+  return (
+    <div className={styles.analyticsFunnelSteps}>
+      {steps.map(([label, value]) => (
+        <div key={label}>
+          <span>{label}</span>
+          <strong>{value.toLocaleString()}</strong>
+          <i style={{ width: `${Math.max(4, (value / maxValue) * 100)}%` }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BreakdownGrid({ coach }: { coach: CoachAnalyticsRow }) {
+  return (
+    <div className={styles.analyticsMetaGrid}>
+      <span>Top region: {coach.region}</span>
+      <span>Top device: {formatDeviceBreakdown(coach.deviceBreakdown)}</span>
+      <span>Traffic source: {coach.source}</span>
+      <span>Last activity: {coach.combined.lastActivity}</span>
+    </div>
+  );
+}
+
+function InsightList({ coach }: { coach: CoachAnalyticsRow }) {
+  const insights = [
+    coach.combined.visits > 0
+      ? `${coach.bestFunnel} is currently the strongest recorded funnel.`
+      : "Not enough data yet.",
+    coach.freeMetrics.visits > coach.paidMetrics.visits
+      ? "Free Guest Link is getting more visits."
+      : "Not enough paid/free traffic data for comparison yet.",
+    coach.deviceBreakdown.mobile > coach.deviceBreakdown.desktop
+      ? "Most recorded visitors are coming from mobile."
+      : "Not enough device data yet.",
+    coach.lowActivityReasons.length
+      ? coach.lowActivityReasons.join(" / ")
+      : "No immediate action detected."
+  ];
+
+  return (
+    <div className={styles.analyticsInsightList}>
+      {insights.map((insight) => (
+        <p key={insight}>{insight}</p>
+      ))}
+    </div>
+  );
+}
+
+function getAnalyticsTabLabel(tab: CoachAnalyticsFunnelType) {
+  if (tab === "combined") return "Combined Overview";
+  if (tab === "paid") return "Paid Masterclass";
+  return "Free Guest Link";
 }
 
 function formatDeviceBreakdown(deviceBreakdown: CoachSiteRecord["analytics"]["deviceBreakdown"]) {

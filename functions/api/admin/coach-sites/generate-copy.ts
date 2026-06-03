@@ -1,9 +1,5 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import {
-  adminJson,
-  readJsonBody,
-  requireAdmin
-} from "../../../../lib/server/admin-auth";
+import { adminJson, readJsonBody, requireAdmin } from "../../../../lib/server/admin-auth";
 import {
   type CoachCopyAiInput,
   generateCoachSiteCopyWithAi
@@ -28,11 +24,13 @@ type PagesContext = {
 type GenerateCopyBody = {
   bio?: unknown;
   coachName?: unknown;
+  existingPaidFunnelUrl?: unknown;
   hasGoogleFormUrl?: unknown;
   hasSupportContact?: unknown;
   heroMediaType?: unknown;
   location?: unknown;
   niche?: unknown;
+  paidFunnelContext?: unknown;
   registerButtonText?: unknown;
   scope?: unknown;
   supportText?: unknown;
@@ -93,6 +91,10 @@ function parseGenerateCopyBody(body: GenerateCopyBody | null): CoachCopyAiInput 
   return {
     bio: typeof body?.bio === "string" ? body.bio.trim().slice(0, 1200) : "",
     coachName: coachName.slice(0, 160),
+    existingPaidFunnelUrl:
+      typeof body?.existingPaidFunnelUrl === "string"
+        ? body.existingPaidFunnelUrl.trim().slice(0, 1200)
+        : "",
     hasGoogleFormUrl: body?.hasGoogleFormUrl === true,
     hasSupportContact: body?.hasSupportContact === true,
     heroMediaType:
@@ -103,13 +105,16 @@ function parseGenerateCopyBody(body: GenerateCopyBody | null): CoachCopyAiInput 
         : "none",
     location: typeof body?.location === "string" ? body.location.trim().slice(0, 160) : "",
     niche: niche.slice(0, 160),
+    paidFunnelContext:
+      typeof body?.paidFunnelContext === "string"
+        ? body.paidFunnelContext.trim().slice(0, 7000)
+        : "",
     registerButtonText:
       typeof body?.registerButtonText === "string"
         ? body.registerButtonText.trim().slice(0, 80)
         : "",
     scope: parseCopyScope(body?.scope),
-    supportText:
-      typeof body?.supportText === "string" ? body.supportText.trim().slice(0, 400) : "",
+    supportText: typeof body?.supportText === "string" ? body.supportText.trim().slice(0, 400) : "",
     vision: typeof body?.vision === "string" ? body.vision.trim().slice(0, 1200) : ""
   };
 }

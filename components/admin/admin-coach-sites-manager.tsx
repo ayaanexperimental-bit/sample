@@ -95,6 +95,18 @@ type GeneratedCoachCopy = {
   visionText?: string;
 };
 
+type PaidFunnelAnalysis = {
+  cleanText: string;
+  coachName?: string;
+  faqHints: string[];
+  headings: string[];
+  keyPoints: string[];
+  missingFields: string[];
+  niche?: string;
+  sourceUrl: string;
+  title?: string;
+};
+
 type CopyRegenerationScope = "all" | "benefits" | "cta" | "faq" | "hero" | "intro" | "vision";
 type PreviewInspectSection = Exclude<CopyRegenerationScope, "all">;
 type CoachSiteDangerStatus = "archived" | "removed";
@@ -265,6 +277,9 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   const [message, setMessage] = useState("");
   const [aiMessage, setAiMessage] = useState("");
   const [aiSubmitting, setAiSubmitting] = useState(false);
+  const [paidFunnelAnalysis, setPaidFunnelAnalysis] = useState<PaidFunnelAnalysis | null>(null);
+  const [paidFunnelAnalysisBusy, setPaidFunnelAnalysisBusy] = useState(false);
+  const [paidFunnelAnalysisMessage, setPaidFunnelAnalysisMessage] = useState("");
   const [removeConfirm, setRemoveConfirm] = useState("");
   const [removeMessage, setRemoveMessage] = useState("");
   const [removeOtp, setRemoveOtp] = useState("");
@@ -365,6 +380,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       [key]: value
     };
 
+    if (key === "existingPaidFunnelUrl") {
+      setPaidFunnelAnalysis(null);
+      setPaidFunnelAnalysisMessage("");
+    }
+
     setForm(nextForm);
     syncPreviewFromForm(nextForm);
   }
@@ -383,16 +403,31 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   function openCreatorDialog(site?: CoachSiteRecord, step = 0) {
     setAiMessage("");
     setAiSubmitting(false);
+    setPaidFunnelAnalysisMessage("");
+    setPaidFunnelAnalysisBusy(false);
     if (site) {
       setEditingId(site.id);
       setForm(createFormFromCoachSite(site));
       setPreviewSite(site);
+      setPaidFunnelAnalysis(
+        site.existingPaidFunnelUrl && site.paidFunnelContext
+          ? {
+              cleanText: site.paidFunnelContext,
+              faqHints: [],
+              headings: [],
+              keyPoints: [],
+              missingFields: [],
+              sourceUrl: site.existingPaidFunnelUrl
+            }
+          : null
+      );
       setMessage(`Editing ${site.coachName}. Public link stays stable after future edits.`);
     } else {
       setEditingId(null);
       setForm(EMPTY_COACH_SITE_FORM);
       setPreviewSite(null);
       setPublishedSite(null);
+      setPaidFunnelAnalysis(null);
       setMessage("");
     }
     setWizardStep(step);
@@ -644,6 +679,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       body: JSON.stringify({
         bio: sourceForm.bio,
         coachName: sourceForm.coachName,
+        existingPaidFunnelUrl: sourceForm.existingPaidFunnelUrl,
         hasGoogleFormUrl: Boolean(sourceForm.googleFormUrl.trim()),
         hasSupportContact: Boolean(
           sourceForm.whatsappLink.trim() ||
@@ -653,6 +689,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         heroMediaType: sourceForm.heroMediaType,
         location: sourceForm.location,
         niche: sourceForm.niche,
+        paidFunnelContext: sourceForm.paidFunnelContext,
         registerButtonText: sourceForm.registerButtonText,
         scope,
         supportText: sourceForm.supportText,
@@ -692,11 +729,123 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     };
   }
 
+  async function requestPaidFunnelAnalysis(sourceForm: CoachSiteFormState) {
+    const url = sourceForm.existingPaidFunnelUrl.trim();
+    if (!url) return null;
+
+    setPaidFunnelAnalysisBusy(true);
+    setPaidFunnelAnalysisMessage("Analyzing existing paid funnel page...");
+
+    try {
+      const response = await fetch("/api/admin/coach-sites/analyze-paid-funnel", {
+        body: JSON.stringify({ url }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-yw-admin-csrf": csrfToken
+        },
+        method: "POST"
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        analysis?: PaidFunnelAnalysis;
+        error?: string;
+        message?: string;
+        ok?: boolean;
+      };
+
+      if (!response.ok || !payload.ok || !payload.analysis) {
+        reportAiCopyIssue({
+          coachSlug: normalizeCoachSlug(sourceForm.slug || sourceForm.coachName || "paid-funnel"),
+          safeMessage:
+            payload.message || payload.error || "Could not analyze existing funnel page.",
+          userAction: "Analyze existing paid funnel page"
+        });
+        setPaidFunnelAnalysisMessage(
+          "Could not analyze existing funnel page. Manual entry and AI generation from manual fields are still available."
+        );
+        return null;
+      }
+
+      setPaidFunnelAnalysis(payload.analysis);
+      setPaidFunnelAnalysisMessage(
+        "Existing paid funnel page analyzed. Review the extracted preview."
+      );
+      return payload.analysis;
+    } catch {
+      reportAiCopyIssue({
+        coachSlug: normalizeCoachSlug(sourceForm.slug || sourceForm.coachName || "paid-funnel"),
+        safeMessage: "Could not analyze existing funnel page.",
+        userAction: "Analyze existing paid funnel page"
+      });
+      setPaidFunnelAnalysisMessage(
+        "Could not analyze existing funnel page. Manual entry and AI generation from manual fields are still available."
+      );
+      return null;
+    } finally {
+      setPaidFunnelAnalysisBusy(false);
+    }
+  }
+
+  async function preparePaidFunnelContext(sourceForm: CoachSiteFormState) {
+    if (!sourceForm.existingPaidFunnelUrl.trim()) return sourceForm;
+    if (sourceForm.paidFunnelContext.trim()) return sourceForm;
+
+    const analysis = paidFunnelAnalysis || (await requestPaidFunnelAnalysis(sourceForm));
+    if (!analysis) return sourceForm;
+
+    return applyPaidFunnelAnalysisToForm(sourceForm, analysis);
+  }
+
+  function applyPaidFunnelAnalysisToForm(
+    sourceForm: CoachSiteFormState,
+    analysis: PaidFunnelAnalysis
+  ): CoachSiteFormState {
+    const context = createPaidFunnelContextText(analysis);
+    const keyPointsText = analysis.keyPoints.slice(0, 5).join("\n");
+    const faqText = analysis.faqHints
+      .slice(0, 4)
+      .map((hint, index) => `Question ${index + 1}\n${hint}`)
+      .join("\n\n");
+
+    return {
+      ...sourceForm,
+      benefitsText: sourceForm.benefitsText || keyPointsText,
+      coachName: sourceForm.coachName || analysis.coachName || "",
+      existingPaidFunnelUrl: analysis.sourceUrl,
+      faqText: sourceForm.faqText || faqText,
+      heroHeadline: sourceForm.heroHeadline || analysis.headings[0] || analysis.title || "",
+      niche: sourceForm.niche || analysis.niche || "",
+      paidFunnelContext: context,
+      subheadline: sourceForm.subheadline || analysis.headings[1] || "",
+      vision: sourceForm.vision || analysis.keyPoints[0] || ""
+    };
+  }
+
+  function createPaidFunnelContextText(analysis: PaidFunnelAnalysis) {
+    return [
+      `Source URL: ${analysis.sourceUrl}`,
+      analysis.title ? `Title: ${analysis.title}` : "",
+      analysis.coachName ? `Coach name found: ${analysis.coachName}` : "",
+      analysis.niche ? `Niche found: ${analysis.niche}` : "",
+      analysis.headings.length ? `Headings: ${analysis.headings.join(" | ")}` : "",
+      analysis.keyPoints.length ? `Key points: ${analysis.keyPoints.join(" | ")}` : "",
+      analysis.faqHints.length ? `FAQ hints: ${analysis.faqHints.join(" | ")}` : "",
+      `Clean visible text: ${analysis.cleanText}`
+    ]
+      .filter(Boolean)
+      .join("\n")
+      .slice(0, 7000);
+  }
+
   async function generatePreviewFromDetails() {
     setAiMessage("");
     setMessage("");
 
-    const validatedForm = validatePreviewForm(form);
+    const preparedForm = await preparePaidFunnelContext(form);
+    setForm(preparedForm);
+
+    const validatedForm = validatePreviewForm(preparedForm);
     if (!validatedForm) return false;
 
     const status = previewSite?.status || "draft";
@@ -757,7 +906,10 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     setAiMessage("");
     setMessage("");
 
-    const validatedForm = validatePreviewForm(form);
+    const preparedForm = await preparePaidFunnelContext(form);
+    setForm(preparedForm);
+
+    const validatedForm = validatePreviewForm(preparedForm);
     if (!validatedForm) return;
 
     const stopProgress = startAiProgress();
@@ -1589,6 +1741,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         csrfToken={csrfToken}
         dialog={dialog}
         form={form}
+        onAnalyzePaidFunnel={() => requestPaidFunnelAnalysis(form)}
         onClose={() => setDialog(null)}
         onCopyAgain={(site) => void copyPublicLink(site)}
         onDeleteDraft={(site) => void deleteDraftSite(site)}
@@ -1613,6 +1766,9 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         onStatusConfirm={updateSiteStatus}
         onUpdateCoachName={handleCoachNameChange}
         onUpdateField={updateFormField}
+        paidFunnelAnalysis={paidFunnelAnalysis}
+        paidFunnelAnalysisBusy={paidFunnelAnalysisBusy}
+        paidFunnelAnalysisMessage={paidFunnelAnalysisMessage}
         previewSite={previewSite}
         publishedSite={publishedSite}
         removeConfirm={removeConfirm}
@@ -1637,6 +1793,7 @@ function CoachDialogRenderer({
   csrfToken,
   dialog,
   form,
+  onAnalyzePaidFunnel,
   onClose,
   onCopyAgain,
   onDeleteDraft,
@@ -1655,6 +1812,9 @@ function CoachDialogRenderer({
   onStatusConfirm,
   onUpdateCoachName,
   onUpdateField,
+  paidFunnelAnalysis,
+  paidFunnelAnalysisBusy,
+  paidFunnelAnalysisMessage,
   previewSite,
   publishedSite,
   removeConfirm,
@@ -1674,6 +1834,7 @@ function CoachDialogRenderer({
   csrfToken: string;
   dialog: CoachDialog | null;
   form: CoachSiteFormState;
+  onAnalyzePaidFunnel: () => Promise<PaidFunnelAnalysis | null>;
   onClose: () => void;
   onCopyAgain: (site: CoachSiteRecord) => void;
   onDeleteDraft: (site: CoachSiteRecord) => void;
@@ -1695,6 +1856,9 @@ function CoachDialogRenderer({
     key: Key,
     value: CoachSiteFormState[Key]
   ) => void;
+  paidFunnelAnalysis: PaidFunnelAnalysis | null;
+  paidFunnelAnalysisBusy: boolean;
+  paidFunnelAnalysisMessage: string;
   previewSite: CoachSiteRecord | null;
   publishedSite: CoachSiteRecord | null;
   removeConfirm: string;
@@ -1780,6 +1944,31 @@ function CoachDialogRenderer({
 
             {wizardStep === 2 ? (
               <div className={styles.copyEditorGrid}>
+                <div className={styles.analysisPanel}>
+                  <TextField
+                    helper="Optional. Use this when creating a free guest website from an existing paid funnel page."
+                    label="Existing Paid Funnel Page URL"
+                    onChange={(value) => onUpdateField("existingPaidFunnelUrl", value)}
+                    type="url"
+                    value={form.existingPaidFunnelUrl}
+                  />
+                  <div className={styles.formActions}>
+                    <button
+                      className={styles.secondaryAction}
+                      disabled={!form.existingPaidFunnelUrl.trim() || paidFunnelAnalysisBusy}
+                      onClick={() => void onAnalyzePaidFunnel()}
+                      type="button"
+                    >
+                      {paidFunnelAnalysisBusy ? "Analyzing..." : "Analyze Existing Page"}
+                    </button>
+                  </div>
+                  {paidFunnelAnalysisMessage ? (
+                    <p className={styles.inlineNote}>{paidFunnelAnalysisMessage}</p>
+                  ) : null}
+                  {paidFunnelAnalysis ? (
+                    <ExtractedPaidFunnelPreview analysis={paidFunnelAnalysis} />
+                  ) : null}
+                </div>
                 <TextField
                   label="Coach niche"
                   onChange={(value) => onUpdateField("niche", value)}
@@ -2345,6 +2534,34 @@ function formatCoachLastActivity(site: CoachSiteRecord) {
   }
 
   return formatCoachLastEdited(site);
+}
+
+function ExtractedPaidFunnelPreview({ analysis }: { analysis: PaidFunnelAnalysis }) {
+  return (
+    <div className={styles.extractedPreview}>
+      <div>
+        <p className={styles.kicker}>Extracted Information Preview</p>
+        <h3>{analysis.coachName || "Coach name not found yet"}</h3>
+        <p>{analysis.niche || "Niche not found yet"}</p>
+      </div>
+      {analysis.title ? <span>Title: {analysis.title}</span> : null}
+      {analysis.headings.length > 0 ? (
+        <span>Headings: {analysis.headings.slice(0, 4).join(" / ")}</span>
+      ) : null}
+      {analysis.keyPoints.length > 0 ? (
+        <ul>
+          {analysis.keyPoints.slice(0, 4).map((point) => (
+            <li key={point}>{point}</li>
+          ))}
+        </ul>
+      ) : null}
+      {analysis.missingFields.length > 0 ? (
+        <p>Missing fields: {analysis.missingFields.join(", ")}</p>
+      ) : (
+        <p>Enough page context was extracted for AI copy generation.</p>
+      )}
+    </div>
+  );
 }
 
 function PreviewAndEditStep({

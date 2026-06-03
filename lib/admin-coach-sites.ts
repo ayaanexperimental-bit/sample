@@ -51,6 +51,7 @@ export type CoachSiteRecord = {
   content: CoachSiteContent;
   archivedAt?: string;
   createdAt?: string;
+  existingPaidFunnelUrl: string;
   googleFormUrl: string;
   heroMediaType: CoachHeroMediaType;
   id: string;
@@ -64,6 +65,7 @@ export type CoachSiteRecord = {
   selectedThemeId: CoachTemplateThemeId;
   slug: string;
   status: CoachSiteStatus;
+  paidFunnelContext: string;
   supportText: string;
   updatedAt?: string;
   videoUrl: string;
@@ -74,7 +76,15 @@ export type CoachSiteRecord = {
 
 export type PublicCoachSiteRecord = Omit<
   CoachSiteRecord,
-  "analytics" | "archivedAt" | "coachId" | "createdAt" | "id" | "publishedAt" | "updatedAt"
+  | "analytics"
+  | "archivedAt"
+  | "coachId"
+  | "createdAt"
+  | "existingPaidFunnelUrl"
+  | "id"
+  | "paidFunnelContext"
+  | "publishedAt"
+  | "updatedAt"
 >;
 
 export type CoachSiteFormState = {
@@ -85,6 +95,7 @@ export type CoachSiteFormState = {
   coachPhone: string;
   coachIntro: string;
   ctaText: string;
+  existingPaidFunnelUrl: string;
   faqText: string;
   googleFormUrl: string;
   heroMediaType: CoachHeroMediaType;
@@ -92,6 +103,7 @@ export type CoachSiteFormState = {
   location: string;
   logoUrl: string;
   niche: string;
+  paidFunnelContext: string;
   photoUrl: string;
   registerButtonText: string;
   selectedThemeId: CoachTemplateThemeId;
@@ -114,6 +126,7 @@ export const EMPTY_COACH_SITE_FORM: CoachSiteFormState = {
   coachPhone: "",
   coachIntro: "",
   ctaText: "Register Now",
+  existingPaidFunnelUrl: "",
   faqText: "",
   googleFormUrl: "",
   heroMediaType: "image",
@@ -121,6 +134,7 @@ export const EMPTY_COACH_SITE_FORM: CoachSiteFormState = {
   location: "",
   logoUrl: "",
   niche: "",
+  paidFunnelContext: "",
   photoUrl: "",
   registerButtonText: "Register Now",
   selectedThemeId: DEFAULT_COACH_TEMPLATE_THEME_ID,
@@ -149,6 +163,7 @@ export const approvedCoachSites: CoachSiteRecord[] = [
       "Make hormone education calmer, practical, and easier to follow alongside medical guidance.",
     coachEmail: "",
     coachPhone: "",
+    existingPaidFunnelUrl: "",
     whatsappLink: "",
     photoUrl: "/images/coach-gyana-ranjan.png",
     logoUrl: "",
@@ -159,6 +174,7 @@ export const approvedCoachSites: CoachSiteRecord[] = [
     slug: "gyana-ranjan",
     publicUrl: "/coach/gyana-ranjan",
     status: "published",
+    paidFunnelContext: "",
     supportText: "",
     registerButtonText: "Register Now",
     selectedThemeId: DEFAULT_COACH_TEMPLATE_THEME_ID,
@@ -310,6 +326,7 @@ export function createCoachSiteFromForm(input: {
     vision: input.form.vision.trim(),
     coachEmail: input.form.coachEmail.trim(),
     coachPhone: input.form.coachPhone.trim(),
+    existingPaidFunnelUrl: input.form.existingPaidFunnelUrl.trim(),
     archivedAt: input.status === "archived" || input.status === "removed" ? now : undefined,
     createdAt: now,
     whatsappLink: input.form.whatsappLink.trim(),
@@ -322,6 +339,7 @@ export function createCoachSiteFromForm(input: {
     publicUrl: getCoachPublicUrl(slug),
     publishedAt: input.status === "published" ? now : undefined,
     status: input.status,
+    paidFunnelContext: input.form.paidFunnelContext.trim(),
     supportText: input.form.supportText.trim(),
     updatedAt: now,
     registerButtonText: input.form.registerButtonText.trim() || "Register Now",
@@ -358,6 +376,7 @@ export function createFormFromCoachSite(site: CoachSiteRecord): CoachSiteFormSta
     coachPhone: site.coachPhone,
     coachIntro: site.content.coachIntro,
     ctaText: site.content.ctaText,
+    existingPaidFunnelUrl: site.existingPaidFunnelUrl,
     faqText: site.content.faq.map((item) => `${item.question}\n${item.answer}`).join("\n\n"),
     googleFormUrl: site.googleFormUrl,
     heroMediaType: site.heroMediaType,
@@ -365,6 +384,7 @@ export function createFormFromCoachSite(site: CoachSiteRecord): CoachSiteFormSta
     location: site.location,
     logoUrl: site.logoUrl,
     niche: site.niche,
+    paidFunnelContext: site.paidFunnelContext,
     photoUrl: site.photoUrl,
     registerButtonText: site.registerButtonText,
     selectedThemeId: normalizeCoachTemplateThemeId(site.selectedThemeId),

@@ -28,6 +28,7 @@ type CoachSiteRow = {
   content_json: string;
   created_at: number;
   created_by: string;
+  existing_paid_funnel_url: string | null;
   google_form_url: string;
   hero_media_type: CoachHeroMediaType;
   id: string;
@@ -39,6 +40,7 @@ type CoachSiteRow = {
   public_url: string;
   register_button_text: string;
   selected_theme_id: string | null;
+  paid_funnel_context: string | null;
   slug: string;
   status: CoachSiteStatus;
   support_text: string;
@@ -69,11 +71,13 @@ const COACH_SITE_TABLES_SQL = [
     photo_url TEXT NOT NULL DEFAULT '',
     logo_url TEXT NOT NULL DEFAULT '',
     video_url TEXT NOT NULL DEFAULT '',
+    existing_paid_funnel_url TEXT NOT NULL DEFAULT '',
     google_form_url TEXT NOT NULL DEFAULT '',
     hero_media_type TEXT NOT NULL DEFAULT 'image' CHECK (hero_media_type IN ('image', 'none', 'video')),
     public_url TEXT NOT NULL,
     register_button_text TEXT NOT NULL DEFAULT 'Register Now',
     selected_theme_id TEXT NOT NULL DEFAULT 'default-current',
+    paid_funnel_context TEXT NOT NULL DEFAULT '',
     support_text TEXT NOT NULL DEFAULT '',
     content_json TEXT NOT NULL,
     analytics_json TEXT NOT NULL,
@@ -110,7 +114,9 @@ const COACH_SITE_TABLES_SQL = [
 ];
 
 const COACH_SITE_MIGRATIONS_SQL = [
-  `ALTER TABLE coach_sites ADD COLUMN selected_theme_id TEXT NOT NULL DEFAULT 'default-current'`
+  `ALTER TABLE coach_sites ADD COLUMN selected_theme_id TEXT NOT NULL DEFAULT 'default-current'`,
+  `ALTER TABLE coach_sites ADD COLUMN existing_paid_funnel_url TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE coach_sites ADD COLUMN paid_funnel_context TEXT NOT NULL DEFAULT ''`
 ];
 
 const DEFAULT_ANALYTICS: CoachSiteAnalyticsSummary = {
@@ -246,16 +252,17 @@ export async function upsertCoachSiteToDb({
     `INSERT INTO coach_sites (
       id, coach_id, coach_name, slug, status, niche, location, bio, vision,
       coach_email, coach_phone, whatsapp_link, photo_url, logo_url, video_url,
-      google_form_url, hero_media_type, public_url, register_button_text, selected_theme_id,
-      support_text,
+      existing_paid_funnel_url, google_form_url, hero_media_type, public_url, register_button_text,
+      selected_theme_id, paid_funnel_context, support_text,
       content_json, analytics_json, created_at, updated_at, published_at, archived_at,
       created_by, updated_by
     ) VALUES (
       ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9,
       ?10, ?11, ?12, ?13, ?14, ?15,
       ?16, ?17, ?18, ?19, ?20,
-      ?21, ?22, ?23, ?24, ?25, ?26,
-      ?27, ?28, ?29
+      ?21, ?22, ?23, ?24, ?25,
+      ?26, ?27, ?28, ?29, ?30,
+      ?31
     )
     ON CONFLICT(id) DO UPDATE SET
       coach_id = excluded.coach_id,
@@ -272,11 +279,13 @@ export async function upsertCoachSiteToDb({
       photo_url = excluded.photo_url,
       logo_url = excluded.logo_url,
       video_url = excluded.video_url,
+      existing_paid_funnel_url = excluded.existing_paid_funnel_url,
       google_form_url = excluded.google_form_url,
       hero_media_type = excluded.hero_media_type,
       public_url = excluded.public_url,
       register_button_text = excluded.register_button_text,
       selected_theme_id = excluded.selected_theme_id,
+      paid_funnel_context = excluded.paid_funnel_context,
       support_text = excluded.support_text,
       content_json = excluded.content_json,
       analytics_json = excluded.analytics_json,
@@ -301,11 +310,13 @@ export async function upsertCoachSiteToDb({
       stripBrowserOnlyMedia(canonicalSite.photoUrl),
       stripBrowserOnlyMedia(canonicalSite.logoUrl),
       stripBrowserOnlyMedia(canonicalSite.videoUrl),
+      canonicalSite.existingPaidFunnelUrl,
       canonicalSite.googleFormUrl,
       canonicalSite.heroMediaType,
       canonicalSite.publicUrl,
       canonicalSite.registerButtonText,
       canonicalSite.selectedThemeId,
+      canonicalSite.paidFunnelContext,
       canonicalSite.supportText,
       JSON.stringify(canonicalSite.content),
       JSON.stringify(canonicalSite.analytics),
@@ -432,6 +443,7 @@ function normalizeCoachSitePayload(payload: CoachSitePayload): CoachSiteRecord {
       coachPhone: sanitizeText(payload.coachPhone, 80),
       coachIntro: "",
       ctaText: "",
+      existingPaidFunnelUrl: sanitizeUrl(payload.existingPaidFunnelUrl),
       faqText: "",
       googleFormUrl: sanitizeUrl(payload.googleFormUrl),
       heroMediaType: normalizeHeroMediaType(payload.heroMediaType),
@@ -439,6 +451,7 @@ function normalizeCoachSitePayload(payload: CoachSitePayload): CoachSiteRecord {
       location: sanitizeText(payload.location, 160),
       logoUrl: sanitizeUrl(payload.logoUrl),
       niche,
+      paidFunnelContext: sanitizeText(payload.paidFunnelContext, 7000),
       photoUrl: sanitizeUrl(payload.photoUrl),
       registerButtonText: sanitizeText(payload.registerButtonText, 80) || "Register Now",
       selectedThemeId: normalizeCoachTemplateThemeId(payload.selectedThemeId),
@@ -461,6 +474,8 @@ function normalizeCoachSitePayload(payload: CoachSitePayload): CoachSiteRecord {
     analytics: normalizeAnalytics(payload.analytics),
     coachId: sanitizeText(payload.coachId, 120) || fallback.coachId,
     content: normalizeContent(payload.content, fallback.content),
+    existingPaidFunnelUrl: sanitizeUrl(payload.existingPaidFunnelUrl),
+    paidFunnelContext: sanitizeText(payload.paidFunnelContext, 7000),
     publicUrl: getCoachPublicUrl(slug),
     selectedThemeId: normalizeCoachTemplateThemeId(payload.selectedThemeId)
   };
@@ -480,6 +495,7 @@ function rowToCoachSiteRecord(row: CoachSiteRow): CoachSiteRecord {
     content: normalizeContent(parsedContent, fallbackContent),
     archivedAt: secondsToIso(row.archived_at || 0),
     createdAt: secondsToIso(row.created_at),
+    existingPaidFunnelUrl: sanitizeUrl(row.existing_paid_funnel_url || ""),
     googleFormUrl: row.google_form_url,
     heroMediaType: normalizeHeroMediaType(row.hero_media_type),
     id: row.id,
@@ -493,6 +509,7 @@ function rowToCoachSiteRecord(row: CoachSiteRow): CoachSiteRecord {
     selectedThemeId: normalizeCoachTemplateThemeId(row.selected_theme_id),
     slug: row.slug,
     status: normalizeStatus(row.status),
+    paidFunnelContext: sanitizeText(row.paid_funnel_context || "", 7000),
     supportText: row.support_text,
     updatedAt: secondsToIso(row.updated_at),
     videoUrl: row.video_url,
@@ -519,6 +536,7 @@ function createContentFallbackFromRow(row: CoachSiteRow): CoachSiteContent {
       coachPhone: sanitizeText(row.coach_phone, 80),
       coachIntro: "",
       ctaText: "",
+      existingPaidFunnelUrl: sanitizeUrl(row.existing_paid_funnel_url || ""),
       faqText: "",
       googleFormUrl: sanitizeUrl(row.google_form_url),
       heroMediaType: normalizeHeroMediaType(row.hero_media_type),
@@ -526,6 +544,7 @@ function createContentFallbackFromRow(row: CoachSiteRow): CoachSiteContent {
       location: sanitizeText(row.location, 160),
       logoUrl: sanitizeUrl(row.logo_url),
       niche,
+      paidFunnelContext: sanitizeText(row.paid_funnel_context || "", 7000),
       photoUrl: sanitizeUrl(row.photo_url),
       registerButtonText: sanitizeText(row.register_button_text, 80) || "Register Now",
       selectedThemeId: normalizeCoachTemplateThemeId(row.selected_theme_id),
