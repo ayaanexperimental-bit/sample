@@ -12,6 +12,7 @@ import {
 import styles from "./admin-dashboard-shell.module.css";
 import {
   adminControlCenterData,
+  type AdminErrorReport,
   type AdminPaidMasterclassLink,
   createErrorReportBugPrompt
 } from "../../lib/admin-control-center";
@@ -93,6 +94,40 @@ export function AdminDashboardShell({
   const [activeView, setActiveView] = useState<AdminViewId>("overview");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [actionDialog, setActionDialog] = useState<ActionDialogState>(null);
+  const [errorReports, setErrorReports] = useState<AdminErrorReport[]>(control.errorReports);
+  const [errorReportSource, setErrorReportSource] = useState("loading");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadErrorReports() {
+      try {
+        const response = await fetch("/api/admin/error-reports", {
+          cache: "no-store"
+        });
+        const payload = (await response.json()) as {
+          errorReports?: AdminErrorReport[];
+          persistence?: string;
+        };
+
+        if (!active) return;
+        if (response.ok && Array.isArray(payload.errorReports)) {
+          setErrorReports(payload.errorReports);
+          setErrorReportSource(payload.persistence || "unknown");
+        } else {
+          setErrorReportSource("demo_fallback");
+        }
+      } catch {
+        if (active) setErrorReportSource("demo_fallback");
+      }
+    }
+
+    void loadErrorReports();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function openAction(title: string, body: string, tone: "danger" | "standard" = "standard") {
     setActionDialog({ body, title, tone });
@@ -154,7 +189,12 @@ export function AdminDashboardShell({
           <MasterclassLinksView control={control} csrfToken={csrfToken} />
         ) : null}
         {activeView === "error-reports" ? (
-          <ErrorReportsView control={control} onAction={openAction} />
+          <ErrorReportsView
+            csrfToken={csrfToken}
+            errorReports={errorReports}
+            onReportsChange={setErrorReports}
+            source={errorReportSource}
+          />
         ) : null}
         {activeView === "backup-cleanup" ? (
           <BackupCleanupView control={control} onAction={openAction} />
@@ -917,60 +957,116 @@ function MasterclassLinksView({
 }
 
 function ErrorReportsView({
-  control,
-  onAction
+  csrfToken,
+  errorReports,
+  onReportsChange,
+  source
 }: {
-  control: typeof adminControlCenterData;
-  onAction: (title: string, body: string, tone?: "danger" | "standard") => void;
+  csrfToken: string;
+  errorReports: AdminErrorReport[];
+  onReportsChange: (reports: AdminErrorReport[]) => void;
+  source: string;
 }) {
+  const [selectedReport, setSelectedReport] = useState<AdminErrorReport | null>(null);
+  const [statusMessage, setStatusMessage] = useState("");
+
+  async function updateReportStatus(report: AdminErrorReport, status: AdminErrorReport["status"]) {
+    setStatusMessage("Updating error report...");
+
+    try {
+      const response = await fetch("/api/admin/error-reports", {
+        body: JSON.stringify({
+          adminNotes:
+            status === "Fixed"
+              ? "Marked fixed from Admin Error Reports."
+              : `Marked ${status} from Admin Error Reports.`,
+          referenceId: report.referenceId,
+          status
+        }),
+        cache: "no-store",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": csrfToken
+        },
+        method: "PATCH"
+      });
+      const payload = (await response.json()) as { error?: string; ok?: boolean };
+
+      if (!response.ok || !payload.ok) {
+        setStatusMessage(payload.error || "Could not update this report.");
+        return;
+      }
+
+      onReportsChange(
+        errorReports.map((item) =>
+          item.referenceId === report.referenceId
+            ? { ...item, status, updatedAt: new Date().toISOString() }
+            : item
+        )
+      );
+      setSelectedReport((current) =>
+        current?.referenceId === report.referenceId
+          ? { ...current, status, updatedAt: new Date().toISOString() }
+          : current
+      );
+      setStatusMessage(`Marked ${status}.`);
+    } catch {
+      setStatusMessage("Could not update this report. The API stayed safe and no public data leaked.");
+    }
+  }
+
   return (
     <AdminPageShell eyebrow="Reports" title="Error Reports">
+      <div className={styles.noticeCard} data-tone={source === "d1_table" ? "success" : "warning"}>
+        <strong>{source === "d1_table" ? "Live D1 error reports" : "Demo fallback reports"}</strong>
+        <p>
+          {source === "d1_table"
+            ? "Public fallback events are being saved server-side with safe details only."
+            : "D1 reports are not available in this environment, so these rows are placeholders."}
+        </p>
+      </div>
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>Reference</th>
+              <th>Error code</th>
               <th>Status</th>
               <th>Severity</th>
               <th>Category</th>
               <th>Page</th>
+              <th>Support</th>
               <th>User action</th>
               <th>Safe message</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {control.errorReports.map((report) => (
+            {errorReports.map((report) => (
               <tr key={report.referenceId}>
                 <td>
-                  <code>{report.referenceId}</code>
+                  <code>{report.errorCode || report.referenceId}</code>
+                  <small>{report.referenceId}</small>
                 </td>
                 <td>{report.status}</td>
                 <td>{report.severity}</td>
                 <td>{report.category}</td>
                 <td>{report.pagePath}</td>
+                <td>{report.supportSource || "default"}</td>
                 <td>{report.userAction}</td>
                 <td>{report.safeMessage}</td>
                 <td>
                   <div className={styles.rowActions}>
                     <button
-                      onClick={() =>
-                        onAction(
-                          "View Error Details",
-                          `${report.referenceId}: ${report.safeMessage} Device: ${report.deviceType}, screen ${report.screenSize}. Technical details stay admin-only.`
-                        )
-                      }
+                      onClick={() => {
+                        setSelectedReport(report);
+                        setStatusMessage("");
+                      }}
                       type="button"
                     >
                       View
                     </button>
                     <button
-                      onClick={() =>
-                        onAction(
-                          "Mark Error as Fixed",
-                          "This placeholder action is disabled until error_reports persistence is approved."
-                        )
-                      }
+                      onClick={() => void updateReportStatus(report, "Fixed")}
                       type="button"
                     >
                       Mark Fixed
@@ -984,8 +1080,98 @@ function ErrorReportsView({
       </div>
       <div className={styles.reportPrompt}>
         <strong>Codex-ready bug prompt</strong>
-        <code>{createErrorReportBugPrompt(control.errorReports[0])}</code>
+        <code>{errorReports[0] ? createErrorReportBugPrompt(errorReports[0]) : "No reports yet."}</code>
       </div>
+      <AdminActionDialog
+        footer={
+          selectedReport ? (
+            <>
+              <button onClick={() => void updateReportStatus(selectedReport, "Reviewing")} type="button">
+                Mark Reviewing
+              </button>
+              <button onClick={() => void updateReportStatus(selectedReport, "Fixed")} type="button">
+                Mark Fixed
+              </button>
+              <button onClick={() => void updateReportStatus(selectedReport, "Ignored")} type="button">
+                Ignore
+              </button>
+            </>
+          ) : null
+        }
+        onClose={() => setSelectedReport(null)}
+        open={Boolean(selectedReport)}
+        size="large"
+        title="Error Details"
+      >
+        {selectedReport ? (
+          <div className={styles.definitionGrid}>
+            <div>
+              <dt>Error code</dt>
+              <dd>{selectedReport.errorCode || "Not recorded"}</dd>
+            </div>
+            <div>
+              <dt>Reference</dt>
+              <dd>{selectedReport.referenceId}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>{selectedReport.status}</dd>
+            </div>
+            <div>
+              <dt>Created</dt>
+              <dd>{selectedReport.createdAt}</dd>
+            </div>
+            <div>
+              <dt>Page</dt>
+              <dd>{selectedReport.pagePath}</dd>
+            </div>
+            <div>
+              <dt>User action</dt>
+              <dd>{selectedReport.userAction}</dd>
+            </div>
+            <div>
+              <dt>Device</dt>
+              <dd>
+                {selectedReport.deviceType}, {selectedReport.screenSize}
+              </dd>
+            </div>
+            <div>
+              <dt>Browser</dt>
+              <dd>{selectedReport.browser}</dd>
+            </div>
+            <div>
+              <dt>Coach slug</dt>
+              <dd>{selectedReport.coachSlug || "Not coach-specific"}</dd>
+            </div>
+            <div>
+              <dt>Support shown</dt>
+              <dd>{selectedReport.supportSource || "default"}</dd>
+            </div>
+            <div>
+              <dt>Missing support fields</dt>
+              <dd>{selectedReport.missingSupportFields || "None recorded"}</dd>
+            </div>
+            <div>
+              <dt>Safe message</dt>
+              <dd>{selectedReport.safeMessage}</dd>
+            </div>
+            <div>
+              <dt>Admin-only masked details</dt>
+              <dd>{selectedReport.technicalDetails || "No technical detail recorded."}</dd>
+            </div>
+            <div>
+              <dt>Codex Fix Prompt</dt>
+              <dd>{createErrorReportBugPrompt(selectedReport)}</dd>
+            </div>
+            {statusMessage ? (
+              <div>
+                <dt>Status update</dt>
+                <dd>{statusMessage}</dd>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </AdminActionDialog>
     </AdminPageShell>
   );
 }

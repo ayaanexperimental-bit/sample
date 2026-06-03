@@ -1,6 +1,7 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import { adminControlCenterData } from "../../../lib/admin-control-center";
+import { adminControlCenterData, type AdminErrorReportStatus } from "../../../lib/admin-control-center";
 import { adminJson, readJsonBody, requireAdmin } from "../../../lib/server/admin-auth";
+import { listWebsiteErrorReports, updateWebsiteErrorReportStatus } from "../../../lib/server/error-reports";
 
 type Env = {
   ADMIN_ALLOWED_EMAILS?: string;
@@ -17,21 +18,29 @@ type PagesContext = {
 };
 
 type ErrorReportActionBody = {
-  action?: unknown;
   adminNotes?: unknown;
   referenceId?: unknown;
   status?: unknown;
 };
+
+const ALLOWED_STATUSES = new Set<AdminErrorReportStatus>([
+  "Fixed",
+  "Ignored",
+  "New",
+  "Reviewing"
+]);
 
 export async function onRequest({ request, env }: PagesContext) {
   if (request.method === "GET") {
     const admin = await requireAdmin(request, env, { requiredRole: "owner" });
     if (!admin.ok) return admin.response;
 
+    const reports = await listWebsiteErrorReports(env);
+
     return adminJson({
-      errorReports: adminControlCenterData.errorReports,
+      errorReports: reports && reports.length > 0 ? reports : adminControlCenterData.errorReports,
       ok: true,
-      persistence: "placeholder"
+      persistence: reports ? "d1_table" : "demo_fallback"
     });
   }
 
@@ -42,20 +51,24 @@ export async function onRequest({ request, env }: PagesContext) {
     const body = await readJsonBody<ErrorReportActionBody>(request);
     const referenceId = typeof body?.referenceId === "string" ? body.referenceId.trim() : "";
     const status = typeof body?.status === "string" ? body.status.trim() : "";
+    const adminNotes = typeof body?.adminNotes === "string" ? body.adminNotes.trim() : "";
 
-    if (!referenceId || !status) {
-      return adminJson({ ok: false, error: "Reference ID and status are required." }, 400);
+    if (!referenceId || !ALLOWED_STATUSES.has(status as AdminErrorReportStatus)) {
+      return adminJson({ ok: false, error: "Reference ID and valid status are required." }, 400);
     }
 
-    return adminJson(
-      {
-        error:
-          "Error report persistence is not configured yet. No report status was changed.",
-        ok: false,
-        persistence: "disabled"
-      },
-      503
-    );
+    const result = await updateWebsiteErrorReportStatus({
+      adminNotes,
+      env,
+      referenceId,
+      status: status as AdminErrorReportStatus
+    });
+
+    if (!result.ok) {
+      return adminJson({ ok: false, error: result.error }, 503);
+    }
+
+    return adminJson({ ok: true, referenceId, status });
   }
 
   return adminJson({ ok: false, error: "Method not allowed." }, 405, {

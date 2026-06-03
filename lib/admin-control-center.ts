@@ -57,16 +57,22 @@ export type AdminErrorReport = {
     | "API error"
     | "Authentication issue"
     | "Coach site issue"
+    | "Database failure"
     | "Form issue"
     | "Link missing"
+    | "Network/server issue"
     | "Payment flow issue"
+    | "Route not found"
     | "UI crash"
     | "Unknown"
     | "Video issue";
+  adminNotes?: string;
   coachSlug?: string;
   createdAt: string;
   deviceType: "desktop" | "mobile" | "tablet" | "unknown";
+  errorCode?: string;
   funnelStep?: string;
+  missingSupportFields?: string;
   pagePath: string;
   referenceId: string;
   referrer: string;
@@ -75,6 +81,9 @@ export type AdminErrorReport = {
   sessionId: string;
   severity: "high" | "low" | "medium";
   status: AdminErrorReportStatus;
+  supportSource?: "coach" | "default";
+  technicalDetails?: string;
+  updatedAt?: string;
   userAction: string;
 };
 
@@ -201,13 +210,16 @@ export const adminControlCenterData: AdminControlCenterData = {
       deviceType: "mobile",
       funnelStep: "coach_register_click",
       pagePath: "/coach/sample-coach-a",
-      referenceId: "ERR-20260601-SMPL",
+      errorCode: "YW-ERR-5001",
+      missingSupportFields: "coach email, coach phone, coach WhatsApp",
+      referenceId: "YW-ERR-5001-SMPL",
       referrer: "direct",
       safeMessage: "Google Form link missing. Register buttons disabled until configured.",
       screenSize: "390x844",
       sessionId: "demo-session",
       severity: "high",
       status: "Reviewing",
+      supportSource: "default",
       userAction: "Tapped Register Now"
     },
     {
@@ -217,13 +229,15 @@ export const adminControlCenterData: AdminControlCenterData = {
       deviceType: "mobile",
       funnelStep: "payment_redirect",
       pagePath: "/gyana/pcos-51",
-      referenceId: "ERR-20260601-PAY1",
+      errorCode: "YW-ERR-5003",
+      referenceId: "YW-ERR-5003-PAY1",
       referrer: "instagram",
       safeMessage: "Payment redirect failed once, no sensitive details exposed.",
       screenSize: "414x896",
       sessionId: "demo-session",
       severity: "medium",
       status: "New",
+      supportSource: "default",
       userAction: "Tapped payment CTA"
     },
     {
@@ -232,13 +246,15 @@ export const adminControlCenterData: AdminControlCenterData = {
       createdAt: "Demo snapshot",
       deviceType: "desktop",
       pagePath: "/admin/dashboard",
-      referenceId: "ERR-20260601-AI01",
+      errorCode: "YW-ERR-8001",
+      referenceId: "YW-ERR-8001-AI01",
       referrer: "admin",
       safeMessage: "AI generation not configured yet.",
       screenSize: "1280x900",
       sessionId: "admin-demo",
       severity: "low",
       status: "Fixed",
+      supportSource: "default",
       userAction: "Clicked Generate with AI"
     }
   ],
@@ -388,14 +404,21 @@ function getPaidMasterclassLinks(): AdminPaidMasterclassLink[] {
 export function createErrorReportBugPrompt(report: AdminErrorReport) {
   return [
     "Fix this bug based on the logged error report.",
+    `Public error code: ${report.errorCode || "not recorded"}.`,
     `Error ID: ${report.referenceId}.`,
     `Page: ${report.pagePath}.`,
     `User action: ${report.userAction}.`,
     `Actual error: ${report.safeMessage}.`,
+    `Support shown: ${report.supportSource || "default"}.`,
+    report.coachSlug ? `Coach slug: ${report.coachSlug}.` : "",
+    report.missingSupportFields ? `Missing support fields: ${report.missingSupportFields}.` : "",
     "Expected behavior: User should see a clean fallback and the underlying issue should be fixed.",
+    "Prevent this failure where possible with validation, safe defaults, retries, or graceful inline fallback.",
     "Preserve routing, APIs, payment, forms, admin, and responsiveness.",
     "Run lint/type-check/build after fix."
-  ].join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 export function getMasterclassSettingsWithEnvStatus() {

@@ -2,8 +2,9 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
+import { ContactSupportFallback } from "../support/contact-support-fallback";
 import type { PublicCoachSiteRecord } from "../../lib/admin-coach-sites";
 import {
   coachTemplateThemes,
@@ -11,7 +12,13 @@ import {
   getCoachTemplateTheme,
   type CoachTemplateThemeId
 } from "../../lib/coach-template-themes";
-import { DEFAULT_SUPPORT_EMAIL } from "../../lib/error-reporting";
+import {
+  DEFAULT_SUPPORT_EMAIL,
+  createSupportErrorReference,
+  getPublicSupportErrorCode,
+  logWebsiteError,
+  type PublicWebsiteErrorCategory
+} from "../../lib/error-reporting";
 import { isUploadedVideoSource, normalizeVideoEmbedUrl } from "../../lib/video-links";
 import { SpotlightCard } from "./spotlight-card";
 import styles from "./public-coach-site-page.module.css";
@@ -38,6 +45,13 @@ export function PublicCoachSitePage({
   const hasRegisterLink = Boolean(site.googleFormUrl);
   const heroMedia = getHeroMedia(site);
   const problemPoints = createProblemPoints(site);
+  const [activeFallback, setActiveFallback] = useState<{
+    category: PublicWebsiteErrorCategory;
+    message: string;
+    referenceId: string;
+    safeMessage: string;
+    userAction: string;
+  } | null>(null);
 
   useEffect(() => {
     if (enableTracking) {
@@ -47,16 +61,40 @@ export function PublicCoachSitePage({
 
   if (site.status === "paused") {
     return (
-      <main className={styles.page} data-theme={theme.id} style={themeStyle}>
-        <div className={styles.auroraLayer} aria-hidden="true" />
-        <section className={styles.unavailablePanel}>
-          <p className={styles.kicker}>Coach Page</p>
-          <h1>This coach page is temporarily unavailable.</h1>
-          <p>The public link remains stable. Please contact support if you need help.</p>
-          <CoachContactSupport referenceId={referenceId} site={site} tone="compact" />
-        </section>
-      </main>
+      <ContactSupportFallback
+        category="coach_site_issue"
+        coachSlug={site.slug}
+        contact={getFallbackSupportContact(site)}
+        message="This coach page is temporarily unavailable. Please contact support for help."
+        referenceId={referenceId}
+        safeMessage="Coach page is paused."
+        userAction="coach_site_paused"
+      />
     );
+  }
+
+  if (activeFallback && !previewMode) {
+    return (
+      <ContactSupportFallback
+        category={activeFallback.category}
+        coachSlug={site.slug}
+        contact={getFallbackSupportContact(site)}
+        message={activeFallback.message}
+        referenceId={activeFallback.referenceId}
+        safeMessage={activeFallback.safeMessage}
+        userAction={activeFallback.userAction}
+      />
+    );
+  }
+
+  function showMissingRegisterFallback() {
+    setActiveFallback({
+      category: "link_missing",
+      message: "We could not open the registration step. Please contact support for help.",
+      referenceId: createSupportErrorReference("link_missing", site.slug),
+      safeMessage: "Google Form registration link missing.",
+      userAction: "coach_register_link_missing"
+    });
   }
 
   return (
@@ -68,7 +106,7 @@ export function PublicCoachSitePage({
       style={themeStyle}
     >
       <div className={styles.auroraLayer} aria-hidden="true" />
-      <StickyRegisterAction site={site} />
+      <StickyRegisterAction onMissingRegisterLink={showMissingRegisterFallback} site={site} />
 
       {previewMode ? <ThemePreviewSwitcher activeThemeId={theme.id} /> : null}
 
@@ -85,7 +123,11 @@ export function PublicCoachSitePage({
           <Link href="#journey">Journey</Link>
           <Link href="#benefits">Benefits</Link>
         </div>
-        <RegisterAction className={styles.navCta} site={site}>
+        <RegisterAction
+          className={styles.navCta}
+          onMissingRegisterLink={showMissingRegisterFallback}
+          site={site}
+        >
           {site.registerButtonText || site.content.ctaText || "Register"}
         </RegisterAction>
       </nav>
@@ -104,7 +146,7 @@ export function PublicCoachSitePage({
             <strong>Nutrition, habits, lifestyle, education</strong>
           </div>
           <div className={styles.heroActions}>
-            <RegisterAction site={site}>
+            <RegisterAction onMissingRegisterLink={showMissingRegisterFallback} site={site}>
               {site.registerButtonText || site.content.ctaText || "Register Now"}
             </RegisterAction>
           </div>
@@ -248,7 +290,9 @@ export function PublicCoachSitePage({
           <h2>{site.content.ctaText || "Ready to take the first step with this coach?"}</h2>
           <p>{site.content.trustText}</p>
         </div>
-        <RegisterAction site={site}>{site.registerButtonText || "Register Now"}</RegisterAction>
+        <RegisterAction onMissingRegisterLink={showMissingRegisterFallback} site={site}>
+          {site.registerButtonText || "Register Now"}
+        </RegisterAction>
       </section>
 
       <section className={`${styles.section} ${styles.faqSection}`}>
@@ -296,24 +340,15 @@ export function CoachRouteErrorFallback({
   site: PublicCoachSiteRecord | null;
 }) {
   return (
-    <main
-      className={styles.page}
-      data-theme={getCoachTemplateTheme(site?.selectedThemeId).id}
-      style={getCoachTemplateCssVariables(site?.selectedThemeId) as CSSProperties}
-    >
-      <div className={styles.auroraLayer} aria-hidden="true" />
-      <section className={styles.unavailablePanel}>
-        <p className={styles.kicker}>Contact Support</p>
-        <h1>Something went wrong</h1>
-        <p>We could not complete this step. Please contact support for help.</p>
-        <CoachContactSupport referenceId={referenceId} site={site} tone="compact" />
-        {reset ? (
-          <button className={styles.retryButton} onClick={reset} type="button">
-            Try Again
-          </button>
-        ) : null}
-      </section>
-    </main>
+    <ContactSupportFallback
+      category="coach_site_issue"
+      coachSlug={site?.slug}
+      contact={getFallbackSupportContact(site)}
+      onReset={reset}
+      referenceId={referenceId}
+      safeMessage="Coach page could not load properly."
+      userAction="coach_page_render"
+    />
   );
 }
 
@@ -415,9 +450,19 @@ function ThemePreviewSwitcher({ activeThemeId }: { activeThemeId: CoachTemplateT
   );
 }
 
-function StickyRegisterAction({ site }: { site: PublicCoachSiteRecord }) {
+function StickyRegisterAction({
+  onMissingRegisterLink,
+  site
+}: {
+  onMissingRegisterLink?: () => void;
+  site: PublicCoachSiteRecord;
+}) {
   return (
-    <RegisterAction className={styles.stickyRegister} site={site}>
+    <RegisterAction
+      className={styles.stickyRegister}
+      onMissingRegisterLink={onMissingRegisterLink}
+      site={site}
+    >
       {site.registerButtonText || "Register Now"}
     </RegisterAction>
   );
@@ -426,22 +471,27 @@ function StickyRegisterAction({ site }: { site: PublicCoachSiteRecord }) {
 function RegisterAction({
   children,
   className,
+  onMissingRegisterLink,
   site
 }: {
   children: ReactNode;
   className?: string;
+  onMissingRegisterLink?: () => void;
   site: PublicCoachSiteRecord;
 }) {
   if (!site.googleFormUrl) {
     return (
-      <span
-        aria-disabled="true"
+      <button
         className={className || styles.primaryAction}
-        data-disabled="true"
-        role="link"
+        data-missing-link="true"
+        onClick={() => {
+          void recordCoachEvent("coach_register_missing_link", site.slug);
+          onMissingRegisterLink?.();
+        }}
+        type="button"
       >
-        Registration link pending
-      </span>
+        {children}
+      </button>
     );
   }
 
@@ -467,11 +517,38 @@ function HeroMediaContent({
   heroMedia: ReturnType<typeof getHeroMedia>;
   site: PublicCoachSiteRecord;
 }) {
+  const [mediaFailed, setMediaFailed] = useState(false);
+
+  function handleMediaError() {
+    if (mediaFailed) return;
+
+    setMediaFailed(true);
+    void logWebsiteError({
+      category: "video_issue",
+      coachSlug: site.slug,
+      errorCode: getPublicSupportErrorCode("video_issue"),
+      referenceId: createSupportErrorReference("video_issue", site.slug),
+      safeMessage: "Coach media could not load.",
+      userAction: "coach_media_load"
+    });
+  }
+
+  if (mediaFailed) {
+    return (
+      <div className={styles.mediaError}>
+        <span>Media unavailable</span>
+        <strong>Coach media could not load right now.</strong>
+        <code>{getPublicSupportErrorCode("video_issue")}</code>
+      </div>
+    );
+  }
+
   if (heroMedia.embedVideoUrl) {
     return (
       <iframe
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
+        onError={handleMediaError}
         src={heroMedia.embedVideoUrl}
         title={`${site.coachName} hero video`}
       />
@@ -479,13 +556,20 @@ function HeroMediaContent({
   }
 
   if (heroMedia.uploadedVideoUrl) {
-    return <video controls src={heroMedia.uploadedVideoUrl} title={`${site.coachName} hero video`} />;
+    return (
+      <video
+        controls
+        onError={handleMediaError}
+        src={heroMedia.uploadedVideoUrl}
+        title={`${site.coachName} hero video`}
+      />
+    );
   }
 
   if (heroMedia.imageUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img alt={`${site.coachName} profile`} src={heroMedia.imageUrl} />
+      <img alt={`${site.coachName} profile`} onError={handleMediaError} src={heroMedia.imageUrl} />
     );
   }
 
@@ -538,15 +622,24 @@ function getSupportDetails(site: PublicCoachSiteRecord | null) {
   };
 }
 
-export function createCoachFallbackReferenceId(slug: string) {
-  const suffix = slug
-    .replace(/[^a-z0-9]/gi, "")
-    .slice(0, 4)
-    .toUpperCase()
-    .padEnd(4, "X");
+function getFallbackSupportContact(site: PublicCoachSiteRecord | null) {
+  if (!site) return null;
 
-  // TODO: Replace this deterministic placeholder with a logged error_reports reference id.
-  return `ERR-20260601-${suffix}`;
+  return {
+    email: site.coachEmail,
+    imageUrl: site.logoUrl || site.photoUrl,
+    name: site.coachName,
+    phone: site.coachPhone,
+    supportText: site.supportText,
+    whatsappLink: site.whatsappLink
+  };
+}
+
+export function createCoachFallbackReferenceId(
+  slug: string,
+  category: PublicWebsiteErrorCategory = "coach_site_issue"
+) {
+  return createSupportErrorReference(category, slug);
 }
 
 async function recordCoachEvent(eventName: string, coachSlug: string) {

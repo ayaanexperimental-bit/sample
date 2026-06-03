@@ -8,8 +8,16 @@ import {
   getCoachTemplateCssVariables,
   getCoachTemplateTheme
 } from "../../lib/coach-template-themes";
-import { DEFAULT_SUPPORT_EMAIL } from "../../lib/error-reporting";
+import {
+  DEFAULT_SUPPORT_EMAIL,
+  DEFAULT_SUPPORT_PHONE,
+  DEFAULT_SUPPORT_WHATSAPP,
+  createSupportErrorReference,
+  getPublicSupportErrorCode,
+  type PublicWebsiteErrorCategory
+} from "../../lib/error-reporting";
 import { getPublicCoachSiteFromDb } from "../../lib/server/coach-site-storage";
+import { insertWebsiteErrorReport } from "../../lib/server/error-reports";
 import { isUploadedVideoSource, normalizeVideoEmbedUrl } from "../../lib/video-links";
 
 type Env = {
@@ -40,29 +48,117 @@ export async function onRequest({ env, params, request }: PagesContext) {
   const slug = normalizeCoachSlug(
     Array.isArray(params.slug) ? params.slug[0] || "" : params.slug || ""
   );
-  if (!slug) return new Response("Not found.", { status: 404 });
+  if (!slug) {
+    const referenceId = createSupportErrorReference("route_not_found", "coach");
+    await logCoachFallbackError({
+      category: "route_not_found",
+      env,
+      referenceId,
+      request,
+      safeMessage: "Coach route slug missing.",
+      userAction: "coach_route_not_found"
+    });
+
+    return new Response(
+      renderSupportFallbackHtml({
+        category: "route_not_found",
+        message: "The coach page you opened is not available. Please contact support for help.",
+        referenceId,
+        site: null
+      }),
+      { headers: getHtmlHeaders(true), status: 404 }
+    );
+  }
 
   const site = (await getPublicCoachSiteFromDb(slug, env)) || getPublicCoachSiteBySlug(slug);
   if (!site || site.status === "draft" || site.status === "archived" || site.status === "removed") {
-    return new Response("Not found.", { status: 404 });
+    const referenceId = createSupportErrorReference("coach_site_issue", slug);
+    await logCoachFallbackError({
+      category: "coach_site_issue",
+      coachSlug: slug,
+      env,
+      referenceId,
+      request,
+      safeMessage: "Coach site not available.",
+      site,
+      userAction: "coach_site_not_available"
+    });
+
+    return new Response(
+      renderSupportFallbackHtml({
+        category: "coach_site_issue",
+        message: "This coach page is not available. Please contact support for help.",
+        referenceId,
+        site
+      }),
+      { headers: getHtmlHeaders(true), status: 404 }
+    );
+  }
+
+  if (site.status === "paused") {
+    const referenceId = createSupportErrorReference("coach_site_issue", slug);
+    await logCoachFallbackError({
+      category: "coach_site_issue",
+      coachSlug: slug,
+      env,
+      referenceId,
+      request,
+      safeMessage: "Coach site is paused.",
+      site,
+      userAction: "coach_site_paused"
+    });
+
+    return new Response(
+      renderSupportFallbackHtml({
+        category: "coach_site_issue",
+        message: "This coach page is temporarily unavailable. Please contact support for help.",
+        referenceId,
+        site
+      }),
+      { headers: getHtmlHeaders(true), status: 200 }
+    );
+  }
+
+  if (!site.googleFormUrl) {
+    const referenceId = createSupportErrorReference("link_missing", slug);
+    await logCoachFallbackError({
+      category: "link_missing",
+      coachSlug: slug,
+      env,
+      referenceId,
+      request,
+      safeMessage: "Google Form registration link missing.",
+      site,
+      userAction: "coach_register_link_missing"
+    });
+
+    return new Response(
+      renderSupportFallbackHtml({
+        category: "link_missing",
+        message: "We could not open the registration step. Please contact support for help.",
+        referenceId,
+        site
+      }),
+      { headers: getHtmlHeaders(true), status: 200 }
+    );
   }
 
   if (request.method === "HEAD") {
     return new Response(null, {
-      headers: getHtmlHeaders(site.status === "paused"),
+      headers: getHtmlHeaders(false),
       status: 200
     });
   }
 
   return new Response(renderCoachSiteHtml(site), {
-    headers: getHtmlHeaders(site.status === "paused"),
+    headers: getHtmlHeaders(false),
     status: 200
   });
 }
 
 function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
   const support = getSupportDetails(site);
-  const isPaused = site.status === "paused";
+  const isPaused = false;
   const theme = getCoachTemplateTheme(site.selectedThemeId);
   const themeStyle = createThemeInlineStyle(theme.id);
   const benefits = getBenefits(site)
@@ -1278,7 +1374,13 @@ function renderSupportHtml(
     </section>`;
 }
 
-function renderSupportBody(site: PublicCoachSiteRecord, support: SupportDetails) {
+function renderSupportBody(
+  site: PublicCoachSiteRecord | null,
+  support: SupportDetails,
+  referenceId = site
+    ? createCoachFallbackReferenceId(site.slug)
+    : createSupportErrorReference("unknown", "coach")
+) {
   return `
     <div class="support-identity">
       <div class="avatar">
@@ -1293,9 +1395,64 @@ function renderSupportBody(site: PublicCoachSiteRecord, support: SupportDetails)
     <div class="support-grid">
       ${support.phone ? `<a href="tel:${escapeAttribute(support.phone.replace(/[^\\d+]/g, ""))}"><span>Phone</span><strong>${escapeHtml(support.phone)}</strong></a>` : ""}
       ${support.whatsappLink ? `<a data-track="coach_whatsapp_click" href="${escapeAttribute(support.whatsappLink)}" rel="noreferrer" target="_blank"><span>WhatsApp</span><strong>Message coach</strong></a>` : ""}
-      <a href="${escapeAttribute(support.emailHref)}"><span>Email</span><strong>${escapeHtml(support.email)}</strong></a>
+      ${support.email ? `<a href="${escapeAttribute(support.emailHref)}"><span>Email</span><strong>${escapeHtml(support.email)}</strong></a>` : `<div class="pending"><span>Support</span><strong>Support contact will be updated soon.</strong></div>`}
     </div>
-    <p class="privacy">Contact details shown here are public coach-site support details, not admin-only data. Reference ID: ${escapeHtml(createCoachFallbackReferenceId(site.slug))}</p>`;
+    <p class="privacy">Contact details shown here are public support details, not admin-only data. Reference: ${escapeHtml(referenceId)}</p>`;
+}
+
+function renderSupportFallbackHtml({
+  category,
+  message,
+  referenceId,
+  site
+}: {
+  category: PublicWebsiteErrorCategory;
+  message: string;
+  referenceId: string;
+  site: PublicCoachSiteRecord | null;
+}) {
+  const support = getSupportDetails(site);
+  const errorCode = getPublicSupportErrorCode(category);
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Something went wrong | YW Nutritech</title>
+    <style>
+      *{box-sizing:border-box}
+      body{min-width:320px;min-height:100vh;display:grid;place-items:center;margin:0;background:radial-gradient(circle at 14% 10%,rgb(255 211 232/.7),transparent 25rem),radial-gradient(circle at 88% 18%,rgb(196 181 253/.42),transparent 25rem),linear-gradient(135deg,#fffaf7 0%,#fff7fb 48%,#f9f7ff 100%);color:#201628;font-family:"Segoe UI",ui-sans-serif,system-ui,sans-serif;padding:clamp(1rem,4vw,3rem)}
+      main{width:min(100%,60rem);overflow:hidden;border:1px solid rgb(255 255 255/.78);border-radius:1.35rem;background:linear-gradient(145deg,rgb(255 255 255/.86),rgb(255 245 250/.72));box-shadow:0 24px 80px rgb(76 43 70/.16),inset 0 1px 0 rgb(255 255 255/.92)}
+      header,.content{padding:clamp(1rem,4vw,2rem)}
+      header{display:flex;align-items:center;justify-content:space-between;gap:1rem;border-bottom:1px solid rgb(222 190 208/.62)}
+      .brand{display:inline-flex;align-items:center;gap:.75rem;color:inherit;font-weight:900;text-decoration:none}.brand img{width:2.6rem;height:2.6rem;object-fit:contain}.brand span{display:grid}.brand small{color:#8d637c;font-size:.76rem;font-weight:800}
+      code{border:1px solid rgb(189 143 178/.32);border-radius:999px;background:rgb(255 255 255/.64);color:#8f164f;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.84rem;font-weight:900;padding:.48rem .72rem}
+      .content{display:grid;grid-template-columns:minmax(0,1fr) minmax(18rem,.78fr);gap:clamp(1rem,4vw,2rem)}
+      h1{margin:0;color:#1c1726;font-family:Georgia,Cambria,"Times New Roman",serif;font-size:clamp(2.2rem,6vw,4.25rem);line-height:.98}p{color:#675466;font-size:clamp(1rem,2vw,1.12rem);font-weight:650;line-height:1.65}.kicker{color:#9b2f66;font-size:.76rem;font-weight:950;letter-spacing:.08em;text-transform:uppercase}
+      .support-card{display:grid;gap:1rem;border:1px solid rgb(235 201 219/.78);border-radius:1.1rem;background:linear-gradient(145deg,rgb(255 255 255/.9),rgb(255 240 247/.72));padding:1rem}.support-identity{display:grid;grid-template-columns:3.6rem minmax(0,1fr);gap:.8rem;align-items:center}.avatar{width:3.6rem;height:3.6rem;display:grid;place-items:center;overflow:hidden;border-radius:999px;background:linear-gradient(135deg,#9f174d,#a855f7);color:#fff;font-weight:950}.avatar img{width:100%;height:100%;object-fit:cover}
+      .support-grid{display:grid;gap:.65rem}.support-grid a,.pending{display:grid;gap:.22rem;border:1px solid rgb(242 201 218/.72);border-radius:.85rem;background:rgb(255 255 255/.68);color:inherit;padding:.78rem .85rem;text-decoration:none}.support-grid span{color:#8b6078;font-size:.75rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+      .support-actions{display:flex;flex-wrap:wrap;gap:.7rem}.support-actions a{min-height:2.9rem;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgb(242 201 218/.78);border-radius:999px;padding:0 1rem;color:#251822;font-weight:900;text-decoration:none}.support-actions a:first-child{background:linear-gradient(135deg,#251822,#9f174d 54%,#a855f7);color:#fff}
+      @media(max-width:720px){body{padding:.75rem}main{min-height:calc(100svh - 1.5rem);display:grid;align-content:center;border-radius:1rem}header{align-items:flex-start;flex-direction:column}.content{grid-template-columns:1fr}.support-actions a{width:100%}}
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <a class="brand" href="/"><img alt="YW Nutritech" src="/images/yw-nutritech-logo.png" /><span><strong>YW Nutritech</strong><small>Support fallback</small></span></a>
+        <code>Error Code: ${escapeHtml(errorCode)}</code>
+      </header>
+      <section class="content">
+        <div><p class="kicker">Contact Support</p><h1>Something went wrong</h1><p>${escapeHtml(message)}</p></div>
+        <aside class="support-card">
+          ${renderSupportBody(site, support, referenceId)}
+          <div class="support-actions"><a href="${escapeAttribute(support.primaryHref)}">Contact Support</a><a href="/">Go Back Home</a></div>
+        </aside>
+      </section>
+    </main>
+  </body>
+</html>`;
 }
 
 function renderFooterHtml() {
@@ -1388,22 +1545,22 @@ function renderHeroMediaContent(site: PublicCoachSiteRecord) {
 
 type SupportDetails = ReturnType<typeof getSupportDetails>;
 
-function getSupportDetails(site: PublicCoachSiteRecord) {
-  const hasCoachContact = Boolean(site.coachEmail || site.coachPhone || site.whatsappLink);
-  const email = site.coachEmail || DEFAULT_SUPPORT_EMAIL;
-  const subject = encodeURIComponent(`Coach page support ${site.slug || "unknown-coach"}`);
+function getSupportDetails(site: PublicCoachSiteRecord | null) {
+  const hasCoachContact = Boolean(site?.coachEmail || site?.coachPhone || site?.whatsappLink);
+  const email = hasCoachContact ? site?.coachEmail || "" : DEFAULT_SUPPORT_EMAIL;
+  const subject = encodeURIComponent(`Coach page support ${site?.slug || "unknown-coach"}`);
   const emailHref = `mailto:${email}?subject=${subject}`;
-  const whatsappLink = site.whatsappLink || "";
+  const whatsappLink = hasCoachContact ? site?.whatsappLink || "" : DEFAULT_SUPPORT_WHATSAPP;
 
   return {
     email,
     emailHref,
-    imageUrl: hasCoachContact ? site.logoUrl || site.photoUrl || "" : "",
-    name: hasCoachContact ? site.coachName : DEFAULT_SUPPORT_NAME,
-    phone: site.coachPhone || "",
+    imageUrl: hasCoachContact ? site?.logoUrl || site?.photoUrl || "" : "",
+    name: hasCoachContact && site ? site.coachName : DEFAULT_SUPPORT_NAME,
+    phone: hasCoachContact ? site?.coachPhone || "" : DEFAULT_SUPPORT_PHONE,
     primaryHref: whatsappLink || emailHref,
     text:
-      site.supportText ||
+      site?.supportText ||
       (hasCoachContact ? "Need help? Contact your coach directly." : DEFAULT_SUPPORT_TEXT),
     whatsappLink
   };
@@ -1450,13 +1607,69 @@ function createThemeInlineStyle(themeId: unknown) {
 }
 
 function createCoachFallbackReferenceId(slug: string) {
-  const suffix = slug
-    .replace(/[^a-z0-9]/gi, "")
-    .slice(0, 4)
-    .toUpperCase()
-    .padEnd(4, "X");
+  return createSupportErrorReference("coach_site_issue", slug);
+}
 
-  return `ERR-20260601-${suffix}`;
+async function logCoachFallbackError({
+  category,
+  coachSlug = "",
+  env,
+  referenceId,
+  request,
+  safeMessage,
+  site,
+  userAction
+}: {
+  category: PublicWebsiteErrorCategory;
+  coachSlug?: string;
+  env: Env;
+  referenceId: string;
+  request: Request;
+  safeMessage: string;
+  site?: PublicCoachSiteRecord | null;
+  userAction: string;
+}) {
+  const supportSource = site && (site.coachEmail || site.coachPhone || site.whatsappLink) ? "coach" : "default";
+
+  await insertWebsiteErrorReport(
+    {
+      browser: request.headers.get("user-agent") || "unknown",
+      category,
+      coachSlug,
+      digest: "",
+      errorCode: getPublicSupportErrorCode(category),
+      funnelStep: category === "link_missing" ? "coach_register_click" : "",
+      missingSupportFields: getMissingSupportFields(site || null, supportSource),
+      pagePath: new URL(request.url).pathname,
+      referenceId,
+      referrer: request.headers.get("referer") || "direct",
+      safeMessage,
+      screenSize: "",
+      supportSource,
+      technicalDetails: "",
+      userAction
+    },
+    env
+  );
+}
+
+function getMissingSupportFields(
+  site: PublicCoachSiteRecord | null,
+  supportSource: "coach" | "default"
+) {
+  if (supportSource === "coach") {
+    return [
+      site?.coachEmail ? "" : "coach email",
+      site?.coachPhone ? "" : "coach phone",
+      site?.whatsappLink ? "" : "coach WhatsApp"
+    ].filter(Boolean);
+  }
+
+  return [
+    DEFAULT_SUPPORT_EMAIL ? "" : "default support email",
+    DEFAULT_SUPPORT_PHONE ? "" : "default support phone",
+    DEFAULT_SUPPORT_WHATSAPP ? "" : "default support WhatsApp"
+  ].filter(Boolean);
 }
 
 function getHtmlHeaders(paused: boolean) {

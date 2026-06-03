@@ -216,7 +216,7 @@ test.describe("admin auth security protections", () => {
       publicLink: "/gyana"
     });
     expect(dashboardBody.controlCenter.errorReports[0]).toMatchObject({
-      referenceId: "ERR-20260601-SMPL"
+      referenceId: "YW-ERR-5001-SMPL"
     });
     expect(dashboardBody.coachSites[0]).toMatchObject({
       publicUrl: "/coach/gyana-ranjan",
@@ -230,7 +230,7 @@ test.describe("admin auth security protections", () => {
       })
     });
     expect(errorReports.status).toBe(200);
-    await expectJson(errorReports, { ok: true, persistence: "placeholder" });
+    await expectJson(errorReports, { ok: true, persistence: "demo_fallback" });
 
     const backupCleanup = await backupCleanupRequest({
       env,
@@ -330,7 +330,7 @@ test.describe("admin auth security protections", () => {
       ok: true,
       persisted: false
     });
-    expect(String(body.referenceId)).toMatch(/^ERR-\d{8}-[A-Z0-9]{4}$/);
+    expect(String(body.referenceId)).toMatch(/^YW-ERR-1001-[A-Z0-9]+-[A-Z0-9]{6}$/);
     expect(JSON.stringify(body)).not.toContain("should not be echoed");
   });
 });

@@ -1,6 +1,17 @@
-import { createErrorReferenceId, type PublicWebsiteErrorCategory } from "../../lib/error-reporting";
+import type { D1Database } from "@cloudflare/workers-types";
+import {
+  createSupportErrorReference,
+  getPublicSupportErrorCode,
+  normalizePublicErrorCategory
+} from "../../lib/error-reporting";
+import { insertWebsiteErrorReport } from "../../lib/server/error-reports";
+
+type Env = {
+  ADMIN_DB?: D1Database;
+};
 
 type PagesContext = {
+  env?: Env;
   request: Request;
 };
 
@@ -9,48 +20,56 @@ type PublicErrorReportBody = {
   category?: unknown;
   coachSlug?: unknown;
   digest?: unknown;
+  errorCode?: unknown;
   funnelStep?: unknown;
+  missingSupportFields?: unknown;
   pagePath?: unknown;
   referenceId?: unknown;
   referrer?: unknown;
   safeMessage?: unknown;
   screenSize?: unknown;
+  supportSource?: unknown;
+  technicalDetails?: unknown;
   userAction?: unknown;
 };
 
-const ALLOWED_CATEGORIES = new Set<PublicWebsiteErrorCategory>([
-  "admin_action_issue",
-  "ai_generation_issue",
-  "analytics_issue",
-  "api_error",
-  "authentication_issue",
-  "coach_site_issue",
-  "form_issue",
-  "link_missing",
-  "network_or_server_failure",
-  "payment_flow_issue",
-  "route_not_found",
-  "ui_crash",
-  "unknown",
-  "video_issue"
-]);
-
-export async function onRequest({ request }: PagesContext) {
+export async function onRequest({ env, request }: PagesContext) {
   if (request.method !== "POST") {
     return json({ ok: false, error: "Method not allowed." }, 405, { allow: "POST" });
   }
 
   const body = await readJsonBody(request);
-  const category = normalizeCategory(body?.category);
+  const category = normalizePublicErrorCategory(readText(body?.category, 80));
   const referenceId =
-    readText(body?.referenceId, 40) || createErrorReferenceId(readText(body?.pagePath, 80));
+    readText(body?.referenceId, 80) ||
+    createSupportErrorReference(category, readText(body?.pagePath, 80));
+  const errorCode = readText(body?.errorCode, 24) || getPublicSupportErrorCode(category);
+  const persistence = await insertWebsiteErrorReport(
+    {
+      browser: readText(body?.browser, 220),
+      category,
+      coachSlug: readText(body?.coachSlug, 120),
+      digest: readText(body?.digest, 240),
+      errorCode,
+      funnelStep: readText(body?.funnelStep, 120),
+      missingSupportFields: readStringArray(body?.missingSupportFields),
+      pagePath: readText(body?.pagePath, 220),
+      referenceId,
+      referrer: readText(body?.referrer, 240),
+      safeMessage: readText(body?.safeMessage, 320) || "We could not complete this step.",
+      screenSize: readText(body?.screenSize, 40),
+      supportSource: readText(body?.supportSource, 20),
+      technicalDetails: readText(body?.technicalDetails, 1200),
+      userAction: readText(body?.userAction, 160)
+    },
+    env || {}
+  );
 
   return json({
     category,
-    message:
-      "Error report accepted by placeholder service. Persistence waits for database approval.",
+    errorCode,
     ok: true,
-    persisted: false,
+    persisted: persistence.persisted,
     referenceId
   });
 }
@@ -65,14 +84,14 @@ async function readJsonBody(request: Request) {
   }
 }
 
-function normalizeCategory(value: unknown): PublicWebsiteErrorCategory {
-  const category = readText(value, 80) as PublicWebsiteErrorCategory;
-
-  return ALLOWED_CATEGORIES.has(category) ? category : "unknown";
-}
-
 function readText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.replace(/[\r\n\t]+/g, " ").trim().slice(0, maxLength) : "";
+}
+
+function readStringArray(value: unknown) {
+  if (!Array.isArray(value)) return [];
+
+  return value.map((item) => readText(item, 80)).filter(Boolean);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
