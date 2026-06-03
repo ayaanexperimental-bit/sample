@@ -34,7 +34,7 @@
 
 @media (hover: none), (pointer: coarse) {
   .cardSpotlight::after {
-    opacity: 0.22;
+    opacity: 0.08;
   }
 }
 

@@ -314,7 +314,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           repeating-linear-gradient(100deg, rgb(216 181 111 / 0.2) 10%, rgb(183 93 120 / 0.22) 15%, rgb(200 184 255 / 0.24) 20%, rgb(242 185 166 / 0.2) 25%, rgb(70 191 192 / 0.14) 30%);
         background-position: 50% 50%, 50% 50%;
         background-size: 300% 190%, 300% 190%;
-        filter: blur(12px) saturate(1.16);
+        filter: blur(8px) saturate(1.08);
         -webkit-mask-image:
           radial-gradient(ellipse at 46% 20%, black 0 34%, transparent 70%),
           linear-gradient(180deg, black 0, rgb(0 0 0 / 0.62) 64%, transparent 100%);
@@ -322,8 +322,8 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           radial-gradient(ellipse at 46% 20%, black 0 34%, transparent 70%),
           linear-gradient(180deg, black 0, rgb(0 0 0 / 0.62) 64%, transparent 100%);
         mix-blend-mode: soft-light;
-        opacity: 0.72;
-        animation: aurora 60s linear infinite;
+        opacity: 0.6;
+        animation: aurora 90s linear infinite;
       }
       .scroll-line {
         position: fixed;
@@ -369,7 +369,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), var(--template-shadow);
         color: var(--template-inverted-ink);
         padding: 0.7rem 1rem;
-        backdrop-filter: blur(24px) saturate(1.35);
+        backdrop-filter: blur(14px) saturate(1.18);
         animation: fade-down 620ms ease both;
       }
       .brand {
@@ -594,11 +594,11 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         background:
           radial-gradient(circle at 72% 0, var(--template-glow), transparent 14rem),
           var(--template-card);
-        box-shadow: 0 1.6rem 4rem rgb(0 0 0 / 0.18);
+        box-shadow: 0 1.2rem 3rem rgb(0 0 0 / 0.14);
       }
       .hero-media {
         aspect-ratio: 4 / 5;
-        animation: float-card 5.8s ease-in-out infinite;
+        animation: float-card 8s ease-in-out infinite;
       }
       .hero-media[data-media="video"],
       .video-frame[data-media="video"] {
@@ -643,7 +643,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         background: rgb(8 11 23 / 0.66);
         color: #fff;
         padding: 0.85rem;
-        backdrop-filter: blur(16px);
+        backdrop-filter: blur(10px);
         box-shadow: 0 0.9rem 2rem rgb(0 0 0 / 0.16);
         text-shadow: 0 1px 1px rgb(0 0 0 / 0.28);
       }
@@ -666,7 +666,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         background: linear-gradient(135deg, rgb(8 11 23 / 0.74), rgb(255 255 255 / 0.1));
         color: var(--template-inverted-ink);
         padding: 0.95rem;
-        backdrop-filter: blur(16px);
+        backdrop-filter: blur(10px);
       }
       .signal-panel span {
         color: var(--template-accent);
@@ -727,7 +727,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         border-radius: var(--template-radius);
         background: var(--template-section);
         padding: clamp(1.1rem, 4vw, 2.5rem);
-        backdrop-filter: blur(18px);
+        backdrop-filter: blur(10px);
       }
       .section-head {
         max-width: 52rem;
@@ -760,7 +760,6 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         padding: clamp(1rem, 3vw, 1.35rem);
         transition:
           transform 180ms cubic-bezier(0.2, 0.85, 0.2, 1),
-          box-shadow 180ms ease,
           border-color 180ms ease;
       }
       .spot-card::before,
@@ -1027,7 +1026,13 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       .page[data-theme="apple-liquid-glass"] .spot-card,
       .page[data-theme="apple-liquid-glass"] .section,
       .page[data-theme="apple-liquid-glass"] .support-card {
-        backdrop-filter: blur(22px) saturate(1.28);
+        backdrop-filter: blur(14px) saturate(1.16);
+      }
+      .section,
+      .support,
+      .footer {
+        content-visibility: auto;
+        contain-intrinsic-size: auto 44rem;
       }
       .page[data-theme="dark-luxury-wellness"] .nav,
       .page[data-theme="dark-luxury-wellness"] .footer {
@@ -1130,8 +1135,26 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           padding: 0.8rem;
         }
         .aurora {
-          opacity: 0.42;
+          opacity: 0.28;
           animation: none;
+          filter: blur(5px) saturate(1);
+        }
+        .page::before {
+          display: none;
+        }
+        .nav,
+        .trust-row span,
+        .brand-assurance,
+        .signal-panel,
+        .media-caption,
+        .section,
+        .spot-card,
+        .support-card,
+        .faq-card,
+        .page[data-theme="apple-liquid-glass"] .spot-card,
+        .page[data-theme="apple-liquid-glass"] .section,
+        .page[data-theme="apple-liquid-glass"] .support-card {
+          backdrop-filter: none;
         }
         .trust-row {
           gap: 0.3rem;
@@ -1503,10 +1526,19 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       (function () {
         var slug = ${JSON.stringify(site.slug)};
         var root = document.documentElement;
+        var progressFrame = 0;
+        var pointerFrame = 0;
+        var pointerEvent = null;
+        var allowPointerSpotlight = !window.matchMedia('(hover: none), (pointer: coarse), (prefers-reduced-motion: reduce)').matches;
         function updateProgress() {
           var max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
           var progress = Math.min(1, Math.max(0, window.scrollY / max));
           root.style.setProperty('--scroll-progress', progress.toFixed(4));
+          progressFrame = 0;
+        }
+        function scheduleProgressUpdate() {
+          if (progressFrame) return;
+          progressFrame = window.requestAnimationFrame(updateProgress);
         }
         function track(eventName) {
           try {
@@ -1519,14 +1551,22 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           } catch (_) {}
         }
         updateProgress();
-        window.addEventListener('scroll', updateProgress, { passive: true });
+        window.addEventListener('scroll', scheduleProgressUpdate, { passive: true });
         track('coach_site_view');
         document.addEventListener('pointermove', function (event) {
-          var card = event.target && event.target.closest ? event.target.closest('.spot-card, .support-card') : null;
+          if (!allowPointerSpotlight) return;
+          pointerEvent = event;
+          if (pointerFrame) return;
+          pointerFrame = window.requestAnimationFrame(function () {
+          pointerFrame = 0;
+          var currentEvent = pointerEvent;
+          if (!currentEvent) return;
+          var card = currentEvent.target && currentEvent.target.closest ? currentEvent.target.closest('.spot-card, .support-card') : null;
           if (!card) return;
           var rect = card.getBoundingClientRect();
-          card.style.setProperty('--mouse-x', (event.clientX - rect.left) + 'px');
-          card.style.setProperty('--mouse-y', (event.clientY - rect.top) + 'px');
+          card.style.setProperty('--mouse-x', (currentEvent.clientX - rect.left) + 'px');
+          card.style.setProperty('--mouse-y', (currentEvent.clientY - rect.top) + 'px');
+          });
         }, { passive: true });
         document.addEventListener('click', function (event) {
           var target = event.target && event.target.closest ? event.target.closest('[data-track]') : null;

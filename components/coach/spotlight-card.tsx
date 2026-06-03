@@ -1,12 +1,7 @@
 "use client";
 
-import type {
-  ComponentPropsWithoutRef,
-  CSSProperties,
-  MouseEvent,
-  ReactNode
-} from "react";
-import { useRef } from "react";
+import type { ComponentPropsWithoutRef, CSSProperties, MouseEvent, ReactNode } from "react";
+import { useEffect, useRef } from "react";
 
 import styles from "./spotlight-card.module.css";
 
@@ -43,18 +38,53 @@ export function SpotlightCard(props: SpotlightCardProps) {
     ...rest
   } = props;
   const cardRef = useRef<HTMLElement | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const pointerRef = useRef<{ x: number; y: number } | null>(null);
+  const spotlightEnabledRef = useRef(true);
+
+  useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const coarsePointer = window.matchMedia("(hover: none), (pointer: coarse)");
+    const syncSpotlightMode = () => {
+      spotlightEnabledRef.current = !reducedMotion.matches && !coarsePointer.matches;
+    };
+
+    syncSpotlightMode();
+    reducedMotion.addEventListener("change", syncSpotlightMode);
+    coarsePointer.addEventListener("change", syncSpotlightMode);
+
+    return () => {
+      reducedMotion.removeEventListener("change", syncSpotlightMode);
+      coarsePointer.removeEventListener("change", syncSpotlightMode);
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+      }
+    };
+  }, []);
 
   const handleMouseMove = (event: MouseEvent<HTMLElement>) => {
-    const element = cardRef.current;
+    if (spotlightEnabledRef.current) {
+      pointerRef.current = {
+        x: event.clientX,
+        y: event.clientY
+      };
 
-    if (element) {
-      const rect = element.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
+      if (frameRef.current === null) {
+        frameRef.current = window.requestAnimationFrame(() => {
+          frameRef.current = null;
+          const element = cardRef.current;
+          const pointer = pointerRef.current;
+          if (!element || !pointer) return;
 
-      element.style.setProperty("--mouse-x", `${x}px`);
-      element.style.setProperty("--mouse-y", `${y}px`);
-      element.style.setProperty("--spotlight-color", spotlightColor);
+          const rect = element.getBoundingClientRect();
+          const x = pointer.x - rect.left;
+          const y = pointer.y - rect.top;
+
+          element.style.setProperty("--mouse-x", `${x}px`);
+          element.style.setProperty("--mouse-y", `${y}px`);
+          element.style.setProperty("--spotlight-color", spotlightColor);
+        });
+      }
     }
 
     onMouseMove?.(event as never);

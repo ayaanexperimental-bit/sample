@@ -1,6 +1,14 @@
 "use client";
 
-import { type KeyboardEvent, type MouseEvent, useEffect, useMemo, useState } from "react";
+import {
+  memo,
+  type KeyboardEvent,
+  type MouseEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import { AdminActionDialog } from "./admin-dashboard-layout";
 import {
   EMPTY_COACH_SITE_FORM,
@@ -134,6 +142,7 @@ const VIDEO_MAX_BYTES = 24 * 1024 * 1024;
 const IMAGE_OPTIMIZE_MAX_EDGE = 2200;
 const IMAGE_OPTIMIZE_QUALITY = 0.92;
 const IMAGE_MIN_SAVINGS_RATIO = 0.92;
+const PREVIEW_SYNC_DELAY_MS = 180;
 const ALLOWED_PHOTO_EXTENSIONS = new Set([
   ".avif",
   ".bmp",
@@ -265,6 +274,8 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   const [storageErrorCode, setStorageErrorCode] = useState("");
   const [storageMessage, setStorageMessage] = useState("");
   const [storageReady, setStorageReady] = useState(false);
+  const previewSyncTimeoutRef = useRef<number | null>(null);
+  const previewSyncFormRef = useRef<CoachSiteFormState | null>(null);
 
   useEffect(() => {
     if (mode === "create") {
@@ -309,6 +320,14 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (previewSyncTimeoutRef.current !== null) {
+        window.clearTimeout(previewSyncTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const filteredSites = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -333,10 +352,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     [filteredSites]
   );
   const managedSites = useMemo(
-    () =>
-      filteredSites.filter(
-        (site) => site.status !== "draft" && site.status !== "archived"
-      ),
+    () => filteredSites.filter((site) => site.status !== "draft" && site.status !== "archived"),
     [filteredSites]
   );
 
@@ -397,7 +413,22 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   }
 
   function syncPreviewFromForm(sourceForm: CoachSiteFormState) {
-    setPreviewSite((current) => (current ? buildPreviewSite(current.status, sourceForm) : current));
+    previewSyncFormRef.current = sourceForm;
+
+    if (previewSyncTimeoutRef.current !== null) {
+      window.clearTimeout(previewSyncTimeoutRef.current);
+    }
+
+    previewSyncTimeoutRef.current = window.setTimeout(() => {
+      const queuedForm = previewSyncFormRef.current;
+      previewSyncTimeoutRef.current = null;
+
+      if (!queuedForm) return;
+
+      setPreviewSite((current) =>
+        current ? buildPreviewSite(current.status, queuedForm) : current
+      );
+    }, PREVIEW_SYNC_DELAY_MS);
   }
 
   function validatePreviewForm(sourceForm: CoachSiteFormState, status: CoachSiteStatus = "draft") {
@@ -814,7 +845,9 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         technicalDetails: `Post-publish draft verification failed: ${JSON.stringify(verification)}`,
         userAction: "Verify published draft coach site"
       });
-      setMessage("Published status saved, but public verification failed. Reopen and verify before sharing.");
+      setMessage(
+        "Published status saved, but public verification failed. Reopen and verify before sharing."
+      );
       return;
     }
 
@@ -1115,10 +1148,10 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       const listPayload = (await listResponse.json().catch(() => ({}))) as CoachSitesApiPayload;
       result.listHasSite = Boolean(
         listResponse.ok &&
-          listPayload.ok &&
-          listPayload.coachSites?.some(
-            (item) => item.id === site.id && item.slug === site.slug && item.status === "published"
-          )
+        listPayload.ok &&
+        listPayload.coachSites?.some(
+          (item) => item.id === site.id && item.slug === site.slug && item.status === "published"
+        )
       );
     } catch {
       result.listHasSite = false;
@@ -2906,7 +2939,7 @@ function ThemeChoiceField({
   );
 }
 
-function CoachSitePreview({
+const CoachSitePreview = memo(function CoachSitePreview({
   inspectMode = false,
   onThemeChange,
   onSelectInspectScope,
@@ -3135,7 +3168,7 @@ function CoachSitePreview({
       </section>
     </article>
   );
-}
+});
 
 function TextField({
   helper,
