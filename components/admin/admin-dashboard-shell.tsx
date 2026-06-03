@@ -16,6 +16,7 @@ import {
   type AdminPaidMasterclassLink,
   createErrorReportBugPrompt
 } from "../../lib/admin-control-center";
+import type { AnalyticsMetricSummary } from "../../lib/analytics-events";
 import type { CoachSiteRecord } from "../../lib/admin-coach-sites";
 import {
   buildCoachAnalyticsRows,
@@ -65,6 +66,13 @@ type CoachSitesApiPayload = {
   ok?: boolean;
 };
 
+type AnalyticsEventsApiPayload = {
+  analyticsSummaries?: AnalyticsMetricSummary[];
+  configured?: boolean;
+  ok?: boolean;
+  source?: string;
+};
+
 const navSections: AdminNavSection[] = [
   {
     id: "admin-workflow",
@@ -111,6 +119,8 @@ export function AdminDashboardShell({
   const [actionDialog, setActionDialog] = useState<ActionDialogState>(null);
   const [errorReports, setErrorReports] = useState<AdminErrorReport[]>([]);
   const [errorReportSource, setErrorReportSource] = useState("loading");
+  const [analyticsSource, setAnalyticsSource] = useState("loading");
+  const [analyticsSummaries, setAnalyticsSummaries] = useState<AnalyticsMetricSummary[]>([]);
   const [liveCoachSites, setLiveCoachSites] = useState<CoachSiteRecord[]>([]);
   const [coachSiteSource, setCoachSiteSource] = useState("loading");
 
@@ -140,6 +150,40 @@ export function AdminDashboardShell({
     }
 
     void loadErrorReports();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadAnalyticsEvents() {
+      try {
+        const response = await fetch("/api/admin/analytics-events", {
+          cache: "no-store",
+          credentials: "include"
+        });
+        const payload = (await response.json().catch(() => ({}))) as AnalyticsEventsApiPayload;
+
+        if (!active) return;
+        if (response.ok && payload.ok && Array.isArray(payload.analyticsSummaries)) {
+          setAnalyticsSummaries(payload.analyticsSummaries);
+          setAnalyticsSource(payload.source || (payload.configured ? "d1_analytics_events" : "not-configured"));
+        } else {
+          setAnalyticsSummaries([]);
+          setAnalyticsSource("unavailable");
+        }
+      } catch {
+        if (active) {
+          setAnalyticsSummaries([]);
+          setAnalyticsSource("unavailable");
+        }
+      }
+    }
+
+    void loadAnalyticsEvents();
 
     return () => {
       active = false;
@@ -210,6 +254,8 @@ export function AdminDashboardShell({
 
         {activeView === "overview" ? (
           <OverviewView
+            analyticsSource={analyticsSource}
+            analyticsSummaries={analyticsSummaries}
             coachSites={liveCoachSites}
             errorReports={errorReports}
             onSelect={setActiveView}
@@ -241,9 +287,13 @@ export function AdminDashboardShell({
           </AdminPageShell>
         ) : null}
 
-        {activeView === "top-coaches" ? <TopCoachesView coachSites={liveCoachSites} /> : null}
+        {activeView === "top-coaches" ? (
+          <TopCoachesView analyticsSummaries={analyticsSummaries} coachSites={liveCoachSites} />
+        ) : null}
         {activeView === "coach-analytics" ? (
           <CoachAnalyticsView
+            analyticsSource={analyticsSource}
+            analyticsSummaries={analyticsSummaries}
             coachSites={liveCoachSites}
             onSelect={setActiveView}
             source={coachSiteSource}
@@ -281,21 +331,28 @@ export function AdminDashboardShell({
 }
 
 function OverviewView({
+  analyticsSource,
+  analyticsSummaries,
   coachSites,
   errorReports,
   onSelect,
   source
 }: {
+  analyticsSource: string;
+  analyticsSummaries: AnalyticsMetricSummary[];
   coachSites: CoachSiteRecord[];
   errorReports: AdminErrorReport[];
   onSelect: (view: AdminViewId) => void;
   source: string;
 }) {
-  const rows = useMemo(() => buildCoachAnalyticsRows(coachSites), [coachSites]);
+  const rows = useMemo(
+    () => buildCoachAnalyticsRows(coachSites, analyticsSummaries),
+    [analyticsSummaries, coachSites]
+  );
   const currentRows = useMemo(() => getCurrentAnalyticsRows(rows), [rows]);
   const overview = useMemo(
-    () => buildOverviewAnalytics(currentRows, errorReports, source),
-    [currentRows, errorReports, source]
+    () => buildOverviewAnalytics(currentRows, errorReports, source, analyticsSource),
+    [analyticsSource, currentRows, errorReports, source]
   );
 
   return (
@@ -475,10 +532,19 @@ function OverviewView({
   );
 }
 
-function TopCoachesView({ coachSites }: { coachSites: CoachSiteRecord[] }) {
+function TopCoachesView({
+  analyticsSummaries,
+  coachSites
+}: {
+  analyticsSummaries: AnalyticsMetricSummary[];
+  coachSites: CoachSiteRecord[];
+}) {
   const rows = useMemo(
-    () => getTopCoachAnalyticsRows(getCurrentAnalyticsRows(buildCoachAnalyticsRows(coachSites))),
-    [coachSites]
+    () =>
+      getTopCoachAnalyticsRows(
+        getCurrentAnalyticsRows(buildCoachAnalyticsRows(coachSites, analyticsSummaries))
+      ),
+    [analyticsSummaries, coachSites]
   );
 
   return (
@@ -532,14 +598,20 @@ function getCurrentAnalyticsRows(rows: CoachAnalyticsRow[]) {
 function buildOverviewAnalytics(
   rows: CoachAnalyticsRow[],
   errorReports: AdminErrorReport[],
-  source: string
+  source: string,
+  analyticsSource: string
 ) {
   const topRows = getTopCoachAnalyticsRows(rows);
   const needsAttentionRows = getNeedsAttentionRows(rows);
   const totalVisits = sumNumbers(rows.map((row) => row.combined.visits));
-  const totalRegisterClicks = sumNumbers(rows.map((row) => row.freeMetrics.registerClicks));
+  const totalRegisterClicks = sumNumbers(
+    rows.map((row) => row.freeMetrics.registerClicks + row.paidMetrics.registerClicks)
+  );
   const totalClicks = sumNumbers(rows.map((row) => row.combined.clicks));
-  const totalWhatsappClicks = sumNumbers(rows.map((row) => row.freeMetrics.whatsappClicks));
+  const totalWhatsappClicks = sumNumbers(
+    rows.map((row) => row.freeMetrics.whatsappClicks + row.paidMetrics.whatsappClicks)
+  );
+  const totalPaidConversions = sumNumbers(rows.map((row) => row.paidMetrics.paymentSuccess));
   const weeklyVisits = sumNumbers(
     rows.flatMap((row) => row.freeGuestLinks.map((site) => site.analytics.weeklyVisits))
   );
@@ -563,7 +635,9 @@ function buildOverviewAnalytics(
   const conversionRate = getRate(totalRegisterClicks, totalVisits);
   const sourceLabel =
     source === "live-database"
-      ? "Live coach-site database is connected"
+      ? analyticsSource === "d1_analytics_events"
+        ? "Live coach-site database and analytics event stream are connected"
+        : "Live coach-site database is connected"
       : source === "loading"
         ? "Loading live coach-site data"
         : "Live coach-site source is unavailable";
@@ -617,16 +691,19 @@ function buildOverviewAnalytics(
         value: totalVisits.toLocaleString()
       },
       {
-        detail: "Google Form opens are click/open counts only.",
+        detail: "Free Google Form opens plus paid page register CTA clicks.",
         label: "Register clicks",
         tone: totalRegisterClicks ? ("success" as const) : ("neutral" as const),
         value: totalRegisterClicks.toLocaleString()
       },
       {
-        detail: "Paid payment outcomes stay in Razorpay/Sheets unless connected here.",
+        detail:
+          totalPaidConversions > 0
+            ? "Recorded from paid success events."
+            : "No paid success events recorded in this admin yet.",
         label: "Paid conversions",
-        tone: "neutral" as const,
-        value: "No data"
+        tone: totalPaidConversions ? ("success" as const) : ("neutral" as const),
+        value: totalPaidConversions.toLocaleString()
       },
       {
         detail: `${publishedCoaches.toLocaleString()} active/current coach records`,
@@ -715,10 +792,14 @@ function sumNumbers(values: number[]) {
 }
 
 function CoachAnalyticsView({
+  analyticsSource,
+  analyticsSummaries,
   coachSites,
   onSelect,
   source
 }: {
+  analyticsSource: string;
+  analyticsSummaries: AnalyticsMetricSummary[];
   coachSites: CoachSiteRecord[];
   onSelect: (view: AdminViewId) => void;
   source: string;
@@ -740,7 +821,10 @@ function CoachAnalyticsView({
   const [statusFilter, setStatusFilter] = useState<
     "active" | "all" | "draft" | "paused" | "published"
   >("all");
-  const rows = useMemo(() => buildCoachAnalyticsRows(coachSites), [coachSites]);
+  const rows = useMemo(
+    () => buildCoachAnalyticsRows(coachSites, analyticsSummaries),
+    [analyticsSummaries, coachSites]
+  );
   const currentRows = useMemo(
     () => rows.filter((row) => row.status !== "archived" && row.status !== "removed"),
     [rows]
@@ -793,7 +877,8 @@ function CoachAnalyticsView({
       <p className={styles.inlineNote}>
         Source:{" "}
         {source === "live-database" ? "Live coach-site database + paid funnel config" : source}.
-        Every coach is detected dynamically from coach-site records and paid funnel configuration.
+        Analytics stream: {analyticsSource}. Every coach is detected dynamically from coach-site
+        records and paid funnel configuration.
       </p>
 
       <section className={styles.analyticsKpiGrid} aria-label="Coach analytics summary">
@@ -1039,8 +1124,8 @@ function CoachAnalyticsView({
 
       <p className={styles.inlineNote}>
         Free-funnel analytics track visits, register CTA clicks, and Google Form opens only. They
-        stop at click/open counts. Paid payment truth remains in the existing Razorpay-to-Sheet
-        analytics system.
+        stop at click/open counts. Paid panel uses recorded paid page/payment events in this admin;
+        Razorpay/Sheets remains the payment truth source unless webhook sync is connected here.
       </p>
 
       <AdminActionDialog

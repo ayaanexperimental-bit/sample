@@ -208,7 +208,7 @@ export const adminControlCenterData: AdminControlCenterData = {
       "safe metadata"
     ],
     storageStatus:
-      "Event API scaffold exists. Real analytics storage waits for database/table approval."
+      "D1 analytics_events storage is active for public coach and paid funnel event counters."
   },
   dataModels: [
     {
@@ -224,7 +224,7 @@ export const adminControlCenterData: AdminControlCenterData = {
     {
       name: "analytics_events",
       purpose: "Coach and paid funnel event stream for dashboard reporting.",
-      status: "API scaffold only"
+      status: "D1 table configured"
     },
     {
       name: "error_reports",

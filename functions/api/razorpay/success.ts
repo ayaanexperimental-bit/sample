@@ -1,4 +1,6 @@
-import { getFunnelById, isPaidProgramFunnel } from "../../../lib/coach-platform";
+import type { D1Database } from "@cloudflare/workers-types";
+import { getCoachById, getFunnelById, isPaidProgramFunnel } from "../../../lib/coach-platform";
+import { recordAnalyticsEvent } from "../../../lib/server/analytics-events";
 import { blockedLinkResponse } from "../../../lib/server/blocked-response";
 import { verifyFunnelAccessFromCookie } from "../../../lib/server/funnel-access";
 
@@ -8,6 +10,7 @@ type PagesContext = {
 };
 
 type Env = {
+  ADMIN_DB?: D1Database;
   FUNNEL_ACCESS_SECRET?: string;
   RAZORPAY_KEY_SECRET?: string;
   SUCCESS_ACCESS_SECRET?: string;
@@ -29,6 +32,8 @@ export async function onRequest({ request, env }: PagesContext) {
   if (!activeFunnel) {
     return blockedLinkResponse();
   }
+
+  await recordPaidSuccessEvent({ env, funnelId: activeFunnel.id, request });
 
   return redirectToProgramSuccess(request, activeFunnel.successPath);
 }
@@ -58,4 +63,34 @@ function redirectToProgramSuccess(request: Request, successPath: string) {
       location: url.toString()
     }
   });
+}
+
+async function recordPaidSuccessEvent({
+  env,
+  funnelId,
+  request
+}: {
+  env: Env;
+  funnelId: string;
+  request: Request;
+}) {
+  try {
+    const funnel = getFunnelById(funnelId);
+    const coach = funnel ? getCoachById(funnel.coachId) : null;
+
+    await recordAnalyticsEvent(
+      {
+        coachSlug: coach?.slug || "",
+        eventName: "payment_success",
+        funnelId,
+        funnelType: "paid_masterclass",
+        pagePath: new URL(request.url).pathname,
+        referrer: request.headers.get("referer") || "",
+        request
+      },
+      env
+    );
+  } catch {
+    // Analytics storage must never block success redirect.
+  }
 }

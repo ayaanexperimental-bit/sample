@@ -13,7 +13,13 @@ type WhatsAppAccessResponse = {
 const BLOCKED_MESSAGE =
   "This WhatsApp group is available only from the paid program link shared by your coach.";
 
-export function WhatsAppAccessButton() {
+export function WhatsAppAccessButton({
+  coachSlug = "",
+  funnelId = ""
+}: {
+  coachSlug?: string;
+  funnelId?: string;
+}) {
   const [state, setState] = useState<AccessState>("idle");
 
   async function handleClick() {
@@ -32,6 +38,7 @@ export function WhatsAppAccessButton() {
       const payload = (await response.json()) as WhatsAppAccessResponse;
 
       if (payload.allowed && payload.joinUrl) {
+        void recordPaidWhatsappClick({ coachSlug, funnelId });
         window.open(payload.joinUrl, "_blank", "noopener,noreferrer");
         setState("idle");
         return;
@@ -66,4 +73,53 @@ export function WhatsAppAccessButton() {
       ) : null}
     </div>
   );
+}
+
+async function recordPaidWhatsappClick({
+  coachSlug,
+  funnelId
+}: {
+  coachSlug: string;
+  funnelId: string;
+}) {
+  if (!coachSlug || !funnelId) return;
+
+  try {
+    await fetch("/api/coach-events", {
+      body: JSON.stringify({
+        coachSlug,
+        eventName: "paid_whatsapp_click",
+        funnelId,
+        funnelType: "paid_masterclass",
+        pagePath: `${window.location.pathname}${window.location.search}`,
+        pageUrl: window.location.href,
+        referrer: document.referrer,
+        sessionId: getAnalyticsSessionId()
+      }),
+      cache: "no-store",
+      headers: {
+        "content-type": "application/json"
+      },
+      keepalive: true,
+      method: "POST"
+    });
+  } catch {
+    // Analytics must never block private WhatsApp access.
+  }
+}
+
+function getAnalyticsSessionId() {
+  try {
+    const key = "yw_analytics_session_id";
+    const current = window.sessionStorage.getItem(key);
+    if (current) return current;
+
+    const next =
+      window.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36)}`;
+    window.sessionStorage.setItem(key, next);
+
+    return next;
+  } catch {
+    return "";
+  }
 }

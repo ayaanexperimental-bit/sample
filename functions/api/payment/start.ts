@@ -4,8 +4,9 @@ import {
   createPaymentAttemptId,
   PAYMENT_ATTEMPT_FIELD
 } from "../../../lib/server/payment-access";
-import { getFunnelById, isPaidProgramFunnel } from "../../../lib/coach-platform";
+import { getCoachById, getFunnelById, isPaidProgramFunnel } from "../../../lib/coach-platform";
 import { getSupportErrorDefinition } from "../../../lib/error-codes";
+import { recordAnalyticsEvent } from "../../../lib/server/analytics-events";
 import { blockedLinkResponse } from "../../../lib/server/blocked-response";
 import { insertWebsiteErrorReport } from "../../../lib/server/error-reports";
 import { verifyFunnelAccessFromCookie } from "../../../lib/server/funnel-access";
@@ -62,6 +63,12 @@ export async function onRequest({ request, env }: PagesContext) {
     activeFunnel.paymentUrl || env.RAZORPAY_PAYMENT_PAGE_URL || DEFAULT_PAYMENT_PAGE_URL
   );
   paymentPageUrl.searchParams.set(PAYMENT_ATTEMPT_FIELD, attemptId);
+  await recordPaidEvent({
+    env,
+    eventName: "payment_initiated",
+    funnelId: activeFunnel.id,
+    request
+  });
 
   return new Response(null, {
     status: 302,
@@ -213,6 +220,38 @@ async function paymentUnavailable(request: Request, env: Env) {
       headers: HTML_HEADERS
     }
   );
+}
+
+async function recordPaidEvent({
+  env,
+  eventName,
+  funnelId,
+  request
+}: {
+  env: Env;
+  eventName: "payment_initiated";
+  funnelId: string;
+  request: Request;
+}) {
+  try {
+    const funnel = getFunnelById(funnelId);
+    const coach = funnel ? getCoachById(funnel.coachId) : null;
+
+    await recordAnalyticsEvent(
+      {
+        coachSlug: coach?.slug || "",
+        eventName,
+        funnelId,
+        funnelType: "paid_masterclass",
+        pagePath: new URL(request.url).pathname,
+        referrer: request.headers.get("referer") || "",
+        request
+      },
+      env
+    );
+  } catch {
+    // Analytics storage must never block payment redirect.
+  }
 }
 
 function escapeHtml(value: string) {

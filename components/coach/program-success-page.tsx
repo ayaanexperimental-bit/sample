@@ -1,8 +1,18 @@
+"use client";
+
+import { useEffect } from "react";
 import { getSuccessVideoSource } from "@/lib/success-page-config";
 import { WhatsAppAccessButton } from "@/components/coach/whatsapp-access-button";
 
+const PAID_COACH_SLUG = "gyana-ranjan";
+const PAID_FUNNEL_ID = "gyana-pcos-51";
+
 export function ProgramSuccessPage({ thankYouVideoUrl }: { thankYouVideoUrl: string }) {
   const videoSource = getSuccessVideoSource(thankYouVideoUrl);
+
+  useEffect(() => {
+    void recordPaidSuccessEvent("success_page_view");
+  }, []);
 
   return (
     <main className="success-page">
@@ -35,7 +45,7 @@ export function ProgramSuccessPage({ thankYouVideoUrl }: { thankYouVideoUrl: str
           </section>
         ) : null}
 
-        <WhatsAppAccessButton />
+        <WhatsAppAccessButton coachSlug={PAID_COACH_SLUG} funnelId={PAID_FUNNEL_ID} />
 
         <p className="success-note">
           All session updates and reminders will be shared in the WhatsApp group.
@@ -43,4 +53,47 @@ export function ProgramSuccessPage({ thankYouVideoUrl }: { thankYouVideoUrl: str
       </article>
     </main>
   );
+}
+
+async function recordPaidSuccessEvent(eventName: string) {
+  try {
+    const sessionId = getAnalyticsSessionId();
+
+    await fetch("/api/coach-events", {
+      body: JSON.stringify({
+        coachSlug: PAID_COACH_SLUG,
+        eventName,
+        funnelId: PAID_FUNNEL_ID,
+        funnelType: "paid_masterclass",
+        pagePath: `${window.location.pathname}${window.location.search}`,
+        pageUrl: window.location.href,
+        referrer: document.referrer,
+        sessionId
+      }),
+      cache: "no-store",
+      headers: {
+        "content-type": "application/json"
+      },
+      keepalive: true,
+      method: "POST"
+    });
+  } catch {
+    // Analytics must never block the paid success page.
+  }
+}
+
+function getAnalyticsSessionId() {
+  try {
+    const key = "yw_analytics_session_id";
+    const current = window.sessionStorage.getItem(key);
+    if (current) return current;
+
+    const next =
+      window.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36)}`;
+    window.sessionStorage.setItem(key, next);
+
+    return next;
+  } catch {
+    return "";
+  }
 }

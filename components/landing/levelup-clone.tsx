@@ -14,6 +14,8 @@ import {
 
 const ASSET_BASE = "https://img.flexifunnels.com/images/7855";
 const PAYMENT_START_URL = "/api/payment/start";
+const PAID_COACH_SLUG = "gyana-ranjan";
+const PAID_FUNNEL_ID = "gyana-pcos-51";
 const YOUTUBE_HERO_EMBED_URL =
   "https://www.youtube.com/embed/gBQoms47fB8?autoplay=1&mute=1&loop=1&playlist=gBQoms47fB8&playsinline=1&controls=1&rel=0&modestbranding=1";
 
@@ -550,6 +552,8 @@ export function LevelupClone() {
   const [stickyVisible, setStickyVisible] = useState(false);
 
   useEffect(() => {
+    void recordPaidAnalyticsEvent("paid_landing_view");
+
     const countdownTimer = window.setInterval(() => {
       setSecondsLeft((current) => (current <= 1 ? 30 * 60 : current - 1));
     }, 1000);
@@ -744,6 +748,8 @@ export function LevelupClone() {
   const seconds = String(secondsLeft % 60).padStart(2, "0");
 
   function scrollToForm() {
+    void recordPaidAnalyticsEvent("paid_register_click");
+
     const form = document.getElementById("flexiOrderForm_wKNos");
     if (!form) return;
 
@@ -983,6 +989,7 @@ export function LevelupClone() {
               <a
                 className="levelup-order-button"
                 href={PAYMENT_START_URL}
+                onClick={() => void recordPaidAnalyticsEvent("paid_payment_click")}
                 data-ripple="liquid"
               >
                 REGISTER NOW <span aria-hidden="true">›</span>
@@ -1084,4 +1091,47 @@ export function LevelupClone() {
       </footer>
     </main>
   );
+}
+
+async function recordPaidAnalyticsEvent(eventName: string) {
+  try {
+    const sessionId = getPaidAnalyticsSessionId();
+
+    await fetch("/api/coach-events", {
+      body: JSON.stringify({
+        coachSlug: PAID_COACH_SLUG,
+        eventName,
+        funnelId: PAID_FUNNEL_ID,
+        funnelType: "paid_masterclass",
+        pagePath: `${window.location.pathname}${window.location.search}`,
+        pageUrl: window.location.href,
+        referrer: document.referrer,
+        sessionId
+      }),
+      cache: "no-store",
+      headers: {
+        "content-type": "application/json"
+      },
+      keepalive: true,
+      method: "POST"
+    });
+  } catch {
+    // Analytics must never block paid funnel navigation.
+  }
+}
+
+function getPaidAnalyticsSessionId() {
+  try {
+    const key = "yw_analytics_session_id";
+    const current = window.sessionStorage.getItem(key);
+    if (current) return current;
+
+    const next =
+      window.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36)}`;
+    window.sessionStorage.setItem(key, next);
+
+    return next;
+  } catch {
+    return "";
+  }
 }

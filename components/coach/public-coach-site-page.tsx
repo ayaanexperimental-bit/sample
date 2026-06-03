@@ -648,11 +648,16 @@ export function createCoachFallbackReferenceId(
 
 async function recordCoachEvent(eventName: string, coachSlug: string) {
   try {
+    const sessionId = getAnalyticsSessionId();
+
     await fetch("/api/coach-events", {
       body: JSON.stringify({
         coachSlug,
         eventName,
-        pagePath: window.location.pathname
+        pagePath: `${window.location.pathname}${window.location.search}`,
+        pageUrl: window.location.href,
+        referrer: document.referrer,
+        sessionId
       }),
       cache: "no-store",
       headers: {
@@ -663,5 +668,21 @@ async function recordCoachEvent(eventName: string, coachSlug: string) {
     });
   } catch {
     // Analytics tracking must never block public registration.
+  }
+}
+
+function getAnalyticsSessionId() {
+  try {
+    const key = "yw_analytics_session_id";
+    const current = window.sessionStorage.getItem(key);
+    if (current) return current;
+
+    const next =
+      window.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36)}`;
+    window.sessionStorage.setItem(key, next);
+
+    return next;
+  } catch {
+    return "";
   }
 }

@@ -1995,13 +1995,30 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           if (progressFrame) return;
           progressFrame = window.requestAnimationFrame(updateProgress);
         }
+        function getSessionId() {
+          try {
+            var key = 'yw_analytics_session_id';
+            var current = window.sessionStorage.getItem(key);
+            if (current) return current;
+            var next = window.crypto && window.crypto.randomUUID
+              ? window.crypto.randomUUID()
+              : String(Date.now()) + '-' + String(Math.random()).slice(2);
+            window.sessionStorage.setItem(key, next);
+            return next;
+          } catch (_) {
+            return '';
+          }
+        }
         function track(eventName) {
           try {
             if (!navigator.sendBeacon) return;
             navigator.sendBeacon('/api/coach-events', new Blob([JSON.stringify({
               coachSlug: slug,
               eventName: eventName,
-              pagePath: window.location.pathname
+              pagePath: window.location.pathname + window.location.search,
+              pageUrl: window.location.href,
+              referrer: document.referrer,
+              sessionId: getSessionId()
             })], { type: 'application/json' }));
           } catch (_) {}
         }

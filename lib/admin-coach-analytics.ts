@@ -3,6 +3,7 @@ import type {
   CoachSiteRecord,
   CoachSiteStatus
 } from "./admin-coach-sites";
+import type { AnalyticsMetricSummary } from "./analytics-events";
 import { coaches, funnels, type Funnel } from "./coach-platform";
 
 export type CoachAnalyticsFunnelType = "combined" | "free" | "paid";
@@ -72,15 +73,21 @@ const EMPTY_DEVICE_BREAKDOWN = {
   tablet: 0
 };
 
-export function buildCoachAnalyticsRows(coachSites: CoachSiteRecord[]): CoachAnalyticsRow[] {
+export function buildCoachAnalyticsRows(
+  coachSites: CoachSiteRecord[],
+  analyticsSummaries: AnalyticsMetricSummary[] = []
+): CoachAnalyticsRow[] {
   const currentCoachSites = coachSites.filter(isCurrentCoachSite);
   const coachIds = new Set<string>();
   coaches.forEach((coach) => coachIds.add(coach.id));
   currentCoachSites.forEach((site) => coachIds.add(site.coachId));
+  analyticsSummaries.forEach((summary) => {
+    if (summary.coachId) coachIds.add(summary.coachId);
+  });
   funnels.forEach((funnel) => coachIds.add(funnel.coachId));
 
   return Array.from(coachIds)
-    .map((coachId) => buildCoachAnalyticsRow(coachId, currentCoachSites))
+    .map((coachId) => buildCoachAnalyticsRow(coachId, currentCoachSites, analyticsSummaries))
     .sort((a, b) => {
       if (b.combined.visits !== a.combined.visits) return b.combined.visits - a.combined.visits;
       return a.coachName.localeCompare(b.coachName);
@@ -193,13 +200,17 @@ export function getNeedsAttentionRows(rows: CoachAnalyticsRow[]) {
   return rows.filter((row) => row.lowActivityReasons.length > 0).slice(0, 8);
 }
 
-function buildCoachAnalyticsRow(coachId: string, coachSites: CoachSiteRecord[]): CoachAnalyticsRow {
+function buildCoachAnalyticsRow(
+  coachId: string,
+  coachSites: CoachSiteRecord[],
+  analyticsSummaries: AnalyticsMetricSummary[]
+): CoachAnalyticsRow {
   const funnelInfo = getCoachAvailableFunnels(coachId, coachSites);
   const platformCoach = coaches.find((coach) => coach.id === coachId);
   const allSites = coachSites.filter((site) => site.coachId === coachId && isCurrentCoachSite(site));
   const primarySite = funnelInfo.freeGuestLinks[0] || allSites[0];
   const freeMetrics = buildFreeMetrics(funnelInfo.freeGuestLinks);
-  const paidMetrics = buildPaidMetrics(funnelInfo.paidFunnels);
+  const paidMetrics = buildPaidMetrics(funnelInfo.paidFunnels, analyticsSummaries, coachId);
   const combinedVisits = freeMetrics.visits + paidMetrics.visits;
   const combinedClicks = freeMetrics.clicks + paidMetrics.clicks;
   const combined = {
@@ -228,7 +239,7 @@ function buildCoachAnalyticsRow(coachId: string, coachSites: CoachSiteRecord[]):
     bestFunnel: getBestFunnel(freeMetrics, paidMetrics),
     coachName: primarySite?.coachName || platformCoach?.displayName || coachId,
     combined,
-    deviceBreakdown: sumDeviceBreakdown(funnelInfo.freeGuestLinks),
+    deviceBreakdown: sumDeviceBreakdown(funnelInfo.freeGuestLinks, analyticsSummaries, coachId),
     freeMetrics,
     location: primarySite?.location || "",
     lowActivityReasons,
@@ -238,11 +249,21 @@ function buildCoachAnalyticsRow(coachId: string, coachSites: CoachSiteRecord[]):
     photoUrl: primarySite?.photoUrl || platformCoach?.guestProfile.imageSrc || "",
     publicLink: primarySite?.publicUrl || "",
     region: getFirstAvailableValue(
-      funnelInfo.freeGuestLinks.map((site) => site.analytics.region),
+      [
+        ...funnelInfo.freeGuestLinks.map((site) => site.analytics.region),
+        ...analyticsSummaries
+          .filter((summary) => summary.coachId === coachId)
+          .map((summary) => summary.region)
+      ],
       "Not available"
     ),
     source: getFirstAvailableValue(
-      funnelInfo.freeGuestLinks.map((site) => site.analytics.source),
+      [
+        ...funnelInfo.freeGuestLinks.map((site) => site.analytics.source),
+        ...analyticsSummaries
+          .filter((summary) => summary.coachId === coachId)
+          .map((summary) => summary.source)
+      ],
       "Not available"
     ),
     status,
@@ -280,22 +301,45 @@ function buildFreeMetrics(sites: CoachSiteRecord[]): FreeGuestLinkMetrics {
   };
 }
 
-function buildPaidMetrics(paidFunnels: Funnel[]): PaidMasterclassMetrics {
+function buildPaidMetrics(
+  paidFunnels: Funnel[],
+  analyticsSummaries: AnalyticsMetricSummary[],
+  coachId: string
+): PaidMasterclassMetrics {
   const hasPaidFunnel = paidFunnels.length > 0;
+  const paidFunnelIds = new Set(paidFunnels.map((funnel) => funnel.id));
+  const paidSummaries = analyticsSummaries.filter(
+    (summary) =>
+      summary.funnelType === "paid_masterclass" &&
+      (paidFunnelIds.has(summary.funnelId) || summary.coachId === coachId)
+  );
+  const visits = sum(paidSummaries.map((summary) => summary.totalVisits));
+  const registerClicks = sum(paidSummaries.map((summary) => summary.registerClicks));
+  const paymentButtonClicks = sum(paidSummaries.map((summary) => summary.paymentButtonClicks));
+  const paymentInitiated = sum(paidSummaries.map((summary) => summary.paymentInitiated));
+  const paymentSuccess = sum(paidSummaries.map((summary) => summary.paymentSuccess));
+  const successPageViews = sum(paidSummaries.map((summary) => summary.successPageViews));
+  const whatsappClicks = sum(paidSummaries.map((summary) => summary.whatsappClicks));
+  const paidLastActivity = getLatestActivity(paidSummaries.map((summary) => summary.lastActivity));
 
   return {
-    clicks: 0,
-    conversionRate: "0%",
-    lastActivity: hasPaidFunnel ? "Paid funnel configured" : "Not connected",
-    paymentButtonClicks: 0,
-    paymentInitiated: 0,
-    paymentSuccess: 0,
-    paymentToSuccessDropOff: "Not enough data yet",
-    registerClicks: 0,
-    successPageViews: 0,
-    successToWhatsappDropOff: "Not enough data yet",
-    visits: 0,
-    whatsappClicks: 0
+    clicks: registerClicks + paymentButtonClicks + whatsappClicks,
+    conversionRate: getConversionRate(paymentSuccess || registerClicks, visits),
+    lastActivity:
+      paidLastActivity !== "No activity yet"
+        ? paidLastActivity
+        : hasPaidFunnel
+          ? "Paid funnel configured"
+          : "Not connected",
+    paymentButtonClicks,
+    paymentInitiated,
+    paymentSuccess,
+    paymentToSuccessDropOff: getDropOffLabel(paymentInitiated, paymentSuccess),
+    registerClicks,
+    successPageViews,
+    successToWhatsappDropOff: getDropOffLabel(successPageViews, whatsappClicks),
+    visits,
+    whatsappClicks
   };
 }
 
@@ -385,8 +429,12 @@ function getPerformanceBand(visits: number, conversionRate: string): CoachAnalyt
   return "low";
 }
 
-function sumDeviceBreakdown(sites: CoachSiteRecord[]) {
-  return sites.reduce(
+function sumDeviceBreakdown(
+  sites: CoachSiteRecord[],
+  analyticsSummaries: AnalyticsMetricSummary[],
+  coachId: string
+) {
+  const freeDevices = sites.reduce(
     (acc, site) => ({
       desktop: acc.desktop + site.analytics.deviceBreakdown.desktop,
       mobile: acc.mobile + site.analytics.deviceBreakdown.mobile,
@@ -394,6 +442,17 @@ function sumDeviceBreakdown(sites: CoachSiteRecord[]) {
     }),
     { ...EMPTY_DEVICE_BREAKDOWN }
   );
+
+  return analyticsSummaries
+    .filter((summary) => summary.coachId === coachId && summary.funnelType === "paid_masterclass")
+    .reduce(
+      (acc, summary) => ({
+        desktop: acc.desktop + summary.deviceBreakdown.desktop,
+        mobile: acc.mobile + summary.deviceBreakdown.mobile,
+        tablet: acc.tablet + summary.deviceBreakdown.tablet
+      }),
+      freeDevices
+    );
 }
 
 function getFirstAvailableValue(values: Array<string | undefined>, fallback: string) {
@@ -416,6 +475,13 @@ function getDateValue(value: string) {
 function getConversionRate(clicks: number, visits: number) {
   if (!visits) return "0%";
   return `${((clicks / visits) * 100).toFixed(1)}%`;
+}
+
+function getDropOffLabel(start: number, complete: number) {
+  if (!start) return "Not enough data yet";
+  const dropOff = Math.max(0, start - complete);
+
+  return `${dropOff.toLocaleString()} drop-off / ${getConversionRate(complete, start)} completed`;
 }
 
 function percentToNumber(value: string) {
