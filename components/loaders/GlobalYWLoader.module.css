@@ -2,13 +2,15 @@
   position: fixed;
   inset: 0;
   z-index: 2147483000;
-  animation: global-loader-auto-hide 220ms ease 900ms forwards;
+  contain: layout paint style;
+  animation: global-loader-failsafe-hide 180ms ease 1800ms forwards;
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
   transition:
-    opacity 220ms ease,
-    visibility 220ms ease;
+    opacity 180ms ease,
+    visibility 180ms ease;
+  will-change: opacity, visibility;
 }
 
 .globalLoader[data-phase="hide"] {
@@ -25,12 +27,12 @@
 @media (prefers-reduced-motion: reduce) {
   .globalLoader {
     animation-duration: 80ms;
-    animation-delay: 220ms;
+    animation-delay: 650ms;
     transition-duration: 80ms;
   }
 }
 
-@keyframes global-loader-auto-hide {
+@keyframes global-loader-failsafe-hide {
   to {
     opacity: 0;
     visibility: hidden;

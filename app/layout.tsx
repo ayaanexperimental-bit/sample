@@ -10,6 +10,33 @@ import {
 import { GlobalYWLoader } from "@/components/loaders/GlobalYWLoader";
 import "./globals.css";
 
+const globalLoaderFailsafeScript = `
+(function () {
+  var hidden = false;
+  function dismissGlobalLoader() {
+    if (hidden) return;
+    hidden = true;
+    document.documentElement.dataset.ywGlobalLoaderDismissed = "true";
+    var loader = document.getElementById("yw-global-loader");
+    if (!loader) return;
+    loader.setAttribute("data-phase", "hide");
+    loader.style.opacity = "0";
+    loader.style.visibility = "hidden";
+    loader.style.pointerEvents = "none";
+  }
+  function dismissAfterReady() {
+    window.setTimeout(dismissGlobalLoader, 900);
+  }
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    dismissAfterReady();
+  } else {
+    document.addEventListener("DOMContentLoaded", dismissAfterReady, { once: true });
+    window.addEventListener("load", dismissAfterReady, { once: true });
+  }
+  window.setTimeout(dismissGlobalLoader, 1800);
+})();
+`;
+
 const displayFont = Bodoni_Moda({
   subsets: ["latin"],
   variable: "--font-display",
@@ -84,6 +111,12 @@ export default function RootLayout({
         className={`${displayFont.variable} ${accentFont.variable} ${editorialFont.variable} ${bodyFont.variable} ${conversionFont.variable} ${techDisplayFont.variable}`}
       >
         <GlobalYWLoader />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: globalLoaderFailsafeScript
+          }}
+          id="yw-global-loader-failsafe"
+        />
         {children}
       </body>
     </html>
