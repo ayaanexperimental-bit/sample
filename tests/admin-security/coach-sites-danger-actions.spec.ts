@@ -82,6 +82,7 @@ test.describe("coach site dangerous actions", () => {
               visionText: "Pipeline vision"
             },
             googleFormUrl: "https://forms.gle/pipelineCoach",
+            heroMediaType: "none",
             id: "coach-site-pipeline",
             niche: "Pipeline Wellness",
             publicUrl: "/coach/pipeline-coach",

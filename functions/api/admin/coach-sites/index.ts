@@ -1,5 +1,10 @@
 import type { D1Database, R2Bucket } from "@cloudflare/workers-types";
-import { type CoachSiteRecord, type CoachSiteStatus } from "../../../../lib/admin-coach-sites";
+import {
+  type CoachSiteRecord,
+  type CoachSiteStatus,
+  normalizeCoachSlug
+} from "../../../../lib/admin-coach-sites";
+import { COACH_TEMPLATE_THEME_IDS } from "../../../../lib/coach-template-themes";
 import {
   adminJson,
   isAdminDemoAuthEnabled,
@@ -78,11 +83,11 @@ export async function onRequest({ request, env }: PagesContext) {
       return adminJson({ ok: false, error: "Coach site payload is required." }, 400);
     }
 
-    if (site.status === "published" && !hasGoogleFormUrl(site)) {
-      return adminJson(
-        { ok: false, error: "Google Form registration link is required before publishing." },
-        400
-      );
+    if (site.status === "published") {
+      const publishError = getPublishValidationError(site);
+      if (publishError) {
+        return adminJson({ ok: false, error: publishError }, 400);
+      }
     }
 
     let savedSite: CoachSiteRecord | null;
@@ -277,15 +282,9 @@ export async function onRequest({ request, env }: PagesContext) {
         return adminJson({ configured: true, error: "Coach site not found.", ok: false }, 404);
       }
 
-      if (!currentSite.googleFormUrl.trim()) {
-        return adminJson(
-          {
-            configured: true,
-            error: "Google Form registration link is required before publishing.",
-            ok: false
-          },
-          400
-        );
+      const publishError = getPublishValidationError(currentSite);
+      if (publishError) {
+        return adminJson({ configured: true, error: publishError, ok: false }, 400);
       }
     }
 
@@ -393,12 +392,60 @@ export async function onRequest({ request, env }: PagesContext) {
   });
 }
 
-function hasGoogleFormUrl(site: Partial<CoachSiteRecord>) {
-  return typeof site.googleFormUrl === "string" && site.googleFormUrl.trim().length > 0;
-}
-
 function parseCoachSiteBody(value: unknown): Partial<CoachSiteRecord> | null {
   return value && typeof value === "object" ? (value as Partial<CoachSiteRecord>) : null;
+}
+
+function getPublishValidationError(site: Partial<CoachSiteRecord>) {
+  const coachName = typeof site.coachName === "string" ? site.coachName.trim() : "";
+  const niche = typeof site.niche === "string" ? site.niche.trim() : "";
+  const slug = normalizeCoachSlug(
+    typeof site.slug === "string" && site.slug.trim() ? site.slug : coachName
+  );
+  const googleFormUrl = typeof site.googleFormUrl === "string" ? site.googleFormUrl.trim() : "";
+  const selectedThemeId =
+    typeof site.selectedThemeId === "string" ? site.selectedThemeId.trim() : "";
+  const heroMediaType =
+    site.heroMediaType === "image" || site.heroMediaType === "video" || site.heroMediaType === "none"
+      ? site.heroMediaType
+      : "none";
+
+  if (!coachName || !niche || !slug) {
+    return "Coach name, niche, and slug are required before publishing.";
+  }
+
+  if (
+    !COACH_TEMPLATE_THEME_IDS.includes(
+      selectedThemeId as (typeof COACH_TEMPLATE_THEME_IDS)[number]
+    )
+  ) {
+    return "Select a valid coach-site template/theme before publishing.";
+  }
+
+  if (!googleFormUrl) {
+    return "Google Form registration link is required before publishing.";
+  }
+
+  if (!/^https:\/\/(docs\.google\.com\/forms|forms\.gle)\//i.test(googleFormUrl)) {
+    return "Use a valid Google Form registration link before publishing.";
+  }
+
+  if (heroMediaType === "image") {
+    const photoUrl = typeof site.photoUrl === "string" ? site.photoUrl.trim() : "";
+    const logoUrl = typeof site.logoUrl === "string" ? site.logoUrl.trim() : "";
+    if (!photoUrl && !logoUrl) {
+      return "Add a coach photo/logo or choose No Media before publishing.";
+    }
+  }
+
+  if (heroMediaType === "video") {
+    const videoUrl = typeof site.videoUrl === "string" ? site.videoUrl.trim() : "";
+    if (!videoUrl) {
+      return "Add a video URL/upload or choose No Media before publishing.";
+    }
+  }
+
+  return "";
 }
 
 function parseCoachStatus(value: unknown): CoachSiteStatus | null {

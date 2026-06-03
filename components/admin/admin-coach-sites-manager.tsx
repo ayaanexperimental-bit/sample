@@ -55,6 +55,13 @@ type CoachSitesApiPayload = {
   ok?: boolean;
 };
 
+type CoachSitePublishVerification = {
+  listHasSite: boolean;
+  publicPageHasRegisterLink: boolean;
+  publicPageHasTemplateMarker: boolean;
+  publicPageOk: boolean;
+};
+
 type MediaUploadApiPayload = {
   configured?: boolean;
   error?: string;
@@ -393,7 +400,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     setPreviewSite((current) => (current ? buildPreviewSite(current.status, sourceForm) : current));
   }
 
-  function validatePreviewForm(sourceForm: CoachSiteFormState) {
+  function validatePreviewForm(sourceForm: CoachSiteFormState, status: CoachSiteStatus = "draft") {
     const slug = normalizeCoachSlug(sourceForm.slug || sourceForm.coachName);
     if (!sourceForm.coachName.trim() || !sourceForm.niche.trim() || !slug) {
       setMessage("Coach name and coach niche are required.");
@@ -403,6 +410,33 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     if (sourceForm.heroMediaType === "video" && !isSupportedVideoSource(sourceForm.videoUrl)) {
       setMessage("Enter a valid YouTube/video URL, upload a video file, or choose No Media.");
       return null;
+    }
+
+    if (status === "published") {
+      if (!sourceForm.selectedThemeId.trim()) {
+        setMessage("Select the coach-site template/theme before publishing.");
+        return null;
+      }
+
+      if (!sourceForm.googleFormUrl.trim()) {
+        setMessage("Google Form registration link is required before publishing.");
+        setStorageMessage("Save as draft until the coach-specific Google Form link is added.");
+        return null;
+      }
+
+      if (!/^https:\/\/(docs\.google\.com\/forms|forms\.gle)\//i.test(sourceForm.googleFormUrl)) {
+        setMessage("Use a valid Google Form registration link before publishing.");
+        return null;
+      }
+
+      if (
+        sourceForm.heroMediaType === "image" &&
+        !sourceForm.photoUrl.trim() &&
+        !sourceForm.logoUrl.trim()
+      ) {
+        setMessage("Add a coach photo/logo or choose No Media before publishing.");
+        return null;
+      }
     }
 
     return {
@@ -434,14 +468,8 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   }
 
   async function upsertSite(status: CoachSiteStatus) {
-    const validatedForm = validatePreviewForm(form);
+    const validatedForm = validatePreviewForm(form, status);
     if (!validatedForm) return null;
-
-    if (status === "published" && !validatedForm.googleFormUrl.trim()) {
-      setMessage("Google Form registration link is required before publishing.");
-      setStorageMessage("Save as draft until the coach-specific Google Form link is added.");
-      return null;
-    }
 
     const site = { ...buildPreviewSite(status, validatedForm), status };
     const existingIndex = sites.findIndex((item) => item.id === site.id || item.slug === site.slug);
@@ -494,22 +522,45 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       setStorageReady(true);
       setStorageErrorCode("");
       setStorageMessage("Saved in coach-site database.");
+      const savedSite = payload.coachSite;
       setSites((current) =>
         current.some((item) => item.id === site.id || item.slug === site.slug)
           ? current.map((item) =>
-              item.id === site.id || item.slug === site.slug ? payload.coachSite! : item
+              item.id === site.id || item.slug === site.slug ? savedSite! : item
             )
-          : [payload.coachSite!, ...current]
+          : [savedSite!, ...current]
       );
-      setPreviewSite(payload.coachSite);
-      setEditingId(payload.coachSite.id);
-      setPublishedSite(status === "published" ? payload.coachSite : null);
+      setPreviewSite(savedSite);
+      setEditingId(savedSite.id);
+
+      if (status === "published") {
+        setMessage("Verifying published site...");
+        const verification = await verifyPublishedCoachSite(savedSite);
+
+        if (!isPublishVerificationComplete(verification)) {
+          reportAdminStorageIssue({
+            category: "admin_action_issue",
+            coachSlug: savedSite.slug,
+            safeMessage:
+              "Coach site was saved, but post-publish verification failed. Do not share the link yet.",
+            technicalDetails: `Post-publish verification failed: ${JSON.stringify(verification)}`,
+            userAction: "Verify newly published coach site"
+          });
+          setPublishedSite(null);
+          setMessage(
+            "Saved, but publish verification failed. Refresh Coach Sites and try publishing again."
+          );
+          return savedSite;
+        }
+      }
+
+      setPublishedSite(status === "published" ? savedSite : null);
       setMessage(
         status === "published"
-          ? `Successfully Published. Stable public link: ${payload.coachSite.publicUrl}`
+          ? `Successfully Published. Stable public link: ${savedSite.publicUrl}`
           : "Draft saved successfully."
       );
-      return payload.coachSite;
+      return savedSite;
     } catch {
       setSites(previousSites);
       setStorageReady(false);
@@ -737,9 +788,10 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   }
 
   async function publishDraftSite(site: CoachSiteRecord) {
-    if (!site.googleFormUrl.trim()) {
-      setMessage("Google Form registration link is required before publishing this draft.");
-      setStorageMessage("Continue editing the draft and add the coach-specific Google Form link.");
+    const publishError = getCoachSitePublishValidationMessage(site);
+    if (publishError) {
+      setMessage(publishError);
+      setStorageMessage("Continue editing the draft and complete the required publish fields.");
       return;
     }
 
@@ -748,6 +800,21 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     const publishedDraft = await persistSiteStatus(site, "published");
     if (!publishedDraft) {
       setMessage("Draft was not published. Fix the database/API issue and try again.");
+      return;
+    }
+
+    setMessage("Verifying published draft...");
+    const verification = await verifyPublishedCoachSite(publishedDraft);
+    if (!isPublishVerificationComplete(verification)) {
+      reportAdminStorageIssue({
+        category: "admin_action_issue",
+        coachSlug: publishedDraft.slug,
+        safeMessage:
+          "Draft was saved as published, but post-publish verification failed. Do not share the link yet.",
+        technicalDetails: `Post-publish draft verification failed: ${JSON.stringify(verification)}`,
+        userAction: "Verify published draft coach site"
+      });
+      setMessage("Published status saved, but public verification failed. Reopen and verify before sharing.");
       return;
     }
 
@@ -1028,6 +1095,86 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       });
       return null;
     }
+  }
+
+  async function verifyPublishedCoachSite(
+    site: CoachSiteRecord
+  ): Promise<CoachSitePublishVerification> {
+    const result: CoachSitePublishVerification = {
+      listHasSite: false,
+      publicPageHasRegisterLink: false,
+      publicPageHasTemplateMarker: false,
+      publicPageOk: false
+    };
+
+    try {
+      const listResponse = await fetch("/api/admin/coach-sites", {
+        cache: "no-store",
+        credentials: "include"
+      });
+      const listPayload = (await listResponse.json().catch(() => ({}))) as CoachSitesApiPayload;
+      result.listHasSite = Boolean(
+        listResponse.ok &&
+          listPayload.ok &&
+          listPayload.coachSites?.some(
+            (item) => item.id === site.id && item.slug === site.slug && item.status === "published"
+          )
+      );
+    } catch {
+      result.listHasSite = false;
+    }
+
+    try {
+      const publicResponse = await fetch(site.publicUrl, {
+        cache: "no-store",
+        credentials: "same-origin"
+      });
+      const html = await publicResponse.text();
+      result.publicPageOk = publicResponse.ok && !html.includes("Something went wrong");
+      result.publicPageHasTemplateMarker = html.includes("YW Nutritech coach network");
+      result.publicPageHasRegisterLink = html.includes(site.googleFormUrl);
+    } catch {
+      result.publicPageOk = false;
+    }
+
+    return result;
+  }
+
+  function isPublishVerificationComplete(verification: CoachSitePublishVerification) {
+    return (
+      verification.listHasSite &&
+      verification.publicPageOk &&
+      verification.publicPageHasTemplateMarker &&
+      verification.publicPageHasRegisterLink
+    );
+  }
+
+  function getCoachSitePublishValidationMessage(site: CoachSiteRecord) {
+    if (!site.coachName.trim() || !site.niche.trim() || !site.slug.trim()) {
+      return "Coach name, niche, and slug are required before publishing.";
+    }
+
+    if (!site.selectedThemeId.trim()) {
+      return "Select the coach-site template/theme before publishing.";
+    }
+
+    if (!site.googleFormUrl.trim()) {
+      return "Google Form registration link is required before publishing this draft.";
+    }
+
+    if (!/^https:\/\/(docs\.google\.com\/forms|forms\.gle)\//i.test(site.googleFormUrl)) {
+      return "Use a valid Google Form registration link before publishing this draft.";
+    }
+
+    if (site.heroMediaType === "image" && !site.photoUrl.trim() && !site.logoUrl.trim()) {
+      return "Add a coach photo/logo or choose No Media before publishing this draft.";
+    }
+
+    if (site.heroMediaType === "video" && !site.videoUrl.trim()) {
+      return "Add a video URL/upload or choose No Media before publishing this draft.";
+    }
+
+    return "";
   }
 
   async function copyPublicLink(site: CoachSiteRecord) {
