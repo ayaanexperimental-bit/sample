@@ -50,7 +50,15 @@ export async function onRequest({ request, env }: PagesContext) {
     const admin = await requireAdmin(request, env, { requiredRole: "owner" });
     if (!admin.ok) return admin.response;
 
-    const persistedSites = await listCoachSitesFromDb(env);
+    let persistedSites: CoachSiteRecord[] | null;
+    try {
+      persistedSites = await listCoachSitesFromDb(env);
+    } catch {
+      return adminJson(
+        { configured: Boolean(env.ADMIN_DB), error: "Coach site database read failed.", ok: false },
+        500
+      );
+    }
 
     return adminJson({
       coachSites: persistedSites || [],
@@ -70,11 +78,30 @@ export async function onRequest({ request, env }: PagesContext) {
       return adminJson({ ok: false, error: "Coach site payload is required." }, 400);
     }
 
-    const savedSite = await upsertCoachSiteToDb({
-      adminEmail: admin.admin.email,
-      env,
-      payload: site
-    });
+    if (site.status === "published" && !hasGoogleFormUrl(site)) {
+      return adminJson(
+        { ok: false, error: "Google Form registration link is required before publishing." },
+        400
+      );
+    }
+
+    let savedSite: CoachSiteRecord | null;
+    try {
+      savedSite = await upsertCoachSiteToDb({
+        adminEmail: admin.admin.email,
+        env,
+        payload: site
+      });
+    } catch {
+      return adminJson(
+        {
+          configured: Boolean(env.ADMIN_DB),
+          error: "Coach site database write failed.",
+          ok: false
+        },
+        500
+      );
+    }
 
     if (!savedSite) {
       return adminJson(
@@ -111,7 +138,15 @@ export async function onRequest({ request, env }: PagesContext) {
         );
       }
 
-      const coachSites = await listCoachSitesFromDb(env);
+      let coachSites: CoachSiteRecord[] | null;
+      try {
+        coachSites = await listCoachSitesFromDb(env);
+      } catch {
+        return adminJson(
+          { configured: true, error: "Coach site database read failed.", ok: false },
+          500
+        );
+      }
       const currentSite = coachSites?.find((site) => site.id === siteId);
 
       if (!currentSite) {
@@ -126,12 +161,20 @@ export async function onRequest({ request, env }: PagesContext) {
       }
 
       const nextStatus: CoachSiteStatus = currentSite.publishedAt ? "published" : "draft";
-      const updatedSite = await updateCoachSiteStatusInDb({
-        adminEmail: admin.admin.email,
-        env,
-        id: siteId,
-        status: nextStatus
-      });
+      let updatedSite: CoachSiteRecord | null;
+      try {
+        updatedSite = await updateCoachSiteStatusInDb({
+          adminEmail: admin.admin.email,
+          env,
+          id: siteId,
+          status: nextStatus
+        });
+      } catch {
+        return adminJson(
+          { configured: true, error: "Coach site database write failed.", ok: false },
+          500
+        );
+      }
 
       if (!updatedSite) {
         return adminJson({ configured: true, error: "Coach site not found.", ok: false }, 404);
@@ -160,7 +203,15 @@ export async function onRequest({ request, env }: PagesContext) {
         );
       }
 
-      const coachSites = await listCoachSitesFromDb(env);
+      let coachSites: CoachSiteRecord[] | null;
+      try {
+        coachSites = await listCoachSitesFromDb(env);
+      } catch {
+        return adminJson(
+          { configured: true, error: "Coach site database read failed.", ok: false },
+          500
+        );
+      }
       const currentSite = coachSites?.find((site) => site.id === siteId);
 
       if (!currentSite) {
@@ -174,12 +225,20 @@ export async function onRequest({ request, env }: PagesContext) {
         );
       }
 
-      const updatedSite = await updateCoachSiteStatusInDb({
-        adminEmail: admin.admin.email,
-        env,
-        id: siteId,
-        status
-      });
+      let updatedSite: CoachSiteRecord | null;
+      try {
+        updatedSite = await updateCoachSiteStatusInDb({
+          adminEmail: admin.admin.email,
+          env,
+          id: siteId,
+          status
+        });
+      } catch {
+        return adminJson(
+          { configured: true, error: "Coach site database write failed.", ok: false },
+          500
+        );
+      }
 
       if (!updatedSite) {
         return adminJson({ configured: true, error: "Coach draft not found.", ok: false }, 404);
@@ -194,6 +253,40 @@ export async function onRequest({ request, env }: PagesContext) {
 
     if (!status) {
       return adminJson({ ok: false, error: "Coach site id and status are required." }, 400);
+    }
+
+    if (status === "published") {
+      if (!env.ADMIN_DB) {
+        return adminJson(
+          { configured: false, error: "Coach site database is not configured.", ok: false },
+          503
+        );
+      }
+
+      let coachSites: CoachSiteRecord[] | null;
+      try {
+        coachSites = await listCoachSitesFromDb(env);
+      } catch {
+        return adminJson(
+          { configured: true, error: "Coach site database read failed.", ok: false },
+          500
+        );
+      }
+      const currentSite = coachSites?.find((site) => site.id === siteId);
+      if (!currentSite) {
+        return adminJson({ configured: true, error: "Coach site not found.", ok: false }, 404);
+      }
+
+      if (!currentSite.googleFormUrl.trim()) {
+        return adminJson(
+          {
+            configured: true,
+            error: "Google Form registration link is required before publishing.",
+            ok: false
+          },
+          400
+        );
+      }
     }
 
     if (isDangerousStatus(status)) {
@@ -262,12 +355,24 @@ export async function onRequest({ request, env }: PagesContext) {
       }
     }
 
-    const updatedSite = await updateCoachSiteStatusInDb({
-      adminEmail: admin.admin.email,
-      env,
-      id: siteId,
-      status
-    });
+    let updatedSite: CoachSiteRecord | null;
+    try {
+      updatedSite = await updateCoachSiteStatusInDb({
+        adminEmail: admin.admin.email,
+        env,
+        id: siteId,
+        status
+      });
+    } catch {
+      return adminJson(
+        {
+          configured: Boolean(env.ADMIN_DB),
+          error: "Coach site database write failed.",
+          ok: false
+        },
+        500
+      );
+    }
 
     if (!updatedSite) {
       return adminJson(
@@ -286,6 +391,10 @@ export async function onRequest({ request, env }: PagesContext) {
   return adminJson({ ok: false, error: "Method not allowed." }, 405, {
     allow: "GET, POST, PATCH"
   });
+}
+
+function hasGoogleFormUrl(site: Partial<CoachSiteRecord>) {
+  return typeof site.googleFormUrl === "string" && site.googleFormUrl.trim().length > 0;
 }
 
 function parseCoachSiteBody(value: unknown): Partial<CoachSiteRecord> | null {

@@ -328,12 +328,9 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   const managedSites = useMemo(
     () =>
       filteredSites.filter(
-        (site) =>
-          site.status !== "draft" &&
-          site.status !== "archived" &&
-          (statusFilter === "removed" || site.status !== "removed")
+        (site) => site.status !== "draft" && site.status !== "archived"
       ),
-    [filteredSites, statusFilter]
+    [filteredSites]
   );
 
   function updateFormField<Key extends keyof CoachSiteFormState>(
@@ -439,6 +436,12 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   async function upsertSite(status: CoachSiteStatus) {
     const validatedForm = validatePreviewForm(form);
     if (!validatedForm) return null;
+
+    if (status === "published" && !validatedForm.googleFormUrl.trim()) {
+      setMessage("Google Form registration link is required before publishing.");
+      setStorageMessage("Save as draft until the coach-specific Google Form link is added.");
+      return null;
+    }
 
     const site = { ...buildPreviewSite(status, validatedForm), status };
     const existingIndex = sites.findIndex((item) => item.id === site.id || item.slug === site.slug);
@@ -711,36 +714,47 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     }
   }
 
-  function updateSiteStatus(site: CoachSiteRecord, status: "paused" | "published") {
-    const updatedSite = { ...site, status, updatedAt: new Date().toISOString() };
-    setSites((current) => current.map((item) => (item.id === site.id ? updatedSite : item)));
+  async function updateSiteStatus(site: CoachSiteRecord, status: "paused" | "published") {
+    setMessage(status === "paused" ? "Pausing coach site..." : "Resuming coach site...");
+
+    const updatedSite = await persistSiteStatus(site, status);
+    if (!updatedSite) {
+      setMessage(
+        status === "paused"
+          ? "Coach site was not paused. Fix the database/API issue and try again."
+          : "Coach site was not resumed. Fix the database/API issue and try again."
+      );
+      return;
+    }
+
     setPreviewSite((current) => (current?.id === site.id ? updatedSite : current));
     setMessage(
       status === "paused"
-        ? `${site.coachName} paused. Public link remains ${site.publicUrl}.`
-        : `${site.coachName} resumed with the same public link: ${site.publicUrl}.`
+        ? `${updatedSite.coachName} paused. Public link remains ${updatedSite.publicUrl}.`
+        : `${updatedSite.coachName} resumed with the same public link: ${updatedSite.publicUrl}.`
     );
     setDialog(null);
-
-    void persistSiteStatus(site, status);
   }
 
-  function publishDraftSite(site: CoachSiteRecord) {
-    const publishedDraft = {
-      ...site,
-      status: "published" as CoachSiteStatus,
-      archivedAt: undefined,
-      publishedAt: site.publishedAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+  async function publishDraftSite(site: CoachSiteRecord) {
+    if (!site.googleFormUrl.trim()) {
+      setMessage("Google Form registration link is required before publishing this draft.");
+      setStorageMessage("Continue editing the draft and add the coach-specific Google Form link.");
+      return;
+    }
 
-    setSites((current) => current.map((item) => (item.id === site.id ? publishedDraft : item)));
+    setMessage("Publishing draft...");
+
+    const publishedDraft = await persistSiteStatus(site, "published");
+    if (!publishedDraft) {
+      setMessage("Draft was not published. Fix the database/API issue and try again.");
+      return;
+    }
+
     setPreviewSite((current) => (current?.id === site.id ? publishedDraft : current));
     setPublishedSite(publishedDraft);
-    setMessage(`Successfully Published. Stable public link: ${site.publicUrl}`);
+    setMessage(`Successfully Published. Stable public link: ${publishedDraft.publicUrl}`);
     setDialog(null);
-
-    void persistSiteStatus(site, "published");
   }
 
   async function reactivateArchivedSite(site: CoachSiteRecord) {
@@ -968,7 +982,10 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     }
   }
 
-  async function persistSiteStatus(site: CoachSiteRecord, status: CoachSiteStatus) {
+  async function persistSiteStatus(
+    site: CoachSiteRecord,
+    status: CoachSiteStatus
+  ): Promise<CoachSiteRecord | null> {
     try {
       const response = await fetch("/api/admin/coach-sites", {
         body: JSON.stringify({ siteId: site.id, status }),
@@ -986,11 +1003,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         reportAdminStorageIssue({
           category: payload.configured === false ? "database_failure" : "admin_action_issue",
           coachSlug: site.slug,
-          safeMessage: payload.error || "Status changed locally, but database update failed.",
+          safeMessage: payload.error || "Status was not saved in the database.",
           technicalDetails: `PATCH /api/admin/coach-sites status failed with ${response.status}`,
           userAction: `Update coach site status to ${status}`
         });
-        return;
+        return null;
       }
 
       setStorageReady(true);
@@ -999,15 +1016,17 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       setSites((current) =>
         current.map((item) => (item.id === site.id ? payload.coachSite! : item))
       );
+      return payload.coachSite;
     } catch {
       setStorageReady(false);
       reportAdminStorageIssue({
         category: "network_or_server_failure",
         coachSlug: site.slug,
-        safeMessage: "Status changed locally, but admin API was not reachable.",
+        safeMessage: "Status was not saved because the admin API was not reachable.",
         technicalDetails: "PATCH /api/admin/coach-sites status network failure",
         userAction: `Update coach site status to ${status}`
       });
+      return null;
     }
   }
 
@@ -1182,7 +1201,12 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
                             >
                               Preview
                             </button>
-                            <button onClick={() => publishDraftSite(site)} type="button">
+                            <button
+                              onClick={() => {
+                                void publishDraftSite(site);
+                              }}
+                              type="button"
+                            >
                               Publish
                             </button>
                             <button
@@ -1478,14 +1502,14 @@ function CoachDialogRenderer({
   onOpenDialog: (dialog: CoachDialog) => void;
   onPreviewSiteChange: (site: CoachSiteRecord) => void;
   onPublish: () => Promise<CoachSiteRecord | null>;
-  onPublishDraft: (site: CoachSiteRecord) => void;
+  onPublishDraft: (site: CoachSiteRecord) => Promise<void>;
   onReactivateSite: (site: CoachSiteRecord) => void;
   onRegenerateCopy: (scope: CopyRegenerationScope) => Promise<void>;
   onRemoveAction: (site: CoachSiteRecord, status: CoachSiteDangerStatus) => Promise<void>;
   onRemoveCancel: () => void;
   onSendRemoveOtp: (site: CoachSiteRecord) => Promise<void>;
   onSaveDraft: () => Promise<CoachSiteRecord | null>;
-  onStatusConfirm: (site: CoachSiteRecord, status: "paused" | "published") => void;
+  onStatusConfirm: (site: CoachSiteRecord, status: "paused" | "published") => Promise<void>;
   onUpdateCoachName: (value: string) => void;
   onUpdateField: <Key extends keyof CoachSiteFormState>(
     key: Key,
@@ -1757,7 +1781,9 @@ function CoachDialogRenderer({
             </button>
             <button
               className={styles.primaryAction}
-              onClick={() => onPublishDraft(dialog.site)}
+              onClick={() => {
+                void onPublishDraft(dialog.site);
+              }}
               type="button"
             >
               Publish Instead
@@ -1922,7 +1948,9 @@ function CoachDialogRenderer({
             </button>
             <button
               className={styles.primaryAction}
-              onClick={() => onStatusConfirm(dialog.site, dialog.nextStatus)}
+              onClick={() => {
+                void onStatusConfirm(dialog.site, dialog.nextStatus);
+              }}
               type="button"
             >
               Confirm {action}

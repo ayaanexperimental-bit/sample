@@ -16,6 +16,7 @@ import {
   type AdminPaidMasterclassLink,
   createErrorReportBugPrompt
 } from "../../lib/admin-control-center";
+import type { CoachSiteRecord } from "../../lib/admin-coach-sites";
 import { adminDashboardData } from "../../lib/admin-dashboard-data";
 
 type AdminDashboardShellProps = {
@@ -48,6 +49,12 @@ type PrivateLinkMetadata = {
   storageSource: "d1_table" | "none";
   updatedAt: string | null;
   updatedBy: string;
+};
+
+type CoachSitesApiPayload = {
+  coachSites?: CoachSiteRecord[];
+  configured?: boolean;
+  ok?: boolean;
 };
 
 const navSections: AdminNavSection[] = [
@@ -96,6 +103,8 @@ export function AdminDashboardShell({
   const [actionDialog, setActionDialog] = useState<ActionDialogState>(null);
   const [errorReports, setErrorReports] = useState<AdminErrorReport[]>([]);
   const [errorReportSource, setErrorReportSource] = useState("loading");
+  const [liveCoachSites, setLiveCoachSites] = useState<CoachSiteRecord[]>([]);
+  const [coachSiteSource, setCoachSiteSource] = useState("loading");
 
   useEffect(() => {
     let active = true;
@@ -123,6 +132,40 @@ export function AdminDashboardShell({
     }
 
     void loadErrorReports();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadCoachSites() {
+      try {
+        const response = await fetch("/api/admin/coach-sites", {
+          cache: "no-store",
+          credentials: "include"
+        });
+        const payload = (await response.json().catch(() => ({}))) as CoachSitesApiPayload;
+
+        if (!active) return;
+        if (response.ok && payload.ok && Array.isArray(payload.coachSites)) {
+          setLiveCoachSites(payload.coachSites);
+          setCoachSiteSource(payload.configured ? "live-database" : "not-configured");
+        } else {
+          setLiveCoachSites([]);
+          setCoachSiteSource("unavailable");
+        }
+      } catch {
+        if (active) {
+          setLiveCoachSites([]);
+          setCoachSiteSource("unavailable");
+        }
+      }
+    }
+
+    void loadCoachSites();
 
     return () => {
       active = false;
@@ -184,7 +227,9 @@ export function AdminDashboardShell({
         ) : null}
 
         {activeView === "top-coaches" ? <TopCoachesView data={data} /> : null}
-        {activeView === "coach-analytics" ? <CoachAnalyticsView control={control} /> : null}
+        {activeView === "coach-analytics" ? (
+          <CoachAnalyticsView coachSites={liveCoachSites} source={coachSiteSource} />
+        ) : null}
         {activeView === "paid-masterclass-settings" ? (
           <MasterclassLinksView control={control} csrfToken={csrfToken} />
         ) : null}
@@ -405,9 +450,19 @@ function TopCoachesView({ data }: { data: typeof adminDashboardData }) {
   );
 }
 
-function CoachAnalyticsView({ control }: { control: typeof adminControlCenterData }) {
+function CoachAnalyticsView({
+  coachSites,
+  source
+}: {
+  coachSites: CoachSiteRecord[];
+  source: string;
+}) {
   return (
     <AdminPageShell eyebrow="Coach Sites" title="Coach Analytics">
+      <p className={styles.inlineNote}>
+        Source: {source === "live-database" ? "Live coach-site database" : source}. Free guest link
+        analytics show tracked page views, register clicks, WhatsApp clicks, and video plays.
+      </p>
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead>
@@ -429,31 +484,31 @@ function CoachAnalyticsView({ control }: { control: typeof adminControlCenterDat
             </tr>
           </thead>
           <tbody>
-            {control.coachAnalytics.length > 0 ? (
-              control.coachAnalytics.map((coach) => (
-                <tr key={coach.slug}>
+            {coachSites.length > 0 ? (
+              coachSites.map((site) => (
+                <tr key={site.id}>
                   <td>
-                    <code>{coach.slug}</code>
+                    <code>{site.slug}</code>
                   </td>
                   <td>
-                    <span className={styles.statusBadge} data-status={coach.status}>
-                      {coach.status}
+                    <span className={styles.statusBadge} data-status={site.status}>
+                      {site.status}
                     </span>
                   </td>
                   <td>
-                    <code>{coach.publicUrl}</code>
+                    <code>{site.publicUrl}</code>
                   </td>
-                  <td>{coach.totalVisits.toLocaleString()}</td>
-                  <td>{coach.dailyVisits.toLocaleString()}</td>
-                  <td>{coach.weeklyVisits.toLocaleString()}</td>
-                  <td>{coach.monthlyVisits.toLocaleString()}</td>
-                  <td>{coach.registerClicks.toLocaleString()}</td>
-                  <td>{coach.whatsappClicks.toLocaleString()}</td>
-                  <td>{coach.videoPlays.toLocaleString()}</td>
-                  <td>{coach.conversionRate}</td>
-                  <td>{coach.deviceBreakdown}</td>
-                  <td>{coach.regionBreakdown}</td>
-                  <td>{coach.sourceBreakdown}</td>
+                  <td>{site.analytics.totalVisits.toLocaleString()}</td>
+                  <td>{site.analytics.dailyVisits.toLocaleString()}</td>
+                  <td>{site.analytics.weeklyVisits.toLocaleString()}</td>
+                  <td>{site.analytics.monthlyVisits.toLocaleString()}</td>
+                  <td>{site.analytics.totalRegisterClicks.toLocaleString()}</td>
+                  <td>{site.analytics.totalWhatsappClicks.toLocaleString()}</td>
+                  <td>{site.analytics.videoPlays.toLocaleString()}</td>
+                  <td>{site.analytics.conversionRate}</td>
+                  <td>{formatDeviceBreakdown(site.analytics.deviceBreakdown)}</td>
+                  <td>{site.analytics.region}</td>
+                  <td>{site.analytics.source}</td>
                 </tr>
               ))
             ) : (
@@ -470,6 +525,10 @@ function CoachAnalyticsView({ control }: { control: typeof adminControlCenterDat
       </p>
     </AdminPageShell>
   );
+}
+
+function formatDeviceBreakdown(deviceBreakdown: CoachSiteRecord["analytics"]["deviceBreakdown"]) {
+  return `Mobile ${deviceBreakdown.mobile} / Desktop ${deviceBreakdown.desktop} / Tablet ${deviceBreakdown.tablet}`;
 }
 
 function MasterclassLinksView({
@@ -1056,7 +1115,9 @@ function ErrorReportsView({
       );
       setStatusMessage(`Marked ${status}.`);
     } catch {
-      setStatusMessage("Could not update this report. The API stayed safe and no public data leaked.");
+      setStatusMessage(
+        "Could not update this report. The API stayed safe and no public data leaked."
+      );
     }
   }
 
@@ -1155,10 +1216,14 @@ function ErrorReportsView({
       </div>
       <div className={styles.reportPrompt}>
         <strong>Codex-ready bug prompt</strong>
-        <code>{errorReports[0] ? createErrorReportBugPrompt(errorReports[0]) : "No reports yet."}</code>
+        <code>
+          {errorReports[0] ? createErrorReportBugPrompt(errorReports[0]) : "No reports yet."}
+        </code>
         {errorReports[0] ? (
           <button
-            onClick={() => void copyAdminText("Codex prompt", createErrorReportBugPrompt(errorReports[0]))}
+            onClick={() =>
+              void copyAdminText("Codex prompt", createErrorReportBugPrompt(errorReports[0]))
+            }
             type="button"
           >
             Copy Prompt
@@ -1169,13 +1234,22 @@ function ErrorReportsView({
         footer={
           selectedReport ? (
             <>
-              <button onClick={() => void updateReportStatus(selectedReport, "Reviewing")} type="button">
+              <button
+                onClick={() => void updateReportStatus(selectedReport, "Reviewing")}
+                type="button"
+              >
                 Mark Reviewing
               </button>
-              <button onClick={() => void updateReportStatus(selectedReport, "Fixed")} type="button">
+              <button
+                onClick={() => void updateReportStatus(selectedReport, "Fixed")}
+                type="button"
+              >
                 Mark Fixed
               </button>
-              <button onClick={() => void updateReportStatus(selectedReport, "Ignored")} type="button">
+              <button
+                onClick={() => void updateReportStatus(selectedReport, "Ignored")}
+                type="button"
+              >
                 Ignore
               </button>
             </>
@@ -1387,13 +1461,17 @@ function SettingsView({
         <article className={styles.statusCard} data-tone="success">
           <span>Coach-specific</span>
           <h3>Hidden error support</h3>
-          <p>Error fallback pages use coach phone, WhatsApp, email, image/logo, and support text first.</p>
+          <p>
+            Error fallback pages use coach phone, WhatsApp, email, image/logo, and support text
+            first.
+          </p>
         </article>
         <article className={styles.statusCard} data-tone="warning">
           <span>Fallback</span>
           <h3>Yours Wellness support</h3>
           <p>
-            Default support appears only when an error fallback has no coach-specific support details.
+            Default support appears only when an error fallback has no coach-specific support
+            details.
           </p>
         </article>
       </section>

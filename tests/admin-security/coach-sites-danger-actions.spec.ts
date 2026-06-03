@@ -12,6 +12,155 @@ const ADMIN_DEV_OTP = "123456";
 const ADMIN_SESSION_SECRET = "local-admin-coach-sites-danger-secret";
 
 test.describe("coach site dangerous actions", () => {
+  test("draft publish pipeline persists, lists, and renders public coach template", async () => {
+    const coachSitesDb = createCoachSitesDb();
+    const env = {
+      ADMIN_ALLOWED_EMAILS: ADMIN_EMAIL,
+      ADMIN_AUTH_DEMO_ENABLED: "true",
+      ADMIN_DB: coachSitesDb.db,
+      ADMIN_DEV_OTP,
+      ADMIN_SESSION_SECRET
+    };
+    const { cookie, csrfToken } = await createAdminTestSession(env);
+
+    const missingFormPublish = await coachSitesRequest({
+      env,
+      request: jsonRequest(
+        "http://127.0.0.1/api/admin/coach-sites",
+        {
+          site: {
+            coachName: "Pipeline Coach",
+            content: {
+              benefits: ["Benefit one"],
+              coachIntro: "Pipeline intro",
+              ctaText: "Register Now",
+              faq: [{ answer: "Answer", question: "Question" }],
+              heroHeadline: "Pipeline headline",
+              socialCopy: "Pipeline social copy",
+              subheadline: "Pipeline subheadline",
+              trustText: "Pipeline trust",
+              visionText: "Pipeline vision"
+            },
+            googleFormUrl: "",
+            id: "coach-site-pipeline",
+            niche: "Pipeline Wellness",
+            publicUrl: "/coach/pipeline-coach",
+            registerButtonText: "Register Now",
+            selectedThemeId: "default-current",
+            slug: "pipeline-coach",
+            status: "published"
+          }
+        },
+        { cookie, "x-yw-admin-csrf": csrfToken },
+        "POST"
+      )
+    });
+    expect(missingFormPublish.status).toBe(400);
+    expect(await missingFormPublish.json()).toMatchObject({
+      error: "Google Form registration link is required before publishing.",
+      ok: false
+    });
+
+    const saveDraft = await coachSitesRequest({
+      env,
+      request: jsonRequest(
+        "http://127.0.0.1/api/admin/coach-sites",
+        {
+          site: {
+            coachEmail: "pipeline@example.com",
+            coachName: "Pipeline Coach",
+            coachPhone: "+911234567890",
+            content: {
+              benefits: ["Benefit one", "Benefit two", "Benefit three"],
+              coachIntro: "Pipeline intro",
+              ctaText: "Register Now",
+              faq: [{ answer: "Answer", question: "Question" }],
+              heroHeadline: "Pipeline headline",
+              socialCopy: "Pipeline social copy",
+              subheadline: "Pipeline subheadline",
+              trustText: "Pipeline trust",
+              visionText: "Pipeline vision"
+            },
+            googleFormUrl: "https://forms.gle/pipelineCoach",
+            id: "coach-site-pipeline",
+            niche: "Pipeline Wellness",
+            publicUrl: "/coach/pipeline-coach",
+            registerButtonText: "Register Now",
+            selectedThemeId: "default-current",
+            slug: "pipeline-coach",
+            status: "draft",
+            whatsappLink: "https://wa.me/911234567890"
+          }
+        },
+        { cookie, "x-yw-admin-csrf": csrfToken },
+        "POST"
+      )
+    });
+    expect(saveDraft.status).toBe(200);
+    expect(await saveDraft.json()).toMatchObject({
+      coachSite: {
+        publicUrl: "/coach/pipeline-coach",
+        slug: "pipeline-coach",
+        status: "draft"
+      },
+      ok: true
+    });
+
+    const publishDraft = await coachSitesRequest({
+      env,
+      request: jsonRequest(
+        "http://127.0.0.1/api/admin/coach-sites",
+        {
+          siteId: "coach-site-pipeline",
+          status: "published"
+        },
+        { cookie, "x-yw-admin-csrf": csrfToken },
+        "PATCH"
+      )
+    });
+    expect(publishDraft.status).toBe(200);
+    expect(await publishDraft.json()).toMatchObject({
+      coachSite: {
+        publicUrl: "/coach/pipeline-coach",
+        slug: "pipeline-coach",
+        status: "published"
+      },
+      ok: true
+    });
+
+    const listed = await coachSitesRequest({
+      env,
+      request: new Request("http://127.0.0.1/api/admin/coach-sites", {
+        headers: {
+          cookie
+        }
+      })
+    });
+    expect(listed.status).toBe(200);
+    const listedBody = await listed.json();
+    expect(listedBody.coachSites).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          publicUrl: "/coach/pipeline-coach",
+          slug: "pipeline-coach",
+          status: "published"
+        })
+      ])
+    );
+
+    const publicPage = await coachPageRequest({
+      env,
+      params: { slug: "pipeline-coach" },
+      request: new Request("http://127.0.0.1/coach/pipeline-coach")
+    });
+    expect(publicPage.status).toBe(200);
+    const html = await publicPage.text();
+    expect(html).toContain("YW Nutritech coach network");
+    expect(html).toContain("Pipeline headline");
+    expect(html).toContain("https://forms.gle/pipelineCoach");
+    expect(html).not.toContain("Something went wrong");
+  });
+
   test("archive and remove require admin session, CSRF, and OTP", async () => {
     const coachSitesDb = createCoachSitesDb();
     const env = {
@@ -370,6 +519,7 @@ type CoachSiteRowRecord = {
   status: string;
   support_text: string;
   updated_at: number;
+  updated_by: string;
   video_url: string;
   vision: string;
   whatsapp_link: string;
@@ -414,7 +564,7 @@ function createCoachSitesDb() {
         }),
         created_at: 1780000000,
         created_by: ADMIN_EMAIL,
-        google_form_url: "",
+        google_form_url: "https://forms.gle/localCoach",
         hero_media_type: "none",
         id: "coach-site-local",
         location: "Local",
@@ -429,6 +579,7 @@ function createCoachSitesDb() {
         status: "published",
         support_text: "",
         updated_at: 1780000100,
+        updated_by: ADMIN_EMAIL,
         video_url: "",
         vision: "Vision",
         whatsapp_link: ""
@@ -460,6 +611,24 @@ function createCoachSitesStatement(
 ) {
   return {
     first: async () => {
+      if (statement.includes("SELECT id, coach_id, created_at, created_by, published_at")) {
+        const id = String(values[0] || "");
+        const slug = String(values[1] || "");
+        const existing =
+          records.get(id) || Array.from(records.values()).find((record) => record.slug === slug);
+
+        return existing
+          ? {
+              archived_at: existing.archived_at,
+              coach_id: existing.coach_id,
+              created_at: existing.created_at,
+              created_by: existing.created_by,
+              id: existing.id,
+              published_at: existing.published_at
+            }
+          : null;
+      }
+
       if (statement.includes("SELECT * FROM coach_sites WHERE id")) {
         return records.get(String(values[0] || "")) || null;
       }
@@ -474,6 +643,72 @@ function createCoachSitesStatement(
       return null;
     },
     run: async () => {
+      if (statement.includes("INSERT INTO coach_sites")) {
+        const [
+          id,
+          coachId,
+          coachName,
+          slug,
+          status,
+          niche,
+          location,
+          bio,
+          vision,
+          coachEmail,
+          coachPhone,
+          whatsappLink,
+          photoUrl,
+          logoUrl,
+          videoUrl,
+          googleFormUrl,
+          heroMediaType,
+          publicUrl,
+          registerButtonText,
+          selectedThemeId,
+          supportText,
+          contentJson,
+          analyticsJson,
+          createdAt,
+          updatedAt,
+          publishedAt,
+          archivedAt,
+          createdBy,
+          updatedBy
+        ] = values;
+        const recordId = String(id || "");
+        records.set(recordId, {
+          analytics_json: String(analyticsJson || "{}"),
+          archived_at: archivedAt === null ? null : Number(archivedAt || 0) || null,
+          bio: String(bio || ""),
+          coach_email: String(coachEmail || ""),
+          coach_id: String(coachId || ""),
+          coach_name: String(coachName || ""),
+          coach_phone: String(coachPhone || ""),
+          content_json: String(contentJson || "{}"),
+          created_at: Number(createdAt || 0),
+          created_by: String(createdBy || ""),
+          google_form_url: String(googleFormUrl || ""),
+          hero_media_type: String(heroMediaType || "image"),
+          id: recordId,
+          location: String(location || ""),
+          logo_url: String(logoUrl || ""),
+          niche: String(niche || ""),
+          photo_url: String(photoUrl || ""),
+          published_at: publishedAt === null ? null : Number(publishedAt || 0) || null,
+          public_url: String(publicUrl || ""),
+          register_button_text: String(registerButtonText || "Register Now"),
+          selected_theme_id: String(selectedThemeId || "default-current"),
+          slug: String(slug || ""),
+          status: String(status || "draft"),
+          support_text: String(supportText || ""),
+          updated_at: Number(updatedAt || 0),
+          updated_by: String(updatedBy || ""),
+          video_url: String(videoUrl || ""),
+          vision: String(vision || ""),
+          whatsapp_link: String(whatsappLink || "")
+        });
+      }
+
       if (statement.includes("UPDATE coach_sites")) {
         const [status, updatedAt, updatedBy, id] = values;
         const existing = records.get(String(id || ""));
@@ -492,7 +727,7 @@ function createCoachSitesStatement(
             status: nextStatus,
             updated_at: nextUpdatedAt,
             updated_by: String(updatedBy || "")
-          } as CoachSiteRowRecord & { updated_by: string });
+          });
         }
       }
 

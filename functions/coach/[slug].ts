@@ -70,7 +70,32 @@ export async function onRequest({ env, params, request }: PagesContext) {
     );
   }
 
-  const site = (await getCoachSiteBySlugFromDb(slug, env)) || getPublicCoachSiteBySlug(slug);
+  let site: PublicCoachSiteRecord | null;
+  try {
+    site = (await getCoachSiteBySlugFromDb(slug, env)) || getPublicCoachSiteBySlug(slug);
+  } catch {
+    const referenceId = createSupportErrorReference("database_failure", slug);
+    await logCoachFallbackError({
+      category: "database_failure",
+      coachSlug: slug,
+      env,
+      referenceId,
+      request,
+      safeMessage: "Coach site database could not be read.",
+      site: null,
+      userAction: "coach_site_database_read"
+    });
+
+    return new Response(
+      renderSupportFallbackHtml({
+        category: "database_failure",
+        message: "This coach page could not load from storage. Please contact support for help.",
+        referenceId,
+        site: null
+      }),
+      { headers: getHtmlHeaders(true), status: 503 }
+    );
+  }
   if (site?.status === "archived") {
     const referenceId = createSupportErrorReference("coach_site_issue", slug);
     await logCoachFallbackError({
@@ -136,30 +161,6 @@ export async function onRequest({ env, params, request }: PagesContext) {
       renderSupportFallbackHtml({
         category: "coach_site_issue",
         message: "This coach page is temporarily unavailable. Please contact support for help.",
-        referenceId,
-        site
-      }),
-      { headers: getHtmlHeaders(true), status: 200 }
-    );
-  }
-
-  if (!site.googleFormUrl) {
-    const referenceId = createSupportErrorReference("link_missing", slug);
-    await logCoachFallbackError({
-      category: "link_missing",
-      coachSlug: slug,
-      env,
-      referenceId,
-      request,
-      safeMessage: "Google Form registration link missing.",
-      site,
-      userAction: "coach_register_link_missing"
-    });
-
-    return new Response(
-      renderSupportFallbackHtml({
-        category: "link_missing",
-        message: "We could not open the registration step. Please contact support for help.",
         referenceId,
         site
       }),
