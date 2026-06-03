@@ -510,6 +510,41 @@
   font-weight: 850;
 }
 
+.codeStack {
+  display: grid;
+  gap: 0.32rem;
+  justify-items: start;
+}
+
+.codeStack small {
+  color: #7b6473;
+  font-size: 0.74rem;
+  font-weight: 780;
+  overflow-wrap: anywhere;
+}
+
+.codeStack button,
+.copyableValue button,
+.reportPrompt button {
+  min-height: 2rem;
+  border: 1px solid rgb(242 201 218 / 0.9);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.72);
+  color: #251822;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0 0.72rem;
+}
+
+.codeStack button:hover,
+.copyableValue button:hover,
+.reportPrompt button:hover {
+  border-color: rgb(8 122 115 / 0.28);
+  box-shadow: 0 10px 24px rgb(8 122 115 / 0.08);
+}
+
 .table a {
   color: #9f174d;
 }
@@ -1816,6 +1851,10 @@
   white-space: normal;
 }
 
+.reportPrompt button {
+  width: fit-content;
+}
+
 .definitionGrid {
   margin: 0 0 0.85rem;
 }
@@ -1838,6 +1877,21 @@
   font-size: 0.9rem;
   font-weight: 900;
   overflow-wrap: anywhere;
+}
+
+.copyableValue {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  justify-content: space-between;
+}
+
+.copyableValue span {
+  min-width: 0;
+}
+
+.copyableValue button {
+  flex: 0 0 auto;
 }
 
 .definitionGrid small {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DEFAULT_SUPPORT_EMAIL,
   DEFAULT_SUPPORT_MESSAGE,
@@ -60,6 +60,7 @@ export function ContactSupportFallback({
     [category, coachSlug, referenceId, userAction]
   );
   const support = getResolvedSupport(contact);
+  const [copyStatus, setCopyStatus] = useState("");
   const displayMessage =
     message ||
     (support.source === "coach" ? "Please contact your coach for help." : DEFAULT_SUPPORT_MESSAGE);
@@ -94,6 +95,23 @@ export function ContactSupportFallback({
     userAction
   ]);
 
+  useEffect(() => {
+    if (!copyStatus) return;
+
+    const timeout = window.setTimeout(() => setCopyStatus(""), 1800);
+
+    return () => window.clearTimeout(timeout);
+  }, [copyStatus]);
+
+  async function copyErrorCode() {
+    try {
+      await window.navigator.clipboard.writeText(errorCode);
+      setCopyStatus("Copied");
+    } catch {
+      setCopyStatus("Copy unavailable");
+    }
+  }
+
   return (
     <main className={styles.shell}>
       <section className={styles.panel} aria-labelledby="support-fallback-title">
@@ -106,7 +124,13 @@ export function ContactSupportFallback({
               <small>Support fallback</small>
             </span>
           </Link>
-          <code className={styles.codePill}>Error Code: {errorCode}</code>
+          <div className={styles.codeActions}>
+            <code className={styles.codePill}>Error Code: {errorCode}</code>
+            <button onClick={copyErrorCode} type="button">
+              Copy Code
+            </button>
+            {copyStatus ? <span aria-live="polite">{copyStatus}</span> : null}
+          </div>
         </div>
 
         <div className={styles.content}>

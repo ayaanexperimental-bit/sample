@@ -968,7 +968,25 @@ function ErrorReportsView({
   source: string;
 }) {
   const [selectedReport, setSelectedReport] = useState<AdminErrorReport | null>(null);
+  const [copyMessage, setCopyMessage] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
+
+  useEffect(() => {
+    if (!copyMessage) return;
+
+    const timeout = window.setTimeout(() => setCopyMessage(""), 1800);
+
+    return () => window.clearTimeout(timeout);
+  }, [copyMessage]);
+
+  async function copyAdminText(label: string, value: string) {
+    try {
+      await window.navigator.clipboard.writeText(value);
+      setCopyMessage(`${label} copied.`);
+    } catch {
+      setCopyMessage("Copy unavailable.");
+    }
+  }
 
   async function updateReportStatus(report: AdminErrorReport, status: AdminErrorReport["status"]) {
     setStatusMessage("Updating error report...");
@@ -1044,8 +1062,18 @@ function ErrorReportsView({
             {errorReports.map((report) => (
               <tr key={report.referenceId}>
                 <td>
-                  <code>{report.errorCode || report.referenceId}</code>
-                  <small>{report.referenceId}</small>
+                  <div className={styles.codeStack}>
+                    <code>{report.errorCode || report.referenceId}</code>
+                    <small>{report.referenceId}</small>
+                    <button
+                      onClick={() =>
+                        void copyAdminText("Error code", report.errorCode || report.referenceId)
+                      }
+                      type="button"
+                    >
+                      Copy
+                    </button>
+                  </div>
                 </td>
                 <td>{report.status}</td>
                 <td>{report.severity}</td>
@@ -1081,6 +1109,14 @@ function ErrorReportsView({
       <div className={styles.reportPrompt}>
         <strong>Codex-ready bug prompt</strong>
         <code>{errorReports[0] ? createErrorReportBugPrompt(errorReports[0]) : "No reports yet."}</code>
+        {errorReports[0] ? (
+          <button
+            onClick={() => void copyAdminText("Codex prompt", createErrorReportBugPrompt(errorReports[0]))}
+            type="button"
+          >
+            Copy Prompt
+          </button>
+        ) : null}
       </div>
       <AdminActionDialog
         footer={
@@ -1107,11 +1143,29 @@ function ErrorReportsView({
           <div className={styles.definitionGrid}>
             <div>
               <dt>Error code</dt>
-              <dd>{selectedReport.errorCode || "Not recorded"}</dd>
+              <dd className={styles.copyableValue}>
+                <span>{selectedReport.errorCode || "Not recorded"}</span>
+                {selectedReport.errorCode ? (
+                  <button
+                    onClick={() => void copyAdminText("Error code", selectedReport.errorCode || "")}
+                    type="button"
+                  >
+                    Copy
+                  </button>
+                ) : null}
+              </dd>
             </div>
             <div>
               <dt>Reference</dt>
-              <dd>{selectedReport.referenceId}</dd>
+              <dd className={styles.copyableValue}>
+                <span>{selectedReport.referenceId}</span>
+                <button
+                  onClick={() => void copyAdminText("Reference", selectedReport.referenceId)}
+                  type="button"
+                >
+                  Copy
+                </button>
+              </dd>
             </div>
             <div>
               <dt>Status</dt>
@@ -1161,8 +1215,24 @@ function ErrorReportsView({
             </div>
             <div>
               <dt>Codex Fix Prompt</dt>
-              <dd>{createErrorReportBugPrompt(selectedReport)}</dd>
+              <dd className={styles.copyableValue}>
+                <span>{createErrorReportBugPrompt(selectedReport)}</span>
+                <button
+                  onClick={() =>
+                    void copyAdminText("Codex prompt", createErrorReportBugPrompt(selectedReport))
+                  }
+                  type="button"
+                >
+                  Copy
+                </button>
+              </dd>
             </div>
+            {copyMessage ? (
+              <div>
+                <dt>Copy</dt>
+                <dd>{copyMessage}</dd>
+              </div>
+            ) : null}
             {statusMessage ? (
               <div>
                 <dt>Status update</dt>
