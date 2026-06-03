@@ -169,6 +169,66 @@ test.describe("coach site dangerous actions", () => {
       ])
     );
   });
+
+  test("delete draft removes only draft coach sites without weakening published-site OTP", async () => {
+    const coachSitesDb = createCoachSitesDb();
+    coachSitesDb.records.set("coach-site-draft", {
+      ...coachSitesDb.records.get("coach-site-local")!,
+      id: "coach-site-draft",
+      coach_id: "coach-draft",
+      coach_name: "Draft Coach",
+      public_url: "/coach/draft-coach",
+      slug: "draft-coach",
+      status: "draft",
+      updated_at: 1780000200
+    });
+    const env = {
+      ADMIN_ALLOWED_EMAILS: ADMIN_EMAIL,
+      ADMIN_AUTH_DEMO_ENABLED: "true",
+      ADMIN_DB: coachSitesDb.db,
+      ADMIN_DEV_OTP,
+      ADMIN_SESSION_SECRET
+    };
+    const { cookie, csrfToken } = await createAdminTestSession(env);
+
+    const deletePublished = await coachSitesRequest({
+      env,
+      request: jsonRequest(
+        "http://127.0.0.1/api/admin/coach-sites",
+        {
+          action: "delete_draft",
+          siteId: "coach-site-local",
+          status: "removed"
+        },
+        { cookie, "x-yw-admin-csrf": csrfToken },
+        "PATCH"
+      )
+    });
+    expect(deletePublished.status).toBe(400);
+    expect(coachSitesDb.records.get("coach-site-local")?.status).toBe("published");
+
+    const deleteDraft = await coachSitesRequest({
+      env,
+      request: jsonRequest(
+        "http://127.0.0.1/api/admin/coach-sites",
+        {
+          action: "delete_draft",
+          siteId: "coach-site-draft",
+          status: "removed"
+        },
+        { cookie, "x-yw-admin-csrf": csrfToken },
+        "PATCH"
+      )
+    });
+    expect(deleteDraft.status).toBe(200);
+    expect(await deleteDraft.json()).toMatchObject({
+      coachSite: {
+        id: "coach-site-draft",
+        status: "removed"
+      },
+      ok: true
+    });
+  });
 });
 
 type CoachSiteRowRecord = {
@@ -194,6 +254,7 @@ type CoachSiteRowRecord = {
   slug: string;
   status: string;
   support_text: string;
+  updated_at: number;
   video_url: string;
   vision: string;
   whatsapp_link: string;
@@ -250,6 +311,7 @@ function createCoachSitesDb() {
         slug: "local-coach",
         status: "published",
         support_text: "",
+        updated_at: 1780000100,
         video_url: "",
         vision: "Vision",
         whatsapp_link: ""
@@ -298,7 +360,7 @@ function createCoachSitesStatement(
             status: String(status || existing.status),
             updated_at: Number(updatedAt || 0),
             updated_by: String(updatedBy || "")
-          } as CoachSiteRowRecord & { updated_at: number; updated_by: string });
+          } as CoachSiteRowRecord & { updated_by: string });
         }
       }
 

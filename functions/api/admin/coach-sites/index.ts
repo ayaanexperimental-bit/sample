@@ -103,6 +103,56 @@ export async function onRequest({ request, env }: PagesContext) {
       return adminJson({ ok: false, error: "Coach site id and status are required." }, 400);
     }
 
+    if (action === "delete_draft") {
+      if (status !== "removed") {
+        return adminJson({ ok: false, error: "Draft delete must use removed status." }, 400);
+      }
+
+      if (!env.ADMIN_DB) {
+        return adminJson(
+          { configured: false, error: "Coach site database is not configured.", ok: false },
+          503
+        );
+      }
+
+      const coachSites = await listCoachSitesFromDb(env);
+      const currentSite = coachSites?.find((site) => site.id === siteId);
+
+      if (!currentSite) {
+        return adminJson(
+          { configured: true, error: "Coach draft not found.", ok: false },
+          404
+        );
+      }
+
+      if (currentSite.status !== "draft") {
+        return adminJson(
+          { configured: true, error: "Only draft coach sites can use Delete Draft.", ok: false },
+          400
+        );
+      }
+
+      const updatedSite = await updateCoachSiteStatusInDb({
+        adminEmail: admin.admin.email,
+        env,
+        id: siteId,
+        status
+      });
+
+      if (!updatedSite) {
+        return adminJson(
+          { configured: true, error: "Coach draft not found.", ok: false },
+          404
+        );
+      }
+
+      return adminJson({
+        coachSite: updatedSite,
+        configured: true,
+        ok: true
+      });
+    }
+
     if (isDangerousStatus(status)) {
       if (!env.ADMIN_DB) {
         return adminJson(

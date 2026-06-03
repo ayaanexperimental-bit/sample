@@ -22,6 +22,12 @@ import {
   isUploadedVideoSource,
   normalizeVideoEmbedUrl
 } from "../../lib/video-links";
+import {
+  createSupportErrorReference,
+  getPublicSupportErrorCode,
+  logWebsiteError,
+  type PublicWebsiteErrorCategory
+} from "../../lib/error-reporting";
 import styles from "./admin-dashboard-shell.module.css";
 
 type AdminCoachSitesManagerProps = {
@@ -33,6 +39,7 @@ type CoachDialog =
   | { type: "analytics"; site: CoachSiteRecord }
   | { type: "copy"; link: string; site: CoachSiteRecord }
   | { type: "creator" }
+  | { site: CoachSiteRecord; type: "delete-draft" }
   | { type: "manage"; site: CoachSiteRecord }
   | { type: "preview"; site: CoachSiteRecord }
   | { nextStatus: "paused" | "published"; site: CoachSiteRecord; type: "status" }
@@ -248,6 +255,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   const [removeOtpSending, setRemoveOtpSending] = useState(false);
   const [removeReason, setRemoveReason] = useState(removalReasons[0]);
   const [removeSubmitting, setRemoveSubmitting] = useState<CoachSiteDangerStatus | null>(null);
+  const [storageErrorCode, setStorageErrorCode] = useState("");
   const [storageMessage, setStorageMessage] = useState("");
   const [storageReady, setStorageReady] = useState(false);
 
@@ -271,6 +279,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         if (cancelled || !response.ok || !payload.ok || !payload.coachSites) return;
 
         setSites(payload.coachSites);
+        setStorageErrorCode("");
         setStorageReady(Boolean(payload.configured));
         setStorageMessage(
           payload.configured
@@ -280,6 +289,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       } catch {
         if (!cancelled) {
           setStorageReady(false);
+          setStorageErrorCode("");
           setStorageMessage("Admin API is not reachable. No production records are shown.");
         }
       }
@@ -306,6 +316,19 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       return matchesStatus && matchesSearch;
     });
   }, [search, sites, statusFilter]);
+
+  const draftSites = useMemo(
+    () => filteredSites.filter((site) => site.status === "draft"),
+    [filteredSites]
+  );
+  const managedSites = useMemo(
+    () =>
+      filteredSites.filter(
+        (site) =>
+          site.status !== "draft" && (statusFilter === "removed" || site.status !== "removed")
+      ),
+    [filteredSites, statusFilter]
+  );
 
   function updateFormField<Key extends keyof CoachSiteFormState>(
     key: Key,
@@ -410,22 +433,23 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   }
 
   async function upsertSite(status: CoachSiteStatus) {
-    const site = { ...buildPreviewSite(status), status };
+    const validatedForm = validatePreviewForm(form);
+    if (!validatedForm) return null;
+
+    const site = { ...buildPreviewSite(status, validatedForm), status };
     const existingIndex = sites.findIndex((item) => item.id === site.id || item.slug === site.slug);
+    const previousSites = sites;
     const nextSites =
       existingIndex >= 0
         ? sites.map((item, index) => (index === existingIndex ? site : item))
         : [site, ...sites];
 
+    setForm(validatedForm);
     setSites(nextSites);
     setPreviewSite(site);
     setEditingId(site.id);
     setPublishedSite(status === "published" ? site : null);
-    setMessage(
-      status === "published"
-        ? `Successfully Published. Stable public link: ${site.publicUrl}. Saving to database...`
-        : `Draft saved. Stable public link reserved: ${site.publicUrl}. Saving to database...`
-    );
+    setMessage(status === "published" ? "Publishing site..." : "Saving draft...");
 
     try {
       const response = await fetch("/api/admin/coach-sites", {
@@ -441,31 +465,59 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       const payload = (await response.json().catch(() => ({}))) as CoachSitesApiPayload;
 
       if (!response.ok || !payload.ok || !payload.coachSite) {
+        setSites(previousSites);
         setStorageReady(Boolean(payload.configured));
-        setStorageMessage(
-          payload.error || "Could not save to coach-site database. Local preview is still updated."
+        reportAdminStorageIssue({
+          category: payload.configured === false ? "database_failure" : "admin_action_issue",
+          coachSlug: site.slug,
+          safeMessage:
+            payload.error ||
+            "Could not save to coach-site database. Local preview is still updated.",
+          technicalDetails: `POST /api/admin/coach-sites failed with ${response.status}`,
+          userAction: status === "published" ? "Publish coach site" : "Save coach site draft"
+        });
+        setMessage(
+          status === "published"
+            ? "Site was not published. Fix the database/API issue and try again."
+            : "Draft was not saved. Reusable drafts require the coach-site database."
         );
         return site;
       }
 
       setStorageReady(true);
+      setStorageErrorCode("");
       setStorageMessage("Saved in coach-site database.");
       setSites((current) =>
-        current.map((item) =>
-          item.id === site.id || item.slug === site.slug ? payload.coachSite! : item
-        )
+        current.some((item) => item.id === site.id || item.slug === site.slug)
+          ? current.map((item) =>
+              item.id === site.id || item.slug === site.slug ? payload.coachSite! : item
+            )
+          : [payload.coachSite!, ...current]
       );
       setPreviewSite(payload.coachSite);
+      setEditingId(payload.coachSite.id);
       setPublishedSite(status === "published" ? payload.coachSite : null);
       setMessage(
         status === "published"
           ? `Successfully Published. Stable public link: ${payload.coachSite.publicUrl}`
-          : `Draft saved. Stable public link reserved: ${payload.coachSite.publicUrl}`
+          : "Draft saved successfully."
       );
       return payload.coachSite;
     } catch {
+      setSites(previousSites);
       setStorageReady(false);
-      setStorageMessage("Could not reach coach-site database API. Local preview is still updated.");
+      reportAdminStorageIssue({
+        category: "network_or_server_failure",
+        coachSlug: site.slug,
+        safeMessage: "Could not reach coach-site database API. Local preview is still updated.",
+        technicalDetails: "POST /api/admin/coach-sites network failure",
+        userAction: status === "published" ? "Publish coach site" : "Save coach site draft"
+      });
+      setMessage(
+        status === "published"
+          ? "Site was not published. Fix the admin API connection and try again."
+          : "Draft was not saved. Reusable drafts require the admin API and database."
+      );
     }
 
     return site;
@@ -629,10 +681,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   }
 
   function updateSiteStatus(site: CoachSiteRecord, status: "paused" | "published") {
+    const updatedSite = { ...site, status, updatedAt: new Date().toISOString() };
     setSites((current) =>
-      current.map((item) => (item.id === site.id ? { ...item, status } : item))
+      current.map((item) => (item.id === site.id ? updatedSite : item))
     );
-    setPreviewSite((current) => (current?.id === site.id ? { ...current, status } : current));
+    setPreviewSite((current) => (current?.id === site.id ? updatedSite : current));
     setMessage(
       status === "paused"
         ? `${site.coachName} paused. Public link remains ${site.publicUrl}.`
@@ -641,6 +694,76 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     setDialog(null);
 
     void persistSiteStatus(site, status);
+  }
+
+  function publishDraftSite(site: CoachSiteRecord) {
+    const publishedDraft = {
+      ...site,
+      status: "published" as CoachSiteStatus,
+      updatedAt: new Date().toISOString()
+    };
+
+    setSites((current) =>
+      current.map((item) => (item.id === site.id ? publishedDraft : item))
+    );
+    setPreviewSite((current) => (current?.id === site.id ? publishedDraft : current));
+    setPublishedSite(publishedDraft);
+    setMessage(`Successfully Published. Stable public link: ${site.publicUrl}`);
+    setDialog(null);
+
+    void persistSiteStatus(site, "published");
+  }
+
+  async function deleteDraftSite(site: CoachSiteRecord) {
+    setStorageMessage("Deleting draft...");
+
+    try {
+      const response = await fetch("/api/admin/coach-sites", {
+        body: JSON.stringify({
+          action: "delete_draft",
+          siteId: site.id,
+          status: "removed"
+        }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-yw-admin-csrf": csrfToken
+        },
+        method: "PATCH"
+      });
+      const payload = (await response.json().catch(() => ({}))) as CoachSitesApiPayload;
+
+      if (!response.ok || !payload.ok || !payload.coachSite) {
+        setStorageReady(Boolean(payload.configured));
+        reportAdminStorageIssue({
+          category: payload.configured === false ? "database_failure" : "admin_action_issue",
+          coachSlug: site.slug,
+          safeMessage: payload.error || "Could not delete this draft.",
+          technicalDetails: `PATCH /api/admin/coach-sites delete_draft failed with ${response.status}`,
+          userAction: "Delete coach site draft"
+        });
+        return;
+      }
+
+      setStorageReady(true);
+      setStorageErrorCode("");
+      setSites((current) => current.filter((item) => item.id !== site.id));
+      setPreviewSite((current) => (current?.id === site.id ? null : current));
+      setPublishedSite((current) => (current?.id === site.id ? null : current));
+      setStorageMessage("Draft deleted.");
+      setMessage(`${site.coachName || "Coach"} draft deleted.`);
+      setDialog(null);
+    } catch {
+      setStorageReady(false);
+      reportAdminStorageIssue({
+        category: "network_or_server_failure",
+        coachSlug: site.slug,
+        safeMessage: "Could not reach admin API to delete this draft.",
+        technicalDetails: "PATCH /api/admin/coach-sites delete_draft network failure",
+        userAction: "Delete coach site draft"
+      });
+    }
   }
 
   async function sendCoachSiteDangerOtp(site: CoachSiteRecord) {
@@ -727,6 +850,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       }
 
       setStorageReady(true);
+      setStorageErrorCode("");
       setStorageMessage(
         status === "archived"
           ? `${payload.coachSite.coachName} archived. The record stays visible in Admin.`
@@ -762,18 +886,31 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       const payload = (await response.json().catch(() => ({}))) as CoachSitesApiPayload;
 
       if (!response.ok || !payload.ok || !payload.coachSite) {
-        setStorageMessage(payload.error || "Status changed locally, but database update failed.");
+        reportAdminStorageIssue({
+          category: payload.configured === false ? "database_failure" : "admin_action_issue",
+          coachSlug: site.slug,
+          safeMessage: payload.error || "Status changed locally, but database update failed.",
+          technicalDetails: `PATCH /api/admin/coach-sites status failed with ${response.status}`,
+          userAction: `Update coach site status to ${status}`
+        });
         return;
       }
 
       setStorageReady(true);
+      setStorageErrorCode("");
       setStorageMessage("Coach-site status saved in database.");
       setSites((current) =>
         current.map((item) => (item.id === site.id ? payload.coachSite! : item))
       );
     } catch {
       setStorageReady(false);
-      setStorageMessage("Status changed locally, but admin API was not reachable.");
+      reportAdminStorageIssue({
+        category: "network_or_server_failure",
+        coachSlug: site.slug,
+        safeMessage: "Status changed locally, but admin API was not reachable.",
+        technicalDetails: "PATCH /api/admin/coach-sites status network failure",
+        userAction: `Update coach site status to ${status}`
+      });
     }
   }
 
@@ -790,6 +927,48 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     }
 
     setDialog({ link, site, type: "copy" });
+  }
+
+  function reportAdminStorageIssue({
+    category,
+    coachSlug,
+    safeMessage,
+    technicalDetails,
+    userAction
+  }: {
+    category: PublicWebsiteErrorCategory;
+    coachSlug?: string;
+    safeMessage: string;
+    technicalDetails: string;
+    userAction: string;
+  }) {
+    const errorCode = getPublicSupportErrorCode(category);
+    const referenceId = createSupportErrorReference(category, coachSlug || userAction);
+
+    setStorageErrorCode(errorCode);
+    setStorageMessage(safeMessage);
+
+    void logWebsiteError({
+      category,
+      coachSlug,
+      errorCode,
+      funnelStep: "admin-coach-site-draft-flow",
+      referenceId,
+      safeMessage,
+      supportSource: "default",
+      technicalDetails,
+      userAction
+    });
+  }
+
+  async function copyStorageErrorCode() {
+    if (!storageErrorCode) return;
+
+    try {
+      await navigator.clipboard.writeText(storageErrorCode);
+    } catch {
+      // The visible code remains available if clipboard permission is blocked.
+    }
   }
 
   return (
@@ -834,6 +1013,78 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
             </label>
           </div>
 
+          <section className={styles.draftsPanel} aria-label="Coach site drafts">
+            <div className={styles.sectionHeader}>
+              <div>
+                <p className={styles.kicker}>Drafts</p>
+                <h2>Saved coach website drafts</h2>
+              </div>
+              <span className={styles.statusBadge} data-status="draft">
+                {draftSites.length} Draft{draftSites.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            {draftSites.length > 0 ? (
+              <div className={styles.tableWrap}>
+                <table className={styles.table} data-density="compact">
+                  <thead>
+                    <tr>
+                      <th>Coach</th>
+                      <th>Niche</th>
+                      <th>Status</th>
+                      <th>Last edited</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {draftSites.map((site) => (
+                      <tr key={site.id}>
+                        <td>
+                          <strong>{site.coachName || "Unnamed coach"}</strong>
+                          <span>{site.publicUrl}</span>
+                        </td>
+                        <td>{site.niche || "Niche pending"}</td>
+                        <td>
+                          <span className={styles.statusBadge} data-status="draft">
+                            Draft
+                          </span>
+                        </td>
+                        <td>{formatCoachLastEdited(site)}</td>
+                        <td>
+                          <div className={styles.rowActions}>
+                            <button onClick={() => openCreatorDialog(site, 0)} type="button">
+                              Continue Editing
+                            </button>
+                            <button
+                              onClick={() => setDialog({ site, type: "preview" })}
+                              type="button"
+                            >
+                              Preview
+                            </button>
+                            <button onClick={() => publishDraftSite(site)} type="button">
+                              Publish
+                            </button>
+                            <button
+                              data-tone="danger"
+                              onClick={() => setDialog({ site, type: "delete-draft" })}
+                              type="button"
+                            >
+                              Delete Draft
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className={styles.emptyState} data-compact="true">
+                <h3>No drafts saved yet</h3>
+                <p>Saved drafts will appear here after the creator stores them in the database.</p>
+              </div>
+            )}
+          </section>
+
           <div className={styles.tableWrap}>
             <table className={styles.table} data-density="compact">
               <thead>
@@ -846,8 +1097,8 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
                 </tr>
               </thead>
               <tbody>
-                {filteredSites.length > 0 ? (
-                  filteredSites.map((site) => (
+                {managedSites.length > 0 ? (
+                  managedSites.map((site) => (
                     <tr key={site.id}>
                       <td>
                         <strong>{site.coachName}</strong>
@@ -881,14 +1132,15 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5}>No coach sites available yet.</td>
+                    <td colSpan={5}>No published, paused, or archived coach sites available yet.</td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
           <div className={styles.tableFooter}>
-            <span>{filteredSites.length} coach sites</span>
+            <span>{managedSites.length} managed coach sites</span>
+            <span>{draftSites.length} reusable drafts</span>
           </div>
         </>
       ) : (
@@ -903,7 +1155,23 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
 
       {message ? <p className={styles.inlineStatus}>{message}</p> : null}
       {storageMessage ? (
-        <p className={storageReady ? styles.inlineStatus : styles.linkWarning}>{storageMessage}</p>
+        <p className={storageReady ? styles.inlineStatus : styles.linkWarning}>
+          {storageErrorCode ? (
+            <>
+              <button
+                className={styles.inlineErrorCode}
+                onClick={() => void copyStorageErrorCode()}
+                type="button"
+              >
+                {storageErrorCode}
+              </button>
+              <a className={styles.inlineSupportLink} href="/support/error">
+                Contact Support
+              </a>
+            </>
+          ) : null}
+          {storageMessage}
+        </p>
       ) : null}
 
       <CoachDialogRenderer
@@ -914,11 +1182,13 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         form={form}
         onClose={() => setDialog(null)}
         onCopyAgain={(site) => void copyPublicLink(site)}
+        onDeleteDraft={(site) => void deleteDraftSite(site)}
         onEditSite={openCreatorDialog}
         onGeneratePreview={generatePreviewFromDetails}
         onOpenDialog={setDialog}
         onPreviewSiteChange={setPreviewSite}
         onPublish={() => upsertSite("published")}
+        onPublishDraft={publishDraftSite}
         onRegenerateCopy={handleRegenerateCopy}
         onRemoveAction={confirmDangerousCoachSiteStatus}
         onRemoveCancel={() => {
@@ -959,11 +1229,13 @@ function CoachDialogRenderer({
   form,
   onClose,
   onCopyAgain,
+  onDeleteDraft,
   onEditSite,
   onGeneratePreview,
   onOpenDialog,
   onPreviewSiteChange,
   onPublish,
+  onPublishDraft,
   onRegenerateCopy,
   onRemoveAction,
   onRemoveCancel,
@@ -993,16 +1265,18 @@ function CoachDialogRenderer({
   form: CoachSiteFormState;
   onClose: () => void;
   onCopyAgain: (site: CoachSiteRecord) => void;
+  onDeleteDraft: (site: CoachSiteRecord) => void;
   onEditSite: (site?: CoachSiteRecord, step?: number) => void;
   onGeneratePreview: () => Promise<boolean>;
   onOpenDialog: (dialog: CoachDialog) => void;
   onPreviewSiteChange: (site: CoachSiteRecord) => void;
-  onPublish: () => Promise<CoachSiteRecord>;
+  onPublish: () => Promise<CoachSiteRecord | null>;
+  onPublishDraft: (site: CoachSiteRecord) => void;
   onRegenerateCopy: (scope: CopyRegenerationScope) => Promise<void>;
   onRemoveAction: (site: CoachSiteRecord, status: CoachSiteDangerStatus) => Promise<void>;
   onRemoveCancel: () => void;
   onSendRemoveOtp: (site: CoachSiteRecord) => Promise<void>;
-  onSaveDraft: () => Promise<CoachSiteRecord>;
+  onSaveDraft: () => Promise<CoachSiteRecord | null>;
   onStatusConfirm: (site: CoachSiteRecord, status: "paused" | "published") => void;
   onUpdateCoachName: (value: string) => void;
   onUpdateField: <Key extends keyof CoachSiteFormState>(
@@ -1256,6 +1530,61 @@ function CoachDialogRenderer({
     );
   }
 
+  if (dialog.type === "delete-draft") {
+    return (
+      <AdminActionDialog
+        footer={
+          <>
+            <button className={styles.secondaryAction} onClick={onClose} type="button">
+              Cancel
+            </button>
+            <button
+              className={styles.primaryAction}
+              onClick={() => onPublishDraft(dialog.site)}
+              type="button"
+            >
+              Publish Instead
+            </button>
+            <button
+              className={styles.dangerAction}
+              onClick={() => onDeleteDraft(dialog.site)}
+              type="button"
+            >
+              Delete Draft
+            </button>
+          </>
+        }
+        onClose={onClose}
+        open
+        title="Delete Draft"
+        tone="danger"
+      >
+        <p className={styles.dialogCopy}>
+          This removes the saved draft from the Drafts list. It is not public right now, and
+          published coach sites are not affected.
+        </p>
+        <dl className={styles.definitionGrid}>
+          <div>
+            <dt>Coach</dt>
+            <dd>{dialog.site.coachName || "Unnamed coach"}</dd>
+          </div>
+          <div>
+            <dt>Niche</dt>
+            <dd>{dialog.site.niche || "Niche pending"}</dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd>Draft</dd>
+          </div>
+          <div>
+            <dt>Last edited</dt>
+            <dd>{formatCoachLastEdited(dialog.site)}</dd>
+          </div>
+        </dl>
+      </AdminActionDialog>
+    );
+  }
+
   if (dialog.type === "preview") {
     return (
       <AdminActionDialog onClose={onClose} open size="large" title="Preview Coach Site">
@@ -1501,6 +1830,19 @@ function isRemovalConfirmationMatch(value: string, site: CoachSiteRecord) {
 
 function normalizeRemovalConfirmation(value: string) {
   return value.trim().toLowerCase();
+}
+
+function formatCoachLastEdited(site: CoachSiteRecord) {
+  const rawValue = site.updatedAt || site.createdAt;
+  if (!rawValue) return "Not saved yet";
+
+  const date = new Date(rawValue);
+  if (Number.isNaN(date.getTime())) return "Not saved yet";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(date);
 }
 
 function PreviewAndEditStep({
@@ -1957,8 +2299,8 @@ function WizardFooter({
   aiSubmitting: boolean;
   onClose: () => void;
   onGeneratePreview: () => Promise<boolean>;
-  onPublish: () => Promise<CoachSiteRecord>;
-  onSaveDraft: () => Promise<CoachSiteRecord>;
+  onPublish: () => Promise<CoachSiteRecord | null>;
+  onSaveDraft: () => Promise<CoachSiteRecord | null>;
   setWizardStep: (step: number) => void;
   wizardStep: number;
 }) {
@@ -1980,7 +2322,6 @@ function WizardFooter({
         disabled={aiSubmitting}
         onClick={() => {
           void onSaveDraft();
-          setWizardStep(5);
         }}
         type="button"
       >

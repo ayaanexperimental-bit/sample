@@ -49,6 +49,7 @@ export type CoachSiteRecord = {
   coachName: string;
   coachPhone: string;
   content: CoachSiteContent;
+  createdAt?: string;
   googleFormUrl: string;
   heroMediaType: CoachHeroMediaType;
   id: string;
@@ -62,13 +63,17 @@ export type CoachSiteRecord = {
   slug: string;
   status: CoachSiteStatus;
   supportText: string;
+  updatedAt?: string;
   videoUrl: string;
   vision: string;
   whatsappLink: string;
   analytics: CoachSiteAnalyticsSummary;
 };
 
-export type PublicCoachSiteRecord = Omit<CoachSiteRecord, "analytics" | "coachId" | "id">;
+export type PublicCoachSiteRecord = Omit<
+  CoachSiteRecord,
+  "analytics" | "coachId" | "createdAt" | "id" | "updatedAt"
+>;
 
 export type CoachSiteFormState = {
   benefitsText: string;
@@ -291,6 +296,7 @@ export function createCoachSiteFromForm(input: {
 }): CoachSiteRecord {
   const slug = normalizeCoachSlug(input.form.slug || input.form.coachName);
   const content = createCoachContentFromForm(input.form);
+  const now = new Date().toISOString();
 
   return {
     id: input.id,
@@ -302,6 +308,7 @@ export function createCoachSiteFromForm(input: {
     vision: input.form.vision.trim(),
     coachEmail: input.form.coachEmail.trim(),
     coachPhone: input.form.coachPhone.trim(),
+    createdAt: now,
     whatsappLink: input.form.whatsappLink.trim(),
     photoUrl: input.form.photoUrl.trim(),
     logoUrl: input.form.logoUrl.trim(),
@@ -312,6 +319,7 @@ export function createCoachSiteFromForm(input: {
     publicUrl: getCoachPublicUrl(slug),
     status: input.status,
     supportText: input.form.supportText.trim(),
+    updatedAt: now,
     registerButtonText: input.form.registerButtonText.trim() || "Register Now",
     selectedThemeId: normalizeCoachTemplateThemeId(input.form.selectedThemeId),
     content,

@@ -40,6 +40,7 @@ type CoachSiteRow = {
   slug: string;
   status: CoachSiteStatus;
   support_text: string;
+  updated_at: number;
   video_url: string;
   vision: string;
   whatsapp_link: string;
@@ -191,25 +192,37 @@ export async function upsertCoachSiteToDb({
   const site = normalizeCoachSitePayload(payload);
   const now = Math.floor(Date.now() / 1000);
   const existing = await env.ADMIN_DB.prepare(
-    `SELECT created_at, created_by, published_at, archived_at
+    `SELECT id, coach_id, created_at, created_by, published_at, archived_at
      FROM coach_sites
      WHERE id = ?1 OR slug = ?2
+     ORDER BY CASE WHEN id = ?1 THEN 0 ELSE 1 END
      LIMIT 1`
   )
     .bind(site.id, site.slug)
     .first<{
       archived_at: number | null;
+      coach_id: string;
       created_at: number;
       created_by: string;
+      id: string;
       published_at: number | null;
     }>();
 
+  const canonicalSite = {
+    ...site,
+    coachId: existing?.coach_id || site.coachId,
+    id: existing?.id || site.id
+  };
   const createdAt = existing?.created_at || now;
   const createdBy = existing?.created_by || adminEmail;
   const publishedAt =
-    site.status === "published" ? existing?.published_at || now : existing?.published_at || null;
+    canonicalSite.status === "published"
+      ? existing?.published_at || now
+      : existing?.published_at || null;
   const archivedAt =
-    site.status === "archived" || site.status === "removed" ? existing?.archived_at || now : null;
+    canonicalSite.status === "archived" || canonicalSite.status === "removed"
+      ? existing?.archived_at || now
+      : null;
 
   await env.ADMIN_DB.prepare(
     `INSERT INTO coach_sites (
@@ -255,29 +268,29 @@ export async function upsertCoachSiteToDb({
       updated_by = excluded.updated_by`
   )
     .bind(
-      site.id,
-      site.coachId,
-      site.coachName,
-      site.slug,
-      site.status,
-      site.niche,
-      site.location,
-      site.bio,
-      site.vision,
-      site.coachEmail,
-      site.coachPhone,
-      site.whatsappLink,
-      stripBrowserOnlyMedia(site.photoUrl),
-      stripBrowserOnlyMedia(site.logoUrl),
-      stripBrowserOnlyMedia(site.videoUrl),
-      site.googleFormUrl,
-      site.heroMediaType,
-      site.publicUrl,
-      site.registerButtonText,
-      site.selectedThemeId,
-      site.supportText,
-      JSON.stringify(site.content),
-      JSON.stringify(site.analytics),
+      canonicalSite.id,
+      canonicalSite.coachId,
+      canonicalSite.coachName,
+      canonicalSite.slug,
+      canonicalSite.status,
+      canonicalSite.niche,
+      canonicalSite.location,
+      canonicalSite.bio,
+      canonicalSite.vision,
+      canonicalSite.coachEmail,
+      canonicalSite.coachPhone,
+      canonicalSite.whatsappLink,
+      stripBrowserOnlyMedia(canonicalSite.photoUrl),
+      stripBrowserOnlyMedia(canonicalSite.logoUrl),
+      stripBrowserOnlyMedia(canonicalSite.videoUrl),
+      canonicalSite.googleFormUrl,
+      canonicalSite.heroMediaType,
+      canonicalSite.publicUrl,
+      canonicalSite.registerButtonText,
+      canonicalSite.selectedThemeId,
+      canonicalSite.supportText,
+      JSON.stringify(canonicalSite.content),
+      JSON.stringify(canonicalSite.analytics),
       createdAt,
       now,
       publishedAt,
@@ -287,7 +300,17 @@ export async function upsertCoachSiteToDb({
     )
     .run();
 
-  return site;
+  const row = await env.ADMIN_DB.prepare(`SELECT * FROM coach_sites WHERE id = ?1 LIMIT 1`)
+    .bind(canonicalSite.id)
+    .first<CoachSiteRow>();
+
+  return row
+    ? rowToCoachSiteRecord(row)
+    : {
+        ...canonicalSite,
+        createdAt: secondsToIso(createdAt),
+        updatedAt: secondsToIso(now)
+      };
 }
 
 export async function updateCoachSiteStatusInDb({
@@ -435,6 +458,7 @@ function rowToCoachSiteRecord(row: CoachSiteRow): CoachSiteRecord {
     coachName: row.coach_name,
     coachPhone: row.coach_phone,
     content: normalizeContent(parsedContent, fallbackContent),
+    createdAt: secondsToIso(row.created_at),
     googleFormUrl: row.google_form_url,
     heroMediaType: normalizeHeroMediaType(row.hero_media_type),
     id: row.id,
@@ -448,10 +472,15 @@ function rowToCoachSiteRecord(row: CoachSiteRow): CoachSiteRecord {
     slug: row.slug,
     status: normalizeStatus(row.status),
     supportText: row.support_text,
+    updatedAt: secondsToIso(row.updated_at),
     videoUrl: row.video_url,
     vision: row.vision,
     whatsappLink: row.whatsapp_link
   };
+}
+
+function secondsToIso(seconds: number) {
+  return seconds > 0 ? new Date(seconds * 1000).toISOString() : undefined;
 }
 
 function createContentFallbackFromRow(row: CoachSiteRow): CoachSiteContent {
