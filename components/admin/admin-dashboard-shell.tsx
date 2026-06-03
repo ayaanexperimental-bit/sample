@@ -734,9 +734,9 @@ function CoachAnalyticsView({
       </section>
 
       <p className={styles.inlineNote}>
-        Free-funnel analytics track visits, register CTA clicks, and Google Form opens only. These
-        numbers are not treated as form fills or submitted registrations. Paid payment truth remains
-        in the existing Razorpay-to-Sheet analytics system.
+        Free-funnel analytics track visits, register CTA clicks, and Google Form opens only. They
+        stop at click/open counts. Paid payment truth remains in the existing Razorpay-to-Sheet
+        analytics system.
       </p>
 
       <AdminActionDialog
@@ -963,8 +963,8 @@ function FreeAnalyticsTab({ coach }: { coach: CoachAnalyticsRow }) {
         <span>Device: {formatDeviceBreakdown(coach.deviceBreakdown)}</span>
       </div>
       <p className={styles.inlineNote}>
-        This panel tracks only the visitor opening the Google Form from the coach site. It does not
-        count submitted forms or completed registrations.
+        This panel tracks only the visitor opening the Google Form from the coach site. It stops at
+        click/open counts.
       </p>
     </section>
   );
