@@ -5,8 +5,13 @@ import {
   getPrivateWhatsappGroupUrl,
   type PrivateFunnelLinkEnv
 } from "../../lib/server/private-funnel-links";
+import {
+  paidFunnelSupportResponse,
+  type PaidFunnelSupportEnv
+} from "../../lib/server/paid-funnel-support";
 
-type Env = PrivateFunnelLinkEnv & {
+type Env = PrivateFunnelLinkEnv &
+  PaidFunnelSupportEnv & {
   ADMIN_DB?: D1Database;
   FUNNEL_ACCESS_SECRET?: string;
 };
@@ -35,13 +40,40 @@ export async function onRequest({ request, env }: PagesContext) {
 
   const joinUrl = await getPrivateWhatsappGroupUrl(activeFunnel, env);
   if (!joinUrl) {
-    return json({ allowed: false, reason: "not_configured" });
+    if (wantsSupportFallback(request)) {
+      return paidFunnelSupportResponse({
+        env,
+        funnel: activeFunnel,
+        funnelStep: "paid_whatsapp_access",
+        request,
+        safeMessage:
+          "The paid WhatsApp access link is temporarily unavailable. Please contact support.",
+        technicalDigest: "paid_whatsapp_link_missing",
+        userAction: "Open paid WhatsApp group"
+      });
+    }
+
+    return json(
+      {
+        allowed: false,
+        reason: "not_configured",
+        supportUrl: "/api/whatsapp-access?support=1"
+      },
+      503
+    );
   }
 
   return json({
     allowed: true,
     joinUrl
   });
+}
+
+function wantsSupportFallback(request: Request) {
+  const url = new URL(request.url);
+  const accept = request.headers.get("accept") || "";
+
+  return url.searchParams.get("support") === "1" || !accept.includes("application/json");
 }
 
 async function getActivePaidFunnel(request: Request, env: Env) {

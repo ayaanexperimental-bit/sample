@@ -61,6 +61,10 @@ type PrivateLinkMetadata = {
   configured: boolean;
   entryCode: string;
   funnelId: string;
+  paymentPageConfigured: boolean;
+  paymentPageStorageSource: "d1_table" | "none";
+  paymentPageUpdatedAt: string | null;
+  paymentPageUpdatedBy: string;
   storageSource: "d1_table" | "none";
   updatedAt: string | null;
   updatedBy: string;
@@ -3530,6 +3534,8 @@ function MasterclassLinksView({
   const [managedLink, setManagedLink] = useState<AdminPaidMasterclassLink | null>(null);
   const [copyMessage, setCopyMessage] = useState("");
   const [privateOtp, setPrivateOtp] = useState("");
+  const [paymentPageDraft, setPaymentPageDraft] = useState("");
+  const [paymentUpdateMessage, setPaymentUpdateMessage] = useState("");
   const [privateWhatsappDraft, setPrivateWhatsappDraft] = useState("");
   const [privateRevealUrl, setPrivateRevealUrl] = useState("");
   const [privateRevealMessage, setPrivateRevealMessage] = useState("");
@@ -3579,6 +3585,14 @@ function MasterclassLinksView({
 
     return {
       ...link,
+      paymentLastChangedAt: metadata.paymentPageUpdatedAt,
+      paymentLastChangedBy: metadata.paymentPageUpdatedBy,
+      paymentStorageSource: metadata.paymentPageStorageSource,
+      paymentStatus: metadata.paymentPageConfigured
+        ? "D1 server table"
+        : link.paymentStatus === "Server redirect configured"
+          ? "Server redirect configured"
+          : "Not configured",
       privateWhatsappLastChangedAt: metadata.updatedAt,
       privateWhatsappLastChangedBy: metadata.updatedBy,
       privateWhatsappSecretName: "private_funnel_links",
@@ -3721,6 +3735,58 @@ function MasterclassLinksView({
     }
   }
 
+  async function updatePaymentPageLink(link: AdminPaidMasterclassLink) {
+    setPrivateRevealBusy(true);
+    setPaymentUpdateMessage("");
+    setPrivateRevealUrl("");
+
+    try {
+      const response = await fetch("/api/admin/masterclass-private-link", {
+        body: JSON.stringify({
+          action: "update_payment",
+          entryCode: link.entryCode,
+          otp: privateOtp,
+          paymentPageUrl: paymentPageDraft
+        }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-yw-admin-csrf": csrfToken
+        },
+        method: "POST"
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        currentPaymentLinkPreserved?: boolean;
+        error?: string;
+        metadata?: PrivateLinkMetadata;
+        ok?: boolean;
+      };
+
+      if (!response.ok || !payload.ok || !payload.metadata) {
+        setPaymentUpdateMessage(
+          payload.currentPaymentLinkPreserved
+            ? `${payload.error || "Could not save the payment link."} Current checkout remains active.`
+            : payload.error || "Could not save the payment link."
+        );
+        return;
+      }
+
+      setPrivateLinkMetadata((current) => ({
+        ...current,
+        [payload.metadata!.funnelId]: payload.metadata!
+      }));
+      setPaymentPageDraft("");
+      setPaymentUpdateMessage("Payment page link saved server-side after OTP verification.");
+    } catch {
+      setPaymentUpdateMessage(
+        "Could not reach the payment link save API. Current checkout remains active."
+      );
+    } finally {
+      setPrivateRevealBusy(false);
+    }
+  }
+
   async function copyPrivateWhatsappLink() {
     if (!privateRevealUrl) return;
 
@@ -3751,11 +3817,11 @@ function MasterclassLinksView({
     window.open(path, "_blank", "noopener,noreferrer");
   }
 
-  function formatPrivateWhatsappChangedAt(link: AdminPaidMasterclassLink) {
-    if (!link.privateWhatsappLastChangedAt) return "Not recorded yet";
+  function formatPrivateChangedAt(value: string | null) {
+    if (!value) return "Not recorded yet";
 
-    const changedAt = new Date(link.privateWhatsappLastChangedAt);
-    if (Number.isNaN(changedAt.getTime())) return link.privateWhatsappLastChangedAt;
+    const changedAt = new Date(value);
+    if (Number.isNaN(changedAt.getTime())) return value;
 
     return new Intl.DateTimeFormat("en-IN", {
       dateStyle: "medium",
@@ -3796,6 +3862,8 @@ function MasterclassLinksView({
                 className={styles.primaryAction}
                 onClick={() => {
                   setCopyMessage("");
+                  setPaymentPageDraft("");
+                  setPaymentUpdateMessage("");
                   setPrivateOtp("");
                   setPrivateWhatsappDraft("");
                   setPrivateRevealMessage("");
@@ -3869,10 +3937,28 @@ function MasterclassLinksView({
                 </dd>
               </div>
               <div>
-                <dt>Last changed</dt>
+                <dt>Payment link</dt>
+                <dd>
+                  <span className={styles.metaValue}>{currentManagedLink.paymentStatus}</span>
+                  <small>Stored source: {currentManagedLink.paymentStorageSource}</small>
+                </dd>
+              </div>
+              <div>
+                <dt>Payment last changed</dt>
                 <dd>
                   <span className={styles.metaValue}>
-                    {formatPrivateWhatsappChangedAt(currentManagedLink)}
+                    {formatPrivateChangedAt(currentManagedLink.paymentLastChangedAt)}
+                  </span>
+                  {currentManagedLink.paymentLastChangedAt ? (
+                    <small>Changed by {currentManagedLink.paymentLastChangedBy}</small>
+                  ) : null}
+                </dd>
+              </div>
+              <div>
+                <dt>WhatsApp last changed</dt>
+                <dd>
+                  <span className={styles.metaValue}>
+                    {formatPrivateChangedAt(currentManagedLink.privateWhatsappLastChangedAt)}
                   </span>
                   {currentManagedLink.privateWhatsappLastChangedAt ? (
                     <small>Changed by {currentManagedLink.privateWhatsappLastChangedBy}</small>
@@ -3986,6 +4072,40 @@ function MasterclassLinksView({
             </div>
             <div className={styles.privateRevealPanel}>
               <div>
+                <p className={styles.kicker}>OTP Protected Payment</p>
+                <h4>Update payment link</h4>
+                <p>
+                  Use the OTP field above. The new URL is validated as a trusted Razorpay link
+                  before saving. If validation fails, the current checkout link remains active.
+                </p>
+              </div>
+              <label className={styles.compactField}>
+                <span>Razorpay payment URL</span>
+                <input
+                  onChange={(event) => setPaymentPageDraft(event.target.value)}
+                  placeholder="https://pages.razorpay.com/..."
+                  type="url"
+                  value={paymentPageDraft}
+                />
+              </label>
+              <div className={styles.formActions}>
+                <button
+                  className={styles.primaryAction}
+                  disabled={
+                    privateRevealBusy || privateOtp.length !== 6 || !paymentPageDraft.trim()
+                  }
+                  onClick={() => void updatePaymentPageLink(currentManagedLink)}
+                  type="button"
+                >
+                  Update Payment Link
+                </button>
+              </div>
+              {paymentUpdateMessage ? (
+                <p className={styles.inlineStatus}>{paymentUpdateMessage}</p>
+              ) : null}
+            </div>
+            <div className={styles.privateRevealPanel}>
+              <div>
                 <p className={styles.kicker}>Server-Side Table</p>
                 <h4>Save private WhatsApp link</h4>
                 <p>
@@ -4019,8 +4139,9 @@ function MasterclassLinksView({
               ) : null}
             </div>
             <p className={styles.linkWarning}>
-              The real WhatsApp invite stays server-side and is only shown here after OTP. Link
-              change time is tracked separately from reveal attempts.
+              Payment and WhatsApp private destinations stay server-side. OTP reveals or updates do
+              not expose secrets publicly, and link change time is tracked separately from reveal
+              attempts.
             </p>
           </div>
         ) : null}

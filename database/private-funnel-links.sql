@@ -1,6 +1,9 @@
 CREATE TABLE IF NOT EXISTS private_funnel_links (
   funnel_id TEXT PRIMARY KEY,
   whatsapp_group_url TEXT NOT NULL,
+  payment_page_url TEXT NOT NULL DEFAULT '',
+  payment_updated_at INTEGER NOT NULL DEFAULT 0,
+  payment_updated_by TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,

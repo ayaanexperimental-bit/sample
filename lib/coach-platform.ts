@@ -192,7 +192,6 @@ export const funnels: Funnel[] = [
     entryCode: "gyana-pcos-51",
     canonicalPath: "/gyana/pcos-51",
     allowedPaths: ["/gyana/pcos-51", "/gyana/pcos-51/success"],
-    paymentUrl: "https://pages.razorpay.com/pl_SkURMJD4JJjdxO/view",
     successPath: "/gyana/pcos-51/success",
     thankYouVideoUrl: "https://youtu.be/fLSSje0nCHk?si=6cTvc3XKAJGZoD-5",
     status: "active"
@@ -238,13 +237,11 @@ export function isPathAllowedForFunnel(funnel: Funnel, pathname: string) {
 }
 
 export function isPaidProgramFunnel(funnel: Funnel | null): funnel is Funnel & {
-  paymentUrl: string;
   successPath: string;
 } {
   return Boolean(
     funnel &&
     funnel.type === "paidProgram" &&
-    funnel.paymentUrl &&
     funnel.successPath &&
     funnel.status === "active"
   );

@@ -1,15 +1,18 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { getCoachById, getFunnelById, isPaidProgramFunnel } from "../../../lib/coach-platform";
 import { recordAnalyticsEvent } from "../../../lib/server/analytics-events";
-import { blockedLinkResponse } from "../../../lib/server/blocked-response";
 import { verifyFunnelAccessFromCookie } from "../../../lib/server/funnel-access";
+import {
+  paidFunnelSupportResponse,
+  type PaidFunnelSupportEnv
+} from "../../../lib/server/paid-funnel-support";
 
 type PagesContext = {
   env: Env;
   request: Request;
 };
 
-type Env = {
+type Env = PaidFunnelSupportEnv & {
   ADMIN_DB?: D1Database;
   FUNNEL_ACCESS_SECRET?: string;
   RAZORPAY_KEY_SECRET?: string;
@@ -30,7 +33,16 @@ export async function onRequest({ request, env }: PagesContext) {
 
   const activeFunnel = await getActivePaidFunnel(request, env);
   if (!activeFunnel) {
-    return blockedLinkResponse();
+    return paidFunnelSupportResponse({
+      env,
+      funnel: null,
+      funnelStep: "paid_success",
+      request,
+      safeMessage: "We could not verify this paid success session. Please contact support for help.",
+      status: 403,
+      technicalDigest: "paid_success_access_missing",
+      userAction: "Open paid success page"
+    });
   }
 
   await recordPaidSuccessEvent({ env, funnelId: activeFunnel.id, request });

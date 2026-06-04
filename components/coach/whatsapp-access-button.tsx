@@ -8,6 +8,7 @@ type WhatsAppAccessResponse = {
   allowed?: boolean;
   joinUrl?: string;
   reason?: string;
+  supportUrl?: string;
 };
 
 const BLOCKED_MESSAGE =
@@ -41,6 +42,11 @@ export function WhatsAppAccessButton({
         void recordPaidWhatsappClick({ coachSlug, funnelId });
         window.open(payload.joinUrl, "_blank", "noopener,noreferrer");
         setState("idle");
+        return;
+      }
+
+      if (payload.supportUrl) {
+        window.location.href = payload.supportUrl;
         return;
       }
 

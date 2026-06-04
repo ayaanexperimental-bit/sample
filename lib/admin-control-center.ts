@@ -36,6 +36,9 @@ export type AdminPaidMasterclassLink = {
   entryPath: string;
   funnelId: string;
   paidPagePath: string;
+  paymentLastChangedAt: string | null;
+  paymentLastChangedBy: string;
+  paymentStorageSource: "d1_table" | "none";
   paymentStatus: string;
   privateWhatsappLastChangedAt: string | null;
   privateWhatsappLastChangedBy: string;
@@ -289,7 +292,10 @@ function getPaidMasterclassLinks(): AdminPaidMasterclassLink[] {
         entryPath: `/go/${funnel.entryCode}`,
         funnelId: funnel.id,
         paidPagePath: funnel.canonicalPath,
-        paymentStatus: funnel.paymentUrl ? "Configured" : "Missing",
+        paymentLastChangedAt: null,
+        paymentLastChangedBy: "Not recorded yet",
+        paymentStorageSource: "none",
+        paymentStatus: "Server redirect configured",
         privateWhatsappSecretName: "private_funnel_links",
         privateWhatsappLastChangedAt: null,
         privateWhatsappLastChangedBy: "Not recorded yet",

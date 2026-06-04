@@ -11,6 +11,7 @@ import { startAdminEmailOtp, verifyAdminEmailOtp } from "../../../lib/server/adm
 import {
   getPrivateWhatsappLinkMetadata,
   getPrivateWhatsappGroupUrl,
+  upsertPrivatePaymentPageUrl,
   upsertPrivateWhatsappGroupUrl,
   type PrivateFunnelLinkEnv
 } from "../../../lib/server/private-funnel-links";
@@ -41,6 +42,7 @@ type PrivateLinkBody = {
   entryCode?: unknown;
   entryPath?: unknown;
   otp?: unknown;
+  paymentPageUrl?: unknown;
   whatsappGroupUrl?: unknown;
 };
 
@@ -166,6 +168,52 @@ export async function onRequest({ request, env }: PagesContext) {
     }
 
     return adminJson({
+      metadata: result.metadata,
+      ok: true,
+      privateLinkValuesExposed: false
+    });
+  }
+
+  if (action === "update_payment") {
+    const otp = typeof body?.otp === "string" ? body.otp.trim() : "";
+    if (!isValidOtp(otp)) {
+      return adminJson({ ok: false, error: "Enter a valid 6-digit OTP before saving." }, 400);
+    }
+
+    const otpOk = await verifyRevealOtp({
+      email: admin.admin.email,
+      env,
+      otp,
+      request
+    });
+
+    if (!otpOk) {
+      return adminJson({ ok: false, error: "OTP is invalid, expired, or not configured." }, 401);
+    }
+
+    const paymentPageUrl =
+      typeof body?.paymentPageUrl === "string" ? body.paymentPageUrl.trim() : "";
+    const result = await upsertPrivatePaymentPageUrl({
+      env,
+      funnel,
+      paymentPageUrl,
+      updatedBy: admin.admin.email
+    });
+
+    if (!result.ok) {
+      return adminJson(
+        {
+          currentPaymentLinkPreserved: true,
+          error: result.error,
+          ok: false,
+          privateLinkValuesExposed: false
+        },
+        result.error.includes("database") ? 503 : 400
+      );
+    }
+
+    return adminJson({
+      currentPaymentLinkPreserved: true,
       metadata: result.metadata,
       ok: true,
       privateLinkValuesExposed: false

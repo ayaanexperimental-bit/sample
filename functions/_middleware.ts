@@ -13,8 +13,12 @@ import {
   verifyFunnelAccessFromCookie
 } from "../lib/server/funnel-access";
 import { getAdminRoleForEmail, verifyAdminSessionFromRequest } from "../lib/server/admin-auth";
+import {
+  paidFunnelSupportResponse,
+  type PaidFunnelSupportEnv
+} from "../lib/server/paid-funnel-support";
 
-type Env = {
+type Env = PaidFunnelSupportEnv & {
   ADMIN_ALLOWED_EMAILS?: string;
   ADMIN_AUTH_DEMO_ENABLED?: string;
   ADMIN_DB?: D1Database;
@@ -98,6 +102,20 @@ export async function onRequest(context: PagesContext) {
       isPathAllowedForFunnel(activeFunnel, pathname)
     ) {
       return context.next();
+    }
+
+    if (routeFunnel.type === "paidProgram") {
+      return paidFunnelSupportResponse({
+        env: context.env,
+        funnel: routeFunnel,
+        funnelStep: "paid_page_access",
+        request: context.request,
+        safeMessage:
+          "This paid masterclass page could not verify the access link. Please contact support.",
+        status: 403,
+        technicalDigest: "paid_page_access_cookie_missing",
+        userAction: "Open paid masterclass page"
+      });
     }
 
     return blockedLinkResponse();
