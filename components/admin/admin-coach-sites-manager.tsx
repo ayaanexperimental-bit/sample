@@ -58,6 +58,12 @@ type CoachSitesApiPayload = {
   coachSite?: CoachSiteRecord;
   coachSites?: CoachSiteRecord[];
   configured?: boolean;
+  duplicateCoachSite?: {
+    id?: string;
+    publicUrl?: string;
+    slug?: string;
+    status?: string;
+  };
   error?: string;
   fallbackUsed?: boolean;
   ok?: boolean;
@@ -188,6 +194,69 @@ function CoachSiteIdentityCell({ site }: { site: CoachSiteRecord }) {
       </div>
     </div>
   );
+}
+
+function dedupeCoachSiteRecords(sites: CoachSiteRecord[]) {
+  const selected: CoachSiteRecord[] = [];
+  const sorted = [...sites].sort(compareCoachSitesForDeduping);
+
+  for (const site of sorted) {
+    if (site.status === "removed") continue;
+    if (selected.some((current) => isDuplicateCoachSiteIdentity(site, current))) continue;
+
+    selected.push(site);
+  }
+
+  return selected.sort((left, right) => getCoachSiteTimestamp(right) - getCoachSiteTimestamp(left));
+}
+
+function getDuplicateCoachSite(
+  candidate: CoachSiteRecord,
+  sites: CoachSiteRecord[],
+  options: { allowSameId: boolean }
+) {
+  return (
+    sites.find(
+      (site) =>
+        site.status !== "removed" &&
+        (!options.allowSameId || site.id !== candidate.id) &&
+        isDuplicateCoachSiteIdentity(site, candidate)
+    ) || null
+  );
+}
+
+function isDuplicateCoachSiteIdentity(left: CoachSiteRecord, right: CoachSiteRecord) {
+  const leftSlug = normalizeCoachSlug(left.slug);
+  const rightSlug = normalizeCoachSlug(right.slug);
+  const leftName = normalizeCoachSlug(left.coachName);
+  const rightName = normalizeCoachSlug(right.coachName);
+
+  return Boolean(
+    (leftSlug && rightSlug && leftSlug === rightSlug) ||
+    (leftName && rightName && leftName === rightName)
+  );
+}
+
+function compareCoachSitesForDeduping(left: CoachSiteRecord, right: CoachSiteRecord) {
+  const statusDelta =
+    getCoachSiteStatusPriority(left.status) - getCoachSiteStatusPriority(right.status);
+  if (statusDelta !== 0) return statusDelta;
+
+  return getCoachSiteTimestamp(right) - getCoachSiteTimestamp(left);
+}
+
+function getCoachSiteStatusPriority(status: CoachSiteStatus) {
+  if (status === "published" || status === "paused") return 0;
+  if (status === "draft") return 1;
+  if (status === "archived") return 2;
+  return 3;
+}
+
+function getCoachSiteTimestamp(site: CoachSiteRecord) {
+  const updatedAt = site.updatedAt ? Date.parse(site.updatedAt) : 0;
+  const createdAt = site.createdAt ? Date.parse(site.createdAt) : 0;
+
+  return Number.isFinite(updatedAt) && updatedAt > 0 ? updatedAt : createdAt || 0;
 }
 
 const wizardSteps = [
@@ -388,7 +457,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
 
         if (cancelled || !response.ok || !payload.ok || !payload.coachSites) return;
 
-        setSites(payload.coachSites);
+        setSites(dedupeCoachSiteRecords(payload.coachSites));
         setStorageErrorCode("");
         setStorageReady(Boolean(payload.configured));
         setStorageMessage(
@@ -623,6 +692,16 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     if (!validatedForm) return null;
 
     const site = { ...buildPreviewSite(status, validatedForm), status };
+    const duplicateSite = getDuplicateCoachSite(site, sites, { allowSameId: Boolean(editingId) });
+    if (duplicateSite) {
+      setPreviewSite(duplicateSite);
+      setMessage(
+        `Duplicate blocked. ${duplicateSite.coachName || "This coach"} already exists as ${duplicateSite.status}. Use Manage/Edit instead of creating another entry.`
+      );
+      resetPublishProgress();
+      return null;
+    }
+
     const existingIndex = sites.findIndex((item) => item.id === site.id || item.slug === site.slug);
     const previousSites = sites;
     const nextSites =
@@ -631,7 +710,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         : [site, ...sites];
 
     setForm(validatedForm);
-    setSites(nextSites);
+    setSites(dedupeCoachSiteRecords(nextSites));
     setPreviewSite(site);
     setEditingId(site.id);
     setPublishedSite(null);
@@ -648,7 +727,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       }
 
       const response = await fetch("/api/admin/coach-sites", {
-        body: JSON.stringify({ site }),
+        body: JSON.stringify({ mode: editingId ? "edit" : "create", site }),
         cache: "no-store",
         credentials: "include",
         headers: {
@@ -660,7 +739,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       const payload = (await response.json().catch(() => ({}))) as CoachSitesApiPayload;
 
       if (!response.ok || !payload.ok || !payload.coachSite) {
-        setSites(previousSites);
+        setSites(dedupeCoachSiteRecords(previousSites));
         setStorageReady(Boolean(payload.configured));
         reportAdminStorageIssue({
           category: payload.configured === false ? "database_failure" : "admin_action_issue",
@@ -672,9 +751,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
           userAction: status === "published" ? "Publish coach site" : "Save coach site draft"
         });
         setMessage(
-          status === "published"
-            ? "Site was not published. Fix the database/API issue and try again."
-            : "Draft was not saved. Reusable drafts require the coach-site database."
+          response.status === 409 && payload.error
+            ? payload.error
+            : status === "published"
+              ? "Site was not published. Fix the database/API issue and try again."
+              : "Draft was not saved. Reusable drafts require the coach-site database."
         );
         if (status === "published") {
           finishPublishProgressError(
@@ -689,11 +770,13 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       setStorageMessage("Saved in coach-site database.");
       const savedSite = payload.coachSite;
       setSites((current) =>
-        current.some((item) => item.id === site.id || item.slug === site.slug)
-          ? current.map((item) =>
-              item.id === site.id || item.slug === site.slug ? savedSite! : item
-            )
-          : [savedSite!, ...current]
+        dedupeCoachSiteRecords(
+          current.some((item) => item.id === site.id || item.slug === site.slug)
+            ? current.map((item) =>
+                item.id === site.id || item.slug === site.slug ? savedSite! : item
+              )
+            : [savedSite!, ...current]
+        )
       );
       setPreviewSite(savedSite);
       setEditingId(savedSite.id);
@@ -735,7 +818,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       );
       return savedSite;
     } catch {
-      setSites(previousSites);
+      setSites(dedupeCoachSiteRecords(previousSites));
       setStorageReady(false);
       reportAdminStorageIssue({
         category: "network_or_server_failure",

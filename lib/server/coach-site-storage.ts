@@ -54,6 +54,18 @@ type CoachSitePayload = Partial<CoachSiteRecord> & {
   status?: CoachSiteStatus;
 };
 
+export class DuplicateCoachSiteError extends Error {
+  duplicateSite: CoachSiteRecord;
+
+  constructor(duplicateSite: CoachSiteRecord) {
+    super(
+      `A coach site already exists for ${duplicateSite.coachName || duplicateSite.slug}. Use Manage/Edit instead of creating a duplicate.`
+    );
+    this.name = "DuplicateCoachSiteError";
+    this.duplicateSite = duplicateSite;
+  }
+}
+
 const COACH_SITE_TABLES_SQL = [
   `CREATE TABLE IF NOT EXISTS coach_sites (
     id TEXT PRIMARY KEY,
@@ -167,7 +179,7 @@ export async function listCoachSitesFromDb(env: CoachSiteStorageEnv) {
      ORDER BY updated_at DESC`
   ).all<CoachSiteRow>();
 
-  return result.results.map(rowToCoachSiteRecord);
+  return dedupeCoachSites(result.results.map(rowToCoachSiteRecord));
 }
 
 export async function getPublicCoachSiteFromDb(slug: string, env: CoachSiteStorageEnv) {
@@ -202,11 +214,27 @@ export async function getCoachSiteBySlugFromDb(slug: string, env: CoachSiteStora
   return row ? toPublicCoachSiteRecord(rowToCoachSiteRecord(row)) : null;
 }
 
+export async function getCoachSiteByIdFromDb(id: string, env: CoachSiteStorageEnv) {
+  if (!env.ADMIN_DB) return null;
+  await ensureCoachSiteTables(env);
+
+  const normalizedId = sanitizeText(id, 120);
+  if (!normalizedId) return null;
+
+  const row = await env.ADMIN_DB.prepare(`SELECT * FROM coach_sites WHERE id = ?1 LIMIT 1`)
+    .bind(normalizedId)
+    .first<CoachSiteRow>();
+
+  return row ? rowToCoachSiteRecord(row) : null;
+}
+
 export async function upsertCoachSiteToDb({
+  allowExistingUpdate = true,
   adminEmail,
   env,
   payload
 }: {
+  allowExistingUpdate?: boolean;
   adminEmail: string;
   env: CoachSiteStorageEnv;
   payload: CoachSitePayload;
@@ -215,6 +243,13 @@ export async function upsertCoachSiteToDb({
   await ensureCoachSiteTables(env);
 
   const site = normalizeCoachSitePayload(payload);
+  const duplicate = await findDuplicateCoachSite(site, env, {
+    allowSameId: allowExistingUpdate
+  });
+  if (duplicate) {
+    throw new DuplicateCoachSiteError(duplicate);
+  }
+
   const now = Math.floor(Date.now() / 1000);
   const existing = await env.ADMIN_DB.prepare(
     `SELECT id, coach_id, created_at, created_by, published_at, archived_at
@@ -517,6 +552,72 @@ function rowToCoachSiteRecord(row: CoachSiteRow): CoachSiteRecord {
     vision: row.vision,
     whatsappLink: row.whatsapp_link
   };
+}
+
+function dedupeCoachSites(sites: CoachSiteRecord[]) {
+  const selected: CoachSiteRecord[] = [];
+  const sorted = [...sites].sort(compareCoachSitesForDeduping);
+
+  for (const site of sorted) {
+    if (site.status === "removed") continue;
+    if (selected.some((current) => isDuplicateCoachIdentity(site, current))) continue;
+
+    selected.push(site);
+  }
+
+  return selected.sort((left, right) => getSiteTimestamp(right) - getSiteTimestamp(left));
+}
+
+async function findDuplicateCoachSite(
+  site: CoachSiteRecord,
+  env: CoachSiteStorageEnv,
+  options: { allowSameId: boolean }
+) {
+  const existingSites = await listCoachSitesFromDb(env);
+  if (!existingSites) return null;
+
+  return (
+    existingSites.find(
+      (existingSite) =>
+        existingSite.status !== "removed" &&
+        (!options.allowSameId || existingSite.id !== site.id) &&
+        isDuplicateCoachIdentity(existingSite, site)
+    ) || null
+  );
+}
+
+function isDuplicateCoachIdentity(left: CoachSiteRecord, right: CoachSiteRecord) {
+  const leftSlug = normalizeCoachSlug(left.slug);
+  const rightSlug = normalizeCoachSlug(right.slug);
+  const leftName = normalizeCoachSlug(left.coachName);
+  const rightName = normalizeCoachSlug(right.coachName);
+
+  return Boolean(
+    (leftSlug && rightSlug && leftSlug === rightSlug) ||
+    (leftName && rightName && leftName === rightName)
+  );
+}
+
+function compareCoachSitesForDeduping(left: CoachSiteRecord, right: CoachSiteRecord) {
+  const statusDelta =
+    getCoachSiteStatusPriority(left.status) - getCoachSiteStatusPriority(right.status);
+  if (statusDelta !== 0) return statusDelta;
+
+  return getSiteTimestamp(right) - getSiteTimestamp(left);
+}
+
+function getCoachSiteStatusPriority(status: CoachSiteStatus) {
+  if (status === "published" || status === "paused") return 0;
+  if (status === "draft") return 1;
+  if (status === "archived") return 2;
+  return 3;
+}
+
+function getSiteTimestamp(site: CoachSiteRecord) {
+  const updatedAt = site.updatedAt ? Date.parse(site.updatedAt) : 0;
+  const createdAt = site.createdAt ? Date.parse(site.createdAt) : 0;
+
+  return Number.isFinite(updatedAt) && updatedAt > 0 ? updatedAt : createdAt || 0;
 }
 
 function secondsToIso(seconds: number) {

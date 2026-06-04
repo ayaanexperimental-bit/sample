@@ -14,6 +14,8 @@ import {
 } from "../../../../lib/server/admin-auth";
 import { startAdminEmailOtp, verifyAdminEmailOtp } from "../../../../lib/server/admin-email-otp";
 import {
+  DuplicateCoachSiteError,
+  getCoachSiteByIdFromDb,
   listCoachSitesFromDb,
   updateCoachSiteStatusInDb,
   upsertCoachSiteToDb
@@ -43,6 +45,7 @@ type PagesContext = {
 
 type CoachSitesBody = {
   action?: unknown;
+  mode?: unknown;
   otp?: unknown;
   removalReason?: unknown;
   site?: unknown;
@@ -79,6 +82,7 @@ export async function onRequest({ request, env }: PagesContext) {
 
     const body = await readJsonBody<CoachSitesBody>(request);
     const site = parseCoachSiteBody(body?.site);
+    const mode = body?.mode === "edit" ? "edit" : "create";
     if (!site) {
       return adminJson({ ok: false, error: "Coach site payload is required." }, 400);
     }
@@ -93,11 +97,29 @@ export async function onRequest({ request, env }: PagesContext) {
     let savedSite: CoachSiteRecord | null;
     try {
       savedSite = await upsertCoachSiteToDb({
+        allowExistingUpdate: mode === "edit",
         adminEmail: admin.admin.email,
         env,
         payload: site
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof DuplicateCoachSiteError) {
+        return adminJson(
+          {
+            configured: Boolean(env.ADMIN_DB),
+            duplicateCoachSite: {
+              id: error.duplicateSite.id,
+              publicUrl: error.duplicateSite.publicUrl,
+              slug: error.duplicateSite.slug,
+              status: error.duplicateSite.status
+            },
+            error: error.message,
+            ok: false
+          },
+          409
+        );
+      }
+
       return adminJson(
         {
           configured: Boolean(env.ADMIN_DB),
@@ -143,16 +165,15 @@ export async function onRequest({ request, env }: PagesContext) {
         );
       }
 
-      let coachSites: CoachSiteRecord[] | null;
+      let currentSite: CoachSiteRecord | null;
       try {
-        coachSites = await listCoachSitesFromDb(env);
+        currentSite = await getCoachSiteByIdFromDb(siteId, env);
       } catch {
         return adminJson(
           { configured: true, error: "Coach site database read failed.", ok: false },
           500
         );
       }
-      const currentSite = coachSites?.find((site) => site.id === siteId);
 
       if (!currentSite) {
         return adminJson({ configured: true, error: "Coach site not found.", ok: false }, 404);
@@ -208,16 +229,15 @@ export async function onRequest({ request, env }: PagesContext) {
         );
       }
 
-      let coachSites: CoachSiteRecord[] | null;
+      let currentSite: CoachSiteRecord | null;
       try {
-        coachSites = await listCoachSitesFromDb(env);
+        currentSite = await getCoachSiteByIdFromDb(siteId, env);
       } catch {
         return adminJson(
           { configured: true, error: "Coach site database read failed.", ok: false },
           500
         );
       }
-      const currentSite = coachSites?.find((site) => site.id === siteId);
 
       if (!currentSite) {
         return adminJson({ configured: true, error: "Coach draft not found.", ok: false }, 404);
@@ -268,16 +288,15 @@ export async function onRequest({ request, env }: PagesContext) {
         );
       }
 
-      let coachSites: CoachSiteRecord[] | null;
+      let currentSite: CoachSiteRecord | null;
       try {
-        coachSites = await listCoachSitesFromDb(env);
+        currentSite = await getCoachSiteByIdFromDb(siteId, env);
       } catch {
         return adminJson(
           { configured: true, error: "Coach site database read failed.", ok: false },
           500
         );
       }
-      const currentSite = coachSites?.find((site) => site.id === siteId);
       if (!currentSite) {
         return adminJson({ configured: true, error: "Coach site not found.", ok: false }, 404);
       }
@@ -406,7 +425,9 @@ function getPublishValidationError(site: Partial<CoachSiteRecord>) {
   const selectedThemeId =
     typeof site.selectedThemeId === "string" ? site.selectedThemeId.trim() : "";
   const heroMediaType =
-    site.heroMediaType === "image" || site.heroMediaType === "video" || site.heroMediaType === "none"
+    site.heroMediaType === "image" ||
+    site.heroMediaType === "video" ||
+    site.heroMediaType === "none"
       ? site.heroMediaType
       : "none";
 
@@ -415,9 +436,7 @@ function getPublishValidationError(site: Partial<CoachSiteRecord>) {
   }
 
   if (
-    !COACH_TEMPLATE_THEME_IDS.includes(
-      selectedThemeId as (typeof COACH_TEMPLATE_THEME_IDS)[number]
-    )
+    !COACH_TEMPLATE_THEME_IDS.includes(selectedThemeId as (typeof COACH_TEMPLATE_THEME_IDS)[number])
   ) {
     return "Select a valid coach-site template/theme before publishing.";
   }

@@ -311,14 +311,7 @@ test.describe("coach site dangerous actions", () => {
     });
     expect(listed.status).toBe(200);
     const listedBody = await listed.json();
-    expect(listedBody.coachSites).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: "coach-site-local",
-          status: "removed"
-        })
-      ])
-    );
+    expect(listedBody.coachSites).toEqual([]);
   });
 
   test("delete draft removes only draft coach sites without weakening published-site OTP", async () => {
@@ -492,6 +485,146 @@ test.describe("coach site dangerous actions", () => {
     expect(html).toContain("This coach page is temporarily unavailable.");
     expect(html).toContain("Error Code:");
   });
+
+  test("blocks duplicate coach-site entries by coach identity", async () => {
+    const coachSitesDb = createCoachSitesDb();
+    coachSitesDb.records.set("coach-site-local-copy", {
+      ...coachSitesDb.records.get("coach-site-local")!,
+      coach_name: "Local Coach",
+      id: "coach-site-local-copy",
+      public_url: "/coach/local-coach-copy",
+      slug: "local-coach-copy",
+      status: "draft",
+      updated_at: 1770000000
+    });
+    const env = {
+      ADMIN_ALLOWED_EMAILS: ADMIN_EMAIL,
+      ADMIN_AUTH_DEMO_ENABLED: "true",
+      ADMIN_DB: coachSitesDb.db,
+      ADMIN_DEV_OTP,
+      ADMIN_SESSION_SECRET
+    };
+    const { cookie, csrfToken } = await createAdminTestSession(env);
+
+    const listed = await coachSitesRequest({
+      env,
+      request: new Request("http://127.0.0.1/api/admin/coach-sites", {
+        headers: {
+          cookie
+        }
+      })
+    });
+    expect(listed.status).toBe(200);
+    const listedBody = await listed.json();
+    expect(listedBody.coachSites).toHaveLength(1);
+    expect(listedBody.coachSites[0]).toMatchObject({
+      coachName: "Local Coach",
+      slug: "local-coach"
+    });
+
+    const duplicateSave = await coachSitesRequest({
+      env,
+      request: jsonRequest(
+        "http://127.0.0.1/api/admin/coach-sites",
+        {
+          site: {
+            coachName: "Local Coach",
+            content: {
+              benefits: ["Benefit one"],
+              coachIntro: "Duplicate intro",
+              ctaText: "Register Now",
+              faq: [{ answer: "Answer", question: "Question" }],
+              heroHeadline: "Duplicate headline",
+              socialCopy: "Duplicate social copy",
+              subheadline: "Duplicate subheadline",
+              trustText: "Duplicate trust",
+              visionText: "Duplicate vision"
+            },
+            googleFormUrl: "https://forms.gle/duplicateCoach",
+            heroMediaType: "none",
+            id: "coach-site-local-duplicate-attempt",
+            niche: "Duplicate Wellness",
+            publicUrl: "/coach/local-coach-another",
+            registerButtonText: "Register Now",
+            selectedThemeId: "default-current",
+            slug: "local-coach-another",
+            status: "draft"
+          }
+        },
+        { cookie, "x-yw-admin-csrf": csrfToken },
+        "POST"
+      )
+    });
+    expect(duplicateSave.status).toBe(409);
+    expect(await duplicateSave.json()).toMatchObject({
+      duplicateCoachSite: {
+        id: "coach-site-local",
+        slug: "local-coach",
+        status: "published"
+      },
+      ok: false
+    });
+    expect(coachSitesDb.records.has("coach-site-local-duplicate-attempt")).toBe(false);
+
+    const sameIdCreate = await coachSitesRequest({
+      env,
+      request: jsonRequest(
+        "http://127.0.0.1/api/admin/coach-sites",
+        {
+          mode: "create",
+          site: {
+            ...coachSitesDb.records.get("coach-site-local"),
+            coachName: "Local Coach",
+            googleFormUrl: "https://forms.gle/localCoach",
+            id: "coach-site-local",
+            niche: "Wellness",
+            publicUrl: "/coach/local-coach",
+            slug: "local-coach",
+            status: "draft"
+          }
+        },
+        { cookie, "x-yw-admin-csrf": csrfToken },
+        "POST"
+      )
+    });
+    expect(sameIdCreate.status).toBe(409);
+
+    const sameIdEdit = await coachSitesRequest({
+      env,
+      request: jsonRequest(
+        "http://127.0.0.1/api/admin/coach-sites",
+        {
+          mode: "edit",
+          site: {
+            coachName: "Local Coach",
+            content: {
+              benefits: ["Benefit one"],
+              coachIntro: "Edited intro",
+              ctaText: "Register Now",
+              faq: [{ answer: "Answer", question: "Question" }],
+              heroHeadline: "Edited headline",
+              socialCopy: "Edited social copy",
+              subheadline: "Edited subheadline",
+              trustText: "Edited trust",
+              visionText: "Edited vision"
+            },
+            googleFormUrl: "https://forms.gle/localCoach",
+            heroMediaType: "none",
+            id: "coach-site-local",
+            niche: "Wellness",
+            publicUrl: "/coach/local-coach",
+            registerButtonText: "Register Now",
+            selectedThemeId: "default-current",
+            slug: "local-coach",
+            status: "draft"
+          }
+        },
+        { cookie, "x-yw-admin-csrf": csrfToken },
+        "POST"
+      )
+    });
+    expect(sameIdEdit.status).toBe(200);
+  });
 });
 
 type CoachSiteRowRecord = {
@@ -505,6 +638,7 @@ type CoachSiteRowRecord = {
   content_json: string;
   created_at: number;
   created_by: string;
+  existing_paid_funnel_url: string;
   google_form_url: string;
   hero_media_type: string;
   id: string;
@@ -516,6 +650,7 @@ type CoachSiteRowRecord = {
   public_url: string;
   register_button_text: string;
   selected_theme_id: string;
+  paid_funnel_context: string;
   slug: string;
   status: string;
   support_text: string;
@@ -565,6 +700,7 @@ function createCoachSitesDb() {
         }),
         created_at: 1780000000,
         created_by: ADMIN_EMAIL,
+        existing_paid_funnel_url: "",
         google_form_url: "https://forms.gle/localCoach",
         hero_media_type: "none",
         id: "coach-site-local",
@@ -576,6 +712,7 @@ function createCoachSitesDb() {
         public_url: "/coach/local-coach",
         register_button_text: "Register Now",
         selected_theme_id: "default-current",
+        paid_funnel_context: "",
         slug: "local-coach",
         status: "published",
         support_text: "",
@@ -592,7 +729,11 @@ function createCoachSitesDb() {
     db: {
       prepare(statement: string) {
         return {
-          all: async () => ({ results: Array.from(records.values()) }),
+          all: async () => ({
+            results: Array.from(records.values()).filter((record) =>
+              statement.includes("WHERE status <> 'removed'") ? record.status !== "removed" : true
+            )
+          }),
           bind(...values: unknown[]) {
             return createCoachSitesStatement(statement, values, records);
           },
@@ -661,11 +802,13 @@ function createCoachSitesStatement(
           photoUrl,
           logoUrl,
           videoUrl,
+          existingPaidFunnelUrl,
           googleFormUrl,
           heroMediaType,
           publicUrl,
           registerButtonText,
           selectedThemeId,
+          paidFunnelContext,
           supportText,
           contentJson,
           analyticsJson,
@@ -688,6 +831,7 @@ function createCoachSitesStatement(
           content_json: String(contentJson || "{}"),
           created_at: Number(createdAt || 0),
           created_by: String(createdBy || ""),
+          existing_paid_funnel_url: String(existingPaidFunnelUrl || ""),
           google_form_url: String(googleFormUrl || ""),
           hero_media_type: String(heroMediaType || "image"),
           id: recordId,
@@ -699,6 +843,7 @@ function createCoachSitesStatement(
           public_url: String(publicUrl || ""),
           register_button_text: String(registerButtonText || "Register Now"),
           selected_theme_id: String(selectedThemeId || "default-current"),
+          paid_funnel_context: String(paidFunnelContext || ""),
           slug: String(slug || ""),
           status: String(status || "draft"),
           support_text: String(supportText || ""),
