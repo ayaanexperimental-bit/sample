@@ -91,7 +91,12 @@ export type AdminErrorReport = {
 };
 
 export type AdminBackupCleanupStatus = {
-  backupDestination: "Email CSV attachment" | "CSV/JSON download" | "Not configured" | string;
+  backupDestination:
+    | "Email CSV + XLS attachments"
+    | "Email CSV attachment"
+    | "CSV/JSON download"
+    | "Not configured"
+    | string;
   cleanupStatus: string;
   googleSheetsConfigured: boolean;
   lastBackupAt: string;
@@ -162,7 +167,7 @@ export const adminControlCenterData: AdminControlCenterData = {
   paidMasterclassLinks: getPaidMasterclassLinks(),
   errorReports: [],
   backupCleanup: {
-    backupDestination: "Email CSV attachment primary",
+    backupDestination: "Email CSV + XLS attachments primary",
     cleanupStatus: "Disabled until backup and active-admin notification succeed",
     googleSheetsConfigured: false,
     lastBackupAt: "No backup created yet",

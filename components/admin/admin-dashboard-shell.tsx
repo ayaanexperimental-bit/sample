@@ -126,6 +126,7 @@ type AdminMaintenanceStatus = {
   activeAdminRecipientCount: number;
   backupDestination: string;
   backupDownloadUrl: string | null;
+  backupXlsDownloadUrl: string | null;
   backupEmailConfigured: boolean;
   cleanupEligibleAnalyticsEvents: number;
   cleanupStatus: string;
@@ -4839,6 +4840,7 @@ function BackupCleanupView({
       activeAdminRecipientCount: 0,
       backupDestination: control.backupCleanup.backupDestination,
       backupDownloadUrl: null,
+      backupXlsDownloadUrl: null,
       backupEmailConfigured: false,
       cleanupEligibleAnalyticsEvents: 0,
       cleanupStatus: control.backupCleanup.cleanupStatus,
@@ -4892,8 +4894,8 @@ function BackupCleanupView({
           <span>Destination</span>
           <strong>{activeStatus.backupDestination}</strong>
           <p>
-            Backup data is emailed to active admins as a CSV attachment. Protected dashboard
-            download remains available as a fallback.
+            Backup data is emailed to active admins as CSV and XLS attachments. Protected
+            dashboard downloads remain available as fallbacks.
           </p>
         </article>
         <article className={styles.maintenanceCard}>
@@ -4993,7 +4995,12 @@ function BackupCleanupView({
           </button>
           {activeStatus.backupDownloadUrl ? (
             <a className={styles.secondaryAction} href={activeStatus.backupDownloadUrl}>
-              Download Latest Backup
+              Download Latest CSV
+            </a>
+          ) : null}
+          {activeStatus.backupXlsDownloadUrl ? (
+            <a className={styles.secondaryAction} href={activeStatus.backupXlsDownloadUrl}>
+              Download Latest XLS
             </a>
           ) : null}
         </div>

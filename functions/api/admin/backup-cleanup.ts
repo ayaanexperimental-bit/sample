@@ -36,16 +36,21 @@ export async function onRequest({ request, env }: PagesContext) {
     const url = new URL(request.url);
     const downloadId = url.searchParams.get("download") || "";
     if (downloadId) {
-      const backup = await getBackupDownload({ backupId: downloadId, env });
+      const requestedFormat = url.searchParams.get("format") === "xls" ? "xls" : "csv";
+      const backup = await getBackupDownload({
+        backupId: downloadId,
+        env,
+        format: requestedFormat
+      });
       if (!backup) {
         return adminJson({ ok: false, error: "Backup file was not found." }, 404);
       }
 
-      return new Response(backup.csv, {
+      return new Response(backup.content, {
         headers: {
           "cache-control": "no-store",
           "content-disposition": `attachment; filename="${backup.fileName.replace(/"/g, "")}"`,
-          "content-type": "text/csv; charset=utf-8"
+          "content-type": backup.contentType
         }
       });
     }

@@ -29,6 +29,7 @@ export type MaintenanceStatus = {
   activeAdminRecipientCount: number;
   backupDestination: string;
   backupDownloadUrl: string | null;
+  backupXlsDownloadUrl: string | null;
   backupEmailConfigured: boolean;
   cleanupEligibleAnalyticsEvents: number;
   cleanupStatus: string;
@@ -62,6 +63,7 @@ export type AdminRoleChecklist = {
 
 type BackupRow = {
   backup_csv: string;
+  backup_xls?: string;
   created_at: number | string;
   failed_recipients: string;
   file_name: string;
@@ -166,8 +168,9 @@ export async function getAdminMaintenanceStatus({
   if (!db) {
     return {
       activeAdminRecipientCount: 0,
-      backupDestination: "Email CSV attachment, database missing",
+      backupDestination: "Email CSV + XLS attachments, database missing",
       backupDownloadUrl: null,
+      backupXlsDownloadUrl: null,
       backupEmailConfigured,
       cleanupEligibleAnalyticsEvents: 0,
       cleanupStatus: "Database missing. No cleanup can run.",
@@ -202,8 +205,11 @@ export async function getAdminMaintenanceStatus({
 
   return {
     activeAdminRecipientCount: recipients.length,
-    backupDestination: "Email CSV attachment primary",
+    backupDestination: "Email CSV + XLS attachments primary",
     backupDownloadUrl: latestBackup?.file_url || (latestBackup?.id ? `/api/admin/backup-cleanup?download=${latestBackup.id}` : null),
+    backupXlsDownloadUrl: latestBackup?.id
+      ? `/api/admin/backup-cleanup?download=${latestBackup.id}&format=xls`
+      : null,
     backupEmailConfigured,
     cleanupEligibleAnalyticsEvents,
     cleanupStatus: getCleanupStatusText({
@@ -257,12 +263,16 @@ export async function runAnalyticsBackup({
   const rows = await listOldAnalyticsRows(db, cutoff);
   const backupId = `analytics-backup-${crypto.randomUUID()}`;
   const createdAt = getNowSeconds();
-  const fileName = `ywcoach-analytics-backup-${new Date(createdAt * 1000)
+  const baseFileName = `ywcoach-analytics-backup-${new Date(createdAt * 1000)
     .toISOString()
-    .slice(0, 10)}.csv`;
+    .slice(0, 10)}`;
+  const csvFileName = `${baseFileName}.csv`;
+  const xlsFileName = `${baseFileName}.xls`;
   const csv = createAnalyticsBackupCsv(rows);
-  const destination = "email_csv_attachment";
-  const fileUrl = `/api/admin/backup-cleanup?download=${backupId}`;
+  const xls = createAnalyticsBackupXls({ backupId, createdAt, cutoff, rows });
+  const destination = "email_csv_xls_attachments";
+  const fileUrl = `/api/admin/backup-cleanup?download=${backupId}&format=csv`;
+  const xlsFileUrl = `/api/admin/backup-cleanup?download=${backupId}&format=xls`;
   const status = rows.length === 0 ? "completed_empty" : "completed";
 
   let notificationStatus = "not_sent";
@@ -280,9 +290,12 @@ export async function runAnalyticsBackup({
       cutoff,
       env,
       fileUrl: `${new URL(request.url).origin}${fileUrl}`,
-      fileName,
+      fileName: csvFileName,
       recordCount: rows.length,
-      recipients
+      recipients,
+      xlsContent: xls,
+      xlsFileName,
+      xlsFileUrl: `${new URL(request.url).origin}${xlsFileUrl}`
     });
     notificationStatus = result.failedRecipients.length > 0 ? "partial_failed" : "sent";
     failedRecipients = result.failedRecipients;
@@ -293,14 +306,14 @@ export async function runAnalyticsBackup({
       `INSERT INTO analytics_backups (
         id, date_range_start, date_range_end, backup_type, destination, file_name, file_url,
         status, record_count, recipient_count, failed_recipients, notification_status,
-        backup_csv, created_at, created_by
-      ) VALUES (?1, 0, ?2, 'analytics_events_raw', ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)`
+        backup_csv, backup_xls, created_at, created_by
+      ) VALUES (?1, 0, ?2, 'analytics_events_raw', ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)`
     )
     .bind(
       backupId,
       cutoff,
       destination,
-      fileName,
+      csvFileName,
       fileUrl,
       status,
       rows.length,
@@ -308,6 +321,7 @@ export async function runAnalyticsBackup({
       failedRecipients.join(","),
       notificationStatus,
       csv,
+      xls,
       createdAt,
       sanitizeEmail(adminEmail)
     )
@@ -323,6 +337,7 @@ export async function runAnalyticsBackup({
 
   return {
     backupDownloadUrl: fileUrl,
+    backupXlsDownloadUrl: xlsFileUrl,
     backupId,
     failedRecipients: failedRecipients.map(maskEmail),
     notificationStatus,
@@ -466,10 +481,12 @@ export async function sendTestBackupEmail({
 
 export async function getBackupDownload({
   backupId,
-  env
+  env,
+  format = "csv"
 }: {
   backupId: string;
   env: AdminMaintenanceEnv;
+  format?: "csv" | "xls";
 }) {
   const db = env.ADMIN_DB;
   if (!db) return null;
@@ -478,19 +495,29 @@ export async function getBackupDownload({
 
   const row = await db
     .prepare(
-      `SELECT backup_csv, file_name
+      `SELECT backup_csv, backup_xls, file_name
        FROM analytics_backups
        WHERE id = ?1
        LIMIT 1`
     )
     .bind(sanitizeToken(backupId, 120))
-    .first<{ backup_csv: string; file_name: string }>();
+    .first<{ backup_csv: string; backup_xls?: string; file_name: string }>();
 
   if (!row?.backup_csv) return null;
 
+  const baseFileName = (row.file_name || "ywcoach-analytics-backup.csv").replace(/\.(csv|xls)$/i, "");
+  if (format === "xls") {
+    return {
+      content: row.backup_xls || createSpreadsheetXmlFromCsv(row.backup_csv),
+      contentType: "application/vnd.ms-excel; charset=utf-8",
+      fileName: `${baseFileName}.xls`
+    };
+  }
+
   return {
-    csv: row.backup_csv,
-    fileName: row.file_name || "ywcoach-analytics-backup.csv"
+    content: row.backup_csv,
+    contentType: "text/csv; charset=utf-8",
+    fileName: `${baseFileName}.csv`
   };
 }
 
@@ -552,6 +579,20 @@ export async function ensureMaintenanceTables(db: D1Database) {
   for (const statement of MAINTENANCE_SCHEMA) {
     await db.prepare(statement).run();
   }
+
+  await ensureTableColumn(db, "analytics_backups", "backup_xls", "TEXT NOT NULL DEFAULT ''");
+}
+
+async function ensureTableColumn(
+  db: D1Database,
+  tableName: string,
+  columnName: string,
+  definition: string
+) {
+  const columns = await getTableColumns(db, tableName);
+  if (columns.has(columnName)) return;
+
+  await db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`).run();
 }
 
 async function getActiveBackupRecipients(db: D1Database): Promise<BackupRecipient[]> {
@@ -785,7 +826,10 @@ async function sendBackupNotificationEmails({
   fileUrl,
   isTest = false,
   recordCount,
-  recipients
+  recipients,
+  xlsContent,
+  xlsFileName,
+  xlsFileUrl
 }: {
   backupId: string;
   createdAt: number;
@@ -797,6 +841,9 @@ async function sendBackupNotificationEmails({
   isTest?: boolean;
   recordCount: number;
   recipients: BackupRecipient[];
+  xlsContent?: string;
+  xlsFileName?: string;
+  xlsFileUrl?: string;
 }) {
   const failedRecipients: string[] = [];
 
@@ -811,7 +858,8 @@ async function sendBackupNotificationEmails({
             cutoff,
             fileUrl,
             isTest,
-            recordCount
+            recordCount,
+            xlsFileUrl
           }),
           attachments:
             !isTest && typeof csvContent === "string"
@@ -819,6 +867,14 @@ async function sendBackupNotificationEmails({
                   {
                     content: base64Encode(csvContent),
                     filename: fileName
+                  },
+                  {
+                    content: base64Encode(
+                      typeof xlsContent === "string"
+                        ? xlsContent
+                        : createSpreadsheetXmlFromCsv(csvContent)
+                    ),
+                    filename: xlsFileName || fileName.replace(/\.csv$/i, ".xls")
                   }
                 ]
               : undefined,
@@ -829,7 +885,8 @@ async function sendBackupNotificationEmails({
             cutoff,
             fileUrl,
             isTest,
-            recordCount
+            recordCount,
+            xlsFileUrl
           }),
           to: recipient.email
         }),
@@ -855,7 +912,8 @@ function createBackupEmailText({
   cutoff,
   fileUrl,
   isTest,
-  recordCount
+  recordCount,
+  xlsFileUrl
 }: {
   backupId: string;
   createdAt: number;
@@ -863,6 +921,7 @@ function createBackupEmailText({
   fileUrl: string;
   isTest: boolean;
   recordCount: number;
+  xlsFileUrl?: string;
 }) {
   return [
     isTest ? "This is a YWcoach backup email test." : "YWcoach analytics backup is ready.",
@@ -877,7 +936,11 @@ function createBackupEmailText({
     }`,
     isTest
       ? `Backup test link: ${fileUrl}`
-      : `Primary backup: CSV attached to this email. Protected download fallback: ${fileUrl}`,
+      : [
+          "Primary backup: CSV and XLS files are attached to this email.",
+          `Protected CSV download fallback: ${fileUrl}`,
+          `Protected XLS download fallback: ${xlsFileUrl || fileUrl.replace(/format=csv/i, "format=xls")}`
+        ].join("\n"),
     `Timestamp: ${new Date(createdAt * 1000).toISOString()}`,
     "This email does not include secrets, OTPs, private links, tokens, or payment card data."
   ].join("\n");
@@ -915,6 +978,144 @@ function createAnalyticsBackupCsv(rows: Array<Record<string, unknown>>) {
   ];
 
   return lines.join("\n");
+}
+
+function createAnalyticsBackupXls({
+  backupId,
+  createdAt,
+  cutoff,
+  rows
+}: {
+  backupId: string;
+  createdAt: number;
+  cutoff: number;
+  rows: Array<Record<string, unknown>>;
+}) {
+  const headers = [
+    "backup_id",
+    "backup_created_at",
+    "backup_range_before",
+    "id",
+    "event_name",
+    "funnel_type",
+    "coach_slug",
+    "coach_site_id",
+    "coach_id",
+    "funnel_id",
+    "page_path",
+    "source",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "device_type",
+    "region",
+    "created_at",
+    "created_date"
+  ];
+  const backupCreatedAt = new Date(createdAt * 1000).toISOString();
+  const rangeBefore = new Date(cutoff * 1000).toISOString();
+  const tableRows = [
+    headers,
+    ...rows.map((row) => [
+      backupId,
+      backupCreatedAt,
+      rangeBefore,
+      row.id || "",
+      row.event_name || "",
+      row.funnel_type || "",
+      row.coach_slug || "",
+      row.coach_site_id || "",
+      row.coach_id || "",
+      row.funnel_id || "",
+      row.page_path || "",
+      row.source || "",
+      row.utm_source || "",
+      row.utm_medium || "",
+      row.utm_campaign || "",
+      row.device_type || "",
+      row.region || "",
+      row.created_at || "",
+      row.created_date || ""
+    ])
+  ];
+
+  return createSpreadsheetXml(tableRows, "Analytics Backup");
+}
+
+function createSpreadsheetXmlFromCsv(csv: string) {
+  return createSpreadsheetXml(parseCsvRows(csv), "Analytics Backup");
+}
+
+function createSpreadsheetXml(rows: unknown[][], sheetName: string) {
+  const tableRows = rows
+    .map(
+      (row) =>
+        `<Row>${row
+          .map((cell) => `<Cell><Data ss:Type="String">${escapeXml(String(cell ?? ""))}</Data></Cell>`)
+          .join("")}</Row>`
+    )
+    .join("");
+
+  return [
+    '<?xml version="1.0"?>',
+    '<?mso-application progid="Excel.Sheet"?>',
+    '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"',
+    ' xmlns:o="urn:schemas-microsoft-com:office:office"',
+    ' xmlns:x="urn:schemas-microsoft-com:office:excel"',
+    ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"',
+    ' xmlns:html="http://www.w3.org/TR/REC-html40">',
+    `<Worksheet ss:Name="${escapeXml(sheetName).slice(0, 31)}">`,
+    `<Table>${tableRows}</Table>`,
+    "</Worksheet>",
+    "</Workbook>"
+  ].join("");
+}
+
+function parseCsvRows(csv: string) {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let value = "";
+  let quoted = false;
+
+  for (let index = 0; index < csv.length; index += 1) {
+    const char = csv[index];
+    const next = csv[index + 1];
+
+    if (char === '"' && quoted && next === '"') {
+      value += '"';
+      index += 1;
+      continue;
+    }
+
+    if (char === '"') {
+      quoted = !quoted;
+      continue;
+    }
+
+    if (char === "," && !quoted) {
+      row.push(value);
+      value = "";
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && !quoted) {
+      if (char === "\r" && next === "\n") index += 1;
+      row.push(value);
+      rows.push(row);
+      row = [];
+      value = "";
+      continue;
+    }
+
+    value += char;
+  }
+
+  if (value || row.length > 0) {
+    row.push(value);
+    rows.push(row);
+  }
+
+  return rows;
 }
 
 function getErrorReportCleanupSql(filter: ErrorReportCleanupFilter) {
@@ -1048,6 +1249,10 @@ function escapeHtml(value: string) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function escapeXml(value: string) {
+  return escapeHtml(value).replace(/'/g, "&apos;");
 }
 
 function base64Encode(value: string) {
