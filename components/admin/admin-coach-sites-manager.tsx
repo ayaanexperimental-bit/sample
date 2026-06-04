@@ -147,6 +147,49 @@ function matchesCoachSiteSearch(site: CoachSiteRecord, query: string) {
   );
 }
 
+function getCoachSitePhotoUrl(site: CoachSiteRecord) {
+  return site.photoUrl.trim() || site.logoUrl.trim();
+}
+
+function getCoachSiteInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+
+  if (parts.length === 0) return "YW";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+
+  return `${parts[0][0] ?? ""}${parts[parts.length - 1][0] ?? ""}`.toUpperCase();
+}
+
+function CoachSiteAvatar({ site }: { site: CoachSiteRecord }) {
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState("");
+  const photoUrl = getCoachSitePhotoUrl(site);
+  const showPhoto = Boolean(photoUrl && failedPhotoUrl !== photoUrl);
+  const coachName = site.coachName || "Unnamed coach";
+
+  return (
+    <span aria-hidden="true" className={styles.coachAvatar}>
+      {showPhoto ? (
+        // eslint-disable-next-line @next/next/no-img-element -- Coach images can be R2/external URLs and need safe fallback behavior.
+        <img alt="" loading="lazy" onError={() => setFailedPhotoUrl(photoUrl)} src={photoUrl} />
+      ) : (
+        <span>{getCoachSiteInitials(coachName)}</span>
+      )}
+    </span>
+  );
+}
+
+function CoachSiteIdentityCell({ site }: { site: CoachSiteRecord }) {
+  return (
+    <div className={styles.tableCoachCell}>
+      <CoachSiteAvatar site={site} />
+      <div className={styles.tableCoachText}>
+        <strong>{site.coachName || "Unnamed coach"}</strong>
+        <span>{site.niche || site.slug || "Coach details pending"}</span>
+      </div>
+    </div>
+  );
+}
+
 const wizardSteps = [
   "Coach Basic Details",
   "Hero Media",
@@ -1682,8 +1725,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
                         {archivedSites.map((site) => (
                           <tr key={site.id}>
                             <td>
-                              <strong>{site.coachName || "Unnamed coach"}</strong>
-                              <span>{site.slug}</span>
+                              <CoachSiteIdentityCell site={site} />
                             </td>
                             <td>{site.niche || "Niche pending"}</td>
                             <td>
@@ -1762,8 +1804,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
                     {draftSites.map((site) => (
                       <tr key={site.id}>
                         <td>
-                          <strong>{site.coachName || "Unnamed coach"}</strong>
-                          <span>{site.publicUrl}</span>
+                          <CoachSiteIdentityCell site={site} />
                         </td>
                         <td>{site.niche || "Niche pending"}</td>
                         <td>
@@ -1829,8 +1870,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
                   managedSites.map((site) => (
                     <tr key={site.id}>
                       <td>
-                        <strong>{site.coachName}</strong>
-                        <span>{site.niche}</span>
+                        <CoachSiteIdentityCell site={site} />
                       </td>
                       <td>
                         <span className={styles.statusBadge} data-status={site.status}>

@@ -3210,6 +3210,40 @@
   min-width: 12rem;
 }
 
+.tableCoachText {
+  display: grid;
+  min-width: 0;
+  gap: 0.08rem;
+}
+
+.tableCoachText strong,
+.tableCoachText span {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table[data-density="compact"] td .tableCoachCell .coachAvatar {
+  display: grid;
+  margin-top: 0;
+  color: rgb(98 42 78);
+  font-size: 0.74rem;
+  font-weight: 950;
+}
+
+.table[data-density="compact"] td .tableCoachCell .coachAvatar span {
+  display: grid;
+  margin-top: 0;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.table[data-density="compact"] td .tableCoachCell .coachAvatar img {
+  display: block;
+  margin-top: 0;
+}
+
 .analyticsCoachIdentity h3,
 .analyticsCoachIdentity p,
 .analyticsCoachIdentity small {
