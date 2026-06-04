@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, type MouseEvent, useEffect, useMemo, useState } from "react";
 import { AdminCoachSitesManager } from "./admin-coach-sites-manager";
 import {
   AdminActionDialog,
@@ -113,6 +113,24 @@ const analyticsRangeOptions: Array<{ label: string; value: AnalyticsDateRangeId 
   { label: "90 days", value: "90d" },
   { label: "Custom", value: "custom" },
   { label: "All stored", value: "all" }
+];
+
+type AnalyticsChartPoint = {
+  compareValue?: number;
+  detail?: string;
+  label: string;
+  value: number;
+};
+
+type AnalyticsChartRangeId = "1d" | "7d" | "1m" | "3m" | "1y" | "max";
+
+const analyticsChartRangeOptions: Array<{ label: string; value: AnalyticsChartRangeId }> = [
+  { label: "1D", value: "1d" },
+  { label: "7D", value: "7d" },
+  { label: "1M", value: "1m" },
+  { label: "3M", value: "3m" },
+  { label: "1Y", value: "1y" },
+  { label: "Max", value: "max" }
 ];
 
 const navSections: AdminNavSection[] = [
@@ -455,6 +473,8 @@ function OverviewView({
   const [overviewAiStatus, setOverviewAiStatus] = useState("");
   const [overviewAiUsage, setOverviewAiUsage] =
     useState<AdminAiAnalyticsPayload["usageEstimate"]>(undefined);
+  const [overviewChartRange, setOverviewChartRange] = useState<AnalyticsChartRangeId>("max");
+  const [overviewCompareEnabled, setOverviewCompareEnabled] = useState(true);
   const preferEventSummaries = analyticsSource === "d1_analytics_events";
   const rows = useMemo(
     () => buildCoachAnalyticsRows(coachSites, analyticsSummaries, { preferEventSummaries }),
@@ -489,6 +509,10 @@ function OverviewView({
       recentEvents,
       source
     ]
+  );
+  const overviewTrendPoints = useMemo(
+    () => buildOverviewTrendPoints(overview, overviewChartRange),
+    [overview, overviewChartRange]
   );
 
   async function generateOverviewAiInsights(forceRefresh = false) {
@@ -624,6 +648,7 @@ function OverviewView({
             detail={metric.detail}
             key={metric.label}
             label={metric.label}
+            sparkPoints={metric.sparkPoints}
             tone={metric.tone}
             value={metric.value}
           />
@@ -645,6 +670,18 @@ function OverviewView({
               Open Analytics
             </button>
           </div>
+          <InteractiveTrendChart
+            compareEnabled={overviewCompareEnabled}
+            compareLabel="Click / previous signal"
+            emptyLabel="No stored performance data yet."
+            onCompareToggle={setOverviewCompareEnabled}
+            onRangeChange={setOverviewChartRange}
+            points={overviewTrendPoints}
+            primaryLabel="Visits / selected signal"
+            range={overviewChartRange}
+            subtitle="Hover the chart to inspect the current real aggregate signal."
+            title="Traffic and conversion trend"
+          />
           <ComparisonBars items={overview.trendBars} />
         </article>
 
@@ -758,11 +795,16 @@ function OverviewView({
             overview.topRows.map((row, index) => (
               <button key={row.coachId} onClick={() => onSelect("coach-analytics")} type="button">
                 <span>#{index + 1}</span>
-                <strong>{row.coachName}</strong>
-                <small>
-                  {row.combined.visits.toLocaleString()} visits / {row.combined.conversionRate}{" "}
-                  click-through / {row.bestFunnel}
-                </small>
+                <div className={styles.analyticsRankIdentity}>
+                  <CoachAvatar name={row.coachName} photoUrl={row.photoUrl} size="small" />
+                  <div>
+                    <strong>{row.coachName}</strong>
+                    <small>
+                      {row.combined.visits.toLocaleString()} visits / {row.combined.conversionRate}{" "}
+                      click-through / {row.bestFunnel}
+                    </small>
+                  </div>
+                </div>
               </button>
             ))
           ) : (
@@ -839,7 +881,12 @@ function TopCoachesView({
               rows.map((coach, index) => (
                 <tr key={coach.coachId}>
                   <td>{index + 1}</td>
-                  <td>{coach.coachName}</td>
+                  <td>
+                    <div className={styles.tableCoachCell}>
+                      <CoachAvatar name={coach.coachName} photoUrl={coach.photoUrl} size="small" />
+                      <strong>{coach.coachName}</strong>
+                    </div>
+                  </td>
                   <td>{coach.niche}</td>
                   <td>
                     <code>{coach.publicLink || coach.coachSlug}</code>
@@ -996,12 +1043,20 @@ function buildOverviewAnalytics(
       {
         detail: `${rangeLabel}; ${visitDelta} vs previous period`,
         label: "Total visitors",
+        sparkPoints: [
+          { label: "Previous", value: previousVisits },
+          { label: rangeLabel, value: totalVisits }
+        ],
         tone: "neutral" as const,
         value: totalVisits.toLocaleString()
       },
       {
         detail: `Free Google Form opens plus paid register CTA clicks; ${registerDelta}.`,
         label: "Register clicks",
+        sparkPoints: [
+          { label: "Previous", value: previousRegisterClicks },
+          { label: rangeLabel, value: totalRegisterClicks }
+        ],
         tone: totalRegisterClicks ? ("success" as const) : ("neutral" as const),
         value: totalRegisterClicks.toLocaleString()
       },
@@ -1011,28 +1066,50 @@ function buildOverviewAnalytics(
             ? `Recorded from paid success events; ${conversionDelta}.`
             : "No paid success events recorded in this admin yet.",
         label: "Paid conversions",
+        sparkPoints: [
+          { label: "Previous", value: previousPaidConversions },
+          { label: rangeLabel, value: totalPaidConversions }
+        ],
         tone: totalPaidConversions ? ("success" as const) : ("neutral" as const),
         value: totalPaidConversions.toLocaleString()
       },
       {
         detail: `${publishedCoaches.toLocaleString()} active/current coach records`,
         label: "Active coaches",
+        sparkPoints: [
+          { label: "Current coaches", value: rows.length },
+          { label: "Active coaches", value: publishedCoaches }
+        ],
         tone: publishedCoaches ? ("success" as const) : ("neutral" as const),
         value: publishedCoaches.toLocaleString()
       },
       {
         detail: `${paidOnly} paid-only / ${freeOnly} free-only / ${bothFunnels} both`,
         label: "Active funnels",
+        sparkPoints: [
+          { label: "Paid only", value: paidOnly },
+          { label: "Free only", value: freeOnly },
+          { label: "Both", value: bothFunnels },
+          { label: "Active funnels", value: activeFunnels }
+        ],
         tone: activeFunnels ? ("success" as const) : ("neutral" as const),
         value: activeFunnels.toLocaleString()
       },
       {
         detail: `Based on selected event range; ${clickDelta} total-click movement.`,
         label: "Click-through rate",
+        sparkPoints: [
+          { label: "Previous clicks", value: previousClicks },
+          { label: "Current clicks", value: totalClicks }
+        ],
         tone: totalRegisterClicks ? ("success" as const) : ("neutral" as const),
         value: conversionRate
       }
     ],
+    previousClicks,
+    previousPaidConversions,
+    previousRegisterClicks,
+    previousVisits,
     recommendations: [
       needsAttentionRows[0]?.lowActivityReasons[0]
         ? `Fix ${needsAttentionRows[0].coachName}: ${needsAttentionRows[0].lowActivityReasons[0]}.`
@@ -1066,6 +1143,8 @@ function buildOverviewAnalytics(
         : ["No recent analytics events recorded yet."],
     sourceLabel,
     topRows,
+    totalClicks,
+    totalPaidConversions,
     totalRegisterClicks,
     totalVisits,
     totalWhatsappClicks,
@@ -1124,6 +1203,179 @@ function buildOverviewAiPayload({
     },
     trendBars: overview.trendBars
   };
+}
+
+function buildOverviewTrendPoints(
+  overview: ReturnType<typeof buildOverviewAnalytics>,
+  range: AnalyticsChartRangeId
+): AnalyticsChartPoint[] {
+  const points: AnalyticsChartPoint[] = [
+    {
+      compareValue: overview.previousClicks,
+      detail: "Matched previous stored period where available.",
+      label: "Previous",
+      value: overview.previousVisits
+    },
+    {
+      compareValue: overview.totalClicks,
+      detail: overview.rangeLabel,
+      label: "Selected",
+      value: overview.totalVisits
+    },
+    {
+      compareValue: overview.totalWhatsappClicks,
+      detail: "Current CTA/register signal.",
+      label: "Register",
+      value: overview.totalRegisterClicks
+    },
+    {
+      compareValue: overview.activeFunnels,
+      detail: "Paid success events currently stored in this admin.",
+      label: "Paid success",
+      value: overview.totalPaidConversions
+    }
+  ];
+
+  return sliceChartPointsByRange(points, range);
+}
+
+function buildCoachListTrendPoints(
+  rows: CoachAnalyticsRow[],
+  range: AnalyticsChartRangeId
+): AnalyticsChartPoint[] {
+  const topRows = rows
+    .filter((row) => row.combined.visits > 0 || row.combined.clicks > 0)
+    .sort((a, b) => b.combined.visits - a.combined.visits)
+    .slice(0, 6);
+
+  if (topRows.length > 0) {
+    return sliceChartPointsByRange(
+      topRows.map((row) => ({
+        compareValue: row.combined.clicks,
+        detail: row.bestFunnel,
+        label: row.coachName.split(/\s+/)[0] || row.coachName,
+        value: row.combined.visits
+      })),
+      range
+    );
+  }
+
+  return [];
+}
+
+function buildCoachTrendPoints(
+  coach: CoachAnalyticsRow,
+  range: AnalyticsChartRangeId
+): AnalyticsChartPoint[] {
+  const freeDailyVisits = sumNumbers(coach.freeGuestLinks.map((site) => site.analytics.dailyVisits));
+  const freeWeeklyVisits = sumNumbers(
+    coach.freeGuestLinks.map((site) => site.analytics.weeklyVisits)
+  );
+  const freeMonthlyVisits = sumNumbers(
+    coach.freeGuestLinks.map((site) => site.analytics.monthlyVisits)
+  );
+  const freeTotalRegisterClicks = coach.freeMetrics.registerClicks;
+  const paidTotalClicks =
+    coach.paidMetrics.registerClicks +
+    coach.paidMetrics.paymentButtonClicks +
+    coach.paidMetrics.whatsappClicks;
+  const aggregatePoints: AnalyticsChartPoint[] = [
+    {
+      compareValue: 0,
+      detail: "Stored daily free guest-link counter.",
+      label: "Today",
+      value: freeDailyVisits
+    },
+    {
+      compareValue: 0,
+      detail: "Stored weekly free guest-link counter.",
+      label: "7D",
+      value: freeWeeklyVisits
+    },
+    {
+      compareValue: 0,
+      detail: "Stored monthly free guest-link counter.",
+      label: "1M",
+      value: freeMonthlyVisits
+    },
+    {
+      compareValue: freeTotalRegisterClicks + paidTotalClicks,
+      detail: "All stored paid/free aggregate activity.",
+      label: "Max",
+      value: coach.combined.visits
+    }
+  ];
+
+  const hasAggregateActivity = aggregatePoints.some(
+    (point) => point.value > 0 || (point.compareValue || 0) > 0
+  );
+
+  if (hasAggregateActivity) {
+    return sliceChartPointsByRange(aggregatePoints, range);
+  }
+
+  return sliceChartPointsByRange(
+    [
+      {
+        compareValue: coach.freeMetrics.registerClicks,
+        detail: "Free guest-link funnel.",
+        label: "Free",
+        value: coach.freeMetrics.visits
+      },
+      {
+        compareValue: coach.paidMetrics.registerClicks,
+        detail: "Paid masterclass funnel.",
+        label: "Paid",
+        value: coach.paidMetrics.visits
+      },
+      {
+        compareValue: coach.freeMetrics.whatsappClicks + coach.paidMetrics.whatsappClicks,
+        detail: "All available stored counters.",
+        label: "Combined",
+        value: coach.combined.visits
+      }
+    ],
+    range
+  );
+}
+
+function buildCoachSparklinePoints(row: CoachAnalyticsRow): AnalyticsChartPoint[] {
+  return [
+    { label: "Free visits", value: row.freeMetrics.visits },
+    { label: "Paid visits", value: row.paidMetrics.visits },
+    { label: "Total clicks", value: row.combined.clicks },
+    { label: "Total visits", value: row.combined.visits }
+  ];
+}
+
+function buildFunnelCountSparkline(
+  rows: CoachAnalyticsRow[],
+  type: "both" | "free" | "none" | "paid"
+): AnalyticsChartPoint[] {
+  const counts = {
+    both: rows.filter((row) => row.combinedAvailable).length,
+    free: rows.filter((row) => row.hasFreeGuestLink && !row.hasPaidMasterclass).length,
+    none: rows.filter((row) => !row.hasFreeGuestLink && !row.hasPaidMasterclass).length,
+    paid: rows.filter((row) => row.hasPaidMasterclass && !row.hasFreeGuestLink).length
+  };
+
+  return [
+    { label: "Paid", value: counts.paid },
+    { label: "Free", value: counts.free },
+    { label: "Both", value: counts.both },
+    { label: "None", value: counts.none },
+    { label: "Selected", value: counts[type] }
+  ];
+}
+
+function sliceChartPointsByRange(points: AnalyticsChartPoint[], range: AnalyticsChartRangeId) {
+  const cleanPoints = points.filter((point) => Number.isFinite(point.value));
+
+  if (range === "1d") return cleanPoints.slice(-2);
+  if (range === "7d") return cleanPoints.slice(-3);
+  if (range === "1m") return cleanPoints.slice(-4);
+  if (range === "3m") return cleanPoints.slice(-5);
+  return cleanPoints;
 }
 
 function buildCoachHeatmapRows(rows: CoachAnalyticsRow[]) {
@@ -1275,6 +1527,8 @@ function CoachAnalyticsView({
   const [statusFilter, setStatusFilter] = useState<
     "active" | "all" | "draft" | "paused" | "published"
   >("all");
+  const [coachChartCompareEnabled, setCoachChartCompareEnabled] = useState(true);
+  const [coachChartRange, setCoachChartRange] = useState<AnalyticsChartRangeId>("max");
   const preferEventSummaries = analyticsSource === "d1_analytics_events";
   const rows = useMemo(
     () => buildCoachAnalyticsRows(coachSites, analyticsSummaries, { preferEventSummaries }),
@@ -1320,6 +1574,10 @@ function CoachAnalyticsView({
     () => currentRows.find((row) => row.coachId === selectedCoachId) || null,
     [currentRows, selectedCoachId]
   );
+  const coachListTrendPoints = useMemo(
+    () => buildCoachListTrendPoints(filteredRows, coachChartRange),
+    [coachChartRange, filteredRows]
+  );
 
   function openCoachAnalytics(row: CoachAnalyticsRow) {
     setSelectedCoachId(row.coachId);
@@ -1344,34 +1602,62 @@ function CoachAnalyticsView({
       </p>
 
       <section className={styles.analyticsKpiGrid} aria-label="Coach analytics summary">
-        <AnalyticsKpiCard label="Total coaches" value={currentRows.length.toLocaleString()} />
+        <AnalyticsKpiCard
+          label="Total coaches"
+          sparkPoints={[
+            { label: "Filtered", value: filteredRows.length },
+            { label: "Current", value: currentRows.length }
+          ]}
+          value={currentRows.length.toLocaleString()}
+        />
         <AnalyticsKpiCard
           label="Paid only"
+          sparkPoints={buildFunnelCountSparkline(currentRows, "paid")}
           value={currentRows
             .filter((row) => row.hasPaidMasterclass && !row.hasFreeGuestLink)
             .length.toLocaleString()}
         />
         <AnalyticsKpiCard
           label="Free only"
+          sparkPoints={buildFunnelCountSparkline(currentRows, "free")}
           value={currentRows
             .filter((row) => row.hasFreeGuestLink && !row.hasPaidMasterclass)
             .length.toLocaleString()}
         />
         <AnalyticsKpiCard
           label="Both funnels"
+          sparkPoints={buildFunnelCountSparkline(currentRows, "both")}
           value={currentRows.filter((row) => row.combinedAvailable).length.toLocaleString()}
         />
         <AnalyticsKpiCard
           label="No funnel"
+          sparkPoints={buildFunnelCountSparkline(currentRows, "none")}
           value={currentRows
             .filter((row) => !row.hasPaidMasterclass && !row.hasFreeGuestLink)
             .length.toLocaleString()}
         />
         <AnalyticsKpiCard
           label="Needs attention"
+          sparkPoints={[
+            { label: "Clear", value: Math.max(0, currentRows.length - needsAttentionRows.length) },
+            { label: "Needs attention", value: needsAttentionRows.length }
+          ]}
           value={needsAttentionRows.length.toLocaleString()}
         />
       </section>
+
+      <InteractiveTrendChart
+        compareEnabled={coachChartCompareEnabled}
+        compareLabel="Clicks"
+        emptyLabel="No coach performance data available for the current filters yet."
+        onCompareToggle={setCoachChartCompareEnabled}
+        onRangeChange={setCoachChartRange}
+        points={coachListTrendPoints}
+        primaryLabel="Visits"
+        range={coachChartRange}
+        subtitle="Filtered coach list trend. Change filters to inspect different coach cohorts."
+        title="Coach performance movement"
+      />
 
       <section className={styles.analyticsFilters} aria-label="Coach analytics filters">
         <label>
@@ -1491,15 +1777,7 @@ function CoachAnalyticsView({
           filteredRows.map((row) => (
             <article className={styles.analyticsCoachCard} key={row.coachId}>
               <div className={styles.analyticsCoachIdentity}>
-                {row.photoUrl ? (
-                  <span
-                    aria-hidden="true"
-                    className={styles.analyticsAvatar}
-                    style={{ backgroundImage: `url(${row.photoUrl})` }}
-                  />
-                ) : (
-                  <span>{row.coachName[0]}</span>
-                )}
+                <CoachAvatar name={row.coachName} photoUrl={row.photoUrl} />
                 <div>
                   <h3>{row.coachName}</h3>
                   <p>{row.niche}</p>
@@ -1526,6 +1804,7 @@ function CoachAnalyticsView({
                   Click-through
                 </span>
               </div>
+              <MiniSparkline points={buildCoachSparklinePoints(row)} />
               <div className={styles.analyticsMetaGrid}>
                 <span>Best funnel: {row.bestFunnel}</span>
                 <span>Last activity: {row.combined.lastActivity}</span>
@@ -1576,11 +1855,16 @@ function CoachAnalyticsView({
               topRows.map((row, index) => (
                 <button key={row.coachId} onClick={() => openCoachAnalytics(row)} type="button">
                   <span>#{index + 1}</span>
-                  <strong>{row.coachName}</strong>
-                  <small>
-                    {row.bestFunnel} / {row.combined.visits.toLocaleString()} visits /{" "}
-                    {row.combined.conversionRate} click-through
-                  </small>
+                  <div className={styles.analyticsRankIdentity}>
+                    <CoachAvatar name={row.coachName} photoUrl={row.photoUrl} size="small" />
+                    <div>
+                      <strong>{row.coachName}</strong>
+                      <small>
+                        {row.bestFunnel} / {row.combined.visits.toLocaleString()} visits /{" "}
+                        {row.combined.conversionRate} click-through
+                      </small>
+                    </div>
+                  </div>
                 </button>
               ))
             ) : (
@@ -1600,8 +1884,13 @@ function CoachAnalyticsView({
             {needsAttentionRows.length > 0 ? (
               needsAttentionRows.map((row) => (
                 <button key={row.coachId} onClick={() => openCoachAnalytics(row)} type="button">
-                  <strong>{row.coachName}</strong>
-                  <span>{row.lowActivityReasons.join(" / ")}</span>
+                  <CoachAvatar name={row.coachName} photoUrl={row.photoUrl} size="small" />
+                  <div className={styles.analyticsRankIdentity}>
+                    <div>
+                      <strong>{row.coachName}</strong>
+                      <small>{row.lowActivityReasons.join(" / ")}</small>
+                    </div>
+                  </div>
                 </button>
               ))
             ) : (
@@ -1640,21 +1929,331 @@ function CoachAnalyticsView({
 function AnalyticsKpiCard({
   detail,
   label,
+  sparkPoints,
   tone = "neutral",
   value
 }: {
   detail?: string;
   label: string;
+  sparkPoints?: AnalyticsChartPoint[];
   tone?: "attention" | "neutral" | "success" | "warning";
   value: string;
 }) {
   return (
     <article className={styles.metricCard} data-tone={tone}>
-      <span>{label}</span>
-      <strong>{value}</strong>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+      {sparkPoints ? <MiniSparkline points={sparkPoints} /> : null}
       {detail ? <em>{detail}</em> : null}
     </article>
   );
+}
+
+function CoachAvatar({
+  name,
+  photoUrl,
+  size = "medium"
+}: {
+  name: string;
+  photoUrl?: string;
+  size?: "large" | "medium" | "small";
+}) {
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState("");
+  const cleanPhotoUrl = photoUrl?.trim();
+  const imageFailed = Boolean(cleanPhotoUrl && failedPhotoUrl === cleanPhotoUrl);
+
+  return (
+    <span aria-hidden="true" className={styles.coachAvatar} data-size={size}>
+      {cleanPhotoUrl && !imageFailed ? (
+        <img
+          alt=""
+          loading="lazy"
+          onError={() => setFailedPhotoUrl(cleanPhotoUrl)}
+          src={cleanPhotoUrl}
+        />
+      ) : (
+        <span>{getInitials(name)}</span>
+      )}
+    </span>
+  );
+}
+
+function MiniSparkline({ points }: { points: AnalyticsChartPoint[] }) {
+  const cleanPoints = points.filter((point) => Number.isFinite(point.value));
+  const hasActivity = cleanPoints.some((point) => point.value > 0);
+
+  if (cleanPoints.length < 2 || !hasActivity) {
+    return <span aria-hidden="true" className={styles.miniSparklineEmpty} />;
+  }
+
+  const width = 116;
+  const height = 38;
+  const maxValue = Math.max(1, ...cleanPoints.map((point) => point.value));
+  const coords = cleanPoints.map((point, index) => {
+    const x = cleanPoints.length === 1 ? width / 2 : (index / (cleanPoints.length - 1)) * width;
+    const y = height - (point.value / maxValue) * (height - 8) - 4;
+
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+
+  return (
+    <svg
+      aria-hidden="true"
+      className={styles.miniSparkline}
+      focusable="false"
+      viewBox={`0 0 ${width} ${height}`}
+    >
+      <polyline points={coords.join(" ")} />
+    </svg>
+  );
+}
+
+function InteractiveTrendChart({
+  compareEnabled,
+  compareLabel,
+  emptyLabel,
+  onCompareToggle,
+  onRangeChange,
+  points,
+  primaryLabel,
+  range,
+  subtitle,
+  title
+}: {
+  compareEnabled: boolean;
+  compareLabel: string;
+  emptyLabel: string;
+  onCompareToggle: (value: boolean) => void;
+  onRangeChange: (value: AnalyticsChartRangeId) => void;
+  points: AnalyticsChartPoint[];
+  primaryLabel: string;
+  range: AnalyticsChartRangeId;
+  subtitle: string;
+  title: string;
+}) {
+  const cleanPoints = points.filter((point) => Number.isFinite(point.value));
+  const hasActivity = cleanPoints.some(
+    (point) => point.value > 0 || (compareEnabled && (point.compareValue || 0) > 0)
+  );
+  const [activeIndex, setActiveIndex] = useState(() => Math.max(0, cleanPoints.length - 1));
+  const width = 640;
+  const height = 260;
+  const padding = {
+    bottom: 42,
+    left: 46,
+    right: 28,
+    top: 26
+  };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+  const values = cleanPoints.flatMap((point) =>
+    compareEnabled && typeof point.compareValue === "number"
+      ? [point.value, point.compareValue]
+      : [point.value]
+  );
+  const maxValue = Math.max(1, ...values);
+  const activePoint = cleanPoints[Math.min(activeIndex, cleanPoints.length - 1)];
+  const activeCoord = activePoint
+    ? getChartCoord(activePoint.value, Math.min(activeIndex, cleanPoints.length - 1), cleanPoints.length, {
+        maxValue,
+        padding,
+        plotHeight,
+        plotWidth
+      })
+    : null;
+  const primaryCoords = cleanPoints.map((point, index) =>
+    getChartCoord(point.value, index, cleanPoints.length, {
+      maxValue,
+      padding,
+      plotHeight,
+      plotWidth
+    })
+  );
+  const compareCoords =
+    compareEnabled && cleanPoints.some((point) => typeof point.compareValue === "number")
+      ? cleanPoints.map((point, index) =>
+          getChartCoord(point.compareValue || 0, index, cleanPoints.length, {
+            maxValue,
+            padding,
+            plotHeight,
+            plotWidth
+          })
+        )
+      : [];
+
+  function handleMouseMove(event: MouseEvent<SVGSVGElement>) {
+    if (cleanPoints.length < 2) return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const localX = ((event.clientX - rect.left) / rect.width) * width;
+    const nextIndex = primaryCoords.reduce(
+      (closest, coord, index) =>
+        Math.abs(coord.x - localX) < Math.abs(primaryCoords[closest].x - localX)
+          ? index
+          : closest,
+      0
+    );
+
+    setActiveIndex(nextIndex);
+  }
+
+  return (
+    <article className={styles.analyticsChartCard}>
+      <header className={styles.analyticsChartHeader}>
+        <div>
+          <p className={styles.kicker}>Interactive graph</p>
+          <h3>{title}</h3>
+          <span>{subtitle}</span>
+        </div>
+        <div className={styles.chartControls}>
+          <div className={styles.chartRangeTabs} role="tablist" aria-label={`${title} range`}>
+            {analyticsChartRangeOptions.map((option) => (
+              <button
+                aria-selected={range === option.value}
+                data-active={range === option.value ? "true" : "false"}
+                key={option.value}
+                onClick={() => onRangeChange(option.value)}
+                role="tab"
+                type="button"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <button
+            aria-pressed={compareEnabled}
+            className={styles.chartCompareToggle}
+            onClick={() => onCompareToggle(!compareEnabled)}
+            type="button"
+          >
+            Compare
+          </button>
+        </div>
+      </header>
+      {cleanPoints.length > 1 && hasActivity ? (
+        <div className={styles.chartFrame}>
+          <svg
+            aria-label={title}
+            focusable="false"
+            onMouseMove={handleMouseMove}
+            role="img"
+            viewBox={`0 0 ${width} ${height}`}
+          >
+            <g className={styles.chartGridLines}>
+              {[0, 1, 2, 3].map((line) => {
+                const y = padding.top + (plotHeight / 3) * line;
+                return <line key={line} x1={padding.left} x2={width - padding.right} y1={y} y2={y} />;
+              })}
+            </g>
+            {compareCoords.length > 1 ? (
+              <polyline className={styles.chartCompareLine} points={formatCoords(compareCoords)} />
+            ) : null}
+            <polygon
+              className={styles.chartArea}
+              points={`${formatCoords(primaryCoords)} ${width - padding.right},${height - padding.bottom} ${padding.left},${height - padding.bottom}`}
+            />
+            <polyline className={styles.chartPrimaryLine} points={formatCoords(primaryCoords)} />
+            {primaryCoords.map((coord, index) => (
+              <circle
+                className={styles.chartPoint}
+                data-active={index === activeIndex ? "true" : "false"}
+                key={`${cleanPoints[index]?.label || index}-${index}`}
+                r={index === activeIndex ? 5.5 : 3.5}
+                cx={coord.x}
+                cy={coord.y}
+              />
+            ))}
+            <g className={styles.chartAxisLabels}>
+              {cleanPoints.map((point, index) => {
+                const coord = primaryCoords[index];
+                return (
+                  <text key={point.label} x={coord.x} y={height - 12}>
+                    {point.label}
+                  </text>
+                );
+              })}
+            </g>
+          </svg>
+          {activePoint && activeCoord ? (
+            <div
+              className={styles.chartTooltip}
+              style={
+                {
+                  "--tooltip-left": `${Math.min(84, Math.max(16, (activeCoord.x / width) * 100))}%`,
+                  "--tooltip-top": `${Math.min(78, Math.max(18, (activeCoord.y / height) * 100))}%`,
+                  "--tooltip-transform":
+                    activeCoord.y < height * 0.35
+                      ? "translate(-50%, 14%)"
+                      : "translate(-50%, -112%)"
+                } as CSSProperties
+              }
+            >
+              <strong>{activePoint.label}</strong>
+              <span>
+                {primaryLabel}: {activePoint.value.toLocaleString()}
+              </span>
+              {compareEnabled && typeof activePoint.compareValue === "number" ? (
+                <span>
+                  {compareLabel}: {activePoint.compareValue.toLocaleString()}
+                </span>
+              ) : null}
+              {activePoint.detail ? <em>{activePoint.detail}</em> : null}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div className={styles.chartEmptyState}>{emptyLabel}</div>
+      )}
+      <footer className={styles.chartLegend}>
+        <span data-series="primary">{primaryLabel}</span>
+        {compareEnabled ? <span data-series="compare">{compareLabel}</span> : null}
+      </footer>
+    </article>
+  );
+}
+
+function getChartCoord(
+  value: number,
+  index: number,
+  total: number,
+  {
+    maxValue,
+    padding,
+    plotHeight,
+    plotWidth
+  }: {
+    maxValue: number;
+    padding: {
+      bottom: number;
+      left: number;
+      right: number;
+      top: number;
+    };
+    plotHeight: number;
+    plotWidth: number;
+  }
+) {
+  const x =
+    total === 1 ? padding.left + plotWidth / 2 : padding.left + (index / (total - 1)) * plotWidth;
+  const y = padding.top + plotHeight - (Math.max(0, value) / maxValue) * plotHeight;
+
+  return { x, y };
+}
+
+function formatCoords(coords: Array<{ x: number; y: number }>) {
+  return coords.map((coord) => `${coord.x.toFixed(1)},${coord.y.toFixed(1)}`).join(" ");
+}
+
+function getInitials(name: string) {
+  const parts = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+
+  return (parts.map((part) => part[0]).join("") || "YW").toUpperCase();
 }
 
 function AnalyticsWidget({
@@ -1821,9 +2420,15 @@ function CoachAnalyticsDetailPanel({
     useState<AdminAiAnalyticsPayload["usageEstimate"]>(undefined);
   const [insights, setInsights] = useState<string[]>([]);
   const [reportFormat, setReportFormat] = useState<"admin" | "detailed" | "whatsapp">("whatsapp");
+  const [detailChartCompareEnabled, setDetailChartCompareEnabled] = useState(true);
+  const [detailChartRange, setDetailChartRange] = useState<AnalyticsChartRangeId>("max");
   const analyticsRangeLabel =
     analyticsRangeOptions.find((option) => option.value === analyticsRange)?.label ||
     analyticsRange;
+  const coachTrendPoints = useMemo(
+    () => buildCoachTrendPoints(coach, detailChartRange),
+    [coach, detailChartRange]
+  );
   const csvReportText = useMemo(
     () => buildCoachCsvReport(coach, insights, analyticsRangeLabel),
     [analyticsRangeLabel, coach, insights]
@@ -1974,15 +2579,7 @@ function CoachAnalyticsDetailPanel({
     <div className={styles.analyticsDetail}>
       <header className={styles.analyticsDetailHeader}>
         <div className={styles.analyticsCoachIdentity}>
-          {coach.photoUrl ? (
-            <span
-              aria-hidden="true"
-              className={styles.analyticsAvatar}
-              style={{ backgroundImage: `url(${coach.photoUrl})` }}
-            />
-          ) : (
-            <span>{coach.coachName[0]}</span>
-          )}
+          <CoachAvatar name={coach.coachName} photoUrl={coach.photoUrl} size="large" />
           <div>
             <p className={styles.kicker}>Coach-wise analytics</p>
             <h3>{coach.coachName}</h3>
@@ -2084,6 +2681,19 @@ function CoachAnalyticsDetailPanel({
         </article>
       </section>
 
+      <InteractiveTrendChart
+        compareEnabled={detailChartCompareEnabled}
+        compareLabel="Clicks / funnel signal"
+        emptyLabel="No stored coach trend data yet."
+        onCompareToggle={setDetailChartCompareEnabled}
+        onRangeChange={setDetailChartRange}
+        points={coachTrendPoints}
+        primaryLabel="Visits"
+        range={detailChartRange}
+        subtitle="Uses the coach's stored Website Builder analytics and paid/free aggregate events."
+        title={`${coach.coachName} performance trend`}
+      />
+
       {coach.availableTabs.length > 0 ? (
         <div className={styles.analyticsTabs} role="tablist" aria-label="Coach analytics tabs">
           {coach.availableTabs.map((tab) => (
@@ -2121,10 +2731,29 @@ function CombinedAnalyticsTab({ coach }: { coach: CoachAnalyticsRow }) {
   return (
     <section className={styles.analyticsTabPanel}>
       <div className={styles.analyticsKpiGrid}>
-        <AnalyticsKpiCard label="Combined visits" value={coach.combined.visits.toLocaleString()} />
-        <AnalyticsKpiCard label="Combined clicks" value={coach.combined.clicks.toLocaleString()} />
+        <AnalyticsKpiCard
+          label="Combined visits"
+          sparkPoints={buildCoachSparklinePoints(coach)}
+          value={coach.combined.visits.toLocaleString()}
+        />
+        <AnalyticsKpiCard
+          label="Combined clicks"
+          sparkPoints={[
+            { label: "Free clicks", value: coach.freeMetrics.clicks },
+            { label: "Paid clicks", value: coach.paidMetrics.clicks },
+            { label: "Combined clicks", value: coach.combined.clicks }
+          ]}
+          value={coach.combined.clicks.toLocaleString()}
+        />
         <AnalyticsKpiCard label="Click-through rate" value={coach.combined.conversionRate} />
-        <AnalyticsKpiCard label="Best funnel" value={coach.bestFunnel} />
+        <AnalyticsKpiCard
+          label="Best funnel"
+          sparkPoints={[
+            { label: "Free", value: coach.freeMetrics.visits },
+            { label: "Paid", value: coach.paidMetrics.visits }
+          ]}
+          value={coach.bestFunnel}
+        />
       </div>
       <ComparisonBars
         items={[
@@ -2146,21 +2775,55 @@ function PaidAnalyticsTab({ coach }: { coach: CoachAnalyticsRow }) {
   return (
     <section className={styles.analyticsTabPanel}>
       <div className={styles.analyticsKpiGrid}>
-        <AnalyticsKpiCard label="Landing visits" value={metrics.visits.toLocaleString()} />
+        <AnalyticsKpiCard
+          label="Landing visits"
+          sparkPoints={[
+            { label: "Landing", value: metrics.visits },
+            { label: "Register", value: metrics.registerClicks },
+            { label: "Payment", value: metrics.paymentButtonClicks }
+          ]}
+          value={metrics.visits.toLocaleString()}
+        />
         <AnalyticsKpiCard
           label="Register CTA clicks"
+          sparkPoints={[
+            { label: "Visits", value: metrics.visits },
+            { label: "Register clicks", value: metrics.registerClicks }
+          ]}
           value={metrics.registerClicks.toLocaleString()}
         />
         <AnalyticsKpiCard
           label="Payment clicks"
+          sparkPoints={[
+            { label: "Register", value: metrics.registerClicks },
+            { label: "Payment click", value: metrics.paymentButtonClicks }
+          ]}
           value={metrics.paymentButtonClicks.toLocaleString()}
         />
-        <AnalyticsKpiCard label="Payment success" value={metrics.paymentSuccess.toLocaleString()} />
+        <AnalyticsKpiCard
+          label="Payment success"
+          sparkPoints={[
+            { label: "Initiated", value: metrics.paymentInitiated },
+            { label: "Success", value: metrics.paymentSuccess }
+          ]}
+          value={metrics.paymentSuccess.toLocaleString()}
+        />
         <AnalyticsKpiCard
           label="Success page views"
+          sparkPoints={[
+            { label: "Payment success", value: metrics.paymentSuccess },
+            { label: "Success page", value: metrics.successPageViews }
+          ]}
           value={metrics.successPageViews.toLocaleString()}
         />
-        <AnalyticsKpiCard label="WhatsApp clicks" value={metrics.whatsappClicks.toLocaleString()} />
+        <AnalyticsKpiCard
+          label="WhatsApp clicks"
+          sparkPoints={[
+            { label: "Success page", value: metrics.successPageViews },
+            { label: "WhatsApp", value: metrics.whatsappClicks }
+          ]}
+          value={metrics.whatsappClicks.toLocaleString()}
+        />
       </div>
       <FunnelSteps
         steps={[
@@ -2187,20 +2850,47 @@ function FreeAnalyticsTab({ coach }: { coach: CoachAnalyticsRow }) {
   return (
     <section className={styles.analyticsTabPanel}>
       <div className={styles.analyticsKpiGrid}>
-        <AnalyticsKpiCard label="Coach page visits" value={metrics.visits.toLocaleString()} />
+        <AnalyticsKpiCard
+          label="Coach page visits"
+          sparkPoints={[
+            { label: "Visits", value: metrics.visits },
+            { label: "Register", value: metrics.registerClicks },
+            { label: "Google Form", value: metrics.googleFormClicks }
+          ]}
+          value={metrics.visits.toLocaleString()}
+        />
         <AnalyticsKpiCard
           label="Register CTA clicks"
+          sparkPoints={[
+            { label: "Visits", value: metrics.visits },
+            { label: "Register", value: metrics.registerClicks }
+          ]}
           value={metrics.registerClicks.toLocaleString()}
         />
         <AnalyticsKpiCard
           label="Google Form opens"
+          sparkPoints={[
+            { label: "Register", value: metrics.registerClicks },
+            { label: "Google Form", value: metrics.googleFormClicks }
+          ]}
           value={metrics.googleFormClicks.toLocaleString()}
         />
         <AnalyticsKpiCard
           label="WhatsApp/contact clicks"
+          sparkPoints={[
+            { label: "Register", value: metrics.registerClicks },
+            { label: "WhatsApp", value: metrics.whatsappClicks }
+          ]}
           value={metrics.whatsappClicks.toLocaleString()}
         />
-        <AnalyticsKpiCard label="Video plays" value={metrics.videoPlays.toLocaleString()} />
+        <AnalyticsKpiCard
+          label="Video plays"
+          sparkPoints={[
+            { label: "Visits", value: metrics.visits },
+            { label: "Video", value: metrics.videoPlays }
+          ]}
+          value={metrics.videoPlays.toLocaleString()}
+        />
         <AnalyticsKpiCard label="Click-through rate" value={metrics.conversionRate} />
       </div>
       <FunnelSteps

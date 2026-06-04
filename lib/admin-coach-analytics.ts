@@ -264,7 +264,7 @@ function buildCoachAnalyticsRow(
     niche: primarySite?.niche || platformCoach?.guestProfile.niche || "Not configured",
     paidMetrics,
     performanceBand: getPerformanceBand(combined.visits, combined.conversionRate),
-    photoUrl: primarySite?.photoUrl || platformCoach?.guestProfile.imageSrc || "",
+    photoUrl: resolveCoachPhotoUrl(primarySite, platformCoach?.guestProfile.imageSrc),
     publicLink: primarySite?.publicUrl || "",
     region: getFirstAvailableValue(
       options.preferEventSummaries
@@ -297,6 +297,30 @@ function buildCoachAnalyticsRow(
 
 function isCurrentCoachSite(site: CoachSiteRecord) {
   return site.status !== "archived" && site.status !== "removed";
+}
+
+function resolveCoachPhotoUrl(site?: CoachSiteRecord, platformImageSrc = "") {
+  const mediaSite = site as
+    | (CoachSiteRecord & {
+        heroImageUrl?: string;
+        media?: {
+          imageUrl?: string;
+        };
+        profilePhotoUrl?: string;
+      })
+    | undefined;
+
+  return getFirstAvailableValue(
+    [
+      mediaSite?.heroImageUrl,
+      site?.photoUrl,
+      mediaSite?.profilePhotoUrl,
+      site?.logoUrl,
+      mediaSite?.media?.imageUrl,
+      platformImageSrc
+    ],
+    ""
+  );
 }
 
 function buildFreeMetrics(

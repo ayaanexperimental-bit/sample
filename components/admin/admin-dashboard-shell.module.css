@@ -405,6 +405,12 @@
   padding: 1rem;
 }
 
+.metricCard > div {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
 .metricCard span {
   color: #655061;
   font-size: 0.78rem;
@@ -2548,6 +2554,258 @@
   font-weight: 850;
 }
 
+.analyticsChartCard {
+  display: grid;
+  gap: 0.85rem;
+  min-width: 0;
+  border: 1px solid rgb(231 214 229);
+  border-radius: 1.05rem;
+  background:
+    radial-gradient(circle at 12% 0%, rgb(255 226 239 / 0.72), transparent 13rem),
+    radial-gradient(circle at 94% 12%, rgb(224 216 255 / 0.58), transparent 13rem),
+    linear-gradient(145deg, rgb(255 255 255 / 0.96), rgb(250 250 255 / 0.88));
+  box-shadow: 0 1.1rem 2.8rem rgb(31 25 43 / 0.07);
+  padding: 1rem;
+}
+
+.analyticsChartHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.analyticsChartHeader h3 {
+  margin: 0;
+  color: #1d2939;
+  font-size: clamp(1.05rem, 1.4vw, 1.3rem);
+  line-height: 1.15;
+}
+
+.analyticsChartHeader span {
+  display: block;
+  margin-top: 0.25rem;
+  color: #75606c;
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.chartControls {
+  display: grid;
+  justify-items: end;
+  gap: 0.55rem;
+  min-width: min(100%, 18rem);
+}
+
+.chartRangeTabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.3rem;
+}
+
+.chartRangeTabs button,
+.chartCompareToggle {
+  min-height: 2rem;
+  border: 1px solid rgb(230 209 224);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.82);
+  color: rgb(83 60 81);
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 950;
+  padding: 0.35rem 0.6rem;
+}
+
+.chartRangeTabs button[data-active="true"],
+.chartCompareToggle[aria-pressed="true"] {
+  border-color: rgb(37 45 78 / 0.34);
+  background: linear-gradient(135deg, #252d4e, #c85b91);
+  color: white;
+  box-shadow: 0 0.65rem 1.3rem rgb(200 91 145 / 0.18);
+}
+
+.chartFrame {
+  position: relative;
+  min-height: 17rem;
+  overflow: visible;
+  border: 1px solid rgb(238 223 234);
+  border-radius: 0.95rem;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.8), rgb(255 248 252 / 0.62)),
+    repeating-linear-gradient(
+      90deg,
+      rgb(29 41 57 / 0.025) 0,
+      rgb(29 41 57 / 0.025) 1px,
+      transparent 1px,
+      transparent 4.8rem
+    );
+}
+
+.chartFrame svg {
+  width: 100%;
+  height: 100%;
+  min-height: 17rem;
+  display: block;
+}
+
+.chartGridLines line {
+  stroke: rgb(99 76 98 / 0.11);
+  stroke-width: 1;
+}
+
+.chartArea {
+  fill: rgb(200 91 145 / 0.12);
+}
+
+.chartPrimaryLine,
+.chartCompareLine {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chartPrimaryLine {
+  stroke: #c85b91;
+  stroke-width: 4;
+  filter: drop-shadow(0 0.4rem 0.65rem rgb(200 91 145 / 0.18));
+}
+
+.chartCompareLine {
+  stroke: #252d4e;
+  stroke-dasharray: 8 8;
+  stroke-width: 2.5;
+  opacity: 0.78;
+}
+
+.chartPoint {
+  fill: #ffffff;
+  stroke: #c85b91;
+  stroke-width: 3;
+  transition:
+    r 160ms ease,
+    stroke-width 160ms ease;
+}
+
+.chartPoint[data-active="true"] {
+  stroke-width: 4;
+  filter: drop-shadow(0 0.35rem 0.65rem rgb(200 91 145 / 0.28));
+}
+
+.chartAxisLabels text {
+  fill: rgb(107 86 102);
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-anchor: middle;
+}
+
+.chartTooltip {
+  position: absolute;
+  left: var(--tooltip-left);
+  top: var(--tooltip-top);
+  z-index: 3;
+  display: grid;
+  gap: 0.2rem;
+  min-width: 10rem;
+  max-width: min(17rem, 70vw);
+  border: 1px solid rgb(255 255 255 / 0.72);
+  border-radius: 0.85rem;
+  background: rgb(255 255 255 / 0.94);
+  box-shadow: 0 1rem 2.2rem rgb(31 25 43 / 0.16);
+  color: #2b2030;
+  padding: 0.72rem 0.8rem;
+  pointer-events: none;
+  transform: var(--tooltip-transform, translate(-50%, -112%));
+}
+
+.chartTooltip strong,
+.chartTooltip span,
+.chartTooltip em {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.chartTooltip strong {
+  font-size: 0.82rem;
+}
+
+.chartTooltip span,
+.chartTooltip em {
+  color: #755c6c;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.chartLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.chartLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #755c6c;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.chartLegend span::before {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: #c85b91;
+  content: "";
+}
+
+.chartLegend span[data-series="compare"]::before {
+  background: #252d4e;
+}
+
+.chartEmptyState {
+  display: grid;
+  min-height: 12rem;
+  place-items: center;
+  border: 1px dashed rgb(214 194 209);
+  border-radius: 0.9rem;
+  background: rgb(255 255 255 / 0.68);
+  color: #75606c;
+  font-size: 0.88rem;
+  font-weight: 850;
+  text-align: center;
+  padding: 1rem;
+}
+
+.miniSparkline {
+  width: 100%;
+  max-width: 8.4rem;
+  height: 2.4rem;
+  justify-self: end;
+}
+
+.miniSparkline polyline {
+  fill: none;
+  stroke: #c85b91;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+  filter: drop-shadow(0 0.32rem 0.45rem rgb(200 91 145 / 0.2));
+}
+
+.miniSparklineEmpty {
+  display: block;
+  width: min(100%, 8.4rem);
+  height: 2.4rem;
+  justify-self: end;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, transparent, rgb(117 96 108 / 0.08), transparent),
+    rgb(255 255 255 / 0.48);
+}
+
 .analyticsFilters {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -2646,6 +2904,62 @@
 .analyticsAvatar {
   background-position: center;
   background-size: cover;
+}
+
+.coachAvatar {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.86);
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 30% 12%, rgb(255 255 255 / 0.9), transparent 1.7rem),
+    linear-gradient(135deg, rgb(255 229 240), rgb(235 232 255));
+  box-shadow:
+    0 0.65rem 1.5rem rgb(80 28 54 / 0.11),
+    inset 0 1px 0 rgb(255 255 255 / 0.88);
+  color: rgb(98 42 78);
+  font-size: 0.86rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+}
+
+.coachAvatar[data-size="small"] {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 0.82rem;
+  font-size: 0.74rem;
+}
+
+.coachAvatar[data-size="large"] {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 1.25rem;
+  font-size: 1rem;
+}
+
+.coachAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.coachAvatar span {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.tableCoachCell {
+  display: inline-grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 12rem;
 }
 
 .analyticsCoachIdentity h3,
@@ -2777,11 +3091,34 @@
 }
 
 .analyticsRankList small,
-.analyticsAttentionList span {
-  grid-column: 2;
+.analyticsAttentionList span,
+.analyticsRankIdentity small {
   min-width: 0;
   color: rgb(106 84 101);
   overflow-wrap: anywhere;
+}
+
+.analyticsRankIdentity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.58rem;
+  min-width: 0;
+}
+
+.analyticsRankIdentity > div {
+  min-width: 0;
+}
+
+.analyticsRankIdentity strong,
+.analyticsRankIdentity small {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.analyticsAttentionList .analyticsRankIdentity {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .analyticsDetail {
@@ -2796,6 +3133,10 @@
   gap: 1rem;
   border-bottom: 1px solid rgb(242 221 232);
   padding-bottom: 1rem;
+}
+
+.analyticsDetailHeader .analyticsCoachIdentity {
+  grid-template-columns: 4rem minmax(0, 1fr);
 }
 
 .analyticsDetailActions {
@@ -3024,8 +3365,18 @@
   }
 
   .header,
-  .sectionHeader {
+  .sectionHeader,
+  .analyticsChartHeader {
     display: grid;
+  }
+
+  .chartControls {
+    justify-items: start;
+    min-width: 0;
+  }
+
+  .chartRangeTabs {
+    justify-content: flex-start;
   }
 
   .headerActions {
@@ -3161,6 +3512,22 @@
   .analyticsDetailActions,
   .analyticsCardActions {
     display: grid;
+  }
+
+  .analyticsDetailHeader .analyticsCoachIdentity,
+  .analyticsCoachIdentity,
+  .analyticsRankIdentity {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .chartFrame,
+  .chartFrame svg {
+    min-height: 13.5rem;
+  }
+
+  .chartTooltip {
+    max-width: 82vw;
+    transform: var(--tooltip-transform, translate(-50%, -104%));
   }
 
   .analyticsDetailActions label {
