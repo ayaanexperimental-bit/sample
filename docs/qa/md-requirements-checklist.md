@@ -3,20 +3,20 @@
 Test date: 2026-06-05
 Production URL tested: https://ywcoach.com
 Authenticated admin test: completed through existing production session. Gmail OTP value was not recorded in this file.
-Latest deployment tested: https://c701da4b.ywcoach.pages.dev and https://ywcoach.com
+Latest deployments tested: https://c701da4b.ywcoach.pages.dev, https://1d6159d6.ywcoach.pages.dev, https://bdf537c4.ywcoach.pages.dev, and https://ywcoach.com
 
 ## Summary
 
-Total requirement groups found: 28
-Completed and tested: 22
+Total requirement groups found: 29
+Completed and tested: 24
 Partial or blocked: 6
-Critical production bugs fixed in this pass: 1
+Critical production bugs fixed in this pass: 3
 
 ## Checklist
 
 | Source | Requirement group | Implemented | Tested | Result | Issue found | Fix applied | Remaining blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| INSTR.MD | Admin, builder, preview, and public pages must stay smooth without redesign | Partial | Yes | Partial | Full performance matrix still needs repeated long-scroll checks across all breakpoints after every visual edit. | Current admin pages show no mobile horizontal overflow in tested viewport. | Full 320/375/390/414/768/1024 matrix is ongoing, not complete in this pass. |
+| INSTR.MD | Admin, builder, preview, and public pages must stay smooth without redesign | Partial | Yes | Partial | Public breakpoint sweep initially found paid support fallback horizontal overflow on 320-414px. | Fixed server-rendered paid support fallback box sizing and long-code wrapping; production retest passed. | Full authenticated admin breakpoint matrix is still partial; production admin mobile section test passed. |
 | INSTR.MD | Animations should use transform/opacity, reduce heavy blur/glow on mobile, avoid setState on scroll | Yes | Code reviewed | Pass | No new heavy animation was added in this pass. | No code change needed. | None found in this pass. |
 | INSTR.MD | Website Creator preview updates should be debounced/memoized and not regenerate every keystroke | Partial | Code reviewed | Partial | Deep creator publish flow was not executed with fake production coach data. | Existing creator code keeps generation action-driven; no fake production coach created. | Live AI/R2 creator test is intentionally reserved for real coach creation. |
 | INSTR.MD | Run lint, type-check, build after edits | Yes | Yes | Pass | Initial lint failed on setState-in-effect. | Replaced effect-based portal readiness with a render-time document guard. | None. |
@@ -42,13 +42,15 @@ Critical production bugs fixed in this pass: 1
 | admin coach analystics.MD | Main list rows show photo, name, niche, region, funnel badges, status, visits, clicks, CTR, best funnel, last activity, source, actions | Yes | Yes | Pass | None. | Production Coach Analytics row shows the required fields and actions. | None. |
 | admin coach analystics.MD | Manage opens management/edit action; Open Site opens public URL or disabled state | Yes | Partial | Partial | Manage routing/action tested conceptually; destructive edits not performed. | Open Site button exists. | Full manage/edit flow for real coach should be tested during real content update. |
 | admin coach analystics.MD | Analytics must be admin-only and not expose private data | Yes | Yes | Pass | None. | Paid manage modal hides private WhatsApp and raw payment URL; OTP gate present. | None. |
-| follow this.md | Production admin login and route access must be usable | Yes | Yes | Pass | Admin `YW-ERR-404` was previously reported. | Earlier fix deployed `app/not-found.tsx` admin redirect guard; this pass confirms admin opens. | None. |
+| follow this.md | Production admin login and route access must be usable | Yes | Yes | Pass | Admin `YW-ERR-404` was previously reported. Correct lowercase routes worked, but uppercase/common aliases like `/Admin/Dashboard`, `/admin-panel`, and `/dashboard` could still hit route fallback. | Added server-side canonical admin redirects in Cloudflare Pages middleware; production browser and HTTP checks confirm aliases land on admin dashboard/login without `YW-ERR-404`. | None. |
+| follow this.md | Error/Contact Support fallback must be mobile-safe, copyable, and not expose technical details | Yes | Yes | Pass | Paid masterclass fallback pages had horizontal overflow on small phones because the card width plus padding exceeded viewport width. | Added border-box sizing, hidden horizontal overflow, and long-reference wrapping in `paid-funnel-support.ts`; production 320/375/390/414/768/1440 retest passed. | None. |
 | follow this.md | Full Website Creator draft/publish/public URL production flow | Partial | No | Partial | Source allows QA coach creation but also says do not pollute production; no fake production coach created in this pass. | No code change in this pass. | Needs a real approved coach entry or explicit QA cleanup plan before running publish tests. |
 | follow this.md | Public coach template audit for builder-created production sites | Partial | Yes | Partial | Current live builder data has Gyana only. | Public/admin references treat Gyana as real production record. | More builder-created coach sites needed for full multi-site template comparison. |
 
 ## Production Evidence
 
 - Admin dashboard opened without `YW-ERR-404`.
+- Admin route recovery tested: `/Admin/Dashboard`, `/admin-panel`, `/dashboard`, `/admin/home`, and `/admin/dashboard/index` now redirect to the canonical admin dashboard/login flow without `YW-ERR-404`.
 - Admin mobile nav was tested through Menu for Overview, Coach Sites, Coach Analytics, Top Performers, Paid Masterclass Links/Settings, Error Reports, Backup/Cleanup, and Settings.
 - No horizontal overflow was detected in the tested mobile-width admin viewport.
 - Coach Sites shows Gyana image/avatar.
@@ -56,6 +58,10 @@ Critical production bugs fixed in this pass: 1
 - Coach Analytics detail dialog is visible after the portal fix and includes AI/report/export controls.
 - Paid Masterclass Manage dialog is visible after the portal fix, includes OTP-protected private WhatsApp reveal and OTP-protected payment link update, and does not expose private URLs.
 - Error Reports cleanup dialog is visible after the portal fix and includes the required irreversible-confirmation text and cleanup options.
+- Production public breakpoint sweep covered coach page, paid fallback, success fallback, and template preview across 320/375/390/414/mobile-landscape/768/834/1024/1440.
+- Normal coach page and template preview passed all production breakpoint checks: 200 status, no horizontal overflow, no support fallback, hero/media visible early, CTA visible early.
+- Paid and success fallback routes correctly returned 403 with visible `YW-ERR-5003`, Contact Support, and Go Back Home; after the fallback CSS fix they have no horizontal overflow on 320/375/390/414/768/1440.
+- Local preview pass covered coach page, template preview, and paid page across 320/768/1440 with no horizontal overflow, no unexpected support fallback, hero/media present, and CTA visible.
 
 Screenshot artifacts:
 
@@ -70,6 +76,9 @@ Screenshot artifacts:
 - `artifacts/md-compliance/production-coach-analytics-detail-after-fix.png`
 - `artifacts/md-compliance/production-paid-manage-after-fix.png`
 - `artifacts/md-compliance/production-error-cleanup-after-fix-scoped.png`
+- `artifacts/md-compliance/breakpoints/production-breakpoint-results.json`
+- `artifacts/md-compliance/breakpoints-after-fallback-fix/results.json`
+- `artifacts/md-compliance/local-preview/results.json`
 
 ## Commands Run
 
@@ -81,6 +90,9 @@ Screenshot artifacts:
 - `pnpm build:pages-functions`
 - `pnpm run deploy`
 - Production browser UI checks through https://ywcoach.com/admin/dashboard
+- Production admin route alias checks for `/Admin/Dashboard`, `/admin-panel`, `/dashboard`, `/admin/home`, and `/admin/dashboard/index`
+- Production Playwright breakpoint sweep for public routes
+- Local Next preview breakpoint sweep on `127.0.0.1:4182`
 
 ## Build Results
 
@@ -98,4 +110,3 @@ Screenshot artifacts:
 3. Full Website Creator publish journey should be tested with a real approved coach or a clearly labeled QA coach plus cleanup plan.
 4. More real coach records are needed to visually prove paid-only, free-only, and no-funnel states in production without adding fake data.
 5. Complete performance matrix across every listed breakpoint remains a recurring QA task after each visual change.
-

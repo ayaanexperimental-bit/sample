@@ -47,6 +47,13 @@ const PUBLIC_ADMIN_PAGE_PATHS = new Set([
 ]);
 
 const PROTECTED_ADMIN_PAGE_PATHS = new Set(["/admin/dashboard"]);
+const ADMIN_ROUTE_ALIASES = new Map([
+  ["/admin-panel", "/admin/dashboard"],
+  ["/adminpanel", "/admin/dashboard"],
+  ["/dashboard", "/admin/dashboard"],
+  ["/admin/home", "/admin/dashboard"],
+  ["/admin/dashboard/index", "/admin/dashboard"]
+]);
 
 const PUBLIC_PAGE_PATHS = new Set([
   ...PUBLIC_ADMIN_PAGE_PATHS,
@@ -63,6 +70,20 @@ const PUBLIC_PAGE_PATHS = new Set([
 export async function onRequest(context: PagesContext) {
   const url = new URL(context.request.url);
   const pathname = normalizePathname(url.pathname);
+  const adminRedirect = getCanonicalAdminRedirect(pathname);
+
+  if (adminRedirect && adminRedirect !== pathname) {
+    const redirectUrl = new URL(context.request.url);
+    redirectUrl.pathname = adminRedirect;
+
+    return new Response(null, {
+      status: 302,
+      headers: {
+        ...NO_STORE_HEADERS,
+        location: redirectUrl.toString()
+      }
+    });
+  }
 
   if (isStaticOrApiPath(pathname)) {
     return context.next();
@@ -231,4 +252,18 @@ function isPublicCoachPagePath(pathname: string) {
 
 function isPageLikePath(pathname: string) {
   return pathname !== "/" && !isStaticOrApiPath(pathname);
+}
+
+function getCanonicalAdminRedirect(pathname: string) {
+  const lowerPathname = pathname.toLowerCase();
+
+  if (ADMIN_ROUTE_ALIASES.has(lowerPathname)) {
+    return ADMIN_ROUTE_ALIASES.get(lowerPathname) || null;
+  }
+
+  if (lowerPathname === "/admin" || lowerPathname.startsWith("/admin/")) {
+    return lowerPathname;
+  }
+
+  return null;
 }

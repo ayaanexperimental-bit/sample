@@ -196,7 +196,19 @@ function renderPaidFunnelSupportHtml({
         <meta name="robots" content="noindex,nofollow" />
         <title>Paid Masterclass Support | YW Coach</title>
         <style>
+          *,
+          *::before,
+          *::after {
+            box-sizing: border-box;
+          }
+          html {
+            width: 100%;
+            overflow-x: hidden;
+          }
           body {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
             margin: 0;
             min-height: 100vh;
             display: grid;
@@ -211,6 +223,8 @@ function renderPaidFunnelSupportHtml({
           }
           main {
             width: min(92vw, 36rem);
+            max-width: 100%;
+            overflow-wrap: anywhere;
             border: 1px solid rgba(158, 54, 109, 0.18);
             border-radius: 1.25rem;
             background: rgba(255, 255, 255, 0.86);
@@ -235,6 +249,7 @@ function renderPaidFunnelSupportHtml({
             font-size: 1rem;
             line-height: 1.62;
             margin: 0 0 1rem;
+            overflow-wrap: anywhere;
           }
           .support {
             border: 1px solid rgba(190, 24, 93, 0.14);
@@ -255,6 +270,7 @@ function renderPaidFunnelSupportHtml({
           .code {
             display: inline-flex;
             align-items: center;
+            max-width: 100%;
             border: 1px solid rgba(190, 24, 93, 0.18);
             border-radius: 999px;
             background: white;
@@ -263,7 +279,9 @@ function renderPaidFunnelSupportHtml({
             font: inherit;
             font-weight: 900;
             letter-spacing: 0.04em;
+            overflow-wrap: anywhere;
             padding: 0.7rem 0.9rem;
+            white-space: normal;
           }
           .actions {
             display: flex;
