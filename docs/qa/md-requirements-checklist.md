@@ -8,14 +8,16 @@ Latest deployments tested: https://c701da4b.ywcoach.pages.dev, https://1d6159d6.
 ## Summary
 
 Total requirement groups found: 31
-Completed and tested: 26
-Partial or blocked: 5
+Completed and tested: 27
+Partial or blocked: 4
 Critical production bugs fixed in this pass: 4
 
 ## Latest Verification Addendum
 
 - 2026-06-05: Fixed and deployed admin route recovery for `/admin_panel` plus related admin aliases. Production Browser verification confirmed `/admin/dashboard`, `/admin_panel`, `/admin-panel`, `/admin-dashboard`, and `/dashboard` all land on the authenticated Admin Dashboard without `YW-ERR-404`.
 - 2026-06-05: Added admin-maintenance regression coverage proving analytics backup produces both CSV and XLS payloads, stores both formats, exposes protected CSV/XLS download URLs, reads active admin recipients from the Admin DB role list, and blocks cleanup when active-admin email notification is not configured or not successful.
+- 2026-06-05: Re-tested production Coach Analytics in the authenticated Browser session. Main page shows the coach list/table, View Analytics opens the detailed panel with photo, report tools, AI summary, Combined/Paid/Free tabs, CSV and Excel controls; Manage moves to Coach Sites without `YW-ERR-404`; mobile 390px navigation reaches Coach Analytics with no horizontal overflow.
+- 2026-06-05: Replaced Coach Analytics `Open Site` popup button behavior with a real `target="_blank"` public-site link so the action is reliable and accessible while keeping disabled behavior for coaches without public URLs.
 - Commands verified in this addendum: `pnpm lint`, `pnpm typecheck`, `pnpm test:admin-security`, `pnpm build`, and `pnpm build:pages-functions`.
 
 ## Checklist
@@ -46,7 +48,7 @@ Critical production bugs fixed in this pass: 4
 | ROBUST ADMIN PANEL--UPDATED.MD | No fake/demo data in production analytics | Yes | Code/UI reviewed | Pass | Old QA docs still contain historic notes but production UI says live records/empty values. | No fake production data introduced. | Historical docs can be updated separately if desired. |
 | admin coach analystics.MD | Universal funnel detection: paid only, free only, both, none | Yes | Yes | Pass | Current live production has one coach with both funnels. | UI shows dynamic counts and Combined/Paid/Free tabs for Gyana. | Need more real coaches to visually test paid-only/free-only/none states without fake data. |
 | admin coach analystics.MD | Main list rows show photo, name, niche, region, funnel badges, status, visits, clicks, CTR, best funnel, last activity, source, actions | Yes | Yes | Pass | None. | Production Coach Analytics row shows the required fields and actions. | None. |
-| admin coach analystics.MD | Manage opens management/edit action; Open Site opens public URL or disabled state | Yes | Partial | Partial | Manage routing/action tested conceptually; destructive edits not performed. | Open Site button exists. | Full manage/edit flow for real coach should be tested during real content update. |
+| admin coach analystics.MD | Manage opens management/edit action; Open Site opens public URL or disabled state | Yes | Yes | Pass | Browser automation showed popup-style `window.open` was not reliable enough as proof for Open Site. | Open Site is now a normal `target="_blank"` link with `rel="noopener noreferrer"`; Manage was production-tested to move to Coach Sites without error. | Full destructive/edit-save flow should still be tested only during a real content update. |
 | admin coach analystics.MD | Analytics must be admin-only and not expose private data | Yes | Yes | Pass | None. | Paid manage modal hides private WhatsApp and raw payment URL; OTP gate present. | None. |
 | admin coach analystics.MD | Paid and free analytics should stay under the same canonical coach identity | Yes | D1 verified | Pass | Paid `payment_initiated` rows were split under old static slug `gyana` while the referral site uses `gyana-ranjan`. | `recordAnalyticsEvent` now falls back from static funnel `coach_id` to the matching D1 coach-site slug; 51 existing Gyana rows normalized to `gyana-ranjan`. | None. |
 | follow this.md | Production admin login and route access must be usable | Yes | Yes | Pass | Admin `YW-ERR-404` was previously reported. Correct lowercase routes worked, but uppercase/common aliases like `/Admin/Dashboard`, `/admin-panel`, and `/dashboard` could still hit route fallback. | Added server-side canonical admin redirects in Cloudflare Pages middleware; production browser and HTTP checks confirm aliases land on admin dashboard/login without `YW-ERR-404`. | None. |

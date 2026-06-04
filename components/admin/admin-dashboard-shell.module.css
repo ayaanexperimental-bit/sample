@@ -1205,9 +1205,16 @@
 .dangerAction,
 .previewActions a,
 .previewActions button {
+  min-height: 2.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   padding: 0 0.9rem;
+  text-align: center;
+  text-decoration: none;
 }
 
 .primaryAction {

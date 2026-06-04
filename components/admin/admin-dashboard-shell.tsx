@@ -1679,13 +1679,6 @@ function CoachAnalyticsView({
     setActiveTab(row.availableTabs[0] || "combined");
   }
 
-  function openPublicSite(row: CoachAnalyticsRow) {
-    const publicHref = getCoachPublicHref(row);
-
-    if (!publicHref) return;
-    window.open(publicHref, "_blank", "noopener,noreferrer");
-  }
-
   return (
     <AdminPageShell eyebrow="Coach Sites" title="Coach Analytics">
       <p className={styles.inlineNote}>
@@ -1948,13 +1941,14 @@ function CoachAnalyticsView({
                               Manage
                             </button>
                             {publicHref ? (
-                              <button
+                              <a
                                 className={styles.secondaryAction}
-                                onClick={() => openPublicSite(row)}
-                                type="button"
+                                href={publicHref}
+                                rel="noopener noreferrer"
+                                target="_blank"
                               >
                                 Open Site
-                              </button>
+                              </a>
                             ) : (
                               <button
                                 className={styles.secondaryAction}
