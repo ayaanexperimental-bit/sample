@@ -678,8 +678,9 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       }
       * { box-sizing: border-box; }
       html {
-        min-width: 320px;
+        min-width: 0;
         background: #fff8ef;
+        overflow-x: clip;
         scroll-behavior: smooth;
       }
       body {
@@ -2123,7 +2124,7 @@ function renderSupportFallbackHtml({
     <title>Something went wrong | YW Nutritech</title>
     <style>
       *{box-sizing:border-box}
-      body{min-width:320px;min-height:100vh;display:grid;place-items:center;margin:0;background:radial-gradient(circle at 14% 10%,rgb(255 211 232/.7),transparent 25rem),radial-gradient(circle at 88% 18%,rgb(196 181 253/.42),transparent 25rem),linear-gradient(135deg,#fffaf7 0%,#fff7fb 48%,#f9f7ff 100%);color:#201628;font-family:"Segoe UI",ui-sans-serif,system-ui,sans-serif;padding:clamp(1rem,4vw,3rem)}
+      body{min-width:0;min-height:100vh;display:grid;place-items:center;margin:0;overflow-x:hidden;background:radial-gradient(circle at 14% 10%,rgb(255 211 232/.7),transparent 25rem),radial-gradient(circle at 88% 18%,rgb(196 181 253/.42),transparent 25rem),linear-gradient(135deg,#fffaf7 0%,#fff7fb 48%,#f9f7ff 100%);color:#201628;font-family:"Segoe UI",ui-sans-serif,system-ui,sans-serif;padding:clamp(1rem,4vw,3rem)}
       ${renderInlineYWLoaderCss()}
       main{width:min(100%,60rem);overflow:hidden;border:1px solid rgb(255 255 255/.78);border-radius:1.35rem;background:linear-gradient(145deg,rgb(255 255 255/.86),rgb(255 245 250/.72));box-shadow:0 24px 80px rgb(76 43 70/.16),inset 0 1px 0 rgb(255 255 255/.92)}
       header,.content{padding:clamp(1rem,4vw,2rem)}

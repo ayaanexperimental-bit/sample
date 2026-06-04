@@ -131,7 +131,6 @@ type AdminMaintenanceStatus = {
   cleanupEligibleAnalyticsEvents: number;
   cleanupStatus: string;
   failedRecipients: string[];
-  googleSheetsConfigured: boolean;
   lastBackupAt: string;
   lastBackupRecordCount: number;
   lastBackupStatus: string;
@@ -4845,7 +4844,6 @@ function BackupCleanupView({
       cleanupEligibleAnalyticsEvents: 0,
       cleanupStatus: control.backupCleanup.cleanupStatus,
       failedRecipients: [],
-      googleSheetsConfigured: control.backupCleanup.googleSheetsConfigured,
       lastBackupAt: control.backupCleanup.lastBackupAt,
       lastBackupRecordCount: 0,
       lastBackupStatus: "Not loaded",

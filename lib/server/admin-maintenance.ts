@@ -34,7 +34,6 @@ export type MaintenanceStatus = {
   cleanupEligibleAnalyticsEvents: number;
   cleanupStatus: string;
   failedRecipients: string[];
-  googleSheetsConfigured: boolean;
   lastBackupAt: string;
   lastBackupRecordCount: number;
   lastBackupStatus: string;
@@ -175,7 +174,6 @@ export async function getAdminMaintenanceStatus({
       cleanupEligibleAnalyticsEvents: 0,
       cleanupStatus: "Database missing. No cleanup can run.",
       failedRecipients: [],
-      googleSheetsConfigured: false,
       lastBackupAt: "No backup created yet",
       lastBackupRecordCount: 0,
       lastBackupStatus: "Not configured",
@@ -219,7 +217,6 @@ export async function getAdminMaintenanceStatus({
       recipients
     }),
     failedRecipients: parseList(latestBackup?.failed_recipients).map(maskEmail),
-    googleSheetsConfigured: false,
     lastBackupAt: secondsToDisplay(latestBackup?.created_at) || "No backup created yet",
     lastBackupRecordCount: normalizeNumber(latestBackup?.record_count),
     lastBackupStatus: latestBackup?.status || "No backup created yet",

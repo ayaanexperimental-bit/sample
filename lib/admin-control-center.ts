@@ -98,7 +98,6 @@ export type AdminBackupCleanupStatus = {
     | "Not configured"
     | string;
   cleanupStatus: string;
-  googleSheetsConfigured: boolean;
   lastBackupAt: string;
   lastCleanupAt: string;
   retentionDays: number;
@@ -169,7 +168,6 @@ export const adminControlCenterData: AdminControlCenterData = {
   backupCleanup: {
     backupDestination: "Email CSV + XLS attachments primary",
     cleanupStatus: "Disabled until backup and active-admin notification succeed",
-    googleSheetsConfigured: false,
     lastBackupAt: "No backup created yet",
     lastCleanupAt: "No cleanup run yet",
     retentionDays: 90,

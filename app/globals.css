@@ -63,10 +63,11 @@
 }
 
 html {
-  min-width: 320px;
+  min-width: 0;
   background: var(--color-background);
   color: var(--color-text);
   font-family: var(--font-sans);
+  overflow-x: clip;
   scroll-behavior: smooth;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -9082,7 +9083,7 @@ body:has(.levelup-clone)::after {
   --levelup-muted: #7a706a;
   --levelup-green: #059669;
   --levelup-red: #8b1a2b;
-  min-width: 320px;
+  min-width: 0;
   width: 100%;
   min-height: 100vh;
   overflow-x: hidden;
