@@ -1,128 +1,87 @@
-﻿# Production Coach Template Match Audit
+# Production Coach Template Match Audit
 
 ## Test Metadata
 
-- Test date/time: 2026-06-03 16:30 IST
+- Test date/time: 2026-06-05 IST
 - Production URL tested: https://ywcoach.com
-- Admin login method: Gmail plugin OTP used safely; OTP not exposed.
-- Report scope: production coach sites created by Website Builder, plus separate note for Gyana approved production referral.
+- Scope: live production coach referral template behavior and source-of-truth alignment.
+- Admin login state: existing authenticated production Browser session; no OTP exposed or recorded.
 
 ## Summary
 
-- Production builder-created published coach sites checked: 1
-- Builder-created sites matching final approved template: 1
-- Builder-created sites using old template: 0
-- Builder-created broken public pages: 0
-- QA cleanup after test: QA builder-created site was archived and then OTP-removed; current admin status is `removed`.
-- Code-approved non-builder production referral pages checked separately: 1
-- Selected theme applied correctly on checked builder site: Yes, `default-current`
-- Preview route and public route use the same renderer: No, they use separate renderers with matching visual intent.
+- Active production coach-site records checked: 1
+- Active production coach-site records in D1: 1
+- Real production referral pages using the final YW Nutritech template: 1
+- Pages showing old template during normal flow: 0 found in this audit
+- Pages showing Contact Support during normal successful referral flow: 0 found in this audit
+- Current selected production theme for Gyana: `premium-feminine-wellness`
 
-## Final Approved Template Checklist
+## Site Result
 
-Expected sections/signals:
+| Coach | Public URL | Source | Status | Theme | Register Link | Normal Support Card | Result |
+|---|---|---|---|---|---|---|---|
+| Gyana Ranjan | `/coach/gyana-ranjan` | D1 `coach_sites` | Published | `premium-feminine-wellness` | Configured Google Form | Hidden, as required | Pass |
 
-- YW Nutritech branding
-- Hero section
-- Coach hero media/no-media state
-- Coach intro section
-- Niche/problem-solution section
-- Benefits/cards section
-- Register CTA section
-- Google Form register button
-- Hidden support/contact fallback data, not normal public contact card
-- FAQ section
-- Legal footer/disclaimer
-- Final CTA/footer
-- Theme colors/typography
-- Mobile/tablet/desktop layout
+## Gyana Route Evidence
 
-## Per-Site Results
+Route tested: `https://ywcoach.com/coach/gyana-ranjan`
 
-| Coach / Site | Public URL | Source | Status | Template Used | Theme Applied | Register Result | Contact Support Result | Severity |
-|---|---|---|---|---|---|---|---|---|
-| QA Test Coach Do Not Use 20260603 QA Audit | `/coach/qa-test-coach-do-not-use-20260603-qa-audit` | Website Builder / D1 | Published during test; OTP-removed after audit | Final while published | Yes, `default-current` | All visible CTAs pointed to configured Google Forms-domain URL while published | Hidden on normal page; fallback details available for error/unavailable states | Cleanup complete; removed record still visible as admin history |
-| Gyana Ranjan | `/coach/gyana-ranjan` | Code-approved production referral, not D1 builder record | Published | Final visual system, but content contains older placeholder phrasing | Yes, `default-current` | Missing Google Form link / registration not active | No normal contact support card, consistent with hidden fallback rule | Critical registration/admin-sync issue |
+- Page title: `Gyana Ranjan | YW Nutritech Coach Referral`
+- Coach name visible: Yes
+- YW Nutritech branding visible: Yes
+- PMOS wording visible: Yes
+- PCOS wording on checked public page: No
+- Coach photo loaded: Yes, `/images/coach-gyana-ranjan.png`
+- Contact Support fallback visible during normal page load: No
+- Visible Register CTAs: all point to `https://forms.gle/nsY5F1mcjZnZBbVo9`
 
-## QA Builder Site Detail
+## Template Source Trace
 
-- Coach name changed correctly: Yes.
-- Niche changed correctly: Yes.
-- Hero/subheadline changed correctly: Yes.
-- Hero media type `No Media` rendered without crashing: Yes.
-- CTA text changed correctly: Yes.
-- Register href saved and rendered: Yes.
-- FAQ/content generated and rendered: Yes.
-- Public URL used the expected slug: Yes.
-- Page used YW Nutritech branding: Yes.
-- Page showed final template sections: Yes.
-- Page showed Contact Support fallback during normal successful flow: No.
-- Public route after archive showed fallback: Yes.
-- Same public URL worked again after Restore Site: Yes.
-- Final cleanup after verification: archived again, then removed through OTP-protected Remove.
+Current renderer setup:
 
-## Gyana Production Referral Note
+- Builder/admin React preview: `components/coach/public-coach-site-page.tsx` is used for the reusable public preview flow.
+- Public Cloudflare Pages route: `functions/coach/[slug].ts` renders server-side HTML/CSS for `/coach/[slug]`.
+- Theme source: `lib/coach-template-themes.ts`
+- Site source: production D1 `coach_sites`
+- Public lookup/storage: `lib/server/coach-site-storage.ts`
 
-Gyana `/coach/gyana-ranjan` is a real production referral page. It is not currently a D1 builder-created record, so it is missing from Admin -> Coach Sites. The page visually uses the final YW Nutritech system, but it still has placeholder-style copy and no active Google Form registration link in the production coach record. Admin Error Reports shows repeated `YW-ERR-5001` link-missing reports for Gyana.
+The public route and React preview are still separate renderers, but this audit did not find an active production visual mismatch for Gyana. The duplication remains a maintenance risk: future template changes must be checked in both the React preview and Cloudflare public renderer.
 
-This is not an old-template visual failure. It is a production data/source-of-truth failure.
+## Corrected Stale Conclusion
 
-## Template Renderer Root Cause Trace
+Older audit text said Gyana was not in D1 and was only a code-approved/static fallback. That is no longer true.
 
-- Builder preview renderer: `CoachSitePreview` in `components/admin/admin-coach-sites-manager.tsx`.
-- Static app route renderer: `PublicCoachSitePage` in `components/coach/public-coach-site-page.tsx`, used by `app/coach/[slug]/page.tsx`.
-- Cloudflare production dynamic renderer: separate inline HTML/CSS renderer in `functions/coach/[slug].ts`.
-- `selectedThemeId` is saved by builder and read by public route: Yes for QA.
-- Theme ignored: No for QA.
-- Same renderer: No.
-- Risk: High future drift risk because preview and production dynamic public route are separate implementations.
+Current verified state:
 
-## Sections Matching Final Template
+- D1 `coach_sites.id`: `coach-site-gyana-ranjan`
+- `slug`: `gyana-ranjan`
+- `status`: `published`
+- `selected_theme_id`: `premium-feminine-wellness`
+- `google_form_url`: configured
+- `photo_url`: configured
+- `video_url`: configured
 
-QA builder-created page:
+## Template Checklist
 
-- YW Nutritech branding: Pass
-- Hero section: Pass
+- YW Nutritech brand feel: Pass
 - Coach identity: Pass
-- Coach intro: Pass
-- Problem/solution: Pass
-- Benefits/cards: Pass
+- Hero/media: Pass
+- Coach intro/mission/content: Pass
+- Benefits/CTA/FAQ/legal/footer: Pass on checked public route
 - Register CTA: Pass
-- FAQ: Pass
-- Legal footer/disclaimer: Pass
-- Theme styling: Pass
-- Mobile/tablet/desktop: Pass except possible 320px overflow metric risk
+- Hidden fallback support rule: Pass
+- Mobile-safe fallback not triggered during normal flow: Pass for checked public route
 
-Gyana approved page:
+## Remaining Risks
 
-- YW Nutritech branding: Pass
-- Hero section: Pass
-- Coach identity: Pass
-- Coach intro: Pass
-- Problem/solution: Pass
-- Benefits/cards: Pass
-- FAQ/footer: Pass
-- Register CTA: Fail due missing form link / pending state
-- Admin manageability: Fail because not present in D1 Coach Sites list
+1. Renderer drift risk remains because public route and preview are separate implementations.
+2. Only one real active coach site exists, so multi-coach template universality can be proven fully only after more real coach sites are created.
+3. Gyana support/contact fields are empty, so fallback support uses default YW support until coach contact is configured.
 
-## Screenshots / Visual Notes
+## Recommended Regression Checks After Future Template Changes
 
-Safe public screenshots saved:
-
-- `C:\Users\Yours Wellness\Documents\Codex\artifacts\production-qa\qa-coach-390.png`
-- `C:\Users\Yours Wellness\Documents\Codex\artifacts\production-qa\gyana-referral-1024.png`
-- `C:\Users\Yours Wellness\Documents\Codex\artifacts\production-qa\missing-coach-fallback-390.png`
-- `C:\Users\Yours Wellness\Documents\Codex\artifacts\production-qa\paid-entry-1024.png`
-
-## Recommended Fix Order
-
-1. Import/sync Gyana into the D1 `coach_sites` source of truth or show code-approved production sites in Admin with source labels.
-2. Add the real Gyana Google Form registration link through the approved production data path.
-3. Fix Pause persistence/public unavailable behavior.
-4. Reduce template drift by sharing renderer logic or adding parity tests between preview and Cloudflare public function output.
-5. Improve Coach Analytics display to show human coach name plus slug.
-6. Add responsive screenshot/overflow regression tests for 320px, 390px, 768px, 1024px.
-
-## Cleanup Result
-
-The QA builder-created published coach site was cleaned up after the audit. It was archived and then removed through the OTP-protected flow. Current product behavior keeps removed records visible in Admin as audit/history rows; add a separate hard-delete/retention cleanup policy if QA rows must disappear from Admin entirely.
+- Open `/coach/gyana-ranjan`.
+- Open builder preview for the same record.
+- Compare hero, media, CTA, footer, Register link, theme colors, and hidden support behavior.
+- Test 320px, 390px, 768px, 1024px, and desktop.
+- Confirm no `YW-ERR-*` or Contact Support fallback appears during normal successful flow.

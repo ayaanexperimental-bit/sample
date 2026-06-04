@@ -138,7 +138,7 @@ export async function recordAnalyticsEvent(input: AnalyticsEventInput, env: Anal
   const normalizedInputSlug = normalizeCoachSlug(input.coachSlug || "");
   const funnelId = sanitizeToken(input.funnelId, 120);
   const staticFunnel = funnelId ? getFunnelById(funnelId) : null;
-  const row = normalizedInputSlug
+  const rowBySlug = normalizedInputSlug
     ? await env.ADMIN_DB.prepare(
         `SELECT id, coach_id, slug, analytics_json
          FROM coach_sites
@@ -153,6 +153,31 @@ export async function recordAnalyticsEvent(input: AnalyticsEventInput, env: Anal
           slug: string;
         }>()
     : null;
+  const row =
+    rowBySlug ||
+    (staticFunnel?.coachId
+      ? await env.ADMIN_DB.prepare(
+          `SELECT id, coach_id, slug, analytics_json
+           FROM coach_sites
+           WHERE coach_id = ?1 AND status <> 'removed'
+           ORDER BY
+             CASE status
+               WHEN 'published' THEN 0
+               WHEN 'paused' THEN 1
+               WHEN 'archived' THEN 2
+               ELSE 3
+             END,
+             updated_at DESC
+           LIMIT 1`
+        )
+          .bind(staticFunnel.coachId)
+          .first<{
+            analytics_json: string;
+            coach_id: string;
+            id: string;
+            slug: string;
+          }>()
+      : null);
   const coachSlug = row?.slug || normalizedInputSlug;
   const coachId = row?.coach_id || staticFunnel?.coachId || "";
   const funnelType = normalizeFunnelType(input.funnelType, input.eventName);

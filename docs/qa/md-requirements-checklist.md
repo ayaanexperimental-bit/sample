@@ -7,10 +7,10 @@ Latest deployments tested: https://c701da4b.ywcoach.pages.dev, https://1d6159d6.
 
 ## Summary
 
-Total requirement groups found: 29
-Completed and tested: 24
-Partial or blocked: 6
-Critical production bugs fixed in this pass: 3
+Total requirement groups found: 31
+Completed and tested: 26
+Partial or blocked: 5
+Critical production bugs fixed in this pass: 4
 
 ## Checklist
 
@@ -25,8 +25,8 @@ Critical production bugs fixed in this pass: 3
 | pendings.md | Analytics/data cleanup must require backup plus active-admin email notification | Yes | Code reviewed/UI tested | Pass | No destructive cleanup executed. | Existing server flow blocks cleanup if backup/notification fails. | Active admin recipient configuration must remain valid before cleanup can run. |
 | pendings.md | Backup primary is email attachment, not Google Sheets | Yes | Yes | Pass | Older docs mention Google Sheets as optional legacy context. | Production Backup/Cleanup UI says Email CSV + XLS attachments primary. | None for primary flow. |
 | pendings.md | Backup must include CSV and XLS | Yes | Yes | Pass | None. | `admin-maintenance.ts` generates `backup_csv` and `backup_xls`; UI mentions CSV + XLS. | None. |
-| pendings.md | Backup recipients must come from active Admin DB role list, not hardcoded email | Yes | Code reviewed/UI tested | Pass | No destructive cleanup run. | `getActiveBackupRecipients` reads `admin_users`. | Strict role enforcement still intentionally off until admin row is verified. |
-| pendings.md | Strict DB admin role enforcement panel/checklist, but do not enable blindly | Yes | UI/code reviewed | Pass | Enabling too early can lock out admin. | Settings/Backup UI expose checklist and rollback notes. | Requires admin role row/email verification before enabling env flag. |
+| pendings.md | Backup recipients must come from active Admin DB role list, not hardcoded email | Yes | Code reviewed/D1 verified | Pass | Production `admin_users` table was empty, so backups had no active recipient. | Inserted/updated the visible logged-in production admin email as active `owner`; `getActiveBackupRecipients` reads `admin_users`. | Run a Backup Now/Test Backup Email from admin UI after confirming email delivery vars. |
+| pendings.md | Strict DB admin role enforcement panel/checklist, but do not enable blindly | Yes | UI/code/D1 reviewed | Pass | Enabling too early can lock out admin. | Settings/Backup UI expose checklist and rollback notes; active `owner` row now exists for the current admin email. | Keep `ADMIN_REQUIRE_DB_ADMIN_ROLES=false` until a fresh login + rollback verification pass is completed. |
 | pendings.md | Add coach photo/avatar to Coach Sites if safe | Yes | Yes | Pass | Previously user noted missing image. | Coach Sites, Coach Analytics, and Top Performers show Gyana image from builder/site record. | None. |
 | pendings.md | Do not run fake live AI/R2 production creation test | Yes | Yes | Pass | Full live media upload test intentionally skipped. | Config remains ready without fake production data. | Real coach/media creation test should be done only during real production entry. |
 | ROBUST ADMIN PANEL--UPDATED.MD | Admin Overview should be robust command center using real data or empty states | Yes | Yes | Pass | None in tested viewport. | Overview shows live source, KPIs, graph, AI overview action, top coach. | More long-term predictions improve as real data accumulates. |
@@ -42,6 +42,7 @@ Critical production bugs fixed in this pass: 3
 | admin coach analystics.MD | Main list rows show photo, name, niche, region, funnel badges, status, visits, clicks, CTR, best funnel, last activity, source, actions | Yes | Yes | Pass | None. | Production Coach Analytics row shows the required fields and actions. | None. |
 | admin coach analystics.MD | Manage opens management/edit action; Open Site opens public URL or disabled state | Yes | Partial | Partial | Manage routing/action tested conceptually; destructive edits not performed. | Open Site button exists. | Full manage/edit flow for real coach should be tested during real content update. |
 | admin coach analystics.MD | Analytics must be admin-only and not expose private data | Yes | Yes | Pass | None. | Paid manage modal hides private WhatsApp and raw payment URL; OTP gate present. | None. |
+| admin coach analystics.MD | Paid and free analytics should stay under the same canonical coach identity | Yes | D1 verified | Pass | Paid `payment_initiated` rows were split under old static slug `gyana` while the referral site uses `gyana-ranjan`. | `recordAnalyticsEvent` now falls back from static funnel `coach_id` to the matching D1 coach-site slug; 51 existing Gyana rows normalized to `gyana-ranjan`. | None. |
 | follow this.md | Production admin login and route access must be usable | Yes | Yes | Pass | Admin `YW-ERR-404` was previously reported. Correct lowercase routes worked, but uppercase/common aliases like `/Admin/Dashboard`, `/admin-panel`, and `/dashboard` could still hit route fallback. | Added server-side canonical admin redirects in Cloudflare Pages middleware; production browser and HTTP checks confirm aliases land on admin dashboard/login without `YW-ERR-404`. | None. |
 | follow this.md | Error/Contact Support fallback must be mobile-safe, copyable, and not expose technical details | Yes | Yes | Pass | Paid masterclass fallback pages had horizontal overflow on small phones because the card width plus padding exceeded viewport width. | Added border-box sizing, hidden horizontal overflow, and long-reference wrapping in `paid-funnel-support.ts`; production 320/375/390/414/768/1440 retest passed. | None. |
 | follow this.md | Full Website Creator draft/publish/public URL production flow | Partial | No | Partial | Source allows QA coach creation but also says do not pollute production; no fake production coach created in this pass. | No code change in this pass. | Needs a real approved coach entry or explicit QA cleanup plan before running publish tests. |
@@ -53,7 +54,11 @@ Critical production bugs fixed in this pass: 3
 - Admin route recovery tested: `/Admin/Dashboard`, `/admin-panel`, `/dashboard`, `/admin/home`, and `/admin/dashboard/index` now redirect to the canonical admin dashboard/login flow without `YW-ERR-404`.
 - Admin mobile nav was tested through Menu for Overview, Coach Sites, Coach Analytics, Top Performers, Paid Masterclass Links/Settings, Error Reports, Backup/Cleanup, and Settings.
 - No horizontal overflow was detected in the tested mobile-width admin viewport.
+- Current production D1 `coach_sites` has Gyana Ranjan as a real published record with slug `gyana-ranjan`, theme `premium-feminine-wellness`, configured Google Form, photo, and video.
 - Coach Sites shows Gyana image/avatar.
+- Public `/coach/gyana-ranjan` opens without Contact Support fallback; Register CTAs point to `https://forms.gle/nsY5F1mcjZnZBbVo9`.
+- Production analytics now has all 184 Gyana rows under canonical `coach_slug=gyana-ranjan`.
+- Production `admin_users` now has the current admin email as an active `owner` row for backup recipients and strict-role readiness.
 - Coach Analytics list shows Gyana image/avatar, funnel badges, visits/clicks/CTR/source/action buttons.
 - Coach Analytics detail dialog is visible after the portal fix and includes AI/report/export controls.
 - Paid Masterclass Manage dialog is visible after the portal fix, includes OTP-protected private WhatsApp reveal and OTP-protected payment link update, and does not expose private URLs.
@@ -89,6 +94,9 @@ Screenshot artifacts:
 - `pnpm build:pages`
 - `pnpm build:pages-functions`
 - `pnpm run deploy`
+- `npx wrangler d1 execute ywcoach-admin --remote --command "SELECT ... FROM coach_sites ..."`
+- `npx wrangler d1 execute ywcoach-admin --remote --command "INSERT INTO admin_users ... ON CONFLICT(email) DO UPDATE ..."`
+- `npx wrangler d1 execute ywcoach-admin --remote --command "UPDATE analytics_events SET coach_slug='gyana-ranjan' ..."`
 - Production browser UI checks through https://ywcoach.com/admin/dashboard
 - Production admin route alias checks for `/Admin/Dashboard`, `/admin-panel`, `/dashboard`, `/admin/home`, and `/admin/dashboard/index`
 - Production Playwright breakpoint sweep for public routes
@@ -105,8 +113,9 @@ Screenshot artifacts:
 
 ## Open Blockers
 
-1. Strict DB admin role enforcement remains off until the active admin row/email is verified and rollback plan is confirmed.
+1. Strict DB admin role enforcement remains off until a fresh login + rollback verification pass is completed with the active owner row.
 2. Full live AI/R2 creator test is intentionally not run with fake media/coaches; run this with a real coach site creation.
 3. Full Website Creator publish journey should be tested with a real approved coach or a clearly labeled QA coach plus cleanup plan.
 4. More real coach records are needed to visually prove paid-only, free-only, and no-funnel states in production without adding fake data.
 5. Complete performance matrix across every listed breakpoint remains a recurring QA task after each visual change.
+6. Triage existing real Error Reports; 67 reports are still New.

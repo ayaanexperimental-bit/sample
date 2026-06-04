@@ -1,301 +1,164 @@
-﻿# Full Production UX Bug Audit
+# Full Production UX Bug Audit
 
 ## Test Metadata
 
-- Test date/time: 2026-06-03 16:30 IST
+- Test date/time: 2026-06-05 IST
 - Production URL tested: https://ywcoach.com
-- Admin login method: Gmail plugin OTP used safely; OTP not exposed.
-- QA/test coach record used: QA Test Coach Do Not Use 20260603 QA Audit
-- QA public URL tested: /coach/qa-test-coach-do-not-use-20260603-qa-audit
-- QA cleanup status after audit: moved through Archive, then OTP-protected Remove; current admin status is `removed`.
-- Testing mode: real production browser session, authenticated admin session, safe QA-only record creation.
-- Safety: no real coach was deleted, no real payment/private WhatsApp link was changed, no OTP/private link/secret was written to this report.
-- QA cleanup: the QA-only record was removed after the audit. Current product behavior keeps removed records visible in Admin for audit/history.
+- Admin login state: authenticated production Browser session was already active; Gmail OTP was not needed and no OTP was read, stored, printed, or reported.
+- Test mode: production read-only UI/API/D1 verification plus one safe D1 admin-role row insertion for the visible logged-in admin email.
+- No fake production coach was created in this audit.
+- No payment, private WhatsApp, OTP, API key, or secret value is included in this report.
 
 ## Executive Summary
 
-Production admin login works with Gmail OTP. The Website Creator can create a QA draft, reopen it, generate preview copy, publish it, list it in Coach Sites, and render the public coach page with the final YW Nutritech referral template. Error fallback pages work and log safe records in Admin Error Reports.
+The previously reported admin `YW-ERR-404` problem is fixed in production. `/admin`, `/admin/login`, `/admin/dashboard`, `/Admin/Dashboard`, `/admin-panel`, and `/dashboard` all route into the canonical admin login/dashboard flow without rendering `YW-ERR-404`.
 
-The biggest production problems are not build failures. They are source-of-truth and workflow issues:
+Gyana Ranjan is now a real production `coach_sites` D1 record, not an external/static-only fallback. The production public route `/coach/gyana-ranjan` opens successfully, uses YW Nutritech branding, shows PMOS content, loads the coach image, and all visible Register CTAs point to `https://forms.gle/nsY5F1mcjZnZBbVo9`.
 
-1. Gyana referral is a real production coach referral page, but it is not in the D1 `coach_sites` table, so Admin -> Coach Sites does not show it.
-2. Gyana referral has no active Google Form registration link in the production coach record, causing repeated `YW-ERR-5001` link-missing reports when users click registration.
-3. Pause does not produce the expected public unavailable state for the QA coach. It either does not persist or does not affect the public renderer.
-4. Preview and public route are visually aligned, but they are not the same component implementation. Preview uses an admin React preview; Cloudflare dynamic public coach pages use a separate inline renderer, creating future drift risk.
-5. Coach Analytics includes the newly published QA route and visit count, but it displays coach slug rather than the human coach name and analytics depth is still limited.
+One real issue found and fixed in this audit: paid funnel analytics were fragmented because older payment events used the static platform coach slug `gyana` while the managed coach site uses `gyana-ranjan`. The analytics write path now falls back from static funnel `coach_id` to the canonical D1 coach-site slug, and existing production analytics rows were normalized so all 184 Gyana events now use `gyana-ranjan`.
 
-## Flows Tested
+One production data gap remains: Gyana's coach support contact fields in `coach_sites` are still empty, so paid masterclass support fallback correctly uses default YW support. This is safe fallback behavior, but coach-specific paid support will only appear after phone/WhatsApp/email are added in Admin.
 
-- Production admin login with email OTP via Gmail plugin.
-- Admin dashboard session persistence and logout.
-- Admin navigation: Overview, Coach Sites, Create Coach Site, Coach Analytics, Error Reports.
-- Website Creator: Step 1 through Step 6.
-- Save Draft and Continue Editing.
-- Preview generation.
-- Publish.
-- Coach Sites list sync.
-- Public coach URL rendering.
-- Register button href verification.
-- Coach Analytics sync after page visit.
-- Pause behavior.
-- Archive, public unavailable fallback, Reactivate/Restore.
-- Error fallback and Admin Error Reports logging.
-- Paid masterclass public entry and success page, without real payment.
-- Mobile/tablet/desktop public coach page responsiveness.
+## Current Production Facts
 
-## Passed Checks
+### Admin Route Recovery
 
-- Admin login page opened.
-- OTP email was received via Gmail plugin and used safely.
-- Admin dashboard opened after OTP.
-- Admin session survived reopening `/admin/dashboard`.
-- Logout returned to `/admin/login`.
-- Save Draft showed `Draft saved successfully.` and `Saved in coach-site database.`
-- Draft appeared in Drafts list with coach name, niche, Draft status, last edited time, Continue Editing, Preview, Publish, Delete Draft.
-- Continue Editing reopened the same draft and preserved Step 1 and Step 4 data.
-- Preview generation worked and opened Preview & Edit.
-- Publish showed `Successfully Published` and stable public link.
-- Published QA site appeared in Coach Sites.
-- Public QA URL opened successfully and did not show Contact Support fallback.
-- Public QA page used final YW Nutritech template sections and branding.
-- Register CTAs pointed to the configured Google Forms-domain URL.
-- Public QA page visit appeared in Coach Analytics as a free/referral route with 1 visit.
-- Archive required slug/name confirmation, reason, and OTP.
-- Archive moved QA to Archived list and public URL showed unavailable Contact Support fallback with an error code.
-- Reactivate required a confirmation dialog and restored the QA site when `Restore Site` was clicked.
-- QA cleanup after verification used OTP-protected Remove; the record now stays visible only as `removed` admin history.
-- Missing coach route showed clean support fallback with copyable error code and no stack/secrets.
-- Admin Error Reports logged the missing-coach fallback in D1.
-- Paid entry `/go/gyana-pcos-51` opened the paid page and established the funnel session.
-- Paid success page opened after entry-session flow, showed video/WhatsApp text, and did not expose a private WhatsApp group invite in frontend links.
+- `/admin`: 200, no `YW-ERR-404`
+- `/admin/login`: 200, no `YW-ERR-404`
+- `/admin/dashboard`: 302 to `/admin/login?next=%2Fadmin%2Fdashboard` when unauthenticated
+- `/Admin/Dashboard`: 302 to `/admin/dashboard`
+- `/admin-panel`: 302 to `/admin/dashboard`
+- `/dashboard`: 302 to `/admin/dashboard`
+- Authenticated Browser session opened `https://ywcoach.com/admin/dashboard`; after hydration it showed Admin Overview, production metrics, Coach Sites, Coach Analytics, Paid Masterclass settings, Error Reports, Backup/Cleanup, and Settings navigation.
 
-## Failed / Risk Checks
+### Coach Site Source Of Truth
 
-- Gyana referral is not listed in Admin -> Coach Sites because it is code-approved outside D1 builder storage.
-- Gyana referral has no configured Google Form registration link in the production coach record.
-- Pause did not create a lasting/public unavailable state for the QA coach.
-- Coach Analytics displays slug-oriented rows instead of the human coach name for the QA record.
-- Public route and preview route are separate renderers, not one shared renderer.
-- 320px checks showed scroll-width/client-width mismatch on public and admin views; likely scrollbar-related but should be treated as a mobile overflow risk until CSS is tightened.
-- Creator modal can reopen on a stale later step with `No preview ready` instead of starting cleanly at Step 1.
-- Direct paid URLs show `Link Not Available` without entry-session cookie; this is expected for route isolation, but admins must only share `/go/gyana-pcos-51`.
+Remote D1 `coach_sites` currently has one active production record:
 
-## Critical Bugs
+- Coach: Gyana Ranjan
+- Slug: `gyana-ranjan`
+- Status: `published`
+- Niche: `PMOS / Women Wellness`
+- Location: Odisha
+- Selected theme: `premium-feminine-wellness`
+- Google Form link: configured
+- Photo: configured
+- Video: configured
+- Coach phone/email/WhatsApp: not configured
 
-### UX-CRIT-001 - Gyana real referral page missing from Coach Sites
+No active drafts or archived coach sites were found in the live table during this audit.
 
-- Severity: Critical
-- User type affected: Admin
-- Flow: Admin -> Coach Sites
-- Step failed: Admin expects all real production coach referral sites to appear.
-- Expected behavior: Gyana referral `/coach/gyana-ranjan` appears as a managed production coach site.
-- Actual behavior: Admin Coach Sites shows D1 builder records only. Gyana does not appear.
-- Why bad UX: Admin cannot manage a real production referral site from the place named `All Coach Sites`.
-- Root cause: `functions/api/admin/coach-sites/index.ts` reads `listCoachSitesFromDb(env)` only. Gyana is defined in `approvedCoachSites` in `lib/admin-coach-sites.ts`, not synced into D1 `coach_sites`.
-- Likely files/functions: `lib/admin-coach-sites.ts`, `lib/server/coach-site-storage.ts`, `functions/api/admin/coach-sites/index.ts`, `components/admin/admin-coach-sites-manager.tsx`.
-- Recommended fix: Import/sync Gyana into D1 as a real published coach site record, or show code-approved production sites in Admin with a clear source label and migration action.
-- Must fix before production confidence: Yes
+### Public Coach Route
 
-### UX-CRIT-002 - Gyana referral registration link missing
+Route tested: `https://ywcoach.com/coach/gyana-ranjan`
 
-- Severity: Critical
-- User type affected: Visitor / Admin
-- Flow: Public coach referral -> Register CTA
-- Step failed: Visitor clicks registration on Gyana referral.
-- Expected behavior: Register opens Gyana's Google Form link.
-- Actual behavior: Gyana production record has empty `googleFormUrl`; Admin Error Reports contains repeated `YW-ERR-5001` link-missing entries for `/coach/gyana-ranjan`.
-- Why bad UX: Real visitors cannot register from a real production referral page.
-- Root cause: `approvedCoachSites` entry for Gyana has `googleFormUrl: ""`.
-- Likely files/functions: `lib/admin-coach-sites.ts`, `components/coach/public-coach-site-page.tsx`, `functions/coach/[slug].ts`.
-- Recommended fix: Add/sync the real Gyana Google Form link through the production data source; prevent publishing/serving production referral pages with missing registration links unless explicitly Draft/Paused.
-- Must fix before production confidence: Yes
+- Opens successfully.
+- No Contact Support fallback during normal flow.
+- No `YW-ERR-*` visible during normal flow.
+- YW Nutritech branding visible.
+- Gyana Ranjan name visible.
+- PMOS wording visible; PCOS wording was not found on the checked public page.
+- Coach image loads from `/images/coach-gyana-ranjan.png`.
+- Visible Register CTAs open the configured Google Form in a new tab.
 
-### UX-CRIT-003 - Pause does not make public page unavailable
+### Analytics
+
+Production `analytics_events` currently has 184 Gyana events. After this audit fix, all Gyana rows are normalized to:
+
+- `coach_slug = gyana-ranjan`
+
+Top event groups after normalization:
+
+- `coach_site_view / free_guest_link / gyana-ranjan`: 91
+- `payment_initiated / paid_masterclass / gyana-ranjan`: 51
+- `paid_landing_view / paid_masterclass / gyana-ranjan`: 34
+- `success_page_view / paid_masterclass / gyana-ranjan`: 4
+- `coach_register_click / free_guest_link / gyana-ranjan`: 1
+- `paid_payment_click / paid_masterclass / gyana-ranjan`: 1
+- `paid_register_click / paid_masterclass / gyana-ranjan`: 1
+- `paid_whatsapp_click / paid_masterclass / gyana-ranjan`: 1
+
+This is real event data from D1, not demo data.
+
+### Backup/Cleanup
+
+- Backup implementation supports CSV and XLS output.
+- `analytics_backups` currently has no backup records yet.
+- `admin_users` previously had no active rows, so backup email recipients were missing.
+- Fixed in this audit: inserted/updated `ayaanexperimental@gmail.com` as active `owner` in `admin_users`.
+- Strict DB-only admin role enforcement remains disabled; do not enable it until a fresh login/rollback test is completed.
+
+### Error Reports
+
+Production error report counts:
+
+- New: 67
+- Fixed: 13
+
+Recent new reports are mostly `YW-ERR-5003` for direct paid page/success route access without the proper paid entry/access flow. This fallback is expected for direct private route access, but the reports need admin triage so expected test/direct-access cases do not remain mixed with real user issues.
+
+## Issues Found
+
+### UX-FIXED-001 - Admin route aliases could show `YW-ERR-404`
 
 - Severity: Critical
-- User type affected: Admin / Visitor
-- Flow: Coach Sites -> Manage -> Pause -> Public URL
-- Step failed: Pause QA coach site.
-- Expected behavior: Public URL shows `This coach page is temporarily unavailable.` or support fallback.
-- Actual behavior: After Pause, the public QA URL still rendered the normal coach page; after reload the QA row appeared Published again.
-- Why bad UX: Admin cannot reliably pause a live coach page.
-- Root cause: Pause action did not persist or public renderer does not honor `paused` correctly. D1/status update and public lookup/render behavior need tracing.
-- Likely files/functions: `components/admin/admin-coach-sites-manager.tsx`, `functions/api/admin/coach-sites/index.ts`, `lib/server/coach-site-storage.ts`, `functions/coach/[slug].ts`, `components/coach/public-coach-site-page.tsx`.
-- Recommended fix: Verify PATCH status update for `paused`; confirm D1 row changes; make public renderer return unavailable fallback for paused records; add regression test.
-- Must fix before production confidence: Yes
+- Status: Fixed and deployed before this audit continuation.
+- Expected: Common admin URL variants route to admin login/dashboard.
+- Actual before fix: uppercase/common aliases could hit fallback.
+- Fix: Cloudflare middleware canonicalizes admin aliases and casing.
+- Proof: route header checks listed above.
 
-## High Bugs
-
-### UX-HIGH-001 - Public route and preview route are separate implementations
+### UX-FIXED-002 - Paid funnel analytics slug fragmentation
 
 - Severity: High
-- User type affected: Admin / Visitor
-- Flow: Website Creator Preview -> Published public route
-- Expected behavior: Preview and public page use the same final approved template renderer or a shared source.
-- Actual behavior: Admin preview uses `CoachSitePreview` in `components/admin/admin-coach-sites-manager.tsx`; static app route uses `PublicCoachSitePage`; Cloudflare dynamic production route uses a separate inline renderer in `functions/coach/[slug].ts`.
-- Why bad UX: Future template edits can update preview but not production, or production but not preview.
-- Root cause: Template is duplicated across admin preview React, public React, and Cloudflare Function HTML renderer.
-- Recommended fix: Centralize template section data and renderer helpers, or add strict visual/contract tests comparing preview/public output.
-- Must fix before production confidence: Yes
+- Status: Fixed in this audit.
+- Expected: Gyana paid and free analytics roll up under one coach slug, `gyana-ranjan`.
+- Actual before fix: `payment_initiated` rows existed under `gyana`, while referral/public rows used `gyana-ranjan`.
+- Root cause: `recordAnalyticsEvent` trusted the static platform coach slug when the incoming slug did not match a D1 coach-site row.
+- Fix: `lib/server/analytics-events.ts` now falls back by static funnel `coach_id` to the matching non-removed D1 coach site and uses that canonical slug.
+- Data normalization: existing production rows with `coach_slug='gyana' AND coach_id='coach-gyana'` were updated to `gyana-ranjan`.
+- Proof: D1 query now shows all 184 Gyana analytics rows under `gyana-ranjan`.
 
-### UX-HIGH-002 - Coach Analytics sync is partial
-
-- Severity: High
-- User type affected: Admin
-- Flow: Publish QA coach -> Visit public page -> Coach Analytics
-- Expected behavior: QA coach appears with human name and Free Guest Link analytics.
-- Actual behavior: QA route appears, visit count updates to 1, but the table is slug-first and does not show the human coach name clearly.
-- Why bad UX: Admin cannot quickly identify coaches in analytics by the names used in Coach Sites.
-- Root cause: `components/admin/admin-dashboard-shell.tsx` renders analytics table around `site.slug`/public URL and not a rich coach identity column.
-- Recommended fix: Show coach name, slug, funnel type, and status together; preserve zero/empty states for unavailable analytics.
-- Must fix before production confidence: Yes
-
-## Medium Bugs
-
-### UX-MED-001 - Creator opens on stale later step
+### UX-DATA-001 - Coach-specific support contact is missing for Gyana
 
 - Severity: Medium
-- User type affected: Admin
-- Flow: Admin -> Create Coach Site
-- Expected behavior: New creator opens at Step 1.
-- Actual behavior: The modal opened on Step 6 Publish with `No preview ready` from prior state until Step 1 was manually selected.
-- Why bad UX: Admin sees a dead publish state before entering coach details.
-- Root cause: Creator step state is not reset when opening a fresh create flow.
-- Likely files/functions: `components/admin/admin-coach-sites-manager.tsx`.
-- Recommended fix: Reset active wizard step to Step 1 when opening create-new flow; preserve step only for Continue Editing if intended.
-- Must fix before production confidence: No, but should be fixed soon.
+- Status: Data pending.
+- Expected: Paid and coach fallback pages use coach-specific phone/WhatsApp/email when available.
+- Actual: Gyana `coach_sites` row has no phone/email/WhatsApp, so fallback uses default YW support.
+- Why this is acceptable short-term: fallback behaves exactly as required when coach contact is missing.
+- Needed: add Gyana phone/WhatsApp/email in Admin Manage/Website Builder when ready.
 
-### UX-MED-002 - Direct paid page URL is unavailable without entry route
+### UX-OPS-001 - Old new error reports need triage
 
 - Severity: Medium
-- User type affected: Admin / Paid user
-- Flow: Direct `/gyana/pcos-51` or `/gyana/pcos-51/success`
-- Expected behavior: Shareable link should be clear.
-- Actual behavior: Direct route shows `Link Not Available`; `/go/gyana-pcos-51` works and redirects correctly.
-- Why bad UX: Admin may share the wrong URL because Admin Link Settings displays both public entry and paid page paths.
-- Root cause: Funnel route isolation requires `/go/gyana-pcos-51` to set access cookie.
-- Recommended fix: Label `/go/...` as the only shareable URL in Admin and mark internal paid/success paths as non-shareable.
-- Must fix before production confidence: No, but important for operations.
+- Status: Pending admin cleanup/triage.
+- Expected: Error Reports should be reviewed as New / Reviewing / Fixed / Ignored.
+- Actual: 67 reports remain New.
+- Needed: mark expected direct paid-route access reports as Fixed/Ignored after confirming no real payment flow issue exists.
 
-## Low Bugs / Polish
+## Testing Notes
 
-### UX-LOW-001 - 320px overflow metric risk
+- Browser DOM click automation did not reliably switch the React sidebar state in this session, even though the admin shell loaded and displayed live data. This is treated as a Browser-wrapper limitation for this audit, not a confirmed production UI click bug.
+- Production Browser session did verify admin hydration and current Overview data.
+- Remote D1 verified coach sites, analytics events, error reports, backups, and admin users.
+- No fake coach creation/publish flow was executed in production during this audit to avoid polluting final consumer-ready data.
 
-- Severity: Low
-- User type affected: Mobile visitor/admin
-- Flow: Public QA page and admin at 320px
-- Expected behavior: No horizontal overflow.
-- Actual behavior: DOM metric reported `scrollWidth` greater than `clientWidth` at 320px. This may be scrollbar-related, but should be visually reviewed.
-- Recommended fix: Add automated 320px overflow assertion and tighten any fixed-width/sticky elements if confirmed.
-- Must fix before production confidence: No, unless visually reproduced.
+## Files Changed In This Audit
 
-## Template Mismatch Audit
+- `lib/server/analytics-events.ts`
+- `docs/qa/full-production-ux-bug-audit.md`
+- `docs/qa/production-coach-template-match-audit.md`
+- `docs/qa/md-requirements-checklist.md`
 
-- Builder preview component: `CoachSitePreview` in `components/admin/admin-coach-sites-manager.tsx`.
-- Static app public route component: `PublicCoachSitePage` in `components/coach/public-coach-site-page.tsx`, routed by `app/coach/[slug]/page.tsx`.
-- Cloudflare dynamic production route renderer: inline HTML/CSS renderer in `functions/coach/[slug].ts`.
-- Same renderer: No.
-- Same final visual system on QA public route: Yes.
-- Old template rendering on QA builder-published route: No.
-- Drift risk: High because renderers are duplicated.
+## Production Data Changed In This Audit
 
-## Website Creator Sync Audit
+- Inserted/updated `admin_users` row for the visible logged-in production admin email as active `owner`.
+- Normalized 51 existing Gyana analytics rows from `coach_slug='gyana'` to `coach_slug='gyana-ranjan'`.
 
-- Draft write: production database via coach-site API.
-- Draft read: Drafts list loaded from database.
-- Continue Editing: reopened same QA draft and preserved data.
-- Publish write: same coach-site database.
-- Published read: Coach Sites list showed the QA record as Published.
-- Public route read: public `/coach/[slug]` found the QA record and rendered it.
-- Source mismatch found: Gyana exists as code-approved production data outside D1, so Admin Coach Sites does not show it.
+## Remaining
 
-## Public Route Audit
-
-- QA builder route: `/coach/qa-test-coach-do-not-use-20260603-qa-audit` opened successfully.
-- Gyana route: `/coach/gyana-ranjan` opened successfully but lacks active registration link.
-- Missing route: `/coach/does-not-exist-qa-audit` showed fallback and logged `YW-ERR-6001`.
-- Archived QA route: showed unavailable Contact Support fallback correctly.
-- Reactivated QA route: same URL worked again after confirming Restore Site.
-
-## Coach Analytics Sync Audit
-
-- QA public page visit appeared in analytics during the audit.
-- Register-click persistence was not proven beyond href/CTA verification.
-- `functions/api/coach-events.ts` currently returns `persisted: false`, so client-side event persistence is still incomplete or handled elsewhere by the dynamic function.
-- Analytics table is slug-first and should show coach name for clarity.
-
-## Contact Support / Error Fallback Audit
-
-- Missing coach fallback: passed.
-- Archived coach fallback: passed.
-- Error code visible and copy button present: passed.
-- Admin Error Reports logging: passed.
-- Public technical detail exposure: no stack/secrets observed.
-- Default support missing phone/WhatsApp is logged as missing support fields; configure defaults if phone/WhatsApp should be available.
-
-## Mobile / Tablet / Desktop Audit
-
-Public QA page checked at:
-
-- 320px: hero and CTA visible early; possible overflow metric risk.
-- 375px: pass.
-- 390px: pass.
-- 414px: pass.
-- Mobile landscape: hero visible; first CTA not visible in first fold, sticky CTA still needs visual review.
-- 768px: pass.
-- 834px: pass.
-- 1024px: pass.
-- 1440px: pass.
-
-Admin checked at:
-
-- 320px: menu present, authenticated workspace visible; possible overflow metric risk.
-- 390px: pass.
-- 1024px: pass.
-
-## Paid Masterclass Quick Test
-
-- Direct `/gyana/pcos-51`: Link Not Available without entry cookie.
-- Shareable `/go/gyana-pcos-51`: works and redirects into paid page.
-- Success page after entry session: works, video present, WhatsApp text present.
-- Private WhatsApp group URL: not exposed in frontend links during the safe smoke test.
-- No real payment was attempted.
-
-## Screenshots / Visual Notes
-
-Safe public screenshots saved:
-
-- `C:\Users\Yours Wellness\Documents\Codex\artifacts\production-qa\qa-coach-390.png`
-- `C:\Users\Yours Wellness\Documents\Codex\artifacts\production-qa\gyana-referral-1024.png`
-- `C:\Users\Yours Wellness\Documents\Codex\artifacts\production-qa\missing-coach-fallback-390.png`
-- `C:\Users\Yours Wellness\Documents\Codex\artifacts\production-qa\paid-entry-1024.png`
-
-Admin screenshots were visually inspected in session but not saved to avoid retaining authenticated admin UI artifacts.
-
-## QA Data Created And Cleaned Up
-
-- Coach name: QA Test Coach Do Not Use 20260603 QA Audit
-- Slug: qa-test-coach-do-not-use-20260603-qa-audit
-- Final status after audit cleanup: Removed
-- Public URL: `/coach/qa-test-coach-do-not-use-20260603-qa-audit`
-- Cleanup performed: archived first, then removed through the OTP-protected Remove flow.
-- Product note: the current Remove behavior keeps the record visible in Admin with `removed` status for audit/history. If final production must not show QA/test records anywhere in Admin, add a separate admin-only hard-delete or retention cleanup policy.
-
-## Recommended Fix Order
-
-1. Critical fix batch:
-   - Sync Gyana referral into D1/admin Coach Sites or show approved production records in Admin.
-   - Add/approve Gyana Google Form registration link.
-   - Fix Pause persistence/public unavailable behavior.
-2. High fix batch:
-   - Align preview/public template renderers or add strict renderer parity tests.
-   - Improve Coach Analytics identity display and event persistence clarity.
-3. Medium fix batch:
-   - Reset Create Coach Site wizard to Step 1 for new create flow.
-   - Mark only `/go/...` as shareable paid link in Admin.
-4. Low/polish batch:
-   - Add automated 320px overflow checks and tighten small-screen fixed widths if confirmed.
-5. Needs approval:
-   - Any real coach data migration/import.
-   - Any real Google Form URL addition.
-   - Any hard-delete or retention cleanup policy for removed QA/admin-history records.
+- Add real coach contact fields for Gyana if coach-specific support fallback should appear instead of default support.
+- Run a full real Website Creator save draft -> publish -> edit -> republish test only when a real approved coach is being created, or with an explicitly disposable QA record and cleanup policy.
+- Triage 67 New error reports.
+- Run Backup Now after confirming email delivery vars are configured; the recipient row now exists.
+- Keep strict DB-only admin enforcement off until fresh login with the DB row is verified and rollback is ready.
