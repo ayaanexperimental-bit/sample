@@ -3,7 +3,7 @@
 Test date: 2026-06-05
 Production URL tested: https://ywcoach.com
 Authenticated admin test: completed through existing production session. Gmail OTP value was not recorded in this file.
-Latest deployments tested: https://c701da4b.ywcoach.pages.dev, https://1d6159d6.ywcoach.pages.dev, https://bdf537c4.ywcoach.pages.dev, and https://ywcoach.com
+Latest deployments tested: https://c701da4b.ywcoach.pages.dev, https://1d6159d6.ywcoach.pages.dev, https://bdf537c4.ywcoach.pages.dev, https://85e4c304.ywcoach.pages.dev, and https://ywcoach.com
 
 ## Summary
 
@@ -11,6 +11,12 @@ Total requirement groups found: 31
 Completed and tested: 26
 Partial or blocked: 5
 Critical production bugs fixed in this pass: 4
+
+## Latest Verification Addendum
+
+- 2026-06-05: Fixed and deployed admin route recovery for `/admin_panel` plus related admin aliases. Production Browser verification confirmed `/admin/dashboard`, `/admin_panel`, `/admin-panel`, `/admin-dashboard`, and `/dashboard` all land on the authenticated Admin Dashboard without `YW-ERR-404`.
+- 2026-06-05: Added admin-maintenance regression coverage proving analytics backup produces both CSV and XLS payloads, stores both formats, exposes protected CSV/XLS download URLs, reads active admin recipients from the Admin DB role list, and blocks cleanup when active-admin email notification is not configured or not successful.
+- Commands verified in this addendum: `pnpm lint`, `pnpm typecheck`, `pnpm test:admin-security`, `pnpm build`, and `pnpm build:pages-functions`.
 
 ## Checklist
 
