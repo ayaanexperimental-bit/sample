@@ -2075,6 +2075,7 @@ function InteractiveTrendChart({
     (point) => point.value > 0 || (compareEnabled && (point.compareValue || 0) > 0)
   );
   const [activeIndex, setActiveIndex] = useState(() => Math.max(0, cleanPoints.length - 1));
+  const [isGraphHovered, setIsGraphHovered] = useState(false);
   const width = 640;
   const height = 260;
   const padding = {
@@ -2140,6 +2141,7 @@ function InteractiveTrendChart({
   function handleMouseMove(event: MouseEvent<SVGSVGElement>) {
     if (cleanPoints.length < 2) return;
 
+    setIsGraphHovered(true);
     const rect = event.currentTarget.getBoundingClientRect();
     const localX = ((event.clientX - rect.left) / rect.width) * width;
     const nextIndex = primaryCoords.reduce(
@@ -2191,6 +2193,8 @@ function InteractiveTrendChart({
           <svg
             aria-label={title}
             focusable="false"
+            onMouseEnter={() => setIsGraphHovered(true)}
+            onMouseLeave={() => setIsGraphHovered(false)}
             onMouseMove={handleMouseMove}
             role="img"
             viewBox={`0 0 ${width} ${height}`}
@@ -2223,7 +2227,7 @@ function InteractiveTrendChart({
               <path className={styles.chartCompareLine} d={comparePath} />
             ) : null}
             <path className={styles.chartArea} d={areaPath} />
-            {activeCoord ? (
+            {isGraphHovered && activeCoord ? (
               <line
                 className={styles.chartCursorLine}
                 x1={activeCoord.x}
@@ -2236,9 +2240,9 @@ function InteractiveTrendChart({
             {primaryCoords.map((coord, index) => (
               <circle
                 className={styles.chartPoint}
-                data-active={index === boundedActiveIndex ? "true" : "false"}
+                data-active={isGraphHovered && index === boundedActiveIndex ? "true" : "false"}
                 key={`${cleanPoints[index]?.label || index}-${index}`}
-                r={index === boundedActiveIndex ? 5.5 : 3.5}
+                r={isGraphHovered && index === boundedActiveIndex ? 5.5 : 3.5}
                 cx={coord.x}
                 cy={coord.y}
               />
@@ -2266,7 +2270,7 @@ function InteractiveTrendChart({
               })}
             </g>
           </svg>
-          {activePoint && activeCoord ? (
+          {isGraphHovered && activePoint && activeCoord ? (
             <div
               className={styles.chartTooltip}
               style={
