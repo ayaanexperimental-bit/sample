@@ -250,7 +250,8 @@ export function isPaidProgramFunnel(funnel: Funnel | null): funnel is Funnel & {
 export function normalizePathname(pathname: string) {
   if (!pathname || pathname === "/") return "/";
 
-  const withoutTrailingSlash = pathname.replace(/\/+$/, "");
+  const normalizedSeparators = pathname.replace(/\/{2,}/g, "/");
+  const withoutTrailingSlash = normalizedSeparators.replace(/\/+$/, "");
 
   return withoutTrailingSlash || "/";
 }

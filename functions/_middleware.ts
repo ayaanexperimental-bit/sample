@@ -48,8 +48,12 @@ const PUBLIC_ADMIN_PAGE_PATHS = new Set([
 
 const PROTECTED_ADMIN_PAGE_PATHS = new Set(["/admin/dashboard"]);
 const ADMIN_ROUTE_ALIASES = new Map([
+  ["/admin-dashboard", "/admin/dashboard"],
+  ["/admin_dashboard", "/admin/dashboard"],
   ["/admin-panel", "/admin/dashboard"],
   ["/adminpanel", "/admin/dashboard"],
+  ["/admin-login", "/admin/login"],
+  ["/adminlogin", "/admin/login"],
   ["/dashboard", "/admin/dashboard"],
   ["/admin/home", "/admin/dashboard"],
   ["/admin/dashboard/index", "/admin/dashboard"]
