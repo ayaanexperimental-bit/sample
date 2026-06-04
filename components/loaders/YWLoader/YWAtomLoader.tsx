@@ -10,6 +10,7 @@ type LoaderSize = "sm" | "md" | "lg";
 
 type YWAtomLoaderProps = {
   className?: string;
+  enable3D?: boolean;
   label?: string;
   size?: LoaderSize;
 };
@@ -22,14 +23,20 @@ function cx(...classes: Array<string | false | null | undefined>) {
 
 export function YWAtomLoader({
   className,
+  enable3D = false,
   label = "Loading YW Coach",
   size = "md"
 }: YWAtomLoaderProps) {
   const [webGLStatus, setWebGLStatus] = useState<WebGLStatus>("checking");
   const [isCanvasReady, setIsCanvasReady] = useState(false);
-  const canUse3D = webGLStatus === "supported";
+  const canUse3D = enable3D && webGLStatus === "supported";
 
   useEffect(() => {
+    if (!enable3D) {
+      window.requestAnimationFrame(() => setWebGLStatus("unsupported"));
+      return;
+    }
+
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reducedMotion) {
       window.requestAnimationFrame(() => setWebGLStatus("unsupported"));
@@ -39,7 +46,7 @@ export function YWAtomLoader({
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("webgl2") || canvas.getContext("webgl");
     window.requestAnimationFrame(() => setWebGLStatus(context ? "supported" : "unsupported"));
-  }, []);
+  }, [enable3D]);
 
   return (
     <div

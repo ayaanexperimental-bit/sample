@@ -45,28 +45,6 @@
   opacity: 1;
 }
 
-.checking .stage,
-.checking .aura,
-.checking .floorShadow,
-.checking .badge,
-.checking .ringRotorBack,
-.checking .ringRotorSlow,
-.checking .spark,
-.webglEnabled .stage,
-.webglEnabled .aura,
-.webglEnabled .floorShadow,
-.webglEnabled .badge,
-.webglEnabled .ringRotorBack,
-.webglEnabled .ringRotorSlow,
-.webglEnabled .spark {
-  animation: none;
-}
-
-.checking .svgElectronLayer,
-.webglEnabled .svgElectronLayer {
-  opacity: 0;
-}
-
 .sm {
   --loader-size: min(78vw, 24rem);
 }
