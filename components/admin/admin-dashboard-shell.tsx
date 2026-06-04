@@ -246,7 +246,9 @@ export function AdminDashboardShell({
           setPreviousAnalyticsSummaries(payload.previousAnalyticsSummaries || []);
           setRecentAnalyticsEvents(payload.recentEvents || []);
           setAnalyticsRangeMeta(payload.range || null);
-          setAnalyticsSource(payload.source || (payload.configured ? "d1_analytics_events" : "not-configured"));
+          setAnalyticsSource(
+            payload.source || (payload.configured ? "d1_analytics_events" : "not-configured")
+          );
         } else {
           setAnalyticsSummaries([]);
           setPreviousAnalyticsSummaries([]);
@@ -981,7 +983,9 @@ function buildOverviewAnalytics(
   const clickDelta = getDeltaLabel(totalClicks, previousClicks);
   const registerDelta = getDeltaLabel(totalRegisterClicks, previousRegisterClicks);
   const conversionDelta = getDeltaLabel(totalPaidConversions, previousPaidConversions);
-  const highVisitNoClickRows = rows.filter((row) => row.combined.visits >= 10 && row.combined.clicks === 0);
+  const highVisitNoClickRows = rows.filter(
+    (row) => row.combined.visits >= 10 && row.combined.clicks === 0
+  );
   const missingFormRows = rows.filter(
     (row) => row.hasFreeGuestLink && row.freeMetrics.googleFormStatus === "missing"
   );
@@ -1186,7 +1190,9 @@ function buildOverviewAiPayload({
     regionDeviceNotes: overview.breakdownNotes,
     systemIssues: {
       unresolvedCount: unresolvedErrors.length,
-      unresolvedCategories: Array.from(new Set(unresolvedErrors.map((report) => report.category))).slice(0, 8)
+      unresolvedCategories: Array.from(
+        new Set(unresolvedErrors.map((report) => report.category))
+      ).slice(0, 8)
     },
     topCoaches: overview.topRows.slice(0, 5).map((row) => ({
       bestFunnel: row.bestFunnel,
@@ -1295,7 +1301,9 @@ function buildCoachTrendPoints(
   coach: CoachAnalyticsRow,
   range: AnalyticsChartRangeId
 ): AnalyticsChartPoint[] {
-  const freeDailyVisits = sumNumbers(coach.freeGuestLinks.map((site) => site.analytics.dailyVisits));
+  const freeDailyVisits = sumNumbers(
+    coach.freeGuestLinks.map((site) => site.analytics.dailyVisits)
+  );
   const freeWeeklyVisits = sumNumbers(
     coach.freeGuestLinks.map((site) => site.analytics.weeklyVisits)
   );
@@ -1420,7 +1428,10 @@ function buildCoachHeatmapRows(rows: CoachAnalyticsRow[]) {
         coachName: row.coachName,
         funnel: getCoachFunnelLabels(row).join(" + ") || "No funnel",
         issues: row.lowActivityReasons,
-        score: Math.max(8, Math.min(100, Math.round(activityScore + clickScore + 10 - issuePenalty))),
+        score: Math.max(
+          8,
+          Math.min(100, Math.round(activityScore + clickScore + 10 - issuePenalty))
+        ),
         slug: row.coachSlug,
         visits: row.combined.visits
       };
@@ -1609,12 +1620,14 @@ function CoachAnalyticsView({
 
   function openCoachAnalytics(row: CoachAnalyticsRow) {
     setSelectedCoachId(row.coachId);
-    setActiveTab(row.availableTabs[0] || "free");
+    setActiveTab(row.availableTabs[0] || "combined");
   }
 
   function openPublicSite(row: CoachAnalyticsRow) {
-    if (!row.publicLink) return;
-    window.open(row.publicLink, "_blank", "noopener,noreferrer");
+    const publicHref = getCoachPublicHref(row);
+
+    if (!publicHref) return;
+    window.open(publicHref, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -1625,8 +1638,7 @@ function CoachAnalyticsView({
         Analytics stream: {analyticsSource}. Selected range:{" "}
         {analyticsRangeOptions.find((option) => option.value === analyticsRange)?.label ||
           analyticsRange}
-        . Every coach is detected dynamically from coach-site records and paid funnel
-        configuration.
+        . Every coach is detected dynamically from coach-site records and paid funnel configuration.
       </p>
 
       <section className={styles.analyticsKpiGrid} aria-label="Coach analytics summary">
@@ -1726,9 +1738,7 @@ function CoachAnalyticsView({
         <label>
           Date range
           <select
-            onChange={(event) =>
-              onAnalyticsRangeChange(event.target.value as AnalyticsDateRangeId)
-            }
+            onChange={(event) => onAnalyticsRangeChange(event.target.value as AnalyticsDateRangeId)}
             value={analyticsRange}
           >
             {analyticsRangeOptions.map((option) => (
@@ -1800,73 +1810,116 @@ function CoachAnalyticsView({
         </label>
       </section>
 
-      <section className={styles.analyticsGrid} aria-label="Coach analytics list">
+      <section className={styles.analyticsCoachListPanel} aria-label="Coach analytics list">
         {filteredRows.length > 0 ? (
-          filteredRows.map((row) => (
-            <article className={styles.analyticsCoachCard} key={row.coachId}>
-              <div className={styles.analyticsCoachIdentity}>
-                <CoachAvatar name={row.coachName} photoUrl={row.photoUrl} />
-                <div>
-                  <h3>{row.coachName}</h3>
-                  <p>{row.niche}</p>
-                  <small>{row.location || row.coachSlug}</small>
-                </div>
+          <>
+            <div className={styles.analyticsListHeader}>
+              <div>
+                <p className={styles.kicker}>All Coaches</p>
+                <h2>Coach performance list</h2>
               </div>
-              <div className={styles.funnelBadgeRow}>
-                <FunnelBadges row={row} />
-                <span className={styles.statusBadge} data-status={row.status}>
-                  {row.status}
-                </span>
-              </div>
-              <div className={styles.analyticsMiniMetrics}>
-                <span>
-                  <strong>{row.combined.visits.toLocaleString()}</strong>
-                  Visits
-                </span>
-                <span>
-                  <strong>{row.combined.clicks.toLocaleString()}</strong>
-                  Clicks
-                </span>
-                <span>
-                  <strong>{row.combined.conversionRate}</strong>
-                  Click-through
-                </span>
-              </div>
-              <MiniSparkline points={buildCoachSparklinePoints(row)} />
-              <div className={styles.analyticsMetaGrid}>
-                <span>Best funnel: {row.bestFunnel}</span>
-                <span>Last activity: {row.combined.lastActivity}</span>
-                <span>Region: {row.region}</span>
-                <span>Source: {row.source}</span>
-              </div>
-              <div className={styles.analyticsCardActions}>
-                <button
-                  className={styles.primaryAction}
-                  onClick={() => openCoachAnalytics(row)}
-                  type="button"
-                >
-                  View Analytics
-                </button>
-                <button
-                  className={styles.secondaryAction}
-                  onClick={() => onSelect("coach-sites")}
-                  type="button"
-                >
-                  Manage
-                </button>
-                <button
-                  className={styles.secondaryAction}
-                  disabled={!row.publicLink}
-                  onClick={() => openPublicSite(row)}
-                  type="button"
-                >
-                  Open Site
-                </button>
-              </div>
-            </article>
-          ))
+              <span>
+                Showing {filteredRows.length.toLocaleString()} of{" "}
+                {currentRows.length.toLocaleString()} current coach records
+              </span>
+            </div>
+            <div className={styles.analyticsCoachTableScroll}>
+              <table className={styles.analyticsCoachTable}>
+                <thead>
+                  <tr>
+                    <th scope="col">Coach</th>
+                    <th scope="col">Region</th>
+                    <th scope="col">Funnels</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Visits</th>
+                    <th scope="col">Clicks</th>
+                    <th scope="col">CTR</th>
+                    <th scope="col">Best funnel</th>
+                    <th scope="col">Last activity</th>
+                    <th scope="col">Source</th>
+                    <th scope="col">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.map((row) => {
+                    const publicHref = getCoachPublicHref(row);
+
+                    return (
+                      <tr key={row.coachId}>
+                        <td data-label="Coach">
+                          <div className={styles.analyticsTableCoach}>
+                            <CoachAvatar name={row.coachName} photoUrl={row.photoUrl} />
+                            <div>
+                              <strong>{row.coachName}</strong>
+                              <span>{row.niche}</span>
+                              <code>{row.coachSlug}</code>
+                            </div>
+                          </div>
+                        </td>
+                        <td data-label="Region">{getCoachRegionLabel(row)}</td>
+                        <td data-label="Funnels">
+                          <div className={styles.funnelBadgeRow}>
+                            <FunnelBadges row={row} />
+                          </div>
+                        </td>
+                        <td data-label="Status">
+                          <span className={styles.statusBadge} data-status={row.status}>
+                            {row.status}
+                          </span>
+                        </td>
+                        <td data-label="Visits">{row.combined.visits.toLocaleString()}</td>
+                        <td data-label="Clicks">{row.combined.clicks.toLocaleString()}</td>
+                        <td data-label="Click-through">{row.combined.conversionRate}</td>
+                        <td data-label="Best funnel">{row.bestFunnel}</td>
+                        <td data-label="Last activity">
+                          {formatCoachActivity(row.combined.lastActivity)}
+                        </td>
+                        <td data-label="Source">{row.source}</td>
+                        <td data-label="Actions">
+                          <div className={styles.analyticsCoachActions}>
+                            <button
+                              className={styles.primaryAction}
+                              onClick={() => openCoachAnalytics(row)}
+                              type="button"
+                            >
+                              View Analytics
+                            </button>
+                            <button
+                              className={styles.secondaryAction}
+                              onClick={() => onSelect("coach-sites")}
+                              type="button"
+                            >
+                              Manage
+                            </button>
+                            {publicHref ? (
+                              <button
+                                className={styles.secondaryAction}
+                                onClick={() => openPublicSite(row)}
+                                type="button"
+                              >
+                                Open Site
+                              </button>
+                            ) : (
+                              <button
+                                className={styles.secondaryAction}
+                                disabled
+                                title="No public site yet."
+                                type="button"
+                              >
+                                Open Site
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
-          <div className={styles.emptyState}>No coaches match this filter.</div>
+          <div className={styles.emptyState}>No coaches found yet.</div>
         )}
       </section>
 
@@ -1977,6 +2030,33 @@ function AnalyticsKpiCard({
       {detail ? <em>{detail}</em> : null}
     </article>
   );
+}
+
+function getCoachPublicHref(row: CoachAnalyticsRow) {
+  return (
+    row.publicLink || row.paidFunnels.find((funnel) => funnel.canonicalPath)?.canonicalPath || ""
+  );
+}
+
+function getCoachRegionLabel(row: CoachAnalyticsRow) {
+  return row.region !== "Not available" ? row.region : row.location || "Not available";
+}
+
+function formatCoachActivity(value: string) {
+  if (!value || value === "No activity yet" || value === "Not connected") return "No activity yet";
+  if (value === "Paid funnel configured") return value;
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleString(undefined, {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
 }
 
 function CoachAvatar({
@@ -2146,9 +2226,7 @@ function InteractiveTrendChart({
     const localX = ((event.clientX - rect.left) / rect.width) * width;
     const nextIndex = primaryCoords.reduce(
       (closest, coord, index) =>
-        Math.abs(coord.x - localX) < Math.abs(primaryCoords[closest].x - localX)
-          ? index
-          : closest,
+        Math.abs(coord.x - localX) < Math.abs(primaryCoords[closest].x - localX) ? index : closest,
       0
     );
 
@@ -2254,11 +2332,7 @@ function InteractiveTrendChart({
                 return (
                   <text
                     data-edge={
-                      index === 0
-                        ? "start"
-                        : index === cleanPoints.length - 1
-                          ? "end"
-                          : "middle"
+                      index === 0 ? "start" : index === cleanPoints.length - 1 ? "end" : "middle"
                     }
                     key={`${point.label}-${index}`}
                     x={coord.x}
@@ -2372,9 +2446,7 @@ function formatChartPath(coords: Array<{ x: number; y: number }>) {
   if (coords.length === 0) return "";
 
   return coords
-    .map((coord, index) =>
-      `${index === 0 ? "M" : "L"} ${coord.x.toFixed(1)} ${coord.y.toFixed(1)}`
-    )
+    .map((coord, index) => `${index === 0 ? "M" : "L"} ${coord.x.toFixed(1)} ${coord.y.toFixed(1)}`)
     .join(" ");
 }
 
@@ -2408,11 +2480,7 @@ function formatXAxisLabel(label: string) {
 }
 
 function getInitials(name: string) {
-  const parts = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2);
+  const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
 
   return (parts.map((part) => part[0]).join("") || "YW").toUpperCase();
 }
@@ -2472,7 +2540,11 @@ function AnalyticsAiWidget({
         ))}
       </ul>
       <div className={styles.analyticsWidgetActions}>
-        <button className={styles.primaryAction} onClick={insight ? onRefresh : onGenerate} type="button">
+        <button
+          className={styles.primaryAction}
+          onClick={insight ? onRefresh : onGenerate}
+          type="button"
+        >
           {insight ? "Refresh AI Overview" : "Generate AI Overview"}
         </button>
       </div>
@@ -3264,11 +3336,7 @@ function buildCoachReport(
   return common.join("\n");
 }
 
-function buildCoachCsvReport(
-  coach: CoachAnalyticsRow,
-  insights: string[],
-  dateRangeLabel: string
-) {
+function buildCoachCsvReport(coach: CoachAnalyticsRow, insights: string[], dateRangeLabel: string) {
   const rows = [
     ["Field", "Value"],
     ["Coach name", coach.coachName],
@@ -3279,7 +3347,10 @@ function buildCoachCsvReport(
     ["Register/CTA clicks", String(coach.combined.clicks)],
     ["Free register clicks", String(coach.freeMetrics.registerClicks)],
     ["Paid register clicks", String(coach.paidMetrics.registerClicks)],
-    ["WhatsApp/contact clicks", String(coach.freeMetrics.whatsappClicks + coach.paidMetrics.whatsappClicks)],
+    [
+      "WhatsApp/contact clicks",
+      String(coach.freeMetrics.whatsappClicks + coach.paidMetrics.whatsappClicks)
+    ],
     ["Payment success events", String(coach.paidMetrics.paymentSuccess)],
     ["Conversion rate", coach.combined.conversionRate],
     ["Top traffic source", coach.source],
@@ -3323,10 +3394,30 @@ function buildCoachExcelReport(
       String(coach.paidMetrics.whatsappClicks),
       String(coach.freeMetrics.whatsappClicks + coach.paidMetrics.whatsappClicks)
     ],
-    ["Video plays", String(coach.freeMetrics.videoPlays), "0", String(coach.freeMetrics.videoPlays)],
-    ["Payment initiated", "0", String(coach.paidMetrics.paymentInitiated), String(coach.paidMetrics.paymentInitiated)],
-    ["Payment success", "0", String(coach.paidMetrics.paymentSuccess), String(coach.paidMetrics.paymentSuccess)],
-    ["Conversion rate", coach.freeMetrics.conversionRate, coach.paidMetrics.conversionRate, coach.combined.conversionRate]
+    [
+      "Video plays",
+      String(coach.freeMetrics.videoPlays),
+      "0",
+      String(coach.freeMetrics.videoPlays)
+    ],
+    [
+      "Payment initiated",
+      "0",
+      String(coach.paidMetrics.paymentInitiated),
+      String(coach.paidMetrics.paymentInitiated)
+    ],
+    [
+      "Payment success",
+      "0",
+      String(coach.paidMetrics.paymentSuccess),
+      String(coach.paidMetrics.paymentSuccess)
+    ],
+    [
+      "Conversion rate",
+      coach.freeMetrics.conversionRate,
+      coach.paidMetrics.conversionRate,
+      coach.combined.conversionRate
+    ]
   ];
   const reportRows = buildCoachReport(coach, format, insights, dateRangeLabel)
     .split("\n")
@@ -3339,10 +3430,10 @@ function buildCoachExcelReport(
     ' xmlns:o="urn:schemas-microsoft-com:office:office"',
     ' xmlns:x="urn:schemas-microsoft-com:office:excel"',
     ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">',
-    '<Styles>',
+    "<Styles>",
     '<Style ss:ID="Header"><Font ss:Bold="1"/><Interior ss:Color="#F2F4F7" ss:Pattern="Solid"/></Style>',
     '<Style ss:ID="Title"><Font ss:Bold="1" ss:Size="14"/><Interior ss:Color="#FFF4E6" ss:Pattern="Solid"/></Style>',
-    '</Styles>',
+    "</Styles>",
     renderExcelWorksheet("Coach Summary", [["YW Coach Analytics Report"], ...summaryRows], true),
     renderExcelWorksheet("Funnel Metrics", funnelRows, false),
     renderExcelWorksheet("Shareable Report", reportRows, false),
@@ -3405,10 +3496,7 @@ function escapeCsvCell(value: string) {
 }
 
 function escapeXmlCell(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function escapeXmlAttribute(value: string) {
