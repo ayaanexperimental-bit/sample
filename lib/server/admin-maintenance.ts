@@ -92,6 +92,12 @@ type AdminUserRow = {
   status: string;
 };
 
+type GoogleBackupCredentials = {
+  client_email: string;
+  private_key: string;
+  token_uri?: string;
+};
+
 const RETENTION_DAYS = 90;
 const BACKUP_EMAIL_SUBJECT = "YWcoach Trimonthly Backup Data";
 
@@ -210,7 +216,7 @@ export async function getAdminMaintenanceStatus({
     backupDestination: googleSheetsConfigured
       ? "Google Sheets primary configured"
       : "Secure CSV/XLSX-compatible D1 export",
-    backupDownloadUrl: latestBackup?.id ? `/api/admin/backup-cleanup?download=${latestBackup.id}` : null,
+    backupDownloadUrl: latestBackup?.file_url || (latestBackup?.id ? `/api/admin/backup-cleanup?download=${latestBackup.id}` : null),
     backupEmailConfigured,
     cleanupEligibleAnalyticsEvents,
     cleanupStatus: getCleanupStatusText({
@@ -267,11 +273,55 @@ export async function runAnalyticsBackup({
   const fileName = `ywcoach-analytics-backup-${new Date(createdAt * 1000)
     .toISOString()
     .slice(0, 10)}.csv`;
-  const fileUrl = `/api/admin/backup-cleanup?download=${backupId}`;
   const csv = createAnalyticsBackupCsv(rows);
-  const destination = isGoogleSheetsConfigured(env)
-    ? "google_sheets_configured_csv_fallback"
-    : "d1_secure_csv";
+  let destination = "d1_secure_csv";
+  let fileUrl = `/api/admin/backup-cleanup?download=${backupId}`;
+  let status = rows.length === 0 ? "completed_empty" : "completed";
+
+  if (isGoogleSheetsConfigured(env)) {
+    const sheetsBackup = await createGoogleSheetsBackup({
+      backupId,
+      createdAt,
+      cutoff,
+      env,
+      rows
+    });
+    destination = "google_sheets";
+
+    if (!sheetsBackup.ok) {
+      status = "failed_google_sheets";
+      await db
+        .prepare(
+          `INSERT INTO analytics_backups (
+            id, date_range_start, date_range_end, backup_type, destination, file_name, file_url,
+            status, record_count, recipient_count, failed_recipients, notification_status,
+            backup_csv, created_at, created_by
+          ) VALUES (?1, 0, ?2, 'analytics_events_raw', ?3, ?4, '', ?5, ?6, 0, '', 'not_sent', ?7, ?8, ?9)`
+        )
+        .bind(
+          backupId,
+          cutoff,
+          destination,
+          fileName,
+          status,
+          rows.length,
+          csv,
+          createdAt,
+          sanitizeEmail(adminEmail)
+        )
+        .run();
+
+      return {
+        error: sheetsBackup.error,
+        notificationStatus: "not_sent",
+        ok: false as const,
+        recordCount: rows.length,
+        status
+      };
+    }
+
+    fileUrl = sheetsBackup.fileUrl;
+  }
 
   let notificationStatus = "not_sent";
   let failedRecipients: string[] = [];
@@ -293,8 +343,6 @@ export async function runAnalyticsBackup({
     notificationStatus = result.failedRecipients.length > 0 ? "partial_failed" : "sent";
     failedRecipients = result.failedRecipients;
   }
-
-  const status = rows.length === 0 ? "completed_empty" : "completed";
 
   await db
     .prepare(
@@ -909,6 +957,246 @@ function createAnalyticsBackupCsv(rows: Array<Record<string, unknown>>) {
   return lines.join("\n");
 }
 
+async function createGoogleSheetsBackup({
+  backupId,
+  createdAt,
+  cutoff,
+  env,
+  rows
+}: {
+  backupId: string;
+  createdAt: number;
+  cutoff: number;
+  env: AdminMaintenanceEnv;
+  rows: Array<Record<string, unknown>>;
+}) {
+  const spreadsheetId = env.GOOGLE_SHEETS_BACKUP_SPREADSHEET_ID?.trim();
+  if (!spreadsheetId) {
+    return { ok: false as const, error: "Google Sheets spreadsheet ID is not configured." };
+  }
+
+  const token = await getGoogleSheetsAccessToken(env);
+  if (!token.ok) return token;
+
+  const sheetTitle = `analytics-${new Date(createdAt * 1000).toISOString().slice(0, 10)}-${backupId
+    .slice(-8)
+    .replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const addSheetResponse = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+    {
+      body: JSON.stringify({
+        requests: [
+          {
+            addSheet: {
+              properties: {
+                title: sheetTitle
+              }
+            }
+          }
+        ]
+      }),
+      headers: {
+        authorization: `Bearer ${token.accessToken}`,
+        "content-type": "application/json"
+      },
+      method: "POST"
+    }
+  );
+
+  if (!addSheetResponse.ok) {
+    return { ok: false as const, error: "Google Sheets backup tab could not be created." };
+  }
+
+  const addSheetPayload = (await addSheetResponse.json().catch(() => ({}))) as {
+    replies?: Array<{
+      addSheet?: {
+        properties?: {
+          sheetId?: number;
+        };
+      };
+    }>;
+  };
+  const sheetId = addSheetPayload.replies?.[0]?.addSheet?.properties?.sheetId;
+  const headers = [
+    "backup_id",
+    "backup_created_at",
+    "backup_range_before",
+    "id",
+    "event_name",
+    "funnel_type",
+    "coach_slug",
+    "coach_site_id",
+    "coach_id",
+    "funnel_id",
+    "page_path",
+    "source",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "device_type",
+    "region",
+    "created_at",
+    "created_date"
+  ];
+  const backupCreatedAt = new Date(createdAt * 1000).toISOString();
+  const rangeBefore = new Date(cutoff * 1000).toISOString();
+  const values = [
+    headers,
+    ...rows.map((row) => [
+      backupId,
+      backupCreatedAt,
+      rangeBefore,
+      row.id || "",
+      row.event_name || "",
+      row.funnel_type || "",
+      row.coach_slug || "",
+      row.coach_site_id || "",
+      row.coach_id || "",
+      row.funnel_id || "",
+      row.page_path || "",
+      row.source || "",
+      row.utm_source || "",
+      row.utm_medium || "",
+      row.utm_campaign || "",
+      row.device_type || "",
+      row.region || "",
+      row.created_at || "",
+      row.created_date || ""
+    ])
+  ];
+  const range = encodeURIComponent(`'${sheetTitle}'!A1`);
+  const updateResponse = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?valueInputOption=RAW`,
+    {
+      body: JSON.stringify({ values }),
+      headers: {
+        authorization: `Bearer ${token.accessToken}`,
+        "content-type": "application/json"
+      },
+      method: "PUT"
+    }
+  );
+
+  if (!updateResponse.ok) {
+    return { ok: false as const, error: "Google Sheets backup rows could not be written." };
+  }
+
+  return {
+    fileUrl: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit${
+      typeof sheetId === "number" ? `#gid=${sheetId}` : ""
+    }`,
+    ok: true as const
+  };
+}
+
+async function getGoogleSheetsAccessToken(env: AdminMaintenanceEnv) {
+  const credentials = parseGoogleCredentials(env.GOOGLE_SHEETS_BACKUP_CREDENTIALS_JSON);
+  if (!credentials) {
+    return { ok: false as const, error: "Google Sheets service account credentials are invalid." };
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const assertion = await createGoogleServiceAccountJwt({
+    clientEmail: credentials.client_email,
+    iat: now,
+    privateKey: credentials.private_key
+  });
+  const response = await fetch(credentials.token_uri || "https://oauth2.googleapis.com/token", {
+    body: new URLSearchParams({
+      assertion,
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer"
+    }),
+    headers: {
+      "content-type": "application/x-www-form-urlencoded"
+    },
+    method: "POST"
+  });
+
+  if (!response.ok) {
+    return { ok: false as const, error: "Google Sheets access token could not be created." };
+  }
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    access_token?: string;
+  };
+  if (!payload.access_token) {
+    return { ok: false as const, error: "Google Sheets access token response was invalid." };
+  }
+
+  return { accessToken: payload.access_token, ok: true as const };
+}
+
+async function createGoogleServiceAccountJwt({
+  clientEmail,
+  iat,
+  privateKey
+}: {
+  clientEmail: string;
+  iat: number;
+  privateKey: string;
+}) {
+  const header = base64UrlEncodeString(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const claimSet = base64UrlEncodeString(
+    JSON.stringify({
+      aud: "https://oauth2.googleapis.com/token",
+      exp: iat + 3600,
+      iat,
+      iss: clientEmail,
+      scope: "https://www.googleapis.com/auth/spreadsheets"
+    })
+  );
+  const signingInput = `${header}.${claimSet}`;
+  const key = await crypto.subtle.importKey(
+    "pkcs8",
+    pemToArrayBuffer(privateKey),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    key,
+    new TextEncoder().encode(signingInput)
+  );
+
+  return `${signingInput}.${base64UrlEncodeBytes(new Uint8Array(signature))}`;
+}
+
+function parseGoogleCredentials(value: unknown): GoogleBackupCredentials | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+
+  try {
+    const parsed = JSON.parse(value) as {
+      client_email?: string;
+      private_key?: string;
+      token_uri?: string;
+    };
+    if (!parsed.client_email || !parsed.private_key) return null;
+
+    return {
+      client_email: parsed.client_email,
+      private_key: parsed.private_key,
+      token_uri: parsed.token_uri
+    };
+  } catch {
+    return null;
+  }
+}
+
+function pemToArrayBuffer(pem: string) {
+  const base64 = pem
+    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
+    .replace(/-----END PRIVATE KEY-----/g, "")
+    .replace(/\s+/g, "");
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return bytes.buffer;
+}
+
 function getErrorReportCleanupSql(filter: ErrorReportCleanupFilter) {
   const now = getNowSeconds();
   const older30 = now - 30 * 86400;
@@ -1047,6 +1335,19 @@ function escapeHtml(value: string) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function base64UrlEncodeString(value: string) {
+  return base64UrlEncodeBytes(new TextEncoder().encode(value));
+}
+
+function base64UrlEncodeBytes(bytes: Uint8Array) {
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 function createUnavailableRoleChecklist(
