@@ -1967,6 +1967,7 @@ function CoachAvatar({
   return (
     <span aria-hidden="true" className={styles.coachAvatar} data-size={size}>
       {cleanPhotoUrl && !imageFailed ? (
+        // eslint-disable-next-line @next/next/no-img-element -- Uploaded/R2/external coach avatar URLs are dynamic and must fall back safely on load failure.
         <img
           alt=""
           loading="lazy"
