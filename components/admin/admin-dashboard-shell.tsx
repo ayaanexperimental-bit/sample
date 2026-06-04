@@ -1249,6 +1249,34 @@ function buildCoachListTrendPoints(
     .slice(0, 6);
 
   if (topRows.length > 0) {
+    if (topRows.length === 1) {
+      const row = topRows[0];
+
+      return sliceChartPointsByRange(
+        [
+          {
+            compareValue: row.freeMetrics.clicks,
+            detail: "Free guest-link visits and click signal.",
+            label: "Free",
+            value: row.freeMetrics.visits
+          },
+          {
+            compareValue: row.paidMetrics.clicks,
+            detail: "Paid masterclass visits and click signal.",
+            label: "Paid",
+            value: row.paidMetrics.visits
+          },
+          {
+            compareValue: row.combined.clicks,
+            detail: `${row.coachName} combined funnel signal.`,
+            label: "Combined",
+            value: row.combined.visits
+          }
+        ],
+        range
+      );
+    }
+
     return sliceChartPointsByRange(
       topRows.map((row) => ({
         compareValue: row.combined.clicks,
