@@ -1,6 +1,12 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import { adminControlCenterData } from "../../../lib/admin-control-center";
 import { adminJson, readJsonBody, requireAdmin } from "../../../lib/server/admin-auth";
+import {
+  getAdminMaintenanceStatus,
+  getBackupDownload,
+  runAnalyticsBackup,
+  runAnalyticsCleanupAfterBackup,
+  sendTestBackupEmail
+} from "../../../lib/server/admin-maintenance";
 
 type Env = {
   ADMIN_ALLOWED_EMAILS?: string;
@@ -10,6 +16,9 @@ type Env = {
   ADMIN_REQUIRE_DB_ADMIN_ROLES?: string;
   ADMIN_SESSION_SECRET?: string;
   GOOGLE_SHEETS_BACKUP_CREDENTIALS_JSON?: string;
+  GOOGLE_SHEETS_BACKUP_SPREADSHEET_ID?: string;
+  RESEND_API_KEY?: string;
+  ADMIN_EMAIL_OTP_FROM?: string;
 };
 
 type PagesContext = {
@@ -26,13 +35,30 @@ export async function onRequest({ request, env }: PagesContext) {
     const admin = await requireAdmin(request, env, { requiredRole: "owner" });
     if (!admin.ok) return admin.response;
 
+    const url = new URL(request.url);
+    const downloadId = url.searchParams.get("download") || "";
+    if (downloadId) {
+      const backup = await getBackupDownload({ backupId: downloadId, env });
+      if (!backup) {
+        return adminJson({ ok: false, error: "Backup file was not found." }, 404);
+      }
+
+      return new Response(backup.csv, {
+        headers: {
+          "cache-control": "no-store",
+          "content-disposition": `attachment; filename="${backup.fileName.replace(/"/g, "")}"`,
+          "content-type": "text/csv; charset=utf-8"
+        }
+      });
+    }
+
     return adminJson({
-      backupCleanup: {
-        ...adminControlCenterData.backupCleanup,
-        googleSheetsConfigured: Boolean(env.GOOGLE_SHEETS_BACKUP_CREDENTIALS_JSON?.trim())
-      },
+      backupCleanup: await getAdminMaintenanceStatus({
+        currentAdminEmail: admin.admin.email,
+        env
+      }),
       ok: true,
-      persistence: "disabled"
+      persistence: env.ADMIN_DB ? "d1_table" : "unavailable"
     });
   }
 
@@ -43,20 +69,39 @@ export async function onRequest({ request, env }: PagesContext) {
     const body = await readJsonBody<BackupCleanupActionBody>(request);
     const action = typeof body?.action === "string" ? body.action.trim() : "";
 
-    if (action !== "backup" && action !== "cleanup") {
+    if (action !== "backup" && action !== "cleanup" && action !== "test_backup_email") {
       return adminJson({ ok: false, error: "Unsupported backup/cleanup action." }, 400);
     }
 
+    const result =
+      action === "cleanup"
+        ? await runAnalyticsCleanupAfterBackup({
+            adminEmail: admin.admin.email,
+            env,
+            request
+          })
+        : action === "test_backup_email"
+          ? await sendTestBackupEmail({
+              adminEmail: admin.admin.email,
+              env,
+              request
+            })
+          : await runAnalyticsBackup({
+              adminEmail: admin.admin.email,
+              env,
+              request
+            });
+
     return adminJson(
       {
-        error:
-          action === "cleanup"
-            ? "Cleanup is disabled until a backup destination succeeds. No data was deleted."
-            : "Backup storage is not configured yet. No backup was created.",
-        ok: false,
-        persistence: "disabled"
+        ...result,
+        backupCleanup: await getAdminMaintenanceStatus({
+          currentAdminEmail: admin.admin.email,
+          env
+        }),
+        persistence: env.ADMIN_DB ? "d1_table" : "unavailable"
       },
-      503
+      result.ok ? 200 : 503
     );
   }
 

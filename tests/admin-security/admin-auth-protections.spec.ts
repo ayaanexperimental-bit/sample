@@ -231,7 +231,7 @@ test.describe("admin auth security protections", () => {
       })
     });
     expect(backupCleanup.status).toBe(200);
-    await expectJson(backupCleanup, { ok: true, persistence: "disabled" });
+    await expectJson(backupCleanup, { ok: true, persistence: "unavailable" });
 
     const masterclassSettings = await masterclassSettingsRequest({
       env,

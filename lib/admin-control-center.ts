@@ -91,7 +91,7 @@ export type AdminErrorReport = {
 };
 
 export type AdminBackupCleanupStatus = {
-  backupDestination: "CSV/JSON download" | "Google Sheets" | "Not configured";
+  backupDestination: "CSV/JSON download" | "Google Sheets" | "Not configured" | string;
   cleanupStatus: string;
   googleSheetsConfigured: boolean;
   lastBackupAt: string;
@@ -162,13 +162,13 @@ export const adminControlCenterData: AdminControlCenterData = {
   paidMasterclassLinks: getPaidMasterclassLinks(),
   errorReports: [],
   backupCleanup: {
-    backupDestination: "Not configured",
-    cleanupStatus: "Disabled until backup storage is configured",
+    backupDestination: "Secure CSV/XLSX-compatible export",
+    cleanupStatus: "Disabled until backup and active-admin notification succeed",
     googleSheetsConfigured: false,
     lastBackupAt: "No backup created yet",
     lastCleanupAt: "No cleanup run yet",
     retentionDays: 90,
-    scheduledCleanup: "Manual only until cron/storage approval"
+    scheduledCleanup: "Manual safe fallback until Cloudflare Cron is wired"
   },
   eventTracking: {
     eventNames: [
@@ -237,12 +237,12 @@ export const adminControlCenterData: AdminControlCenterData = {
     {
       name: "analytics_backups",
       purpose: "Backup metadata before 90-day raw analytics cleanup.",
-      status: "Planned after storage approval"
+      status: "D1 maintenance table prepared"
     },
     {
       name: "cleanup_logs",
       purpose: "Audit trail for backup and cleanup runs.",
-      status: "Planned after storage approval"
+      status: "D1 maintenance table prepared"
     }
   ],
   security: [

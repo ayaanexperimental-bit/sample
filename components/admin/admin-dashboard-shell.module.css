@@ -4007,3 +4007,137 @@
   font-weight: 650;
   line-height: 1.5;
 }
+
+.maintenanceGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.maintenanceCard {
+  display: grid;
+  align-content: start;
+  gap: 0.45rem;
+  min-width: 0;
+  border: 1px solid rgb(28 42 59 / 0.08);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at 8% 0%, rgb(255 239 247 / 0.68), transparent 8rem),
+    #ffffff;
+  box-shadow: 0 0.75rem 1.8rem rgb(16 24 40 / 0.05);
+  padding: 1rem;
+}
+
+.maintenanceCard span {
+  color: #087a73;
+  font-size: 0.7rem;
+  font-weight: 950;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.maintenanceCard strong {
+  color: #1d2939;
+  font-size: clamp(1.15rem, 1.8vw, 1.55rem);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.maintenanceCard p,
+.maintenanceList {
+  margin: 0;
+  color: #667085;
+  font-size: 0.86rem;
+  font-weight: 760;
+  line-height: 1.48;
+}
+
+.recipientList,
+.roleChecklist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.recipientList span {
+  min-height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  border: 1px solid rgb(8 122 115 / 0.16);
+  border-radius: 999px;
+  background: rgb(8 122 115 / 0.08);
+  color: #075f5b;
+  padding: 0 0.72rem;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.recipientList small {
+  color: #667085;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.roleChecklist {
+  margin-bottom: 0.9rem;
+}
+
+.roleChecklist div {
+  min-width: min(100%, 14rem);
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid rgb(168 85 137 / 0.14);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 0.74);
+  padding: 0.82rem;
+}
+
+.roleChecklist div[data-state="pass"] {
+  border-color: rgb(8 122 115 / 0.2);
+  background: rgb(8 122 115 / 0.08);
+}
+
+.roleChecklist div[data-state="wait"] {
+  border-color: rgb(183 121 31 / 0.24);
+  background: rgb(183 121 31 / 0.08);
+}
+
+.roleChecklist strong {
+  color: #1d2939;
+  font-size: 0.86rem;
+}
+
+.roleChecklist span {
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.maintenanceList {
+  display: grid;
+  gap: 0.35rem;
+  padding-left: 1.1rem;
+}
+
+.maintenanceDialog {
+  display: grid;
+  gap: 0.85rem;
+}
+
+@media (max-width: 1180px) {
+  .maintenanceGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .maintenanceGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .recipientList,
+  .roleChecklist {
+    display: grid;
+  }
+}

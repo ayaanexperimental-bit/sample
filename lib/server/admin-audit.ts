@@ -1,7 +1,11 @@
 import type { D1Database } from "@cloudflare/workers-types";
 
 export type AdminAuditEventType =
+  | "backup_created"
+  | "backup_test_email_sent"
   | "blocked_attempt"
+  | "cleanup_completed"
+  | "error_reports_cleared"
   | "forgot_password_requested"
   | "login_attempt"
   | "login_failed"

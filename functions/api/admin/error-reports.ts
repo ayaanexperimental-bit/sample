@@ -2,6 +2,10 @@ import type { D1Database } from "@cloudflare/workers-types";
 import { adminControlCenterData, type AdminErrorReportStatus } from "../../../lib/admin-control-center";
 import { adminJson, readJsonBody, requireAdmin } from "../../../lib/server/admin-auth";
 import { listWebsiteErrorReports, updateWebsiteErrorReportStatus } from "../../../lib/server/error-reports";
+import {
+  clearOldErrorReports,
+  type ErrorReportCleanupFilter
+} from "../../../lib/server/admin-maintenance";
 
 type Env = {
   ADMIN_ALLOWED_EMAILS?: string;
@@ -10,6 +14,7 @@ type Env = {
   ADMIN_DEV_OTP?: string;
   ADMIN_REQUIRE_DB_ADMIN_ROLES?: string;
   ADMIN_SESSION_SECRET?: string;
+  RESEND_API_KEY?: string;
 };
 
 type PagesContext = {
@@ -18,7 +23,9 @@ type PagesContext = {
 };
 
 type ErrorReportActionBody = {
+  action?: unknown;
   adminNotes?: unknown;
+  cleanupFilter?: unknown;
   referenceId?: unknown;
   status?: unknown;
 };
@@ -51,6 +58,25 @@ export async function onRequest({ request, env }: PagesContext) {
     if (!admin.ok) return admin.response;
 
     const body = await readJsonBody<ErrorReportActionBody>(request);
+    const action = typeof body?.action === "string" ? body.action.trim() : "";
+
+    if (action === "clear_old") {
+      const cleanupFilter =
+        typeof body?.cleanupFilter === "string" ? body.cleanupFilter.trim() : "";
+      if (!isErrorReportCleanupFilter(cleanupFilter)) {
+        return adminJson({ ok: false, error: "Valid cleanup filter is required." }, 400);
+      }
+
+      const result = await clearOldErrorReports({
+        adminEmail: admin.admin.email,
+        env,
+        filter: cleanupFilter,
+        request
+      });
+
+      return adminJson(result, result.ok ? 200 : 503);
+    }
+
     const referenceId = typeof body?.referenceId === "string" ? body.referenceId.trim() : "";
     const status = typeof body?.status === "string" ? body.status.trim() : "";
     const adminNotes = typeof body?.adminNotes === "string" ? body.adminNotes.trim() : "";
@@ -76,4 +102,13 @@ export async function onRequest({ request, env }: PagesContext) {
   return adminJson({ ok: false, error: "Method not allowed." }, 405, {
     allow: "GET, POST, PATCH"
   });
+}
+
+function isErrorReportCleanupFilter(value: string): value is ErrorReportCleanupFilter {
+  return (
+    value === "fixed_ignored" ||
+    value === "older_30" ||
+    value === "older_90" ||
+    value === "stale_all"
+  );
 }

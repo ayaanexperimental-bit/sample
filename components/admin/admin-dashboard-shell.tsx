@@ -110,6 +110,55 @@ type AdminAiAnalyticsPayload = {
   };
 };
 
+type AdminMaintenanceRoleChecklist = {
+  adminEmailPresent: boolean;
+  adminEmailRole: string;
+  adminEmailStatus: string;
+  adminRoleTableExists: boolean;
+  currentAdminEmailMasked: string;
+  lockoutRisk: "high" | "low" | "medium";
+  rollbackInstructions: string[];
+  roleRequirementMet: boolean;
+  strictDbRolesEnabled: boolean;
+};
+
+type AdminMaintenanceStatus = {
+  activeAdminRecipientCount: number;
+  backupDestination: string;
+  backupDownloadUrl: string | null;
+  backupEmailConfigured: boolean;
+  cleanupEligibleAnalyticsEvents: number;
+  cleanupStatus: string;
+  failedRecipients: string[];
+  googleSheetsConfigured: boolean;
+  lastBackupAt: string;
+  lastBackupRecordCount: number;
+  lastBackupStatus: string;
+  lastCleanupAt: string;
+  lastCleanupDeletedCount: number;
+  lastErrorReportCleanupAt: string;
+  lastErrorReportCleanupDeletedCount: number;
+  maskedRecipients: string[];
+  rawRecipientRoles: Array<{
+    maskedEmail: string;
+    role: string;
+    status: string;
+  }>;
+  retentionDays: number;
+  roleChecklist: AdminMaintenanceRoleChecklist;
+  scheduledCleanup: string;
+};
+
+type BackupCleanupPayload = {
+  backupCleanup?: AdminMaintenanceStatus;
+  deletedCount?: number;
+  error?: string;
+  failedRecipients?: string[];
+  notificationStatus?: string;
+  ok?: boolean;
+  recordCount?: number;
+};
+
 const analyticsRangeOptions: Array<{ label: string; value: AnalyticsDateRangeId }> = [
   { label: "Today", value: "today" },
   { label: "7 days", value: "7d" },
@@ -420,7 +469,7 @@ export function AdminDashboardShell({
           />
         ) : null}
         {activeView === "backup-cleanup" ? (
-          <BackupCleanupView control={control} onAction={openAction} />
+          <BackupCleanupView control={control} csrfToken={csrfToken} />
         ) : null}
         {activeView === "settings" ? (
           <SettingsView control={control} onAction={openAction} />
@@ -4162,6 +4211,11 @@ function ErrorReportsView({
   source: string;
 }) {
   const [selectedReport, setSelectedReport] = useState<AdminErrorReport | null>(null);
+  const [cleanupDialogOpen, setCleanupDialogOpen] = useState(false);
+  const [cleanupFilter, setCleanupFilter] = useState<
+    "fixed_ignored" | "older_30" | "older_90" | "stale_all"
+  >("fixed_ignored");
+  const [cleanupBusy, setCleanupBusy] = useState(false);
   const [copyMessage, setCopyMessage] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const isLiveSource = source === "d1_table";
@@ -4231,8 +4285,80 @@ function ErrorReportsView({
     }
   }
 
+  async function refreshReports() {
+    try {
+      const response = await fetch("/api/admin/error-reports", {
+        cache: "no-store",
+        credentials: "include"
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        errorReports?: AdminErrorReport[];
+      };
+      if (response.ok && Array.isArray(payload.errorReports)) {
+        onReportsChange(payload.errorReports);
+      }
+    } catch {
+      setStatusMessage("Cleanup completed, but the refreshed list could not be loaded.");
+    }
+  }
+
+  async function clearOldReports() {
+    setCleanupBusy(true);
+    setStatusMessage("Clearing selected old error reports...");
+
+    try {
+      const response = await fetch("/api/admin/error-reports", {
+        body: JSON.stringify({
+          action: "clear_old",
+          cleanupFilter
+        }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": csrfToken
+        },
+        method: "POST"
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        deletedCount?: number;
+        error?: string;
+        ok?: boolean;
+      };
+
+      if (!response.ok || !payload.ok) {
+        setStatusMessage(payload.error || "Could not clear selected old reports.");
+        return;
+      }
+
+      await refreshReports();
+      setCleanupDialogOpen(false);
+      setStatusMessage(`${payload.deletedCount || 0} old error reports cleared.`);
+    } catch {
+      setStatusMessage("Could not clear selected old reports. No other production data was touched.");
+    } finally {
+      setCleanupBusy(false);
+    }
+  }
+
   return (
-    <AdminPageShell eyebrow="Reports" title="Error Reports">
+    <AdminPageShell
+      actions={
+        <button
+          className={styles.dangerAction}
+          disabled={!isLiveSource}
+          onClick={() => {
+            setCleanupDialogOpen(true);
+            setStatusMessage("");
+          }}
+          type="button"
+        >
+          Clear Old Error Reports
+        </button>
+      }
+      eyebrow="Reports"
+      title="Error Reports"
+    >
       <div className={styles.noticeCard} data-tone={isLiveSource ? "success" : "warning"}>
         <strong>
           {isLiveSource
@@ -4340,6 +4466,54 @@ function ErrorReportsView({
           </button>
         ) : null}
       </div>
+      {statusMessage ? <p className={styles.inlineStatus}>{statusMessage}</p> : null}
+      <AdminActionDialog
+        footer={
+          <>
+            <button onClick={() => setCleanupDialogOpen(false)} type="button">
+              Cancel
+            </button>
+            <button
+              data-tone="danger"
+              disabled={cleanupBusy || !isLiveSource}
+              onClick={() => void clearOldReports()}
+              type="button"
+            >
+              {cleanupBusy ? "Clearing..." : "Clear Selected Reports"}
+            </button>
+          </>
+        }
+        onClose={() => setCleanupDialogOpen(false)}
+        open={cleanupDialogOpen}
+        title="Clear Old Error Reports"
+        tone="danger"
+      >
+        <div className={styles.maintenanceDialog}>
+          <p className={styles.dialogCopy}>
+            This will permanently clear selected old error reports. This action cannot be undone.
+          </p>
+          <label className={styles.compactField}>
+            Cleanup option
+            <select
+              onChange={(event) =>
+                setCleanupFilter(
+                  event.target.value as "fixed_ignored" | "older_30" | "older_90" | "stale_all"
+                )
+              }
+              value={cleanupFilter}
+            >
+              <option value="fixed_ignored">Clear Fixed/Ignored reports</option>
+              <option value="older_30">Clear reports older than 30 days</option>
+              <option value="older_90">Clear reports older than 90 days</option>
+              <option value="stale_all">Clear all old/stale reports</option>
+            </select>
+            <small>
+              Fresh New reports are kept. Analytics, coach sites, admins, payment data, and audit
+              logs are never touched by this cleanup.
+            </small>
+          </label>
+        </div>
+      </AdminActionDialog>
       <AdminActionDialog
         footer={
           selectedReport ? (
@@ -4479,59 +4653,488 @@ function ErrorReportsView({
 
 function BackupCleanupView({
   control,
-  onAction
+  csrfToken
 }: {
   control: typeof adminControlCenterData;
-  onAction: (title: string, body: string, tone?: "danger" | "standard") => void;
+  csrfToken: string;
 }) {
+  const [status, setStatus] = useState<AdminMaintenanceStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busyAction, setBusyAction] = useState<"backup" | "cleanup" | "test_backup_email" | "">("");
+  const [errorCleanupBusy, setErrorCleanupBusy] = useState(false);
+  const [errorCleanupConfirmOpen, setErrorCleanupConfirmOpen] = useState(false);
+  const [errorCleanupFilter, setErrorCleanupFilter] = useState<
+    "fixed_ignored" | "older_30" | "older_90" | "stale_all"
+  >("fixed_ignored");
+  const [message, setMessage] = useState("");
+  const [cleanupConfirmOpen, setCleanupConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadStatus() {
+      setLoading(true);
+      try {
+        const response = await fetch("/api/admin/backup-cleanup", {
+          cache: "no-store",
+          credentials: "include"
+        });
+        const payload = (await response.json().catch(() => ({}))) as BackupCleanupPayload;
+        if (!active) return;
+        if (response.ok && payload.backupCleanup) {
+          setStatus(payload.backupCleanup);
+        } else {
+          setMessage(payload.error || "Backup/Cleanup status could not be loaded.");
+        }
+      } catch {
+        if (active) setMessage("Backup/Cleanup status could not be loaded.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void loadStatus();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function clearOldReportsFromMaintenance() {
+    setErrorCleanupBusy(true);
+    setMessage("Clearing selected old error reports...");
+
+    try {
+      const response = await fetch("/api/admin/error-reports", {
+        body: JSON.stringify({
+          action: "clear_old",
+          cleanupFilter: errorCleanupFilter
+        }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": csrfToken
+        },
+        method: "POST"
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        deletedCount?: number;
+        error?: string;
+        ok?: boolean;
+      };
+
+      if (!response.ok || !payload.ok) {
+        setMessage(payload.error || "Could not clear selected old error reports.");
+        return;
+      }
+
+      const deletedCount = payload.deletedCount || 0;
+      setStatus((current) =>
+        current
+          ? {
+              ...current,
+              lastErrorReportCleanupAt: new Date().toLocaleString("en-IN", {
+                dateStyle: "medium",
+                timeStyle: "short"
+              }),
+              lastErrorReportCleanupDeletedCount: deletedCount
+            }
+          : current
+      );
+      setErrorCleanupConfirmOpen(false);
+      setMessage(`${deletedCount} old error reports cleared. No analytics or coach data was touched.`);
+    } catch {
+      setMessage("Could not clear selected old reports. No other production data was touched.");
+    } finally {
+      setErrorCleanupBusy(false);
+    }
+  }
+
+  async function runMaintenanceAction(action: "backup" | "cleanup" | "test_backup_email") {
+    setBusyAction(action);
+    setMessage(
+      action === "backup"
+        ? "Creating analytics backup..."
+        : action === "cleanup"
+          ? "Checking backup and active-admin notification before cleanup..."
+          : "Sending test backup email..."
+    );
+
+    try {
+      const response = await fetch("/api/admin/backup-cleanup", {
+        body: JSON.stringify({ action }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": csrfToken
+        },
+        method: "POST"
+      });
+      const payload = (await response.json().catch(() => ({}))) as BackupCleanupPayload;
+      if (payload.backupCleanup) setStatus(payload.backupCleanup);
+
+      if (!response.ok || !payload.ok) {
+        setMessage(payload.error || "Maintenance action could not complete.");
+        return;
+      }
+
+      if (action === "backup") {
+        setMessage(
+          `Backup completed for ${payload.recordCount || 0} analytics records. Notification status: ${
+            payload.notificationStatus || "not recorded"
+          }.`
+        );
+      } else if (action === "cleanup") {
+        setCleanupConfirmOpen(false);
+        setMessage(`${payload.deletedCount || 0} old analytics events cleaned after backup.`);
+      } else {
+        setMessage("Test backup email sent to all active admin recipients.");
+      }
+    } catch {
+      setMessage("Maintenance action failed safely. No destructive cleanup was run.");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  const activeStatus =
+    status ||
+    ({
+      activeAdminRecipientCount: 0,
+      backupDestination: control.backupCleanup.backupDestination,
+      backupDownloadUrl: null,
+      backupEmailConfigured: false,
+      cleanupEligibleAnalyticsEvents: 0,
+      cleanupStatus: control.backupCleanup.cleanupStatus,
+      failedRecipients: [],
+      googleSheetsConfigured: control.backupCleanup.googleSheetsConfigured,
+      lastBackupAt: control.backupCleanup.lastBackupAt,
+      lastBackupRecordCount: 0,
+      lastBackupStatus: "Not loaded",
+      lastCleanupAt: control.backupCleanup.lastCleanupAt,
+      lastCleanupDeletedCount: 0,
+      lastErrorReportCleanupAt: "No error report cleanup run yet",
+      lastErrorReportCleanupDeletedCount: 0,
+      maskedRecipients: [],
+      rawRecipientRoles: [],
+      retentionDays: control.backupCleanup.retentionDays,
+      roleChecklist: {
+        adminEmailPresent: false,
+        adminEmailRole: "Not loaded",
+        adminEmailStatus: "Not loaded",
+        adminRoleTableExists: false,
+        currentAdminEmailMasked: "not loaded",
+        lockoutRisk: "medium",
+        rollbackInstructions: [
+          "Set ADMIN_REQUIRE_DB_ADMIN_ROLES=false in Cloudflare Pages variables.",
+          "Redeploy or wait for the variable update to take effect.",
+          "Keep ADMIN_ALLOWED_EMAILS configured until DB-role login is verified."
+        ],
+        roleRequirementMet: false,
+        strictDbRolesEnabled: false
+      },
+      scheduledCleanup: control.backupCleanup.scheduledCleanup
+    } satisfies AdminMaintenanceStatus);
+
   return (
     <AdminPageShell eyebrow="Reports" title="Backup & Cleanup">
-      <dl className={styles.definitionGrid}>
-        <div>
-          <dt>Retention period</dt>
-          <dd>{control.backupCleanup.retentionDays} days</dd>
-        </div>
-        <div>
-          <dt>Backup destination</dt>
-          <dd>{control.backupCleanup.backupDestination}</dd>
-        </div>
-        <div>
-          <dt>Last backup</dt>
-          <dd>{control.backupCleanup.lastBackupAt}</dd>
-        </div>
-        <div>
-          <dt>Cleanup status</dt>
-          <dd>{control.backupCleanup.cleanupStatus}</dd>
-        </div>
-      </dl>
-      <div className={styles.formActions}>
-        <button
-          className={styles.secondaryAction}
-          onClick={() =>
-            onAction("Backup Data", "Backup storage is not configured yet. No backup was created.")
-          }
-          type="button"
-        >
-          Backup Data
-        </button>
-        <button
-          className={styles.dangerAction}
-          onClick={() =>
-            onAction(
-              "Cleanup Old Data",
-              "Cleanup is disabled until backup storage succeeds. No data was deleted.",
-              "danger"
-            )
-          }
-          type="button"
-        >
-          Cleanup Old Data
-        </button>
+      <div className={styles.noticeCard} data-tone={loading ? "warning" : "success"}>
+        <strong>{loading ? "Loading maintenance status" : "Maintenance controls are protected"}</strong>
+        <p>
+          Error Reports cleanup is separate and does not require backup. Raw analytics cleanup is
+          blocked unless backup creation and active-admin notification both succeed.
+        </p>
       </div>
+
+      <section className={styles.maintenanceGrid}>
+        <article className={styles.maintenanceCard}>
+          <span>Retention</span>
+          <strong>{activeStatus.retentionDays} days</strong>
+          <p>Raw analytics older than this can be cleaned only after backup.</p>
+        </article>
+        <article className={styles.maintenanceCard}>
+          <span>Destination</span>
+          <strong>{activeStatus.backupDestination}</strong>
+          <p>
+            Google Sheets: {activeStatus.googleSheetsConfigured ? "configured" : "not configured"}.
+            CSV export remains available as a safe fallback.
+          </p>
+        </article>
+        <article className={styles.maintenanceCard}>
+          <span>Active admin recipients</span>
+          <strong>{activeStatus.activeAdminRecipientCount}</strong>
+          <p>{activeStatus.backupEmailConfigured ? "Email provider configured." : "Email provider missing."}</p>
+        </article>
+        <article className={styles.maintenanceCard}>
+          <span>Eligible old analytics</span>
+          <strong>{activeStatus.cleanupEligibleAnalyticsEvents}</strong>
+          <p>{activeStatus.cleanupStatus}</p>
+        </article>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.kicker}>Backup recipients</p>
+            <h2>Active admins from DB role table</h2>
+          </div>
+        </div>
+        {activeStatus.maskedRecipients.length > 0 ? (
+          <div className={styles.recipientList}>
+            {activeStatus.rawRecipientRoles.map((recipient) => (
+              <span key={`${recipient.maskedEmail}-${recipient.role}`}>
+                {recipient.maskedEmail} <small>{recipient.role} / {recipient.status}</small>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className={styles.linkWarning}>No active admin backup recipient found.</p>
+        )}
+        {activeStatus.failedRecipients.length > 0 ? (
+          <p className={styles.linkWarning}>
+            Failed recipients: {activeStatus.failedRecipients.join(", ")}
+          </p>
+        ) : null}
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.kicker}>Manual maintenance</p>
+            <h2>Backup-first analytics cleanup</h2>
+          </div>
+        </div>
+        <dl className={styles.definitionGrid}>
+          <div>
+            <dt>Last backup</dt>
+            <dd>{activeStatus.lastBackupAt}</dd>
+          </div>
+          <div>
+            <dt>Backup status</dt>
+            <dd>{activeStatus.lastBackupStatus}</dd>
+          </div>
+          <div>
+            <dt>Backed up records</dt>
+            <dd>{activeStatus.lastBackupRecordCount}</dd>
+          </div>
+          <div>
+            <dt>Last cleanup</dt>
+            <dd>{activeStatus.lastCleanupAt}</dd>
+          </div>
+          <div>
+            <dt>Deleted analytics records</dt>
+            <dd>{activeStatus.lastCleanupDeletedCount}</dd>
+          </div>
+          <div>
+            <dt>Scheduled cleanup</dt>
+            <dd>{activeStatus.scheduledCleanup}</dd>
+          </div>
+        </dl>
+        <div className={styles.formActions}>
+          <button
+            className={styles.secondaryAction}
+            disabled={Boolean(busyAction)}
+            onClick={() => void runMaintenanceAction("backup")}
+            type="button"
+          >
+            {busyAction === "backup" ? "Running Backup..." : "Run Backup Now"}
+          </button>
+          <button
+            className={styles.secondaryAction}
+            disabled={Boolean(busyAction) || !activeStatus.backupEmailConfigured}
+            onClick={() => void runMaintenanceAction("test_backup_email")}
+            type="button"
+          >
+            {busyAction === "test_backup_email" ? "Sending..." : "Send Test Backup Email"}
+          </button>
+          <button
+            className={styles.dangerAction}
+            disabled={Boolean(busyAction)}
+            onClick={() => setCleanupConfirmOpen(true)}
+            type="button"
+          >
+            Run Cleanup After Backup
+          </button>
+          {activeStatus.backupDownloadUrl ? (
+            <a className={styles.secondaryAction} href={activeStatus.backupDownloadUrl}>
+              Download Latest Backup
+            </a>
+          ) : null}
+        </div>
+        {message ? <p className={styles.inlineStatus}>{message}</p> : null}
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.kicker}>Error Reports cleanup</p>
+            <h2>Separate no-backup cleanup</h2>
+          </div>
+        </div>
+        <dl className={styles.definitionGrid}>
+          <div>
+            <dt>Last stale-report cleanup</dt>
+            <dd>{activeStatus.lastErrorReportCleanupAt}</dd>
+          </div>
+          <div>
+            <dt>Reports deleted</dt>
+            <dd>{activeStatus.lastErrorReportCleanupDeletedCount}</dd>
+          </div>
+        </dl>
+        <p className={styles.linkWarning}>
+          Use Admin Panel - Error Reports - Clear Old Error Reports. That flow never deletes
+          analytics, coach sites, admin users, payment data, private links, or audit logs.
+        </p>
+        <div className={styles.formActions}>
+          <button
+            className={styles.dangerAction}
+            disabled={errorCleanupBusy}
+            onClick={() => setErrorCleanupConfirmOpen(true)}
+            type="button"
+          >
+            Clear Old Error Reports
+          </button>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.kicker}>DB role enforcement</p>
+            <h2>Strict admin-role readiness checklist</h2>
+          </div>
+        </div>
+        <div className={styles.roleChecklist}>
+          {[
+            ["Admin role table exists", activeStatus.roleChecklist.adminRoleTableExists],
+            ["Current admin email present", activeStatus.roleChecklist.adminEmailPresent],
+            ["Role requirement met", activeStatus.roleChecklist.roleRequirementMet],
+            ["ADMIN_REQUIRE_DB_ADMIN_ROLES enabled", activeStatus.roleChecklist.strictDbRolesEnabled]
+          ].map(([label, passed]) => (
+            <div data-state={passed ? "pass" : "wait"} key={String(label)}>
+              <strong>{String(label)}</strong>
+              <span>{passed ? "Ready" : "Not ready"}</span>
+            </div>
+          ))}
+        </div>
+        <dl className={styles.definitionGrid}>
+          <div>
+            <dt>Current admin</dt>
+            <dd>{activeStatus.roleChecklist.currentAdminEmailMasked}</dd>
+          </div>
+          <div>
+            <dt>DB role</dt>
+            <dd>{activeStatus.roleChecklist.adminEmailRole}</dd>
+          </div>
+          <div>
+            <dt>DB status</dt>
+            <dd>{activeStatus.roleChecklist.adminEmailStatus}</dd>
+          </div>
+          <div>
+            <dt>Lockout risk</dt>
+            <dd>{activeStatus.roleChecklist.lockoutRisk}</dd>
+          </div>
+        </dl>
+        <div className={styles.noticeCard} data-tone="warning">
+          <strong>Do not enable strict DB roles blindly.</strong>
+          <p>
+            Needed before enabling: final admin email, verified active role row, confirmed login and
+            OTP, plus rollback readiness. Current production schema may use owner as the existing
+            super-admin equivalent until a safe role migration is approved.
+          </p>
+          <ul className={styles.maintenanceList}>
+            {activeStatus.roleChecklist.rollbackInstructions.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
       <p className={styles.linkWarning}>
         Raw analytics cleanup must never delete coach profiles, coach sites, active links, or
         lifetime summaries.
       </p>
+      <AdminActionDialog
+        footer={
+          <>
+            <button onClick={() => setCleanupConfirmOpen(false)} type="button">
+              Cancel
+            </button>
+            <button
+              data-tone="danger"
+              disabled={Boolean(busyAction)}
+              onClick={() => void runMaintenanceAction("cleanup")}
+              type="button"
+            >
+              {busyAction === "cleanup" ? "Checking..." : "Run Protected Cleanup"}
+            </button>
+          </>
+        }
+        onClose={() => setCleanupConfirmOpen(false)}
+        open={cleanupConfirmOpen}
+        title="Run Analytics Cleanup"
+        tone="danger"
+      >
+        <div className={styles.maintenanceDialog}>
+          <p className={styles.dialogCopy}>
+            This deletes only raw analytics/events older than {activeStatus.retentionDays} days.
+            It will not run unless the latest backup and active-admin notification succeeded.
+          </p>
+          <p className={styles.linkWarning}>
+            Coach profiles, coach sites, slugs, settings, payment links, private links, admins, and
+            audit logs are not part of this cleanup.
+          </p>
+        </div>
+      </AdminActionDialog>
+      <AdminActionDialog
+        footer={
+          <>
+            <button onClick={() => setErrorCleanupConfirmOpen(false)} type="button">
+              Cancel
+            </button>
+            <button
+              data-tone="danger"
+              disabled={errorCleanupBusy}
+              onClick={() => void clearOldReportsFromMaintenance()}
+              type="button"
+            >
+              {errorCleanupBusy ? "Clearing..." : "Clear Selected Reports"}
+            </button>
+          </>
+        }
+        onClose={() => setErrorCleanupConfirmOpen(false)}
+        open={errorCleanupConfirmOpen}
+        title="Clear Old Error Reports"
+        tone="danger"
+      >
+        <div className={styles.maintenanceDialog}>
+          <p className={styles.dialogCopy}>
+            This will permanently clear selected old error reports. This action cannot be undone.
+          </p>
+          <label className={styles.compactField}>
+            Cleanup option
+            <select
+              onChange={(event) =>
+                setErrorCleanupFilter(
+                  event.target.value as "fixed_ignored" | "older_30" | "older_90" | "stale_all"
+                )
+              }
+              value={errorCleanupFilter}
+            >
+              <option value="fixed_ignored">Clear Fixed/Ignored reports</option>
+              <option value="older_30">Clear reports older than 30 days</option>
+              <option value="older_90">Clear reports older than 90 days</option>
+              <option value="stale_all">Clear all old/stale reports</option>
+            </select>
+            <small>
+              This cleanup never deletes analytics events, coach data, payment data, admin users,
+              coach sites, or audit logs.
+            </small>
+          </label>
+        </div>
+      </AdminActionDialog>
     </AdminPageShell>
   );
 }
