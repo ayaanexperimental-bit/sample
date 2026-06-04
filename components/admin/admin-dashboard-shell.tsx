@@ -122,14 +122,14 @@ type AnalyticsChartPoint = {
   value: number;
 };
 
-type AnalyticsChartRangeId = "1d" | "7d" | "1m" | "3m" | "1y" | "max";
+type AnalyticsChartRangeId = "1d" | "5d" | "1m" | "1y" | "5y" | "max";
 
 const analyticsChartRangeOptions: Array<{ label: string; value: AnalyticsChartRangeId }> = [
   { label: "1D", value: "1d" },
-  { label: "7D", value: "7d" },
+  { label: "5D", value: "5d" },
   { label: "1M", value: "1m" },
-  { label: "3M", value: "3m" },
   { label: "1Y", value: "1y" },
+  { label: "5Y", value: "5y" },
   { label: "Max", value: "max" }
 ];
 
@@ -656,7 +656,7 @@ function OverviewView({
       </section>
 
       <section className={styles.twoColumn}>
-        <article className={styles.section}>
+        <article className={`${styles.section} ${styles.analyticsGraphSection}`}>
           <div className={styles.sectionHeader}>
             <div>
               <p className={styles.kicker}>Performance Trends</p>
@@ -1372,9 +1372,9 @@ function sliceChartPointsByRange(points: AnalyticsChartPoint[], range: Analytics
   const cleanPoints = points.filter((point) => Number.isFinite(point.value));
 
   if (range === "1d") return cleanPoints.slice(-2);
-  if (range === "7d") return cleanPoints.slice(-3);
+  if (range === "5d") return cleanPoints.slice(-3);
   if (range === "1m") return cleanPoints.slice(-4);
-  if (range === "3m") return cleanPoints.slice(-5);
+  if (range === "1y") return cleanPoints.slice(-5);
   return cleanPoints;
 }
 
@@ -1991,13 +1991,20 @@ function MiniSparkline({ points }: { points: AnalyticsChartPoint[] }) {
 
   const width = 116;
   const height = 38;
-  const maxValue = Math.max(1, ...cleanPoints.map((point) => point.value));
+  const rawValues = cleanPoints.map((point) => point.value);
+  const rawMinValue = Math.min(...rawValues);
+  const rawMaxValue = Math.max(...rawValues);
+  const range = Math.max(1, rawMaxValue - rawMinValue);
+  const minValue = Math.max(0, rawMinValue - range * 0.12);
+  const maxValue = rawMaxValue + range * 0.12;
   const coords = cleanPoints.map((point, index) => {
     const x = cleanPoints.length === 1 ? width / 2 : (index / (cleanPoints.length - 1)) * width;
-    const y = height - (point.value / maxValue) * (height - 8) - 4;
+    const y = height - ((point.value - minValue) / (maxValue - minValue)) * (height - 8) - 4;
 
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
+    return { x, y };
   });
+  const linePath = formatChartPath(coords);
+  const areaPath = `${linePath} L ${width.toFixed(1)},${height.toFixed(1)} L 0,${height.toFixed(1)} Z`;
 
   return (
     <svg
@@ -2006,7 +2013,8 @@ function MiniSparkline({ points }: { points: AnalyticsChartPoint[] }) {
       focusable="false"
       viewBox={`0 0 ${width} ${height}`}
     >
-      <polyline points={coords.join(" ")} />
+      <path className={styles.miniSparklineArea} d={areaPath} />
+      <path className={styles.miniSparklineLine} d={linePath} />
     </svg>
   );
 }
@@ -2043,8 +2051,8 @@ function InteractiveTrendChart({
   const height = 260;
   const padding = {
     bottom: 42,
-    left: 46,
-    right: 28,
+    left: 58,
+    right: 20,
     top: 26
   };
   const plotWidth = width - padding.left - padding.right;
@@ -2054,11 +2062,20 @@ function InteractiveTrendChart({
       ? [point.value, point.compareValue]
       : [point.value]
   );
-  const maxValue = Math.max(1, ...values);
-  const activePoint = cleanPoints[Math.min(activeIndex, cleanPoints.length - 1)];
+  const safeValues = values.length > 0 ? values : [0];
+  const rawMinValue = Math.min(...safeValues);
+  const rawMaxValue = Math.max(...safeValues);
+  const rawRange = Math.max(1, rawMaxValue - rawMinValue);
+  const minValue = Math.max(0, rawMinValue - rawRange * 0.12);
+  const maxValue = rawMaxValue + rawRange * 0.12;
+  const yTicks = getChartTicks(minValue, maxValue, 4);
+  const xAxisLabelIndexes = getXAxisLabelIndexes(cleanPoints.length);
+  const boundedActiveIndex = Math.min(activeIndex, Math.max(0, cleanPoints.length - 1));
+  const activePoint = cleanPoints[boundedActiveIndex];
   const activeCoord = activePoint
-    ? getChartCoord(activePoint.value, Math.min(activeIndex, cleanPoints.length - 1), cleanPoints.length, {
+    ? getChartCoord(activePoint.value, boundedActiveIndex, cleanPoints.length, {
         maxValue,
+        minValue,
         padding,
         plotHeight,
         plotWidth
@@ -2067,6 +2084,7 @@ function InteractiveTrendChart({
   const primaryCoords = cleanPoints.map((point, index) =>
     getChartCoord(point.value, index, cleanPoints.length, {
       maxValue,
+      minValue,
       padding,
       plotHeight,
       plotWidth
@@ -2077,12 +2095,19 @@ function InteractiveTrendChart({
       ? cleanPoints.map((point, index) =>
           getChartCoord(point.compareValue || 0, index, cleanPoints.length, {
             maxValue,
+            minValue,
             padding,
             plotHeight,
             plotWidth
           })
         )
       : [];
+  const primaryPath = formatChartPath(primaryCoords);
+  const comparePath = formatChartPath(compareCoords);
+  const areaPath =
+    primaryCoords.length > 1
+      ? `${primaryPath} L ${primaryCoords[primaryCoords.length - 1].x.toFixed(1)},${(height - padding.bottom).toFixed(1)} L ${padding.left.toFixed(1)},${(height - padding.bottom).toFixed(1)} Z`
+      : "";
 
   function handleMouseMove(event: MouseEvent<SVGSVGElement>) {
     if (cleanPoints.length < 2) return;
@@ -2143,35 +2168,71 @@ function InteractiveTrendChart({
             viewBox={`0 0 ${width} ${height}`}
           >
             <g className={styles.chartGridLines}>
-              {[0, 1, 2, 3].map((line) => {
-                const y = padding.top + (plotHeight / 3) * line;
-                return <line key={line} x1={padding.left} x2={width - padding.right} y1={y} y2={y} />;
+              {yTicks.map((tick) => {
+                const y = getChartY(tick, { maxValue, minValue, padding, plotHeight });
+                return (
+                  <line
+                    key={tick.toFixed(4)}
+                    x1={padding.left}
+                    x2={width - padding.right}
+                    y1={y}
+                    y2={y}
+                  />
+                );
+              })}
+            </g>
+            <g className={styles.chartYAxisLabels}>
+              {yTicks.map((tick) => {
+                const y = getChartY(tick, { maxValue, minValue, padding, plotHeight });
+                return (
+                  <text key={tick.toFixed(4)} x={padding.left - 14} y={y + 4}>
+                    {formatCompactGraphValue(tick)}
+                  </text>
+                );
               })}
             </g>
             {compareCoords.length > 1 ? (
-              <polyline className={styles.chartCompareLine} points={formatCoords(compareCoords)} />
+              <path className={styles.chartCompareLine} d={comparePath} />
             ) : null}
-            <polygon
-              className={styles.chartArea}
-              points={`${formatCoords(primaryCoords)} ${width - padding.right},${height - padding.bottom} ${padding.left},${height - padding.bottom}`}
-            />
-            <polyline className={styles.chartPrimaryLine} points={formatCoords(primaryCoords)} />
+            <path className={styles.chartArea} d={areaPath} />
+            {activeCoord ? (
+              <line
+                className={styles.chartCursorLine}
+                x1={activeCoord.x}
+                x2={activeCoord.x}
+                y1={padding.top}
+                y2={height - padding.bottom}
+              />
+            ) : null}
+            <path className={styles.chartPrimaryLine} d={primaryPath} />
             {primaryCoords.map((coord, index) => (
               <circle
                 className={styles.chartPoint}
-                data-active={index === activeIndex ? "true" : "false"}
+                data-active={index === boundedActiveIndex ? "true" : "false"}
                 key={`${cleanPoints[index]?.label || index}-${index}`}
-                r={index === activeIndex ? 5.5 : 3.5}
+                r={index === boundedActiveIndex ? 5.5 : 3.5}
                 cx={coord.x}
                 cy={coord.y}
               />
             ))}
             <g className={styles.chartAxisLabels}>
-              {cleanPoints.map((point, index) => {
+              {xAxisLabelIndexes.map((index) => {
+                const point = cleanPoints[index];
                 const coord = primaryCoords[index];
                 return (
-                  <text key={point.label} x={coord.x} y={height - 12}>
-                    {point.label}
+                  <text
+                    data-edge={
+                      index === 0
+                        ? "start"
+                        : index === cleanPoints.length - 1
+                          ? "end"
+                          : "middle"
+                    }
+                    key={`${point.label}-${index}`}
+                    x={coord.x}
+                    y={height - 12}
+                  >
+                    {formatXAxisLabel(point.label)}
                   </text>
                 );
               })}
@@ -2221,11 +2282,13 @@ function getChartCoord(
   total: number,
   {
     maxValue,
+    minValue,
     padding,
     plotHeight,
     plotWidth
   }: {
     maxValue: number;
+    minValue: number;
     padding: {
       bottom: number;
       left: number;
@@ -2238,13 +2301,78 @@ function getChartCoord(
 ) {
   const x =
     total === 1 ? padding.left + plotWidth / 2 : padding.left + (index / (total - 1)) * plotWidth;
-  const y = padding.top + plotHeight - (Math.max(0, value) / maxValue) * plotHeight;
+  const y = getChartY(value, {
+    maxValue,
+    minValue,
+    padding,
+    plotHeight
+  });
 
   return { x, y };
 }
 
-function formatCoords(coords: Array<{ x: number; y: number }>) {
-  return coords.map((coord) => `${coord.x.toFixed(1)},${coord.y.toFixed(1)}`).join(" ");
+function getChartY(
+  value: number,
+  {
+    maxValue,
+    minValue,
+    padding,
+    plotHeight
+  }: {
+    maxValue: number;
+    minValue: number;
+    padding: {
+      bottom: number;
+      left: number;
+      right: number;
+      top: number;
+    };
+    plotHeight: number;
+  }
+) {
+  const safeRange = Math.max(1, maxValue - minValue);
+  const normalized = Math.min(1, Math.max(0, (value - minValue) / safeRange));
+
+  return padding.top + plotHeight - normalized * plotHeight;
+}
+
+function formatChartPath(coords: Array<{ x: number; y: number }>) {
+  if (coords.length === 0) return "";
+
+  return coords
+    .map((coord, index) =>
+      `${index === 0 ? "M" : "L"} ${coord.x.toFixed(1)} ${coord.y.toFixed(1)}`
+    )
+    .join(" ");
+}
+
+function getChartTicks(minValue: number, maxValue: number, count: number) {
+  if (count <= 1) return [maxValue];
+
+  const step = (maxValue - minValue) / (count - 1);
+  return Array.from({ length: count }, (_, index) => maxValue - step * index);
+}
+
+function getXAxisLabelIndexes(total: number) {
+  if (total <= 5) return Array.from({ length: total }, (_, index) => index);
+
+  return Array.from(new Set([0, Math.floor((total - 1) / 2), total - 1]));
+}
+
+function formatCompactGraphValue(value: number) {
+  const safeValue = Math.max(0, value);
+  if (safeValue >= 1_000_000) return `${(safeValue / 1_000_000).toFixed(1)}M`;
+  if (safeValue >= 10_000) return `${Math.round(safeValue / 1_000)}k`;
+  if (safeValue >= 1_000) return `${(safeValue / 1_000).toFixed(1)}k`;
+  if (safeValue >= 100) return `${Math.round(safeValue)}`;
+  if (safeValue >= 10) return `${Math.round(safeValue)}`;
+  return safeValue.toFixed(safeValue % 1 === 0 ? 0 : 1);
+}
+
+function formatXAxisLabel(label: string) {
+  const cleanLabel = label.trim();
+  if (cleanLabel.length <= 12) return cleanLabel;
+  return `${cleanLabel.slice(0, 11)}...`;
 }
 
 function getInitials(name: string) {
