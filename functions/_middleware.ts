@@ -46,6 +46,8 @@ const PUBLIC_ADMIN_PAGE_PATHS = new Set([
   "/admin/verify"
 ]);
 
+const PROTECTED_ADMIN_PAGE_PATHS = new Set(["/admin/dashboard"]);
+
 const PUBLIC_PAGE_PATHS = new Set([
   ...PUBLIC_ADMIN_PAGE_PATHS,
   "/blocked",
@@ -133,6 +135,16 @@ async function handleProtectedAdminPage(context: PagesContext, pathname: string)
   const role = session ? await getAdminRoleForEmail(session.email, context.env) : null;
 
   if (session && role === "owner") {
+    if (!PROTECTED_ADMIN_PAGE_PATHS.has(pathname)) {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          ...NO_STORE_HEADERS,
+          location: new URL("/admin/dashboard", context.request.url).toString()
+        }
+      });
+    }
+
     return context.next();
   }
 
