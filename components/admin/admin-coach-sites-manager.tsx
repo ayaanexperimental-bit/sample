@@ -442,6 +442,9 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     if (mode === "create") {
       openCreatorDialog();
     }
+    // The create page should open the wizard only when the route mode changes.
+    // Adding openCreatorDialog would re-open/reset the wizard after every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
   useEffect(() => {

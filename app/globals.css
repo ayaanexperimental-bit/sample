@@ -10371,6 +10371,12 @@ body:has(.levelup-clone) {
   background: transparent;
 }
 
+.levelup-testimonials {
+  max-width: 100vw;
+  overflow-x: clip;
+  contain: paint;
+}
+
 .levelup-glass-components {
   padding: clamp(1rem, 2.8vw, 2rem) 0 clamp(1.6rem, 4vw, 3rem);
 }
@@ -12143,16 +12149,19 @@ body:has(.levelup-clone) {
 .infinite-3d-testimonials {
   position: relative;
   width: min(100%, 1120px);
+  max-width: 100vw;
   margin: 0 auto;
   padding: 0 0 1.4rem;
-  overflow: hidden;
+  overflow: hidden clip;
+  contain: layout paint;
   outline: none;
 }
 
 .infinite-3d-testimonials__stage {
   position: relative;
   height: clamp(850px, 80vw, 930px);
-  overflow: hidden;
+  overflow: hidden clip;
+  contain: paint;
   perspective: 1500px;
   transform-style: preserve-3d;
   touch-action: pan-y;
