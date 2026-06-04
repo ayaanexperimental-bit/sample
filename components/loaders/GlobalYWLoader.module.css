@@ -14,10 +14,10 @@
 }
 
 .globalLoader[data-phase="hide"] {
-  animation: none;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
+  animation: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 .globalLoader > * {

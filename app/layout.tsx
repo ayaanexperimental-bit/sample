@@ -23,6 +23,7 @@ const globalLoaderFailsafeScript = `
     loader.style.opacity = "0";
     loader.style.visibility = "hidden";
     loader.style.pointerEvents = "none";
+    loader.style.display = "none";
   }
   function dismissAfterReady() {
     window.setTimeout(dismissGlobalLoader, 900);
