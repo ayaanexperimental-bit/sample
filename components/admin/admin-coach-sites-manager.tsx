@@ -70,6 +70,12 @@ type CoachSitePublishVerification = {
   publicPageOk: boolean;
 };
 
+type PublishProgressState = {
+  message: string;
+  phase: "error" | "idle" | "publishing" | "success";
+  progress: number;
+};
+
 type MediaUploadApiPayload = {
   configured?: boolean;
   error?: string;
@@ -299,6 +305,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   const [message, setMessage] = useState("");
   const [aiMessage, setAiMessage] = useState("");
   const [aiSubmitting, setAiSubmitting] = useState(false);
+  const [publishProgress, setPublishProgress] = useState<PublishProgressState>({
+    message: "",
+    phase: "idle",
+    progress: 0
+  });
   const [paidFunnelAnalysis, setPaidFunnelAnalysis] = useState<PaidFunnelAnalysis | null>(null);
   const [paidFunnelAnalysisBusy, setPaidFunnelAnalysisBusy] = useState(false);
   const [paidFunnelAnalysisMessage, setPaidFunnelAnalysisMessage] = useState("");
@@ -311,6 +322,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   const [storageErrorCode, setStorageErrorCode] = useState("");
   const [storageMessage, setStorageMessage] = useState("");
   const [storageReady, setStorageReady] = useState(false);
+  const publishProgressTimerRef = useRef<number | null>(null);
   const previewSyncTimeoutRef = useRef<number | null>(null);
   const previewSyncFormRef = useRef<CoachSiteFormState | null>(null);
 
@@ -359,6 +371,8 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
 
   useEffect(() => {
     return () => {
+      clearPublishProgressTimer();
+
       if (previewSyncTimeoutRef.current !== null) {
         window.clearTimeout(previewSyncTimeoutRef.current);
       }
@@ -430,6 +444,8 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   function openCreatorDialog(site?: CoachSiteRecord, step = 0) {
     setAiMessage("");
     setAiSubmitting(false);
+    resetPublishProgress();
+    setPublishedSite(null);
     setPaidFunnelAnalysisMessage("");
     setPaidFunnelAnalysisBusy(false);
     if (site) {
@@ -448,12 +464,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
             }
           : null
       );
-      setMessage(`Editing ${site.coachName}. Public link stays stable after future edits.`);
+      setMessage(`Editing ${site.coachName}. Publish again to confirm the latest live version.`);
     } else {
       setEditingId(null);
       setForm(EMPTY_COACH_SITE_FORM);
       setPreviewSite(null);
-      setPublishedSite(null);
       setPaidFunnelAnalysis(null);
       setMessage("");
     }
@@ -576,10 +591,19 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     setSites(nextSites);
     setPreviewSite(site);
     setEditingId(site.id);
-    setPublishedSite(status === "published" ? site : null);
+    setPublishedSite(null);
+    if (status === "published") {
+      startPublishProgress("Please wait. Site is being published...");
+    } else {
+      resetPublishProgress();
+    }
     setMessage(status === "published" ? "Publishing site..." : "Saving draft...");
 
     try {
+      if (status === "published") {
+        updatePublishProgress("Saving coach website content...", 38);
+      }
+
       const response = await fetch("/api/admin/coach-sites", {
         body: JSON.stringify({ site }),
         cache: "no-store",
@@ -609,6 +633,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
             ? "Site was not published. Fix the database/API issue and try again."
             : "Draft was not saved. Reusable drafts require the coach-site database."
         );
+        if (status === "published") {
+          finishPublishProgressError(
+            "Publishing stopped because the coach-site database did not save this website."
+          );
+        }
         return site;
       }
 
@@ -627,6 +656,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       setEditingId(savedSite.id);
 
       if (status === "published") {
+        updatePublishProgress("Verifying public website and registration link...", 78);
         setMessage("Verifying published site...");
         const verification = await verifyPublishedCoachSite(savedSite);
 
@@ -643,11 +673,18 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
           setMessage(
             "Saved, but publish verification failed. Refresh Coach Sites and try publishing again."
           );
+          finishPublishProgressError(
+            "The website was saved, but final public verification failed. Do not share the link yet."
+          );
           return savedSite;
         }
       }
 
-      setPublishedSite(status === "published" ? savedSite : null);
+      if (status === "published") {
+        finishPublishProgressSuccess(savedSite);
+      } else {
+        setPublishedSite(null);
+      }
       setMessage(
         status === "published"
           ? `Successfully Published. Stable public link: ${savedSite.publicUrl}`
@@ -669,9 +706,84 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
           ? "Site was not published. Fix the admin API connection and try again."
           : "Draft was not saved. Reusable drafts require the admin API and database."
       );
+      if (status === "published") {
+        finishPublishProgressError(
+          "Publishing stopped because the admin API connection did not respond."
+        );
+      }
     }
 
     return site;
+  }
+
+  function clearPublishProgressTimer() {
+    if (publishProgressTimerRef.current !== null) {
+      window.clearInterval(publishProgressTimerRef.current);
+      publishProgressTimerRef.current = null;
+    }
+  }
+
+  function resetPublishProgress() {
+    clearPublishProgressTimer();
+    setPublishProgress({ message: "", phase: "idle", progress: 0 });
+  }
+
+  function startPublishProgress(messageText: string) {
+    clearPublishProgressTimer();
+    setPublishProgress({
+      message: messageText,
+      phase: "publishing",
+      progress: 12
+    });
+    publishProgressTimerRef.current = window.setInterval(() => {
+      setPublishProgress((current) => {
+        if (current.phase !== "publishing") return current;
+
+        const nextProgress =
+          current.progress < 44
+            ? current.progress + 7
+            : current.progress < 72
+              ? current.progress + 4
+              : current.progress + 2;
+
+        return {
+          ...current,
+          progress: Math.min(88, nextProgress)
+        };
+      });
+    }, 340);
+  }
+
+  function updatePublishProgress(messageText: string, progress?: number) {
+    setPublishProgress((current) =>
+      current.phase === "publishing"
+        ? {
+            ...current,
+            message: messageText,
+            progress:
+              typeof progress === "number" ? Math.max(current.progress, progress) : current.progress
+          }
+        : current
+    );
+  }
+
+  function finishPublishProgressSuccess(site: CoachSiteRecord) {
+    clearPublishProgressTimer();
+    setPublishedSite(site);
+    setPublishProgress({
+      message: `Congratulations, ${site.coachName} now has his/her website live.`,
+      phase: "success",
+      progress: 100
+    });
+  }
+
+  function finishPublishProgressError(messageText: string) {
+    clearPublishProgressTimer();
+    setPublishProgress({
+      message: messageText,
+      phase: "error",
+      progress: 100
+    });
   }
 
   function startAiProgress() {
@@ -1825,6 +1937,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         paidFunnelAnalysisBusy={paidFunnelAnalysisBusy}
         paidFunnelAnalysisMessage={paidFunnelAnalysisMessage}
         previewSite={previewSite}
+        publishProgress={publishProgress}
         publishedSite={publishedSite}
         removeConfirm={removeConfirm}
         removeMessage={removeMessage}
@@ -1871,6 +1984,7 @@ function CoachDialogRenderer({
   paidFunnelAnalysisBusy,
   paidFunnelAnalysisMessage,
   previewSite,
+  publishProgress,
   publishedSite,
   removeConfirm,
   removeMessage,
@@ -1915,6 +2029,7 @@ function CoachDialogRenderer({
   paidFunnelAnalysisBusy: boolean;
   paidFunnelAnalysisMessage: string;
   previewSite: CoachSiteRecord | null;
+  publishProgress: PublishProgressState;
   publishedSite: CoachSiteRecord | null;
   removeConfirm: string;
   removeMessage: string;
@@ -1940,6 +2055,7 @@ function CoachDialogRenderer({
             onGeneratePreview={onGeneratePreview}
             onPublish={onPublish}
             onSaveDraft={onSaveDraft}
+            publishSubmitting={publishProgress.phase === "publishing"}
             setWizardStep={setWizardStep}
             wizardStep={wizardStep}
           />
@@ -2102,6 +2218,7 @@ function CoachDialogRenderer({
             {wizardStep === 5 ? (
               <PublishPanel
                 onCopyLink={onCopyAgain}
+                publishProgress={publishProgress}
                 publishedSite={publishedSite}
                 previewSite={previewSite}
               />
@@ -3071,6 +3188,7 @@ function WizardFooter({
   onGeneratePreview,
   onPublish,
   onSaveDraft,
+  publishSubmitting,
   setWizardStep,
   wizardStep
 }: {
@@ -3079,17 +3197,23 @@ function WizardFooter({
   onGeneratePreview: () => Promise<boolean>;
   onPublish: () => Promise<CoachSiteRecord | null>;
   onSaveDraft: () => Promise<CoachSiteRecord | null>;
+  publishSubmitting: boolean;
   setWizardStep: (step: number) => void;
   wizardStep: number;
 }) {
   return (
     <>
-      <button className={styles.secondaryAction} onClick={onClose} type="button">
+      <button
+        className={styles.secondaryAction}
+        disabled={publishSubmitting}
+        onClick={onClose}
+        type="button"
+      >
         Close
       </button>
       <button
         className={styles.secondaryAction}
-        disabled={wizardStep === 0 || aiSubmitting}
+        disabled={wizardStep === 0 || aiSubmitting || publishSubmitting}
         onClick={() => setWizardStep(Math.max(wizardStep - 1, 0))}
         type="button"
       >
@@ -3097,7 +3221,7 @@ function WizardFooter({
       </button>
       <button
         className={styles.secondaryAction}
-        disabled={aiSubmitting}
+        disabled={aiSubmitting || publishSubmitting}
         onClick={() => {
           void onSaveDraft();
         }}
@@ -3108,7 +3232,7 @@ function WizardFooter({
       {wizardStep < wizardSteps.length - 1 ? (
         <button
           className={styles.primaryAction}
-          disabled={aiSubmitting}
+          disabled={aiSubmitting || publishSubmitting}
           onClick={() => {
             if (wizardStep === 3) {
               void onGeneratePreview();
@@ -3124,14 +3248,14 @@ function WizardFooter({
       ) : (
         <button
           className={styles.primaryAction}
-          disabled={aiSubmitting}
+          disabled={aiSubmitting || publishSubmitting}
           onClick={() => {
             void onPublish();
             setWizardStep(5);
           }}
           type="button"
         >
-          Publish
+          {publishSubmitting ? "Publishing..." : "Publish"}
         </button>
       )}
     </>
@@ -3141,13 +3265,15 @@ function WizardFooter({
 function PublishPanel({
   onCopyLink,
   previewSite,
+  publishProgress,
   publishedSite
 }: {
   onCopyLink: (site: CoachSiteRecord) => void;
   previewSite: CoachSiteRecord | null;
+  publishProgress: PublishProgressState;
   publishedSite: CoachSiteRecord | null;
 }) {
-  const site = publishedSite || previewSite;
+  const site = previewSite || publishedSite;
 
   if (!site) {
     return (
@@ -3158,20 +3284,81 @@ function PublishPanel({
     );
   }
 
+  if (publishProgress.phase === "publishing") {
+    return (
+      <div className={styles.publishPanel} data-phase="publishing">
+        <span className={styles.statusBadge} data-status="draft">
+          Publishing
+        </span>
+        <h3>Please wait. Site is being published.</h3>
+        <p>
+          We are saving the coach website, verifying the public page, and keeping the link stable.
+        </p>
+        <div
+          aria-label="Publishing progress"
+          aria-valuemax={100}
+          aria-valuemin={0}
+          aria-valuenow={Math.round(publishProgress.progress)}
+          className={styles.publishProgress}
+          role="progressbar"
+        >
+          <span style={{ width: `${publishProgress.progress}%` }} />
+        </div>
+        <p>{publishProgress.message || "Publishing coach website..."}</p>
+      </div>
+    );
+  }
+
+  if (publishProgress.phase === "error") {
+    return (
+      <div className={styles.publishPanel} data-phase="error">
+        <span className={styles.statusBadge} data-status="paused">
+          Needs Attention
+        </span>
+        <h3>Publishing needs one more check</h3>
+        <p>{publishProgress.message}</p>
+        <p className={styles.linkWarning}>
+          Copy Link is hidden until publishing and verification complete successfully.
+        </p>
+      </div>
+    );
+  }
+
+  if (publishedSite && publishProgress.phase === "success") {
+    return (
+      <div className={styles.publishPanel} data-phase="success">
+        <span className={styles.statusBadge} data-status="published">
+          Successfully Published
+        </span>
+        <h3>{publishedSite.coachName}</h3>
+        <p>{publishProgress.message}</p>
+        <p>
+          Stable public link stays the same after future edits unless the slug is intentionally
+          changed.
+        </p>
+        <code>{publishedSite.publicUrl}</code>
+        <button
+          className={styles.primaryAction}
+          onClick={() => onCopyLink(publishedSite)}
+          type="button"
+        >
+          Copy Public Link
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.publishPanel}>
-      <span className={styles.statusBadge} data-status={publishedSite ? "published" : site.status}>
-        {publishedSite ? "Successfully Published" : site.status}
+      <span className={styles.statusBadge} data-status={site.status}>
+        {site.status}
       </span>
       <h3>{site.coachName}</h3>
       <p>
-        Stable public link stays the same after future edits unless the slug is intentionally
-        changed.
+        Review the final details, then press Publish. Copy Link appears only after this site is
+        published and verified.
       </p>
       <code>{site.publicUrl}</code>
-      <button className={styles.primaryAction} onClick={() => onCopyLink(site)} type="button">
-        Copy Public Link
-      </button>
       {!site.googleFormUrl ? (
         <p className={styles.linkWarning}>
           Google Form link missing. Public register buttons stay disabled until a registration link
