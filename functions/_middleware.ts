@@ -51,6 +51,7 @@ const ADMIN_ROUTE_ALIASES = new Map([
   ["/admin-dashboard", "/admin/dashboard"],
   ["/admin_dashboard", "/admin/dashboard"],
   ["/admin-panel", "/admin/dashboard"],
+  ["/admin_panel", "/admin/dashboard"],
   ["/adminpanel", "/admin/dashboard"],
   ["/admin-login", "/admin/login"],
   ["/adminlogin", "/admin/login"],

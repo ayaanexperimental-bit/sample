@@ -133,6 +133,14 @@ test.describe("admin auth security protections", () => {
       "https://ywcoach.com/admin/login?next=%2Fadmin%2Fusers"
     );
 
+    const adminPanelAlias = await middlewareRequest({
+      env,
+      next: async () => new Response("admin alias should redirect first"),
+      request: new Request("https://ywcoach.com/admin_panel")
+    });
+    expect(adminPanelAlias.status).toBe(302);
+    expect(adminPanelAlias.headers.get("location")).toBe("https://ywcoach.com/admin/dashboard");
+
     const blockedDashboardApi = await dashboardOverviewRequest({
       env,
       request: new Request("https://ywcoach.com/api/admin/dashboard/overview")
@@ -193,8 +201,11 @@ test.describe("admin auth security protections", () => {
         headers: { cookie }
       })
     });
-    expect(authenticatedFutureAdminNextCalled).toBe(true);
-    expect(authenticatedFutureAdminPage.status).toBe(200);
+    expect(authenticatedFutureAdminNextCalled).toBe(false);
+    expect(authenticatedFutureAdminPage.status).toBe(302);
+    expect(authenticatedFutureAdminPage.headers.get("location")).toBe(
+      "https://ywcoach.com/admin/dashboard"
+    );
 
     const dashboardApi = await dashboardOverviewRequest({
       env,

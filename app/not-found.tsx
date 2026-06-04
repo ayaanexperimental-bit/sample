@@ -8,7 +8,7 @@ export default function NotFoundPage() {
   const [routeState, setRouteState] = useState<"checking" | "public">("checking");
 
   useEffect(() => {
-    if (window.location.pathname === "/admin" || window.location.pathname.startsWith("/admin/")) {
+    if (isAdminRecoveryPath(window.location.pathname)) {
       window.location.replace("/admin/dashboard");
       return;
     }
@@ -73,4 +73,24 @@ export default function NotFoundPage() {
       userAction="route_not_found"
     />
   );
+}
+
+function isAdminRecoveryPath(pathname: string) {
+  const normalizedPathname = pathname.toLowerCase().replace(/\/{2,}/g, "/").replace(/\/+$/, "");
+  const safePathname = normalizedPathname || "/";
+
+  if (safePathname === "/admin" || safePathname.startsWith("/admin/")) {
+    return true;
+  }
+
+  return new Set([
+    "/admin-dashboard",
+    "/admin_dashboard",
+    "/admin-panel",
+    "/admin_panel",
+    "/adminpanel",
+    "/admin-login",
+    "/adminlogin",
+    "/dashboard"
+  ]).has(safePathname);
 }
