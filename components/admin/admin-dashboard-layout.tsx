@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import styles from "./admin-dashboard-shell.module.css";
 
 export type AdminNavItem = {
@@ -176,7 +177,7 @@ export function AdminActionDialog({
 }) {
   if (!open) return null;
 
-  return (
+  const dialog = (
     <div className={styles.dialogLayer} role="presentation">
       <button aria-label="Close dialog" className={styles.dialogScrim} onClick={onClose} type="button" />
       <section
@@ -198,4 +199,6 @@ export function AdminActionDialog({
       </section>
     </div>
   );
+
+  return typeof document === "undefined" ? dialog : createPortal(dialog, document.body);
 }
