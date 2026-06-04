@@ -2,14 +2,16 @@
 
 import {
   memo,
-  type KeyboardEvent,
-  type MouseEvent,
   useEffect,
   useMemo,
   useRef,
   useState
 } from "react";
 import { AdminActionDialog } from "./admin-dashboard-layout";
+import {
+  PublicCoachSitePage,
+  type CoachTemplatePreviewInspectSection
+} from "../coach/public-coach-site-page";
 import {
   EMPTY_COACH_SITE_FORM,
   type CoachHeroMediaType,
@@ -127,7 +129,7 @@ type PaidFunnelAnalysis = {
 };
 
 type CopyRegenerationScope = "all" | "benefits" | "cta" | "faq" | "hero" | "intro" | "vision";
-type PreviewInspectSection = Exclude<CopyRegenerationScope, "all">;
+type PreviewInspectSection = CoachTemplatePreviewInspectSection;
 type CoachSiteDangerStatus = "archived" | "removed";
 type CurrentCoachSiteStatus = Exclude<CoachSiteStatus, "archived" | "removed">;
 
@@ -602,6 +604,31 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       id: editingId || `coach-site-${slug || "draft"}`,
       status
     });
+  }
+
+  function clearPendingPreviewSync() {
+    previewSyncFormRef.current = null;
+
+    if (previewSyncTimeoutRef.current !== null) {
+      window.clearTimeout(previewSyncTimeoutRef.current);
+      previewSyncTimeoutRef.current = null;
+    }
+  }
+
+  function applyFormAndPreviewSite(sourceForm: CoachSiteFormState, status: CoachSiteStatus) {
+    clearPendingPreviewSync();
+
+    const site = buildPreviewSite(status, sourceForm);
+    const syncedForm = {
+      ...sourceForm,
+      slug: site.slug
+    };
+
+    previewSyncFormRef.current = syncedForm;
+    setForm(syncedForm);
+    setPreviewSite(site);
+
+    return site;
   }
 
   function syncPreviewFromForm(sourceForm: CoachSiteFormState) {
@@ -1126,8 +1153,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
 
     const status = previewSite?.status || "draft";
     setWizardStep(4);
-    setPreviewSite(buildPreviewSite(status, validatedForm));
-    setForm(validatedForm);
+    applyFormAndPreviewSite(validatedForm, status);
 
     const stopProgress = startAiProgress();
     let nextForm = validatedForm;
@@ -1150,27 +1176,17 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         setAiMessage(`${result.message} Preview opened for manual editing.`);
       }
 
-      const site = buildPreviewSite(status, nextForm);
-      setForm({
-        ...nextForm,
-        slug: site.slug
-      });
-      setPreviewSite(site);
+      applyFormAndPreviewSite(nextForm, status);
       setMessage("Preview prepared. Review generated copy before publishing.");
       return true;
     } catch {
       nextForm = fillMissingCopyFromTemplateFallback(nextForm, status);
-      const site = buildPreviewSite(status, nextForm);
+      const site = applyFormAndPreviewSite(nextForm, status);
       reportAiCopyIssue({
         coachSlug: site.slug,
         safeMessage: "AI copy generation failed.",
         userAction: "Generate coach website preview copy"
       });
-      setForm({
-        ...nextForm,
-        slug: site.slug
-      });
-      setPreviewSite(site);
       setAiMessage("AI copy generation failed. Preview opened for manual editing.");
       setMessage("Preview prepared. Review and edit manually before publishing.");
       return true;
@@ -1206,12 +1222,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       }
 
       const nextForm = applyGeneratedCopyToForm(validatedForm, result.content, scope);
-      const site = buildPreviewSite(previewSite?.status || "draft", nextForm);
-      setForm({
-        ...nextForm,
-        slug: site.slug
-      });
-      setPreviewSite(site);
+      applyFormAndPreviewSite(nextForm, previewSite?.status || "draft");
       setAiMessage(
         `${label} regenerated. Review before publishing.${result.message ? ` ${result.message}` : ""}`
       );
@@ -3539,220 +3550,29 @@ const CoachSitePreview = memo(function CoachSitePreview({
   selectedInspectScope?: PreviewInspectSection | null;
   site: CoachSiteRecord;
 }) {
-  const canRegister = Boolean(site.googleFormUrl);
-  const previewImageUrl = site.heroMediaType === "image" ? site.photoUrl || site.logoUrl : "";
-  const previewVideoUrl =
-    site.heroMediaType === "video" ? normalizeVideoEmbedUrl(site.videoUrl) : "";
-  const previewUploadedVideoUrl =
-    site.heroMediaType === "video" && isUploadedVideoSource(site.videoUrl) ? site.videoUrl : "";
   const selectedTheme = getCoachTemplateTheme(site.selectedThemeId);
 
-  function getInspectProps(scope: PreviewInspectSection) {
-    const selected = selectedInspectScope === scope;
-
-    if (!inspectMode) {
-      return {
-        "data-selected": selected ? "true" : "false"
-      };
-    }
-
-    return {
-      "aria-label": `Select ${getCopyScopeLabel(scope)} for regeneration`,
-      "data-inspect-mode": "true",
-      "data-selected": selected ? "true" : "false",
-      onClick: (event: MouseEvent<HTMLElement>) => {
-        event.preventDefault();
-        event.stopPropagation();
-        onSelectInspectScope?.(scope);
-      },
-      onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
-        if (event.key !== "Enter" && event.key !== " ") return;
-
-        event.preventDefault();
-        onSelectInspectScope?.(scope);
-      },
-      role: "button",
-      tabIndex: 0
-    };
-  }
-
   return (
-    <article className={styles.coachPreview} data-theme={selectedTheme.id}>
-      <div className={styles.previewThemeBar}>
+    <article className={styles.productionPreview} data-theme={selectedTheme.id}>
+      <div className={styles.productionPreviewHeader}>
         <div>
-          <span>Template Theme</span>
-          <strong>{selectedTheme.previewLabel}</strong>
+          <p className={styles.kicker}>Production Template Preview</p>
+          <h3>{selectedTheme.previewLabel}</h3>
         </div>
-        {onThemeChange ? (
-          <div>
-            {coachTemplateThemes.map((theme) => (
-              <button
-                data-active={theme.id === selectedTheme.id ? "true" : "false"}
-                key={theme.id}
-                onClick={() => onThemeChange(theme.id)}
-                type="button"
-              >
-                {theme.previewLabel}
-              </button>
-            ))}
-          </div>
-        ) : null}
+        <span>{site.publicUrl}</span>
       </div>
-      <div
-        className={`${styles.previewHero} ${inspectMode ? styles.previewInspectable : ""}`}
-        data-media={site.heroMediaType}
-        {...getInspectProps("hero")}
-      >
-        {inspectMode ? (
-          <span className={styles.inspectHotspot}>{getCopyScopeLabel("hero")}</span>
-        ) : null}
-        <div>
-          <div className={styles.previewTemplateMark}>
-            <span>Yours Wellness Coach</span>
-            <span>{site.location || site.niche}</span>
-          </div>
-          <p className={styles.previewNiche}>{site.niche}</p>
-          <h3>{site.content.heroHeadline}</h3>
-          <p>{site.content.subheadline}</p>
-          <div className={styles.previewActions}>
-            {canRegister ? (
-              <a href={site.googleFormUrl} rel="noreferrer" target="_blank">
-                {site.registerButtonText || site.content.ctaText}
-              </a>
-            ) : (
-              <button disabled type="button">
-                {site.registerButtonText || "Register Now"}
-              </button>
-            )}
-            <code>{site.publicUrl}</code>
-          </div>
-          {!canRegister ? (
-            <p className={styles.linkWarning}>
-              Google Form link missing. Public register buttons stay disabled until a registration
-              link is added.
-            </p>
-          ) : null}
-          <dl className={styles.previewFacts}>
-            <div>
-              <dt>Coach</dt>
-              <dd>{site.coachName}</dd>
-            </div>
-            <div>
-              <dt>Focus</dt>
-              <dd>{site.niche}</dd>
-            </div>
-            <div>
-              <dt>Location</dt>
-              <dd>{site.location || "Yours Wellness"}</dd>
-            </div>
-          </dl>
-        </div>
-        {site.heroMediaType !== "none" ? (
-          <div className={styles.previewMedia} data-media={site.heroMediaType}>
-            {previewVideoUrl ? (
-              <iframe
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                src={previewVideoUrl}
-                title={`${site.coachName} hero video preview`}
-              />
-            ) : null}
-            {previewUploadedVideoUrl ? (
-              <video
-                controls
-                src={previewUploadedVideoUrl}
-                title={`${site.coachName} hero video preview`}
-              />
-            ) : null}
-            {previewImageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img alt={`${site.coachName} profile`} src={previewImageUrl} />
-            ) : null}
-            {!previewVideoUrl && !previewUploadedVideoUrl && !previewImageUrl ? (
-              <span>{site.coachName.slice(0, 2).toUpperCase()}</span>
-            ) : null}
-            <div className={styles.previewMediaCaption}>
-              <strong>{site.coachName}</strong>
-              <span>{site.niche}</span>
-            </div>
-          </div>
-        ) : null}
+      <div className={styles.productionPreviewFrame}>
+        <PublicCoachSitePage
+          enableTracking={false}
+          forcedThemeId={selectedTheme.id}
+          inspectMode={inspectMode}
+          onPreviewThemeChange={onThemeChange}
+          onSelectInspectScope={onSelectInspectScope}
+          previewMode
+          selectedInspectScope={selectedInspectScope}
+          site={site}
+        />
       </div>
-
-      <div className={styles.previewGrid}>
-        <section
-          className={inspectMode ? styles.previewInspectable : ""}
-          {...getInspectProps("intro")}
-        >
-          {inspectMode ? (
-            <span className={styles.inspectHotspot}>{getCopyScopeLabel("intro")}</span>
-          ) : null}
-          <h4>Coach introduction</h4>
-          <p>{site.content.coachIntro}</p>
-        </section>
-        <section
-          className={inspectMode ? styles.previewInspectable : ""}
-          {...getInspectProps("vision")}
-        >
-          {inspectMode ? (
-            <span className={styles.inspectHotspot}>{getCopyScopeLabel("vision")}</span>
-          ) : null}
-          <h4>Vision</h4>
-          <p>{site.content.visionText}</p>
-        </section>
-        <section
-          className={inspectMode ? styles.previewInspectable : ""}
-          {...getInspectProps("benefits")}
-        >
-          {inspectMode ? (
-            <span className={styles.inspectHotspot}>{getCopyScopeLabel("benefits")}</span>
-          ) : null}
-          <h4>What guests can expect</h4>
-          <ul>
-            {site.content.benefits.map((benefit) => (
-              <li key={benefit}>{benefit}</li>
-            ))}
-          </ul>
-        </section>
-        <section
-          className={inspectMode ? styles.previewInspectable : ""}
-          {...getInspectProps("faq")}
-        >
-          {inspectMode ? (
-            <span className={styles.inspectHotspot}>{getCopyScopeLabel("faq")}</span>
-          ) : null}
-          <h4>FAQ</h4>
-          {site.content.faq.map((item) => (
-            <div key={item.question}>
-              <strong>{item.question}</strong>
-              <p>{item.answer}</p>
-            </div>
-          ))}
-        </section>
-      </div>
-
-      <section
-        className={`${styles.previewRegisterBand} ${inspectMode ? styles.previewInspectable : ""}`}
-        {...getInspectProps("cta")}
-      >
-        {inspectMode ? (
-          <span className={styles.inspectHotspot}>{getCopyScopeLabel("cta")}</span>
-        ) : null}
-        <div>
-          <p className={styles.previewNiche}>Register</p>
-          <h4>{site.content.ctaText || "Register Now"}</h4>
-          <p>{site.content.trustText}</p>
-        </div>
-        {canRegister ? (
-          <a href={site.googleFormUrl} rel="noreferrer" target="_blank">
-            {site.registerButtonText || "Register Now"}
-          </a>
-        ) : (
-          <button disabled type="button">
-            Registration link pending
-          </button>
-        )}
-      </section>
     </article>
   );
 });

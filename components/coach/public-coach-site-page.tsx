@@ -1,6 +1,12 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import type {
+  ComponentPropsWithoutRef,
+  CSSProperties,
+  KeyboardEvent,
+  MouseEvent,
+  ReactNode
+} from "react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -26,9 +32,22 @@ import styles from "./public-coach-site-page.module.css";
 type PublicCoachSitePageProps = {
   enableTracking?: boolean;
   forcedThemeId?: CoachTemplateThemeId;
+  inspectMode?: boolean;
+  onPreviewThemeChange?: (value: CoachTemplateThemeId) => void;
+  onSelectInspectScope?: (value: CoachTemplatePreviewInspectSection) => void;
   previewMode?: boolean;
+  selectedInspectScope?: CoachTemplatePreviewInspectSection | null;
+  showThemeSwitcher?: boolean;
   site: PublicCoachSiteRecord;
 };
+
+export type CoachTemplatePreviewInspectSection =
+  | "benefits"
+  | "cta"
+  | "faq"
+  | "hero"
+  | "intro"
+  | "vision";
 
 const DEFAULT_SUPPORT_NAME = "Yours Wellness Support";
 const DEFAULT_SUPPORT_TEXT = "Need help? Contact Yours Wellness support.";
@@ -36,7 +55,12 @@ const DEFAULT_SUPPORT_TEXT = "Need help? Contact Yours Wellness support.";
 export function PublicCoachSitePage({
   enableTracking = true,
   forcedThemeId,
+  inspectMode = false,
+  onPreviewThemeChange,
+  onSelectInspectScope,
   previewMode = false,
+  selectedInspectScope = null,
+  showThemeSwitcher = true,
   site
 }: PublicCoachSitePageProps) {
   const referenceId = createCoachFallbackReferenceId(site.slug);
@@ -99,6 +123,49 @@ export function PublicCoachSitePage({
     });
   }
 
+  function getPreviewInspectProps(scope: CoachTemplatePreviewInspectSection) {
+    const selected = selectedInspectScope === scope;
+
+    if (!previewMode) return {};
+
+    const shared = {
+      "data-selected": selected ? "true" : "false"
+    };
+
+    if (!inspectMode) return shared;
+
+    return {
+      ...shared,
+      "aria-label": `Select ${getPreviewInspectLabel(scope)} for regeneration`,
+      "data-inspect-mode": "true",
+      onClick: (event: MouseEvent<HTMLElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onSelectInspectScope?.(scope);
+      },
+      onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+
+        event.preventDefault();
+        onSelectInspectScope?.(scope);
+      },
+      role: "button" as const,
+      tabIndex: 0
+    };
+  }
+
+  function getPreviewInspectClassName(className: string) {
+    if (!previewMode) return className;
+
+    return `${className} ${styles.previewInspectable}`;
+  }
+
+  function renderInspectHotspot(scope: CoachTemplatePreviewInspectSection) {
+    if (!previewMode || !inspectMode) return null;
+
+    return <span className={styles.inspectHotspot}>{getPreviewInspectLabel(scope)}</span>;
+  }
+
   return (
     <main
       className={styles.page}
@@ -112,7 +179,9 @@ export function PublicCoachSitePage({
         <StickyRegisterAction onMissingRegisterLink={showMissingRegisterFallback} site={site} />
       )}
 
-      {previewMode ? <ThemePreviewSwitcher activeThemeId={theme.id} /> : null}
+      {previewMode && showThemeSwitcher ? (
+        <ThemePreviewSwitcher activeThemeId={theme.id} onThemeChange={onPreviewThemeChange} />
+      ) : null}
 
       <nav className={styles.nav} aria-label="Coach page navigation">
         <Link className={styles.brand} href="#top">
@@ -136,7 +205,12 @@ export function PublicCoachSitePage({
         </RegisterAction>
       </nav>
 
-      <section className={styles.hero} data-media={site.heroMediaType || "image"}>
+      <section
+        className={getPreviewInspectClassName(styles.hero)}
+        data-media={site.heroMediaType || "image"}
+        {...getPreviewInspectProps("hero")}
+      >
+        {renderInspectHotspot("hero")}
         <div className={styles.heroCopy}>
           <div className={styles.trustRow}>
             <span>YW Nutritech coach network</span>
@@ -200,12 +274,22 @@ export function PublicCoachSitePage({
           <h2>Personal coach guidance inside a premium wellness-tech ecosystem.</h2>
         </div>
         <div className={styles.introGrid}>
-          <TemplateCard spotlightColor="rgba(216, 181, 111, 0.24)">
+          <TemplateCard
+            className={previewMode ? styles.previewInspectable : ""}
+            spotlightColor="rgba(216, 181, 111, 0.24)"
+            {...getPreviewInspectProps("intro")}
+          >
+            {renderInspectHotspot("intro")}
             <span>Who the coach is</span>
             <h3>{site.coachName}</h3>
             <p>{site.content.coachIntro}</p>
           </TemplateCard>
-          <TemplateCard spotlightColor="rgba(200, 184, 255, 0.24)">
+          <TemplateCard
+            className={previewMode ? styles.previewInspectable : ""}
+            spotlightColor="rgba(200, 184, 255, 0.24)"
+            {...getPreviewInspectProps("vision")}
+          >
+            {renderInspectHotspot("vision")}
             <span>Coach mission</span>
             <h3>{site.location || "Yours Wellness Coach"}</h3>
             <p>{site.content.visionText || site.vision}</p>
@@ -256,7 +340,12 @@ export function PublicCoachSitePage({
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.benefitsSection}`} id="benefits">
+      <section
+        className={getPreviewInspectClassName(`${styles.section} ${styles.benefitsSection}`)}
+        id="benefits"
+        {...getPreviewInspectProps("benefits")}
+      >
+        {renderInspectHotspot("benefits")}
         <div className={styles.sectionHead}>
           <span>Benefits</span>
           <h2>Clean nutrition-tech cards without clutter.</h2>
@@ -288,7 +377,12 @@ export function PublicCoachSitePage({
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.registerSection}`} id="register">
+      <section
+        className={getPreviewInspectClassName(`${styles.section} ${styles.registerSection}`)}
+        id="register"
+        {...getPreviewInspectProps("cta")}
+      >
+        {renderInspectHotspot("cta")}
         <div>
           <span>Register</span>
           <h2>{site.content.ctaText || "Ready to take the first step with this coach?"}</h2>
@@ -299,7 +393,11 @@ export function PublicCoachSitePage({
         </RegisterAction>
       </section>
 
-      <section className={`${styles.section} ${styles.faqSection}`}>
+      <section
+        className={getPreviewInspectClassName(`${styles.section} ${styles.faqSection}`)}
+        {...getPreviewInspectProps("faq")}
+      >
+        {renderInspectHotspot("faq")}
         <div className={styles.sectionHead}>
           <span>FAQ</span>
           <h2>Clean answers before registration.</h2>
@@ -422,33 +520,78 @@ export function CoachContactSupport({
 
 function TemplateCard({
   children,
-  spotlightColor
+  className = "",
+  spotlightColor,
+  ...rest
 }: {
   children: ReactNode;
   spotlightColor: string;
-}) {
+} & ComponentPropsWithoutRef<"article">) {
+  const cardClassName = `${styles.card} ${className}`.trim();
+
   return (
-    <SpotlightCard as="article" className={styles.card} spotlightColor={spotlightColor}>
+    <SpotlightCard
+      as="article"
+      className={cardClassName}
+      spotlightColor={spotlightColor}
+      {...rest}
+    >
       {children}
     </SpotlightCard>
   );
 }
 
-function ThemePreviewSwitcher({ activeThemeId }: { activeThemeId: CoachTemplateThemeId }) {
+function getPreviewInspectLabel(scope: CoachTemplatePreviewInspectSection) {
+  switch (scope) {
+    case "benefits":
+      return "Benefits";
+    case "cta":
+      return "CTA";
+    case "faq":
+      return "FAQ";
+    case "hero":
+      return "Hero";
+    case "intro":
+      return "Coach Intro";
+    case "vision":
+      return "Mission";
+    default:
+      return "Section";
+  }
+}
+
+function ThemePreviewSwitcher({
+  activeThemeId,
+  onThemeChange
+}: {
+  activeThemeId: CoachTemplateThemeId;
+  onThemeChange?: (value: CoachTemplateThemeId) => void;
+}) {
   return (
     <div className={styles.themeSwitcher} aria-label="Choose Template Theme">
       <span>Choose Template Theme</span>
       <div>
-        {coachTemplateThemes.map((theme) => (
-          <Link
-            data-active={theme.id === activeThemeId ? "true" : "false"}
-            href={`/coach-template-preview?theme=${theme.id}`}
-            key={theme.id}
-            prefetch={false}
-          >
-            {theme.previewLabel}
-          </Link>
-        ))}
+        {coachTemplateThemes.map((theme) =>
+          onThemeChange ? (
+            <button
+              data-active={theme.id === activeThemeId ? "true" : "false"}
+              key={theme.id}
+              onClick={() => onThemeChange(theme.id)}
+              type="button"
+            >
+              {theme.previewLabel}
+            </button>
+          ) : (
+            <Link
+              data-active={theme.id === activeThemeId ? "true" : "false"}
+              href={`/coach-template-preview?theme=${theme.id}`}
+              key={theme.id}
+              prefetch={false}
+            >
+              {theme.previewLabel}
+            </Link>
+          )
+        )}
       </div>
     </div>
   );

@@ -1331,6 +1331,66 @@
   padding: 1rem;
 }
 
+.productionPreview {
+  contain: layout paint;
+  display: grid;
+  gap: 0.8rem;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgb(234 211 226);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at 0% 0%, rgb(255 244 249 / 0.82), transparent 18rem),
+    linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(247 250 255 / 0.9));
+  box-shadow: 0 1.25rem 3rem rgb(31 25 43 / 0.08);
+  padding: 0.85rem;
+}
+
+.productionPreviewHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.8rem;
+  min-width: 0;
+  border: 1px solid rgb(237 218 230);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 0.74);
+  padding: 0.8rem;
+}
+
+.productionPreviewHeader h3 {
+  margin: 0.2rem 0 0;
+  color: #251822;
+  font-size: 1rem;
+}
+
+.productionPreviewHeader span {
+  min-width: 0;
+  max-width: 100%;
+  border-radius: 999px;
+  background: rgb(8 122 115 / 0.08);
+  color: #087a73;
+  font-size: 0.78rem;
+  font-weight: 950;
+  overflow-wrap: anywhere;
+  padding: 0.42rem 0.62rem;
+}
+
+.productionPreviewFrame {
+  min-width: 0;
+  max-height: min(76vh, 72rem);
+  overflow: auto;
+  border: 1px solid rgb(235 218 230);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.68);
+}
+
+.productionPreviewFrame :global(main[data-preview="true"]) {
+  min-height: auto;
+  padding-bottom: 1.5rem;
+}
+
 .previewInspectable {
   position: relative;
   outline: 1px dashed rgb(168 85 137 / 0.42);
@@ -4139,5 +4199,18 @@
   .recipientList,
   .roleChecklist {
     display: grid;
+  }
+
+  .productionPreview {
+    padding: 0.55rem;
+  }
+
+  .productionPreviewHeader {
+    display: grid;
+    align-items: start;
+  }
+
+  .productionPreviewFrame {
+    max-height: 72vh;
   }
 }
