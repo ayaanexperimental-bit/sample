@@ -186,6 +186,9 @@ const analyticsChartRangeOptions: Array<{ label: string; value: AnalyticsChartRa
   { label: "Max", value: "max" }
 ];
 
+const ADMIN_CSRF_HEADER_NAME = "x-yw-admin-csrf";
+const ERROR_REPORT_CLEANUP_CONFIRMATION = "CLEAR OLD REPORTS";
+
 const navSections: AdminNavSection[] = [
   {
     id: "admin-workflow",
@@ -4215,11 +4218,14 @@ function ErrorReportsView({
   const [cleanupFilter, setCleanupFilter] = useState<
     "fixed_ignored" | "older_30" | "older_90" | "stale_all"
   >("fixed_ignored");
+  const [cleanupConfirmation, setCleanupConfirmation] = useState("");
   const [cleanupBusy, setCleanupBusy] = useState(false);
   const [copyMessage, setCopyMessage] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const isLiveSource = source === "d1_table";
   const isLoadingSource = source === "loading";
+  const cleanupConfirmed =
+    cleanupConfirmation.trim().toUpperCase() === ERROR_REPORT_CLEANUP_CONFIRMATION;
 
   useEffect(() => {
     if (!copyMessage) return;
@@ -4254,7 +4260,7 @@ function ErrorReportsView({
         cache: "no-store",
         headers: {
           "content-type": "application/json",
-          "x-csrf-token": csrfToken
+          [ADMIN_CSRF_HEADER_NAME]: csrfToken
         },
         method: "PATCH"
       });
@@ -4303,6 +4309,11 @@ function ErrorReportsView({
   }
 
   async function clearOldReports() {
+    if (!cleanupConfirmed) {
+      setStatusMessage(`Type ${ERROR_REPORT_CLEANUP_CONFIRMATION} to enable cleanup.`);
+      return;
+    }
+
     setCleanupBusy(true);
     setStatusMessage("Clearing selected old error reports...");
 
@@ -4316,7 +4327,7 @@ function ErrorReportsView({
         credentials: "include",
         headers: {
           "content-type": "application/json",
-          "x-csrf-token": csrfToken
+          [ADMIN_CSRF_HEADER_NAME]: csrfToken
         },
         method: "POST"
       });
@@ -4333,6 +4344,7 @@ function ErrorReportsView({
 
       await refreshReports();
       setCleanupDialogOpen(false);
+      setCleanupConfirmation("");
       setStatusMessage(`${payload.deletedCount || 0} old error reports cleared.`);
     } catch {
       setStatusMessage("Could not clear selected old reports. No other production data was touched.");
@@ -4349,6 +4361,7 @@ function ErrorReportsView({
           disabled={!isLiveSource}
           onClick={() => {
             setCleanupDialogOpen(true);
+            setCleanupConfirmation("");
             setStatusMessage("");
           }}
           type="button"
@@ -4475,7 +4488,7 @@ function ErrorReportsView({
             </button>
             <button
               data-tone="danger"
-              disabled={cleanupBusy || !isLiveSource}
+              disabled={cleanupBusy || !isLiveSource || !cleanupConfirmed}
               onClick={() => void clearOldReports()}
               type="button"
             >
@@ -4510,6 +4523,18 @@ function ErrorReportsView({
             <small>
               Fresh New reports are kept. Analytics, coach sites, admins, payment data, and audit
               logs are never touched by this cleanup.
+            </small>
+          </label>
+          <label className={styles.compactField}>
+            Type {ERROR_REPORT_CLEANUP_CONFIRMATION} to confirm
+            <input
+              autoComplete="off"
+              onChange={(event) => setCleanupConfirmation(event.target.value)}
+              placeholder={ERROR_REPORT_CLEANUP_CONFIRMATION}
+              value={cleanupConfirmation}
+            />
+            <small>
+              This confirmation is required because clearing reports is permanent.
             </small>
           </label>
         </div>
@@ -4666,8 +4691,11 @@ function BackupCleanupView({
   const [errorCleanupFilter, setErrorCleanupFilter] = useState<
     "fixed_ignored" | "older_30" | "older_90" | "stale_all"
   >("fixed_ignored");
+  const [errorCleanupConfirmation, setErrorCleanupConfirmation] = useState("");
   const [message, setMessage] = useState("");
   const [cleanupConfirmOpen, setCleanupConfirmOpen] = useState(false);
+  const errorCleanupConfirmed =
+    errorCleanupConfirmation.trim().toUpperCase() === ERROR_REPORT_CLEANUP_CONFIRMATION;
 
   useEffect(() => {
     let active = true;
@@ -4701,6 +4729,11 @@ function BackupCleanupView({
   }, []);
 
   async function clearOldReportsFromMaintenance() {
+    if (!errorCleanupConfirmed) {
+      setMessage(`Type ${ERROR_REPORT_CLEANUP_CONFIRMATION} to enable cleanup.`);
+      return;
+    }
+
     setErrorCleanupBusy(true);
     setMessage("Clearing selected old error reports...");
 
@@ -4714,7 +4747,7 @@ function BackupCleanupView({
         credentials: "include",
         headers: {
           "content-type": "application/json",
-          "x-csrf-token": csrfToken
+          [ADMIN_CSRF_HEADER_NAME]: csrfToken
         },
         method: "POST"
       });
@@ -4743,6 +4776,7 @@ function BackupCleanupView({
           : current
       );
       setErrorCleanupConfirmOpen(false);
+      setErrorCleanupConfirmation("");
       setMessage(`${deletedCount} old error reports cleared. No analytics or coach data was touched.`);
     } catch {
       setMessage("Could not clear selected old reports. No other production data was touched.");
@@ -4768,7 +4802,7 @@ function BackupCleanupView({
         credentials: "include",
         headers: {
           "content-type": "application/json",
-          "x-csrf-token": csrfToken
+          [ADMIN_CSRF_HEADER_NAME]: csrfToken
         },
         method: "POST"
       });
@@ -4991,7 +5025,10 @@ function BackupCleanupView({
           <button
             className={styles.dangerAction}
             disabled={errorCleanupBusy}
-            onClick={() => setErrorCleanupConfirmOpen(true)}
+            onClick={() => {
+              setErrorCleanupConfirmation("");
+              setErrorCleanupConfirmOpen(true);
+            }}
             type="button"
           >
             Clear Old Error Reports
@@ -5096,7 +5133,7 @@ function BackupCleanupView({
             </button>
             <button
               data-tone="danger"
-              disabled={errorCleanupBusy}
+              disabled={errorCleanupBusy || !errorCleanupConfirmed}
               onClick={() => void clearOldReportsFromMaintenance()}
               type="button"
             >
@@ -5131,6 +5168,18 @@ function BackupCleanupView({
             <small>
               This cleanup never deletes analytics events, coach data, payment data, admin users,
               coach sites, or audit logs.
+            </small>
+          </label>
+          <label className={styles.compactField}>
+            Type {ERROR_REPORT_CLEANUP_CONFIRMATION} to confirm
+            <input
+              autoComplete="off"
+              onChange={(event) => setErrorCleanupConfirmation(event.target.value)}
+              placeholder={ERROR_REPORT_CLEANUP_CONFIRMATION}
+              value={errorCleanupConfirmation}
+            />
+            <small>
+              This confirmation is required because clearing reports is permanent.
             </small>
           </label>
         </div>
