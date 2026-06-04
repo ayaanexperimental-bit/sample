@@ -3,9 +3,9 @@ import { GuestCoachPage } from "@/components/coach/guest-coach-page";
 import { getCoachBySlug } from "@/lib/coach-platform";
 
 export const metadata: Metadata = {
-  title: "Gyana Ranjan PCOS Guest Session | YW Coach",
+  title: "Gyana Ranjan PMOS Guest Session | YW Coach",
   description:
-    "A practical PCOS and women wellness guest session page with Coach Gyana Ranjan on YW Coach."
+    "A practical PMOS and women wellness guest session page with Coach Gyana Ranjan on YW Coach."
 };
 
 export default function Page() {

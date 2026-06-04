@@ -81,7 +81,7 @@ export const coaches: Coach[] = [
     displayName: "Gyana Ranjan",
     status: "active",
     guestProfile: {
-      niche: "PCOS / Women Wellness",
+      niche: "PMOS / Women Wellness",
       theme: "pcos",
       hook: "For women tired of guessing what their hormones are trying to say.",
       headline: "Understand your hormones with calm, practical lifestyle guidance.",
@@ -94,10 +94,10 @@ export const coaches: Coach[] = [
         "His coaching approach focuses on simple routines, root-cause clarity, and practical next steps that fit real life."
       ],
       coachIntro: {
-        expertise: "Women's hormonal wellness, PCOS lifestyle support, habit coaching",
+        expertise: "Women's hormonal wellness, PMOS lifestyle support, habit coaching",
         credibility: "Yours Wellness coach focused on practical education and guided routines",
         story:
-          "Gyana helps women slow down the noise around PCOS and wellness advice, then rebuild a clear routine around food, movement, rest, tracking, and consistency.",
+          "Gyana helps women slow down the noise around PMOS and wellness advice, then rebuild a clear routine around food, movement, rest, tracking, and consistency.",
         trustLine:
           "Every recommendation stays education-first and should work alongside medical guidance where needed."
       },
@@ -108,7 +108,7 @@ export const coaches: Coach[] = [
         painPoints: [
           "Irregular periods, PMS, acne, cravings, or energy crashes that feel difficult to connect",
           "Trying diet changes but not knowing which routine is sustainable",
-          "Feeling overwhelmed by conflicting PCOS or hormone advice online",
+          "Feeling overwhelmed by conflicting PMOS or hormone advice online",
           "Wanting a coach-led plan that respects real-life work, family, and stress"
         ]
       },
@@ -187,7 +187,7 @@ export const funnels: Funnel[] = [
   {
     id: "gyana-pcos-51",
     coachId: "coach-gyana",
-    displayName: "Gyana PCOS 51",
+    displayName: "Gyana PMOS 51",
     type: "paidProgram",
     entryCode: "gyana-pcos-51",
     canonicalPath: "/gyana/pcos-51",

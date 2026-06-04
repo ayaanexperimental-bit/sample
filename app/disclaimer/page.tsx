@@ -16,10 +16,10 @@ export default function DisclaimerPage() {
           and should be interpreted with professional medical guidance where needed.
         </p>
         <p>
-          If you have diabetes, PCOS, thyroid issues, pregnancy-related concerns, infertility,
-          menstrual irregularities, high blood pressure, kidney disease, liver disease, heart
-          disease, eating disorders, or any medical condition, please consult your doctor before
-          making lifestyle, food, exercise, supplement, or medication-related changes.
+          If you have diabetes, PMOS (formerly PCOS), thyroid issues, pregnancy-related concerns,
+          infertility, menstrual irregularities, high blood pressure, kidney disease, liver
+          disease, heart disease, eating disorders, or any medical condition, please consult your
+          doctor before making lifestyle, food, exercise, supplement, or medication-related changes.
         </p>
         <p>
           We do not guarantee cure, reversal, medicine stoppage, weight loss, pregnancy, skin

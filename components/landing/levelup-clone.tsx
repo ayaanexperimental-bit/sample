@@ -86,7 +86,7 @@ const refundRules = [
 const differentiators = [
   {
     title: "Root-Cause Fix, Not Symptom Control",
-    copy: "We don't suppress your symptoms - we rebuild your hormonal health from the cellular level so PCOS never returns."
+    copy: "We don't suppress your symptoms - we rebuild your hormonal health from the cellular level so PMOS patterns do not keep controlling your life."
   },
   {
     title: "Zero Medications. Zero Side Effects",
@@ -133,7 +133,7 @@ const masterclassSteps = [
     heading: "Clearing The Confusion Around Health & Hormones",
     intro: "Understand why so many women feel confused about:",
     bullets: [
-      "PCOS",
+      "PMOS",
       "Weight gain",
       "Irregular periods",
       "Hormonal imbalance",
@@ -233,7 +233,7 @@ const programBonuses: ProgramBonus[] = [
       "Cravings and fatigue",
       "Acne and hair fall",
       "Mood swings and low energy",
-      "PCOS symptoms"
+      "PMOS symptoms"
     ]
   },
   {
@@ -245,9 +245,9 @@ const programBonuses: ProgramBonus[] = [
 
 const faqs = [
   {
-    question: "Is reversing PCOS possible without medication?",
+    question: "Is reversing PMOS possible without medication?",
     answer:
-      "Yes, many women have successfully reversed their PCOS symptoms with lifestyle changes, diet, and natural treatments tailored to their needs."
+      "Yes, many women have successfully improved PMOS symptoms with lifestyle changes, diet, and natural support tailored to their needs."
   },
   {
     question: "How can a single consultation call make a difference?",
@@ -277,7 +277,7 @@ const faqs = [
   {
     question: "Is this approach backed by science?",
     answer:
-      "Yes, the strategies we use are based on the latest research and have been proven to work effectively for PCOS management."
+      "Yes, the strategies we use are based on current hormone, metabolic, and lifestyle research for PMOS management."
   },
   {
     question: "Will this require a lot of expensive supplements?",
@@ -285,9 +285,9 @@ const faqs = [
       "No, our focus is on natural and sustainable changes, not costly supplements. Any recommendations will be optional and budget-friendly."
   },
   {
-    question: "My doctor says PCOS can't be reversed.",
+    question: "My doctor says PMOS can't be reversed.",
     answer:
-      "While some doctors believe PCOS is lifelong, many women have reversed symptoms with lifestyle changes and holistic approaches. Our program focuses on identifying your unique triggers and creating a personalized plan to restore balance naturally."
+      "PMOS symptoms can be influenced by multiple endocrine, metabolic, and lifestyle factors. Our program focuses on identifying your unique triggers and creating a personalized plan to support balance naturally."
   }
 ];
 
@@ -497,7 +497,7 @@ function ProgramBonusesSection() {
           </h2>
           <p>
             A practical lifestyle-based approach designed to help women better understand hormones,
-            metabolism, PCOS symptoms, and sustainable healing habits.
+            metabolism, PMOS symptoms, and sustainable healing habits.
           </p>
         </div>
 
@@ -785,7 +785,7 @@ export function LevelupClone() {
           </div>
 
           <h1 className="levelup-title">
-            Heal Your Hormones With A Practical <span>PCOS Reset</span>
+            Heal Your Hormones With A Practical <span>PMOS Reset</span>
           </h1>
 
           <p className="levelup-subtitle">
@@ -800,7 +800,7 @@ export function LevelupClone() {
           <div className="levelup-video glass-card" aria-label="Consultation preview video">
             <iframe
               src={YOUTUBE_HERO_EMBED_URL}
-              title="PCOS consultation training video on YouTube"
+              title="PMOS consultation training video on YouTube"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               referrerPolicy="strict-origin-when-cross-origin"
               allowFullScreen

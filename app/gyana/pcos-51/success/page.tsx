@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     index: false,
     follow: false
   },
-  title: "Registration Successful | Gyana PCOS 51"
+  title: "Registration Successful | Gyana PMOS 51"
 };
 
 export default function Page() {

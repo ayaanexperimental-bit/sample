@@ -86,7 +86,7 @@ test.describe("Gyana guest funnel", () => {
     await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => {});
 
     await expect(page).toHaveURL(/\/gyana$/);
-    await expect(page).toHaveTitle(/Gyana Ranjan PCOS Guest Session/i);
+    await expect(page).toHaveTitle(/Gyana Ranjan PMOS Guest Session/i);
     await expect(
       page
         .locator("a,button")

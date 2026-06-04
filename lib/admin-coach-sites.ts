@@ -156,7 +156,7 @@ export const approvedCoachSites: CoachSiteRecord[] = [
     id: "coach-site-gyana-ranjan",
     coachId: "coach-gyana",
     coachName: "Gyana Ranjan",
-    niche: "PCOS / Women Wellness",
+    niche: "PMOS / Women Wellness",
     location: "Odisha",
     bio: "Practical wellness coach helping women understand hormones and daily lifestyle routines.",
     vision:
@@ -179,7 +179,7 @@ export const approvedCoachSites: CoachSiteRecord[] = [
     registerButtonText: "Register Now",
     selectedThemeId: DEFAULT_COACH_TEMPLATE_THEME_ID,
     content: {
-      heroHeadline: "Meet Gyana Ranjan for practical PCOS lifestyle guidance.",
+      heroHeadline: "Meet Gyana Ranjan for practical PMOS lifestyle guidance.",
       subheadline:
         "A fixed-template coach referral page introducing the coach, niche, vision, and next registration step.",
       coachIntro:
@@ -187,7 +187,7 @@ export const approvedCoachSites: CoachSiteRecord[] = [
       visionText:
         "Support women with education-first guidance that fits real life and works alongside medical advice when needed.",
       benefits: [
-        "Understand common lifestyle patterns connected to PCOS symptoms.",
+        "Understand common lifestyle patterns connected to PMOS symptoms.",
         "Get a calmer view of food, movement, sleep, and routine consistency.",
         "Know the right next step before joining a deeper program."
       ],
@@ -204,7 +204,7 @@ export const approvedCoachSites: CoachSiteRecord[] = [
       ],
       trustText:
         "Education-first, doctor-friendly coaching support. This does not replace diagnosis or treatment.",
-      socialCopy: "Join Gyana Ranjan's PCOS lifestyle guidance page for a clear first step."
+      socialCopy: "Join Gyana Ranjan's PMOS lifestyle guidance page for a clear first step."
     },
     analytics: {
       averageVisits: 0,

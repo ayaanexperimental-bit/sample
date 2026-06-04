@@ -200,6 +200,7 @@ function extractCoachName(title: string | undefined, headings: string[], text: s
 function extractNiche(title: string | undefined, headings: string[], text: string) {
   const combined = [title, ...headings, text.slice(0, 1200)].filter(Boolean).join(" ");
   const nicheWords = [
+    "PMOS",
     "PCOS",
     "hormone",
     "women",
