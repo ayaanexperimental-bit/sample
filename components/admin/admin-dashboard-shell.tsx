@@ -4892,8 +4892,8 @@ function BackupCleanupView({
           <span>Destination</span>
           <strong>{activeStatus.backupDestination}</strong>
           <p>
-            Google Sheets: {activeStatus.googleSheetsConfigured ? "configured" : "not configured"}.
-            CSV export remains available as a safe fallback.
+            Backup data is emailed to active admins as a CSV attachment. Protected dashboard
+            download remains available as a fallback.
           </p>
         </article>
         <article className={styles.maintenanceCard}>

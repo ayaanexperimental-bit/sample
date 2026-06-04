@@ -8,8 +8,6 @@ export type AdminMaintenanceEnv = {
   ADMIN_EMAIL_OTP_FROM?: string;
   ADMIN_REQUIRE_DB_ADMIN_ROLES?: string;
   ADMIN_SESSION_SECRET?: string;
-  GOOGLE_SHEETS_BACKUP_CREDENTIALS_JSON?: string;
-  GOOGLE_SHEETS_BACKUP_SPREADSHEET_ID?: string;
   RESEND_API_KEY?: string;
 };
 
@@ -92,12 +90,6 @@ type AdminUserRow = {
   status: string;
 };
 
-type GoogleBackupCredentials = {
-  client_email: string;
-  private_key: string;
-  token_uri?: string;
-};
-
 const RETENTION_DAYS = 90;
 const BACKUP_EMAIL_SUBJECT = "YWcoach Trimonthly Backup Data";
 
@@ -169,21 +161,18 @@ export async function getAdminMaintenanceStatus({
   env: AdminMaintenanceEnv;
 }): Promise<MaintenanceStatus> {
   const db = env.ADMIN_DB;
-  const googleSheetsConfigured = isGoogleSheetsConfigured(env);
   const backupEmailConfigured = isBackupEmailConfigured(env);
 
   if (!db) {
     return {
       activeAdminRecipientCount: 0,
-      backupDestination: googleSheetsConfigured
-        ? "Google Sheets configured, database missing"
-        : "CSV/XLSX-compatible export, database missing",
+      backupDestination: "Email CSV attachment, database missing",
       backupDownloadUrl: null,
       backupEmailConfigured,
       cleanupEligibleAnalyticsEvents: 0,
       cleanupStatus: "Database missing. No cleanup can run.",
       failedRecipients: [],
-      googleSheetsConfigured,
+      googleSheetsConfigured: false,
       lastBackupAt: "No backup created yet",
       lastBackupRecordCount: 0,
       lastBackupStatus: "Not configured",
@@ -213,9 +202,7 @@ export async function getAdminMaintenanceStatus({
 
   return {
     activeAdminRecipientCount: recipients.length,
-    backupDestination: googleSheetsConfigured
-      ? "Google Sheets primary configured"
-      : "Secure CSV/XLSX-compatible D1 export",
+    backupDestination: "Email CSV attachment primary",
     backupDownloadUrl: latestBackup?.file_url || (latestBackup?.id ? `/api/admin/backup-cleanup?download=${latestBackup.id}` : null),
     backupEmailConfigured,
     cleanupEligibleAnalyticsEvents,
@@ -226,7 +213,7 @@ export async function getAdminMaintenanceStatus({
       recipients
     }),
     failedRecipients: parseList(latestBackup?.failed_recipients).map(maskEmail),
-    googleSheetsConfigured,
+    googleSheetsConfigured: false,
     lastBackupAt: secondsToDisplay(latestBackup?.created_at) || "No backup created yet",
     lastBackupRecordCount: normalizeNumber(latestBackup?.record_count),
     lastBackupStatus: latestBackup?.status || "No backup created yet",
@@ -274,54 +261,9 @@ export async function runAnalyticsBackup({
     .toISOString()
     .slice(0, 10)}.csv`;
   const csv = createAnalyticsBackupCsv(rows);
-  let destination = "d1_secure_csv";
-  let fileUrl = `/api/admin/backup-cleanup?download=${backupId}`;
-  let status = rows.length === 0 ? "completed_empty" : "completed";
-
-  if (isGoogleSheetsConfigured(env)) {
-    const sheetsBackup = await createGoogleSheetsBackup({
-      backupId,
-      createdAt,
-      cutoff,
-      env,
-      rows
-    });
-    destination = "google_sheets";
-
-    if (!sheetsBackup.ok) {
-      status = "failed_google_sheets";
-      await db
-        .prepare(
-          `INSERT INTO analytics_backups (
-            id, date_range_start, date_range_end, backup_type, destination, file_name, file_url,
-            status, record_count, recipient_count, failed_recipients, notification_status,
-            backup_csv, created_at, created_by
-          ) VALUES (?1, 0, ?2, 'analytics_events_raw', ?3, ?4, '', ?5, ?6, 0, '', 'not_sent', ?7, ?8, ?9)`
-        )
-        .bind(
-          backupId,
-          cutoff,
-          destination,
-          fileName,
-          status,
-          rows.length,
-          csv,
-          createdAt,
-          sanitizeEmail(adminEmail)
-        )
-        .run();
-
-      return {
-        error: sheetsBackup.error,
-        notificationStatus: "not_sent",
-        ok: false as const,
-        recordCount: rows.length,
-        status
-      };
-    }
-
-    fileUrl = sheetsBackup.fileUrl;
-  }
+  const destination = "email_csv_attachment";
+  const fileUrl = `/api/admin/backup-cleanup?download=${backupId}`;
+  const status = rows.length === 0 ? "completed_empty" : "completed";
 
   let notificationStatus = "not_sent";
   let failedRecipients: string[] = [];
@@ -334,9 +276,11 @@ export async function runAnalyticsBackup({
     const result = await sendBackupNotificationEmails({
       backupId,
       createdAt,
+      csvContent: csv,
       cutoff,
       env,
       fileUrl: `${new URL(request.url).origin}${fileUrl}`,
+      fileName,
       recordCount: rows.length,
       recipients
     });
@@ -494,6 +438,7 @@ export async function sendTestBackupEmail({
     createdAt: getNowSeconds(),
     cutoff: getRetentionCutoffSeconds(),
     env,
+    fileName: "ywcoach-backup-email-test.csv",
     fileUrl: `${new URL(request.url).origin}/admin/dashboard`,
     isTest: true,
     recordCount: 0,
@@ -833,8 +778,10 @@ async function insertCleanupLog({
 async function sendBackupNotificationEmails({
   backupId,
   createdAt,
+  csvContent,
   cutoff,
   env,
+  fileName,
   fileUrl,
   isTest = false,
   recordCount,
@@ -842,8 +789,10 @@ async function sendBackupNotificationEmails({
 }: {
   backupId: string;
   createdAt: number;
+  csvContent?: string;
   cutoff: number;
   env: AdminMaintenanceEnv;
+  fileName: string;
   fileUrl: string;
   isTest?: boolean;
   recordCount: number;
@@ -864,6 +813,15 @@ async function sendBackupNotificationEmails({
             isTest,
             recordCount
           }),
+          attachments:
+            !isTest && typeof csvContent === "string"
+              ? [
+                  {
+                    content: base64Encode(csvContent),
+                    filename: fileName
+                  }
+                ]
+              : undefined,
           subject: BACKUP_EMAIL_SUBJECT,
           text: createBackupEmailText({
             backupId,
@@ -917,7 +875,9 @@ function createBackupEmailText({
         ? "Test only. No cleanup ran."
         : "Backup completed. Cleanup requires successful notification."
     }`,
-    `Backup file/link: ${fileUrl}`,
+    isTest
+      ? `Backup test link: ${fileUrl}`
+      : `Primary backup: CSV attached to this email. Protected download fallback: ${fileUrl}`,
     `Timestamp: ${new Date(createdAt * 1000).toISOString()}`,
     "This email does not include secrets, OTPs, private links, tokens, or payment card data."
   ].join("\n");
@@ -955,246 +915,6 @@ function createAnalyticsBackupCsv(rows: Array<Record<string, unknown>>) {
   ];
 
   return lines.join("\n");
-}
-
-async function createGoogleSheetsBackup({
-  backupId,
-  createdAt,
-  cutoff,
-  env,
-  rows
-}: {
-  backupId: string;
-  createdAt: number;
-  cutoff: number;
-  env: AdminMaintenanceEnv;
-  rows: Array<Record<string, unknown>>;
-}) {
-  const spreadsheetId = env.GOOGLE_SHEETS_BACKUP_SPREADSHEET_ID?.trim();
-  if (!spreadsheetId) {
-    return { ok: false as const, error: "Google Sheets spreadsheet ID is not configured." };
-  }
-
-  const token = await getGoogleSheetsAccessToken(env);
-  if (!token.ok) return token;
-
-  const sheetTitle = `analytics-${new Date(createdAt * 1000).toISOString().slice(0, 10)}-${backupId
-    .slice(-8)
-    .replace(/[^a-zA-Z0-9_-]/g, "")}`;
-  const addSheetResponse = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
-    {
-      body: JSON.stringify({
-        requests: [
-          {
-            addSheet: {
-              properties: {
-                title: sheetTitle
-              }
-            }
-          }
-        ]
-      }),
-      headers: {
-        authorization: `Bearer ${token.accessToken}`,
-        "content-type": "application/json"
-      },
-      method: "POST"
-    }
-  );
-
-  if (!addSheetResponse.ok) {
-    return { ok: false as const, error: "Google Sheets backup tab could not be created." };
-  }
-
-  const addSheetPayload = (await addSheetResponse.json().catch(() => ({}))) as {
-    replies?: Array<{
-      addSheet?: {
-        properties?: {
-          sheetId?: number;
-        };
-      };
-    }>;
-  };
-  const sheetId = addSheetPayload.replies?.[0]?.addSheet?.properties?.sheetId;
-  const headers = [
-    "backup_id",
-    "backup_created_at",
-    "backup_range_before",
-    "id",
-    "event_name",
-    "funnel_type",
-    "coach_slug",
-    "coach_site_id",
-    "coach_id",
-    "funnel_id",
-    "page_path",
-    "source",
-    "utm_source",
-    "utm_medium",
-    "utm_campaign",
-    "device_type",
-    "region",
-    "created_at",
-    "created_date"
-  ];
-  const backupCreatedAt = new Date(createdAt * 1000).toISOString();
-  const rangeBefore = new Date(cutoff * 1000).toISOString();
-  const values = [
-    headers,
-    ...rows.map((row) => [
-      backupId,
-      backupCreatedAt,
-      rangeBefore,
-      row.id || "",
-      row.event_name || "",
-      row.funnel_type || "",
-      row.coach_slug || "",
-      row.coach_site_id || "",
-      row.coach_id || "",
-      row.funnel_id || "",
-      row.page_path || "",
-      row.source || "",
-      row.utm_source || "",
-      row.utm_medium || "",
-      row.utm_campaign || "",
-      row.device_type || "",
-      row.region || "",
-      row.created_at || "",
-      row.created_date || ""
-    ])
-  ];
-  const range = encodeURIComponent(`'${sheetTitle}'!A1`);
-  const updateResponse = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?valueInputOption=RAW`,
-    {
-      body: JSON.stringify({ values }),
-      headers: {
-        authorization: `Bearer ${token.accessToken}`,
-        "content-type": "application/json"
-      },
-      method: "PUT"
-    }
-  );
-
-  if (!updateResponse.ok) {
-    return { ok: false as const, error: "Google Sheets backup rows could not be written." };
-  }
-
-  return {
-    fileUrl: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit${
-      typeof sheetId === "number" ? `#gid=${sheetId}` : ""
-    }`,
-    ok: true as const
-  };
-}
-
-async function getGoogleSheetsAccessToken(env: AdminMaintenanceEnv) {
-  const credentials = parseGoogleCredentials(env.GOOGLE_SHEETS_BACKUP_CREDENTIALS_JSON);
-  if (!credentials) {
-    return { ok: false as const, error: "Google Sheets service account credentials are invalid." };
-  }
-
-  const now = Math.floor(Date.now() / 1000);
-  const assertion = await createGoogleServiceAccountJwt({
-    clientEmail: credentials.client_email,
-    iat: now,
-    privateKey: credentials.private_key
-  });
-  const response = await fetch(credentials.token_uri || "https://oauth2.googleapis.com/token", {
-    body: new URLSearchParams({
-      assertion,
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer"
-    }),
-    headers: {
-      "content-type": "application/x-www-form-urlencoded"
-    },
-    method: "POST"
-  });
-
-  if (!response.ok) {
-    return { ok: false as const, error: "Google Sheets access token could not be created." };
-  }
-
-  const payload = (await response.json().catch(() => ({}))) as {
-    access_token?: string;
-  };
-  if (!payload.access_token) {
-    return { ok: false as const, error: "Google Sheets access token response was invalid." };
-  }
-
-  return { accessToken: payload.access_token, ok: true as const };
-}
-
-async function createGoogleServiceAccountJwt({
-  clientEmail,
-  iat,
-  privateKey
-}: {
-  clientEmail: string;
-  iat: number;
-  privateKey: string;
-}) {
-  const header = base64UrlEncodeString(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-  const claimSet = base64UrlEncodeString(
-    JSON.stringify({
-      aud: "https://oauth2.googleapis.com/token",
-      exp: iat + 3600,
-      iat,
-      iss: clientEmail,
-      scope: "https://www.googleapis.com/auth/spreadsheets"
-    })
-  );
-  const signingInput = `${header}.${claimSet}`;
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    pemToArrayBuffer(privateKey),
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const signature = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    key,
-    new TextEncoder().encode(signingInput)
-  );
-
-  return `${signingInput}.${base64UrlEncodeBytes(new Uint8Array(signature))}`;
-}
-
-function parseGoogleCredentials(value: unknown): GoogleBackupCredentials | null {
-  if (typeof value !== "string" || !value.trim()) return null;
-
-  try {
-    const parsed = JSON.parse(value) as {
-      client_email?: string;
-      private_key?: string;
-      token_uri?: string;
-    };
-    if (!parsed.client_email || !parsed.private_key) return null;
-
-    return {
-      client_email: parsed.client_email,
-      private_key: parsed.private_key,
-      token_uri: parsed.token_uri
-    };
-  } catch {
-    return null;
-  }
-}
-
-function pemToArrayBuffer(pem: string) {
-  const base64 = pem
-    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
-    .replace(/-----END PRIVATE KEY-----/g, "")
-    .replace(/\s+/g, "");
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-
-  return bytes.buffer;
 }
 
 function getErrorReportCleanupSql(filter: ErrorReportCleanupFilter) {
@@ -1251,13 +971,6 @@ function getCleanupStatusText({
     return "Blocked until backup notification succeeds for all active admins.";
   }
   return "Ready for cleanup after backup confirmation.";
-}
-
-function isGoogleSheetsConfigured(env: AdminMaintenanceEnv) {
-  return Boolean(
-    env.GOOGLE_SHEETS_BACKUP_CREDENTIALS_JSON?.trim() &&
-      env.GOOGLE_SHEETS_BACKUP_SPREADSHEET_ID?.trim()
-  );
 }
 
 function isBackupEmailConfigured(env: AdminMaintenanceEnv) {
@@ -1337,17 +1050,15 @@ function escapeHtml(value: string) {
     .replace(/"/g, "&quot;");
 }
 
-function base64UrlEncodeString(value: string) {
-  return base64UrlEncodeBytes(new TextEncoder().encode(value));
-}
-
-function base64UrlEncodeBytes(bytes: Uint8Array) {
+function base64Encode(value: string) {
+  const bytes = new TextEncoder().encode(value);
   let binary = "";
-  bytes.forEach((byte) => {
-    binary += String.fromCharCode(byte);
-  });
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.slice(index, index + chunkSize));
+  }
 
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  return btoa(binary);
 }
 
 function createUnavailableRoleChecklist(
