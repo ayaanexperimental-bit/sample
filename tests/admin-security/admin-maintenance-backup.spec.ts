@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { D1Database } from "@cloudflare/workers-types";
 import {
+  clearOldErrorReports,
   getAdminMaintenanceStatus,
   getBackupDownload,
   runAnalyticsBackup,
@@ -94,6 +95,35 @@ test.describe("admin maintenance backup safeguards", () => {
       deleted_record_count: 0,
       reason: "Backup notification status is email_not_configured.",
       status: "skipped"
+    });
+  });
+
+  test("clears only selected stale error reports without requiring analytics backup", async () => {
+    const db = new ErrorReportCleanupFakeD1();
+    const env = {
+      ADMIN_DB: db as unknown as D1Database,
+      ADMIN_SESSION_SECRET: "local-maintenance-secret"
+    };
+
+    const result = await clearOldErrorReports({
+      adminEmail: "owner@example.com",
+      env,
+      filter: "stale_all",
+      request: new Request("https://ywcoach.com/api/admin/error-reports")
+    });
+
+    expect(result).toMatchObject({
+      deletedCount: 3,
+      filter: "stale_all",
+      ok: true
+    });
+    expect(db.errorReports.map((row) => row.status).sort()).toEqual(["New", "Reviewing"]);
+    expect(db.errorCleanupLogs[0]).toMatchObject({
+      deleted_report_count: 3,
+      filter_used: "stale_all"
+    });
+    expect(db.auditEvents[0]).toMatchObject({
+      event_type: "error_reports_cleared"
     });
   });
 });
@@ -312,6 +342,106 @@ class MaintenanceFakeD1 {
     }
 
     return [];
+  }
+}
+
+class ErrorReportCleanupFakeD1 {
+  errorReports = [
+    { created_at: 1_700_000_000, id: "new-old", status: "New" },
+    { created_at: 1_700_000_000, id: "fixed-old", status: "Fixed" },
+    { created_at: 1_700_000_000, id: "ignored-old", status: "Ignored" },
+    { created_at: 1_700_000_000, id: "reviewing-old", status: "Reviewing" },
+    { created_at: Math.floor(Date.now() / 1000), id: "reviewing-current", status: "Reviewing" }
+  ];
+  errorCleanupLogs: Array<Record<string, unknown>> = [];
+  auditEvents: Array<Record<string, unknown>> = [];
+
+  prepare(sql: string) {
+    return new ErrorReportCleanupFakeStatement(this, sql);
+  }
+
+  all(sql: string) {
+    if (sql.includes("PRAGMA table_info")) {
+      return { results: [{ name: "id" }, { name: "status" }, { name: "created_at" }] };
+    }
+
+    return { results: [] };
+  }
+
+  first(sql: string, params: unknown[]) {
+    if (sql.includes("SELECT COUNT(*) AS total FROM error_reports")) {
+      return { total: this.matchErrorReportCleanupRows(sql, params).length };
+    }
+
+    return null;
+  }
+
+  run(sql: string, params: unknown[]) {
+    if (sql.includes("DELETE FROM error_reports")) {
+      const idsToDelete = new Set(this.matchErrorReportCleanupRows(sql, params).map((row) => row.id));
+      this.errorReports = this.errorReports.filter((row) => !idsToDelete.has(row.id));
+    }
+
+    if (sql.includes("INSERT INTO error_report_cleanup_logs")) {
+      this.errorCleanupLogs.push({
+        deleted_report_count: Number(params[2] || 0),
+        filter_used: String(params[1] || "")
+      });
+    }
+
+    if (sql.includes("INSERT INTO admin_audit_events")) {
+      this.auditEvents.push({
+        email: params[2],
+        event_type: params[1],
+        reason: params[3]
+      });
+    }
+
+    return { success: true };
+  }
+
+  private matchErrorReportCleanupRows(sql: string, params: unknown[]) {
+    if (sql.includes("status IN ('Fixed', 'Ignored') OR")) {
+      const cutoff = Number(params[0]);
+      return this.errorReports.filter(
+        (row) =>
+          row.status === "Fixed" ||
+          row.status === "Ignored" ||
+          (row.status === "Reviewing" && row.created_at < cutoff)
+      );
+    }
+
+    if (sql.includes("status IN ('Fixed', 'Ignored')")) {
+      return this.errorReports.filter((row) => row.status === "Fixed" || row.status === "Ignored");
+    }
+
+    return [];
+  }
+}
+
+class ErrorReportCleanupFakeStatement {
+  private params: unknown[] = [];
+
+  constructor(
+    private readonly db: ErrorReportCleanupFakeD1,
+    private readonly sql: string
+  ) {}
+
+  bind(...params: unknown[]) {
+    this.params = params;
+    return this;
+  }
+
+  async all<T>() {
+    return this.db.all(this.sql) as { results: T[] };
+  }
+
+  async first<T>() {
+    return this.db.first(this.sql, this.params) as T | null;
+  }
+
+  async run() {
+    return this.db.run(this.sql, this.params);
   }
 }
 

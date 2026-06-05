@@ -18,6 +18,8 @@ Critical production bugs fixed in this pass: 6
 - 2026-06-05: Re-ran the public production matrix after the adaptive Grainient pass. 20/20 checks passed across 320, 390, 768, 1024, and 1440px for `/admin/dashboard` unauthenticated recovery, `/coach-template-preview`, `/coach/gyana-ranjan`, and `/go/gyana-pcos-51`: no `YW-ERR-404`, no framework overlay, no unexpected Contact Support fallback on normal routes, no horizontal overflow, and no stuck loader.
 - 2026-06-05: Strengthened the production-like Website Creator regression without creating fake production data. The admin-security pipeline now proves: publish is blocked without a Google Form link, draft saves visibly through the list API, continuing/updating the same draft keeps a single stable record, publishing moves it to `published`, the Coach Sites list returns it, and the public `/coach/[slug]` renderer uses the final YW Nutritech template with the updated generated copy and register link.
 - 2026-06-05: Fixed the phone-side adaptive visual gate after real-device feedback showed both weak and strong phones were receiving static Grainient. Strong phones now use a basic WebGL2 check for the low-FPS `reduced` tier, while desktop `full` mode still requires strict no-caveat WebGL2. Weak devices, save-data, reduced-motion, automation, no-WebGL2, and genuinely constrained phones still receive the static compatibility fallback.
+- 2026-06-05: Re-audited `pendings.md` maintenance requirements. Added DB-role compatibility so future `admin` and `super_admin` rows are recognized alongside the existing project `owner` role without enabling strict DB roles. Added regression coverage for stale Error Reports cleanup. Production Gmail-backed admin API verification passed without recording the OTP: session authenticated, Backup/Cleanup API read D1 state, a 0-record analytics backup sent successfully to the active admin with both CSV and XLS attachments, protected cleanup deleted 0 records because no analytics were older than 90 days, and Gmail confirmed the backup email with both attachments arrived.
+- 2026-06-05: Local static Pages visual check for Admin Backup/Cleanup passed at 390, 768, and 1440px using protected API mocks: no horizontal overflow, no stuck loader, Email CSV + XLS destination visible, Download Latest CSV/XLS controls visible, DB-role readiness checklist visible, and the Clear Old Error Reports modal showed the required irreversible warning plus all four cleanup options.
 - 2026-06-05: Fixed and deployed admin route recovery for `/admin_panel` plus related admin aliases. Production Browser verification confirmed `/admin/dashboard`, `/admin_panel`, `/admin-panel`, `/admin-dashboard`, and `/dashboard` all land on the authenticated Admin Dashboard without `YW-ERR-404`.
 - 2026-06-05: Hardened admin route recovery again for encoded-space and nested admin aliases: `/admin%20panel`, `/admin%20dashboard`, `/admin-panel/dashboard`, `/admin_panel/dashboard`, `/adminpanel/dashboard`, `/Admin%20Panel`, and `/Admin/Dashboard` now redirect to `/admin/dashboard` without rendering the fallback 404.
 - 2026-06-05: Completed the authenticated admin breakpoint matrix after the mobile/sidebar fix. Production Browser evidence covers 45 checks: 9 admin sections across 320, 390, 768, 1024, and 1440px. No `YW-ERR-404`, no framework overlay, no unexpected Contact Support fallback, no horizontal overflow, and expected headings/dialogs were visible.
@@ -54,8 +56,8 @@ Critical production bugs fixed in this pass: 6
 | pendings.md | Analytics/data cleanup must require backup plus active-admin email notification | Yes | Code reviewed/UI tested | Pass | No destructive cleanup executed. | Existing server flow blocks cleanup if backup/notification fails. | Active admin recipient configuration must remain valid before cleanup can run. |
 | pendings.md | Backup primary is email attachment, not Google Sheets | Yes | Yes | Pass | Older docs mention Google Sheets as optional legacy context. | Production Backup/Cleanup UI says Email CSV + XLS attachments primary. | None for primary flow. |
 | pendings.md | Backup must include CSV and XLS | Yes | Yes | Pass | None. | `admin-maintenance.ts` generates `backup_csv` and `backup_xls`; UI mentions CSV + XLS. | None. |
-| pendings.md | Backup recipients must come from active Admin DB role list, not hardcoded email | Yes | Code reviewed/D1 verified | Pass | Production `admin_users` table was empty, so backups had no active recipient. | Inserted/updated the visible logged-in production admin email as active `owner`; `getActiveBackupRecipients` reads `admin_users`. | Run a Backup Now/Test Backup Email from admin UI after confirming email delivery vars. |
-| pendings.md | Strict DB admin role enforcement panel/checklist, but do not enable blindly | Yes | UI/code/D1 reviewed | Pass | Enabling too early can lock out admin. | Settings/Backup UI expose checklist and rollback notes; active `owner` row exists for the current admin email; fresh Gmail-backed OTP login was verified in production. | Keep `ADMIN_REQUIRE_DB_ADMIN_ROLES=false` until explicit approval to change the production env flag and run the lockout rollback test. |
+| pendings.md | Backup recipients must come from active Admin DB role list, not hardcoded email | Yes | Code reviewed/D1/Gmail verified | Pass | Production `admin_users` table was previously empty, so backups had no active recipient. The optional `backup_notifications_enabled` column is still absent, which is allowed because missing means all active admins receive backup notifications. | Inserted/updated the visible logged-in production admin email as active `owner`; `getActiveBackupRecipients` reads `admin_users`; production backup sent to the active admin and Gmail confirmed CSV + XLS attachments. | None for current active admin recipient flow. |
+| pendings.md | Strict DB admin role enforcement panel/checklist, but do not enable blindly | Yes | UI/code/D1 reviewed | Pass | Enabling too early can lock out admin. Existing code only recognized project role `owner`; the source also names `admin` and `super_admin`. | Settings/Backup UI expose checklist and rollback notes; active `owner` row exists for the current admin email; DB role checks now recognize `owner`, `admin`, and `super_admin`; fresh Gmail-backed OTP login was verified in production. | Keep `ADMIN_REQUIRE_DB_ADMIN_ROLES=false` until explicit approval to change the production env flag and run the lockout rollback test. |
 | pendings.md | Add coach photo/avatar to Coach Sites if safe | Yes | Yes | Pass | Previously user noted missing image. | Coach Sites, Coach Analytics, and Top Performers show Gyana image from builder/site record. | None. |
 | pendings.md | Do not run fake live AI/R2 production creation test | Yes | Yes | Pass | Full live media upload test intentionally skipped. | Config remains ready without fake production data. | Real coach/media creation test should be done only during real production entry. |
 | ROBUST ADMIN PANEL--UPDATED.MD | Admin Overview should be robust command center using real data or empty states | Yes | Yes | Pass | None in tested viewport. | Overview shows live source, KPIs, graph, AI overview action, top coach. | More long-term predictions improve as real data accumulates. |
@@ -91,12 +93,13 @@ Critical production bugs fixed in this pass: 6
 - Coach Analytics list shows Gyana image/avatar, funnel badges, visits/clicks/CTR/source/action buttons.
 - Coach Analytics detail dialog is visible after the portal fix and includes AI/report/export controls.
 - Paid Masterclass Manage dialog is visible after the portal fix, includes OTP-protected private WhatsApp reveal and OTP-protected payment link update, and does not expose private URLs.
-- Error Reports cleanup dialog is visible after the portal fix and includes the required irreversible-confirmation text and cleanup options.
+- Error Reports cleanup dialog is visible after the portal fix and includes the required irreversible-confirmation text and cleanup options. A fresh regression proves stale cleanup does not require analytics backup and does not delete `New` reports.
 - Production public breakpoint sweep covered coach page, paid fallback, success fallback, and template preview across 320/375/390/414/mobile-landscape/768/834/1024/1440.
 - Normal coach page and template preview passed all production breakpoint checks: 200 status, no horizontal overflow, no support fallback, hero/media visible early, CTA visible early.
 - Paid and success fallback routes correctly returned 403 with visible `YW-ERR-5003`, Contact Support, and Go Back Home; after the fallback CSS fix they have no horizontal overflow on 320/375/390/414/768/1440.
 - Local preview pass covered coach page, template preview, and paid page across 320/768/1440 with no horizontal overflow, no unexpected support fallback, hero/media present, and CTA visible.
-- Error Reports production triage: D1 status counts are now `Fixed=13`, `Ignored=69`, `New=0`. No reports were deleted.
+- Error Reports production state from the latest read-only D1 check: `New=31`, fixed/ignored stale cleanup count is 0, and there are no older-than-30/90 stale reports currently eligible under the safe cleanup filters.
+- Production maintenance backup verification: a Gmail-backed admin API session ran `Run Backup Now`; result was `recordCount=0`, `notificationStatus=sent`, CSV download link present, XLS download link present, and Gmail confirmed the `YWcoach Trimonthly Backup Data` email arrived with both `ywcoach-analytics-backup-2026-06-05.csv` and `.xls` attachments.
 
 Screenshot artifacts:
 
@@ -121,6 +124,12 @@ Screenshot artifacts:
 - `artifacts/md-compliance/local-preview/results.json`
 - `artifacts/performance-audit-2026-06-05/production-performance-matrix.json`
 - `artifacts/performance-audit-2026-06-05/local-performance-matrix.json`
+- `artifacts/pendings-maintenance-ui/backup-cleanup-390.png`
+- `artifacts/pendings-maintenance-ui/backup-cleanup-768.png`
+- `artifacts/pendings-maintenance-ui/backup-cleanup-1440.png`
+- `artifacts/pendings-maintenance-ui/error-cleanup-modal-390.png`
+- `artifacts/pendings-maintenance-ui/error-cleanup-modal-768.png`
+- `artifacts/pendings-maintenance-ui/error-cleanup-modal-1440.png`
 
 ## Commands Run
 
@@ -145,6 +154,10 @@ Screenshot artifacts:
 - Production Error Reports D1 triage queries and Admin UI check
 - Production Playwright breakpoint sweep for public routes
 - Local Next preview breakpoint sweep on `127.0.0.1:4182`
+- Read-only production D1 checks for `admin_users`, `analytics_backups`, `cleanup_logs`, `error_report_cleanup_logs`, `analytics_event_rollups`, `analytics_events`, and current Error Reports status counts
+- Gmail-backed production admin OTP API login, protected `/api/admin/backup-cleanup` and `/api/admin/error-reports` checks, one safe 0-record backup run, and protected cleanup run that deleted 0 old analytics records
+- Gmail search confirmation for `YWcoach Trimonthly Backup Data` delivery with both CSV and XLS attachments
+- Local static Cloudflare Pages admin visual check for Backup/Cleanup and Clear Old Error Reports modal at 390/768/1440
 
 ## Build Results
 
@@ -157,7 +170,7 @@ Screenshot artifacts:
 
 ## Open Blockers
 
-1. Strict DB admin role enforcement remains off until explicit approval to change the production env flag and run the lockout rollback test. Fresh production OTP login and active owner row are verified.
+1. Strict DB admin role enforcement remains off until explicit approval to change the production env flag and run the lockout rollback test. Fresh production OTP login and active owner row are verified; code is now compatible with future `admin` and `super_admin` rows.
 2. Full live AI/R2 creator test is intentionally not run with fake media/coaches; run this with a real coach site creation.
 3. Live production Website Creator publish should still be exercised with a real approved coach or a clearly labeled QA coach plus cleanup plan before treating a brand-new production entry as final.
 4. More real coach records are needed to visually prove paid-only, free-only, and no-funnel states in production without adding fake data.

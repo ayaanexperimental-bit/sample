@@ -389,11 +389,15 @@ async function getAdminRoleFromDatabase(
       .bind(normalizedEmail)
       .first<{ role: string }>();
 
-    return row?.role === "owner" ? "owner" : null;
+    return isDatabaseAdminRole(row?.role) ? "owner" : null;
   } catch {
     // Keep allowlisted admins reviewable until the optional admin_users table is migrated.
     return null;
   }
+}
+
+function isDatabaseAdminRole(role: string | undefined) {
+  return role === "owner" || role === "admin" || role === "super_admin";
 }
 
 function hasTrustedAdminRequestOrigin(request: Request) {

@@ -12,6 +12,7 @@ import { onRequest as resetPasswordRequest } from "../../functions/api/admin/aut
 import { onRequest as sessionRequest } from "../../functions/api/admin/auth/session";
 import { onRequest as verifyOtpRequest } from "../../functions/api/admin/auth/verify-otp";
 import { onRequest as publicErrorReportRequest } from "../../functions/api/error-report";
+import { getAdminRoleForEmail } from "../../lib/server/admin-auth";
 
 const ADMIN_EMAIL = "admin@example.com";
 const ADMIN_DEV_OTP = "123456";
@@ -404,6 +405,26 @@ test.describe("admin auth security protections", () => {
     });
     expect(JSON.stringify(body)).not.toContain("YW-ERR-5001-SMPL");
   });
+
+  test("recognizes owner, admin, and super_admin DB rows as protected admin roles", async () => {
+    for (const role of ["owner", "admin", "super_admin"]) {
+      await expect(
+        getAdminRoleForEmail(`${role}@example.com`, {
+          ...env,
+          ADMIN_DB: createAdminRoleDb(role) as never,
+          ADMIN_REQUIRE_DB_ADMIN_ROLES: "true"
+        })
+      ).resolves.toBe("owner");
+    }
+
+    await expect(
+      getAdminRoleForEmail("viewer@example.com", {
+        ...env,
+        ADMIN_DB: createAdminRoleDb("viewer") as never,
+        ADMIN_REQUIRE_DB_ADMIN_ROLES: "true"
+      })
+    ).resolves.toBeNull();
+  });
 });
 
 async function expectDisabledAuthResponse(response: Response) {
@@ -452,6 +473,19 @@ function createEmptyErrorReportsDb() {
         all: async <T>() => ({ results: [] as T[] }),
         bind: () => statement,
         run: async () => ({ success: true })
+      };
+
+      return statement;
+    }
+  };
+}
+
+function createAdminRoleDb(role: string) {
+  return {
+    prepare: () => {
+      const statement = {
+        bind: () => statement,
+        first: async <T>() => ({ role } as T)
       };
 
       return statement;

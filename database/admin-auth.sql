@@ -31,8 +31,8 @@ ON admin_audit_events (created_at DESC);
 
 CREATE TABLE IF NOT EXISTS admin_users (
   email TEXT PRIMARY KEY,
-  role TEXT NOT NULL CHECK (role IN ('owner')),
-  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled')),
+  role TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'super_admin')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'disabled')),
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
