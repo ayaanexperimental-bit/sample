@@ -133,13 +133,22 @@ test.describe("admin auth security protections", () => {
       "https://ywcoach.com/admin/login?next=%2Fadmin%2Fusers"
     );
 
-    const adminPanelAlias = await middlewareRequest({
-      env,
-      next: async () => new Response("admin alias should redirect first"),
-      request: new Request("https://ywcoach.com/admin_panel")
-    });
-    expect(adminPanelAlias.status).toBe(302);
-    expect(adminPanelAlias.headers.get("location")).toBe("https://ywcoach.com/admin/dashboard");
+    for (const aliasUrl of [
+      "https://ywcoach.com/admin_panel",
+      "https://ywcoach.com/admin%20panel",
+      "https://ywcoach.com/admin%20dashboard",
+      "https://ywcoach.com/admin-panel/dashboard",
+      "https://ywcoach.com/admin_panel/dashboard",
+      "https://ywcoach.com/adminpanel/dashboard"
+    ]) {
+      const adminPanelAlias = await middlewareRequest({
+        env,
+        next: async () => new Response("admin alias should redirect first"),
+        request: new Request(aliasUrl)
+      });
+      expect(adminPanelAlias.status).toBe(302);
+      expect(adminPanelAlias.headers.get("location")).toBe("https://ywcoach.com/admin/dashboard");
+    }
 
     const blockedDashboardApi = await dashboardOverviewRequest({
       env,

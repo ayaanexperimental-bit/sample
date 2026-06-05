@@ -49,10 +49,15 @@ const PUBLIC_ADMIN_PAGE_PATHS = new Set([
 const PROTECTED_ADMIN_PAGE_PATHS = new Set(["/admin/dashboard"]);
 const ADMIN_ROUTE_ALIASES = new Map([
   ["/admin-dashboard", "/admin/dashboard"],
+  ["/admin-dashboard/dashboard", "/admin/dashboard"],
   ["/admin_dashboard", "/admin/dashboard"],
+  ["/admin_dashboard/dashboard", "/admin/dashboard"],
   ["/admin-panel", "/admin/dashboard"],
+  ["/admin-panel/dashboard", "/admin/dashboard"],
   ["/admin_panel", "/admin/dashboard"],
+  ["/admin_panel/dashboard", "/admin/dashboard"],
   ["/adminpanel", "/admin/dashboard"],
+  ["/adminpanel/dashboard", "/admin/dashboard"],
   ["/admin-login", "/admin/login"],
   ["/adminlogin", "/admin/login"],
   ["/dashboard", "/admin/dashboard"],
@@ -260,7 +265,7 @@ function isPageLikePath(pathname: string) {
 }
 
 function getCanonicalAdminRedirect(pathname: string) {
-  const lowerPathname = pathname.toLowerCase();
+  const lowerPathname = normalizeAdminRecoveryPath(pathname);
 
   if (ADMIN_ROUTE_ALIASES.has(lowerPathname)) {
     return ADMIN_ROUTE_ALIASES.get(lowerPathname) || null;
@@ -271,4 +276,23 @@ function getCanonicalAdminRedirect(pathname: string) {
   }
 
   return null;
+}
+
+function normalizeAdminRecoveryPath(pathname: string) {
+  const decodedPathname = safelyDecodePathname(pathname);
+  const normalizedPathname = decodedPathname
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/\/{2,}/g, "/")
+    .replace(/\/+$/, "");
+
+  return normalizedPathname || "/";
+}
+
+function safelyDecodePathname(pathname: string) {
+  try {
+    return decodeURIComponent(pathname);
+  } catch {
+    return pathname;
+  }
 }

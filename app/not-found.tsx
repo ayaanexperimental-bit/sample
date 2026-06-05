@@ -76,7 +76,11 @@ export default function NotFoundPage() {
 }
 
 function isAdminRecoveryPath(pathname: string) {
-  const normalizedPathname = pathname.toLowerCase().replace(/\/{2,}/g, "/").replace(/\/+$/, "");
+  const normalizedPathname = safelyDecodePathname(pathname)
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/\/{2,}/g, "/")
+    .replace(/\/+$/, "");
   const safePathname = normalizedPathname || "/";
 
   if (safePathname === "/admin" || safePathname.startsWith("/admin/")) {
@@ -85,12 +89,25 @@ function isAdminRecoveryPath(pathname: string) {
 
   return new Set([
     "/admin-dashboard",
+    "/admin-dashboard/dashboard",
     "/admin_dashboard",
+    "/admin_dashboard/dashboard",
     "/admin-panel",
+    "/admin-panel/dashboard",
     "/admin_panel",
+    "/admin_panel/dashboard",
     "/adminpanel",
+    "/adminpanel/dashboard",
     "/admin-login",
     "/adminlogin",
     "/dashboard"
   ]).has(safePathname);
+}
+
+function safelyDecodePathname(pathname: string) {
+  try {
+    return decodeURIComponent(pathname);
+  } catch {
+    return pathname;
+  }
 }
