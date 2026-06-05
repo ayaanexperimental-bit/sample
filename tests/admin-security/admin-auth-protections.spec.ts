@@ -139,7 +139,11 @@ test.describe("admin auth security protections", () => {
       "https://ywcoach.com/admin%20dashboard",
       "https://ywcoach.com/admin-panel/dashboard",
       "https://ywcoach.com/admin_panel/dashboard",
-      "https://ywcoach.com/adminpanel/dashboard"
+      "https://ywcoach.com/adminpanel/dashboard",
+      "https://ywcoach.com/admin-panel/settings",
+      "https://ywcoach.com/admin%20panel/settings",
+      "https://ywcoach.com/adminpanel/coach-sites",
+      "https://ywcoach.com/dashboard/overview"
     ]) {
       const adminPanelAlias = await middlewareRequest({
         env,

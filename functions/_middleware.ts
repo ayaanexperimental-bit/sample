@@ -271,11 +271,40 @@ function getCanonicalAdminRedirect(pathname: string) {
     return ADMIN_ROUTE_ALIASES.get(lowerPathname) || null;
   }
 
+  if (isAdminLoginRecoveryPath(lowerPathname)) {
+    return "/admin/login";
+  }
+
+  if (isAdminDashboardRecoveryPath(lowerPathname)) {
+    return "/admin/dashboard";
+  }
+
   if (lowerPathname === "/admin" || lowerPathname.startsWith("/admin/")) {
     return lowerPathname;
   }
 
   return null;
+}
+
+function isAdminLoginRecoveryPath(pathname: string) {
+  return (
+    pathname === "/admin-login" ||
+    pathname.startsWith("/admin-login/") ||
+    pathname === "/adminlogin" ||
+    pathname.startsWith("/adminlogin/")
+  );
+}
+
+function isAdminDashboardRecoveryPath(pathname: string) {
+  return (
+    pathname === "/dashboard" ||
+    pathname.startsWith("/dashboard/") ||
+    pathname.startsWith("/admin-dashboard") ||
+    pathname.startsWith("/admin_dashboard") ||
+    pathname.startsWith("/admin-panel") ||
+    pathname.startsWith("/admin_panel") ||
+    pathname.startsWith("/adminpanel")
+  );
 }
 
 function normalizeAdminRecoveryPath(pathname: string) {

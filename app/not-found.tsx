@@ -87,6 +87,18 @@ function isAdminRecoveryPath(pathname: string) {
     return true;
   }
 
+  if (
+    safePathname === "/dashboard" ||
+    safePathname.startsWith("/dashboard/") ||
+    safePathname.startsWith("/admin-dashboard") ||
+    safePathname.startsWith("/admin_dashboard") ||
+    safePathname.startsWith("/admin-panel") ||
+    safePathname.startsWith("/admin_panel") ||
+    safePathname.startsWith("/adminpanel")
+  ) {
+    return true;
+  }
+
   return new Set([
     "/admin-dashboard",
     "/admin-dashboard/dashboard",
