@@ -29,8 +29,10 @@ export function getAdaptiveVisualCapability(win: Window = window): AdaptiveVisua
   const effectiveType = nav.connection?.effectiveType || "";
   const slowNetwork = /(^|-)2g$/.test(effectiveType) || effectiveType === "slow-2g";
   const dpr = win.devicePixelRatio || 1;
+  const strictWebgl2 = supportsWebgl2(win, true);
+  const basicWebgl2 = strictWebgl2 || supportsWebgl2(win, false);
 
-  if (reducedMotion || saveData || slowNetwork || nav.webdriver || !supportsWebgl2(win)) {
+  if (reducedMotion || saveData || slowNetwork || nav.webdriver || !basicWebgl2) {
     return "static";
   }
 
@@ -39,15 +41,17 @@ export function getAdaptiveVisualCapability(win: Window = window): AdaptiveVisua
   const clearlyConstrained =
     (memoryKnown && memory <= 2) ||
     (coresKnown && cores <= 2) ||
-    (coarsePointer && memoryKnown && memory < 4) ||
-    (coarsePointer && coresKnown && cores < 6) ||
-    (coarsePointer && dpr > 3.25);
+    (coarsePointer && memoryKnown && memory < 3) ||
+    (coarsePointer && coresKnown && cores < 4) ||
+    (coarsePointer &&
+      dpr >= 3.5 &&
+      ((memoryKnown && memory < 4) || (coresKnown && cores < 6)));
 
   if (clearlyConstrained) {
     return "static";
   }
 
-  if (finePointer && wideViewport) {
+  if (finePointer && wideViewport && strictWebgl2) {
     return "full";
   }
 
@@ -83,11 +87,11 @@ export function watchAdaptiveVisualCapability(
   };
 }
 
-function supportsWebgl2(win: Window) {
+function supportsWebgl2(win: Window, requireNoMajorPerformanceCaveat: boolean) {
   try {
     const canvas = win.document.createElement("canvas");
     const gl = canvas.getContext("webgl2", {
-      failIfMajorPerformanceCaveat: true,
+      failIfMajorPerformanceCaveat: requireNoMajorPerformanceCaveat,
       powerPreference: "low-power"
     });
 
