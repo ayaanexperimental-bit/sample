@@ -17,6 +17,7 @@ Critical production bugs fixed in this pass: 5
 - 2026-06-05: Fixed and deployed admin route recovery for `/admin_panel` plus related admin aliases. Production Browser verification confirmed `/admin/dashboard`, `/admin_panel`, `/admin-panel`, `/admin-dashboard`, and `/dashboard` all land on the authenticated Admin Dashboard without `YW-ERR-404`.
 - 2026-06-05: Hardened admin route recovery again for encoded-space and nested admin aliases: `/admin%20panel`, `/admin%20dashboard`, `/admin-panel/dashboard`, `/admin_panel/dashboard`, `/adminpanel/dashboard`, `/Admin%20Panel`, and `/Admin/Dashboard` now redirect to `/admin/dashboard` without rendering the fallback 404.
 - 2026-06-05: Completed the authenticated admin breakpoint matrix after the mobile/sidebar fix. Production Browser evidence covers 45 checks: 9 admin sections across 320, 390, 768, 1024, and 1440px. No `YW-ERR-404`, no framework overlay, no unexpected Contact Support fallback, no horizontal overflow, and expected headings/dialogs were visible.
+- 2026-06-05: Triaged the remaining production Error Reports without deleting audit history. D1 now has 0 `New` reports: 13 `Fixed` reports and 69 `Ignored` reports with admin notes. The ignored reports were expected QA/direct-access fallbacks: 64 paid page/success direct opens without the funnel entry cookie and 5 `/support/error` route QA opens. Production Error Reports UI confirms no `New` status, no `YW-ERR-404`, no unexpected support fallback, and no horizontal overflow.
 - 2026-06-05: Added admin-maintenance regression coverage proving analytics backup produces both CSV and XLS payloads, stores both formats, exposes protected CSV/XLS download URLs, reads active admin recipients from the Admin DB role list, and blocks cleanup when active-admin email notification is not configured or not successful.
 - 2026-06-05: Re-tested production Coach Analytics in the authenticated Browser session. Main page shows the coach list/table, View Analytics opens the detailed panel with photo, report tools, AI summary, Combined/Paid/Free tabs, CSV and Excel controls; Manage moves to Coach Sites without `YW-ERR-404`; mobile 390px navigation reaches Coach Analytics with no horizontal overflow.
 - 2026-06-05: Replaced Coach Analytics `Open Site` popup button behavior with a real `target="_blank"` public-site link so the action is reliable and accessible while keeping disabled behavior for coaches without public URLs.
@@ -77,6 +78,7 @@ Critical production bugs fixed in this pass: 5
 - Normal coach page and template preview passed all production breakpoint checks: 200 status, no horizontal overflow, no support fallback, hero/media visible early, CTA visible early.
 - Paid and success fallback routes correctly returned 403 with visible `YW-ERR-5003`, Contact Support, and Go Back Home; after the fallback CSS fix they have no horizontal overflow on 320/375/390/414/768/1440.
 - Local preview pass covered coach page, template preview, and paid page across 320/768/1440 with no horizontal overflow, no unexpected support fallback, hero/media present, and CTA visible.
+- Error Reports production triage: D1 status counts are now `Fixed=13`, `Ignored=69`, `New=0`. No reports were deleted.
 
 Screenshot artifacts:
 
@@ -114,6 +116,7 @@ Screenshot artifacts:
 - `npx wrangler d1 execute ywcoach-admin --remote --command "UPDATE analytics_events SET coach_slug='gyana-ranjan' ..."`
 - Production browser UI checks through https://ywcoach.com/admin/dashboard
 - Production admin route alias checks for `/Admin/Dashboard`, `/Admin%20Panel`, `/admin%20panel`, `/admin%20dashboard`, `/admin-panel`, `/admin-panel/dashboard`, `/admin_panel/dashboard`, `/adminpanel/dashboard`, `/dashboard`, `/admin/home`, and `/admin/dashboard/index`
+- Production Error Reports D1 triage queries and Admin UI check
 - Production Playwright breakpoint sweep for public routes
 - Local Next preview breakpoint sweep on `127.0.0.1:4182`
 
@@ -132,4 +135,3 @@ Screenshot artifacts:
 2. Full live AI/R2 creator test is intentionally not run with fake media/coaches; run this with a real coach site creation.
 3. Full Website Creator publish journey should be tested with a real approved coach or a clearly labeled QA coach plus cleanup plan.
 4. More real coach records are needed to visually prove paid-only, free-only, and no-funnel states in production without adding fake data.
-5. Triage existing real Error Reports; 67 reports are still New.
