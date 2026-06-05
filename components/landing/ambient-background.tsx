@@ -27,6 +27,8 @@ export function AmbientBackground() {
         centerX={0}
         centerY={0}
         zoom={0.9}
+        frameRate={14}
+        lowPowerFrameRate={6}
       />
     </div>
   );

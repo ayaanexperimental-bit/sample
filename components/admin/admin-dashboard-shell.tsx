@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, type MouseEvent, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AdminCoachSitesManager } from "./admin-coach-sites-manager";
 import {
   AdminActionDialog,
@@ -2206,6 +2206,8 @@ function InteractiveTrendChart({
   );
   const [activeIndex, setActiveIndex] = useState(() => Math.max(0, cleanPoints.length - 1));
   const [isGraphHovered, setIsGraphHovered] = useState(false);
+  const hoverFrameRef = useRef<number | null>(null);
+  const pendingHoverIndexRef = useRef<number | null>(null);
   const width = 640;
   const height = 260;
   const padding = {
@@ -2268,10 +2270,18 @@ function InteractiveTrendChart({
       ? `${primaryPath} L ${primaryCoords[primaryCoords.length - 1].x.toFixed(1)},${(height - padding.bottom).toFixed(1)} L ${padding.left.toFixed(1)},${(height - padding.bottom).toFixed(1)} Z`
       : "";
 
+  useEffect(
+    () => () => {
+      if (hoverFrameRef.current !== null) {
+        window.cancelAnimationFrame(hoverFrameRef.current);
+      }
+    },
+    []
+  );
+
   function handleMouseMove(event: MouseEvent<SVGSVGElement>) {
     if (cleanPoints.length < 2) return;
 
-    setIsGraphHovered(true);
     const rect = event.currentTarget.getBoundingClientRect();
     const localX = ((event.clientX - rect.left) / rect.width) * width;
     const nextIndex = primaryCoords.reduce(
@@ -2280,7 +2290,29 @@ function InteractiveTrendChart({
       0
     );
 
-    setActiveIndex(nextIndex);
+    pendingHoverIndexRef.current = nextIndex;
+
+    if (hoverFrameRef.current !== null) return;
+
+    hoverFrameRef.current = window.requestAnimationFrame(() => {
+      hoverFrameRef.current = null;
+      const queuedIndex = pendingHoverIndexRef.current;
+      if (queuedIndex === null) return;
+
+      pendingHoverIndexRef.current = null;
+      setIsGraphHovered(true);
+      setActiveIndex((currentIndex) => (currentIndex === queuedIndex ? currentIndex : queuedIndex));
+    });
+  }
+
+  function handleMouseLeave() {
+    if (hoverFrameRef.current !== null) {
+      window.cancelAnimationFrame(hoverFrameRef.current);
+      hoverFrameRef.current = null;
+    }
+
+    pendingHoverIndexRef.current = null;
+    setIsGraphHovered(false);
   }
 
   return (
@@ -2322,7 +2354,7 @@ function InteractiveTrendChart({
             aria-label={title}
             focusable="false"
             onMouseEnter={() => setIsGraphHovered(true)}
-            onMouseLeave={() => setIsGraphHovered(false)}
+            onMouseLeave={handleMouseLeave}
             onMouseMove={handleMouseMove}
             role="img"
             viewBox={`0 0 ${width} ${height}`}

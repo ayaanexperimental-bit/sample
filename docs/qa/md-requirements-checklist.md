@@ -21,14 +21,18 @@ Critical production bugs fixed in this pass: 5
 - 2026-06-05: Added admin-maintenance regression coverage proving analytics backup produces both CSV and XLS payloads, stores both formats, exposes protected CSV/XLS download URLs, reads active admin recipients from the Admin DB role list, and blocks cleanup when active-admin email notification is not configured or not successful.
 - 2026-06-05: Re-tested production Coach Analytics in the authenticated Browser session. Main page shows the coach list/table, View Analytics opens the detailed panel with photo, report tools, AI summary, Combined/Paid/Free tabs, CSV and Excel controls; Manage moves to Coach Sites without `YW-ERR-404`; mobile 390px navigation reaches Coach Analytics with no horizontal overflow.
 - 2026-06-05: Replaced Coach Analytics `Open Site` popup button behavior with a real `target="_blank"` public-site link so the action is reliable and accessible while keeping disabled behavior for coaches without public URLs.
+- 2026-06-05: Completed a fresh Gmail-backed production admin OTP login without recording the OTP. Authenticated Browser verification confirmed `/admin/dashboard` opens with the active admin email, no `YW-ERR-404`, no unexpected Contact Support fallback, and no horizontal overflow.
+- 2026-06-05: Applied an INSTR.MD performance pass: Coach Analytics graph hover updates are throttled through `requestAnimationFrame` and skip redundant state changes; paid-page Grainient background now runs at lower FPS (`14fps` desktop / `6fps` low-power) while preserving the same visual design.
+- 2026-06-05: Production Browser performance matrix passed 20/20 checks across 320, 390, 768, 1024, and 1440px for Admin Dashboard, Coach Template Preview, `/coach/gyana-ranjan`, and `/gyana/pcos-51`: no horizontal overflow, no `YW-ERR-404`, no framework overlay, no unexpected support fallback, loader removed, and no relevant console errors.
+- 2026-06-05: Local production preview matrix passed 9/9 checks at 320, 768, and 1440px for Coach Template Preview, `/coach/gyana-ranjan`, and `/gyana/pcos-51` with the same no-overflow/no-error/no-loader criteria.
 - Commands verified in this addendum: `pnpm lint`, `pnpm typecheck`, `pnpm test:admin-security`, `pnpm build`, and `pnpm build:pages-functions`.
 
 ## Checklist
 
 | Source | Requirement group | Implemented | Tested | Result | Issue found | Fix applied | Remaining blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| INSTR.MD | Admin, builder, preview, and public pages must stay smooth without redesign | Yes | Yes | Pass | Public breakpoint sweep initially found paid support fallback horizontal overflow on 320-414px. Authenticated admin matrix later exposed mobile/tablet sidebar visibility risk. | Fixed server-rendered paid support fallback box sizing and long-code wrapping; fixed admin mobile/tablet sidebar height/scroll/open transform; production admin matrix now passes 45/45 checks across 320/390/768/1024/1440. | None for this requirement group. Re-run the matrix after future visual changes. |
-| INSTR.MD | Animations should use transform/opacity, reduce heavy blur/glow on mobile, avoid setState on scroll | Yes | Code reviewed | Pass | No new heavy animation was added in this pass. | No code change needed. | None found in this pass. |
+| INSTR.MD | Admin, builder, preview, and public pages must stay smooth without redesign | Yes | Yes | Pass | Public breakpoint sweep initially found paid support fallback horizontal overflow on 320-414px. Authenticated admin matrix later exposed mobile/tablet sidebar visibility risk. Later code audit found graph hover state updated directly on mousemove and paid Grainient could run heavier than needed. | Fixed server-rendered paid support fallback box sizing and long-code wrapping; fixed admin mobile/tablet sidebar height/scroll/open transform; throttled graph hover updates through `requestAnimationFrame`; lowered paid-page Grainient FPS. Production matrix now passes admin/template/coach/paid surfaces across 320/390/768/1024/1440. | None for this requirement group. Re-run the matrix after future visual changes. |
+| INSTR.MD | Animations should use transform/opacity, reduce heavy blur/glow on mobile, avoid setState on scroll | Yes | Code reviewed/UI tested | Pass | Coach Analytics graph updated React state directly on mousemove; paid-page WebGL background ran more frequently than needed for low-power viewports. | Graph hover is now animation-frame batched and skips redundant state changes; paid-page Grainient lowered to `14fps` desktop and `6fps` low-power. | None found in this pass. |
 | INSTR.MD | Website Creator preview updates should be debounced/memoized and not regenerate every keystroke | Partial | Code reviewed | Partial | Deep creator publish flow was not executed with fake production coach data. | Existing creator code keeps generation action-driven; no fake production coach created. | Live AI/R2 creator test is intentionally reserved for real coach creation. |
 | INSTR.MD | Run lint, type-check, build after edits | Yes | Yes | Pass | Initial lint failed on setState-in-effect. | Replaced effect-based portal readiness with a render-time document guard. | None. |
 | pendings.md | Clear Old Error Reports without requiring backup | Yes | Yes | Pass | Mobile dialog was previously off-screen when opened after scrolling. | Shared admin dialog now portals to document.body. | None. |
@@ -37,14 +41,14 @@ Critical production bugs fixed in this pass: 5
 | pendings.md | Backup primary is email attachment, not Google Sheets | Yes | Yes | Pass | Older docs mention Google Sheets as optional legacy context. | Production Backup/Cleanup UI says Email CSV + XLS attachments primary. | None for primary flow. |
 | pendings.md | Backup must include CSV and XLS | Yes | Yes | Pass | None. | `admin-maintenance.ts` generates `backup_csv` and `backup_xls`; UI mentions CSV + XLS. | None. |
 | pendings.md | Backup recipients must come from active Admin DB role list, not hardcoded email | Yes | Code reviewed/D1 verified | Pass | Production `admin_users` table was empty, so backups had no active recipient. | Inserted/updated the visible logged-in production admin email as active `owner`; `getActiveBackupRecipients` reads `admin_users`. | Run a Backup Now/Test Backup Email from admin UI after confirming email delivery vars. |
-| pendings.md | Strict DB admin role enforcement panel/checklist, but do not enable blindly | Yes | UI/code/D1 reviewed | Pass | Enabling too early can lock out admin. | Settings/Backup UI expose checklist and rollback notes; active `owner` row now exists for the current admin email. | Keep `ADMIN_REQUIRE_DB_ADMIN_ROLES=false` until a fresh login + rollback verification pass is completed. |
+| pendings.md | Strict DB admin role enforcement panel/checklist, but do not enable blindly | Yes | UI/code/D1 reviewed | Pass | Enabling too early can lock out admin. | Settings/Backup UI expose checklist and rollback notes; active `owner` row exists for the current admin email; fresh Gmail-backed OTP login was verified in production. | Keep `ADMIN_REQUIRE_DB_ADMIN_ROLES=false` until explicit approval to change the production env flag and run the lockout rollback test. |
 | pendings.md | Add coach photo/avatar to Coach Sites if safe | Yes | Yes | Pass | Previously user noted missing image. | Coach Sites, Coach Analytics, and Top Performers show Gyana image from builder/site record. | None. |
 | pendings.md | Do not run fake live AI/R2 production creation test | Yes | Yes | Pass | Full live media upload test intentionally skipped. | Config remains ready without fake production data. | Real coach/media creation test should be done only during real production entry. |
 | ROBUST ADMIN PANEL--UPDATED.MD | Admin Overview should be robust command center using real data or empty states | Yes | Yes | Pass | None in tested viewport. | Overview shows live source, KPIs, graph, AI overview action, top coach. | More long-term predictions improve as real data accumulates. |
 | ROBUST ADMIN PANEL--UPDATED.MD | Coach Analytics main page must be all-coach list/table, not one giant coach card | Yes | Yes | Pass | None after scoped mobile nav testing. | Main page shows filter controls, graph, list card/table, actions. | None. |
 | ROBUST ADMIN PANEL--UPDATED.MD | View Analytics opens detailed modal/drawer for selected coach | Yes | Yes | Pass | Critical mobile bug: dialog existed but rendered above viewport when page was scrolled. | `AdminActionDialog` now portals to `document.body`. | None. |
 | ROBUST ADMIN PANEL--UPDATED.MD | Detail panel should include coach photo, badges, KPI/report tools, AI insights, graphs, dynamic tabs | Yes | Yes | Pass | Not visible before portal fix. | Portal fix made panel visible; production test confirms photo, dynamic tabs, AI summary, report buttons, CSV and Excel buttons. | None. |
-| ROBUST ADMIN PANEL--UPDATED.MD | Interactive graphs with hover-only tooltip and range buttons | Yes | Yes | Pass | Tooltip was previously suspected visible by default. | Production test confirms selected tooltip text is hidden before hover. | Hover activation could not be fully asserted in mobile automation; hidden-by-default is verified. |
+| ROBUST ADMIN PANEL--UPDATED.MD | Interactive graphs with hover-only tooltip and range buttons | Yes | Yes | Pass | Tooltip was previously suspected visible by default; code audit found mousemove could update React state every pointer event. | Production test confirms selected tooltip text is hidden before hover; graph hover state now batches through `requestAnimationFrame` and only changes state when the active point changes. | None for current production behavior. |
 | ROBUST ADMIN PANEL--UPDATED.MD | AI insights global and per-coach, cached/on-demand, no automatic all-coach token spend | Yes | Code/UI tested | Pass | None. | UI shows Generate/Refresh AI, server-side model config defaults, compact data. | Real insight quality depends on OpenAI credits/model availability. |
 | ROBUST ADMIN PANEL--UPDATED.MD | AI copy generation model configuration and token-efficient page analyzer | Yes | Code reviewed | Pass | None. | `ai-model-config`, analyzer, compressor, cache, estimator, and generator modules exist. | Real paid-funnel extraction test should be done with real approved coach content. |
 | ROBUST ADMIN PANEL--UPDATED.MD | Coach reports: generate, copy, download, share; include CSV/Excel report output | Yes | UI/code reviewed | Pass | Button label is `Download Sheet CSV` rather than plain `Download CSV`; behavior matches sheet/CSV intent. | No fix needed. | Branded PDF remains optional future upgrade. |
@@ -101,6 +105,8 @@ Screenshot artifacts:
 - `artifacts/md-compliance/breakpoints/production-breakpoint-results.json`
 - `artifacts/md-compliance/breakpoints-after-fallback-fix/results.json`
 - `artifacts/md-compliance/local-preview/results.json`
+- `artifacts/performance-audit-2026-06-05/production-performance-matrix.json`
+- `artifacts/performance-audit-2026-06-05/local-performance-matrix.json`
 
 ## Commands Run
 
@@ -116,6 +122,8 @@ Screenshot artifacts:
 - `npx wrangler d1 execute ywcoach-admin --remote --command "UPDATE analytics_events SET coach_slug='gyana-ranjan' ..."`
 - Production browser UI checks through https://ywcoach.com/admin/dashboard
 - Production admin route alias checks for `/Admin/Dashboard`, `/Admin%20Panel`, `/admin%20panel`, `/admin%20dashboard`, `/admin-panel`, `/admin-panel/dashboard`, `/admin_panel/dashboard`, `/adminpanel/dashboard`, `/dashboard`, `/admin/home`, and `/admin/dashboard/index`
+- Production Browser performance matrix for Admin Dashboard, Coach Template Preview, `/coach/gyana-ranjan`, and `/gyana/pcos-51` at 320/390/768/1024/1440
+- Local production preview matrix for Coach Template Preview, `/coach/gyana-ranjan`, and `/gyana/pcos-51` at 320/768/1440
 - Production Error Reports D1 triage queries and Admin UI check
 - Production Playwright breakpoint sweep for public routes
 - Local Next preview breakpoint sweep on `127.0.0.1:4182`
@@ -131,7 +139,7 @@ Screenshot artifacts:
 
 ## Open Blockers
 
-1. Strict DB admin role enforcement remains off until a fresh login + rollback verification pass is completed with the active owner row.
+1. Strict DB admin role enforcement remains off until explicit approval to change the production env flag and run the lockout rollback test. Fresh production OTP login and active owner row are verified.
 2. Full live AI/R2 creator test is intentionally not run with fake media/coaches; run this with a real coach site creation.
 3. Full Website Creator publish journey should be tested with a real approved coach or a clearly labeled QA coach plus cleanup plan.
 4. More real coach records are needed to visually prove paid-only, free-only, and no-funnel states in production without adding fake data.
