@@ -1,0 +1,126 @@
+# INSTR.MD Performance and Smoothness Checklist
+
+Source of truth: `C:\Users\Yours Wellness\Desktop\INSTR.MD`
+Test date: 2026-06-05
+Production URL: `https://ywcoach.com`
+Latest production deployment verified: `https://a987a810.ywcoach.pages.dev`
+Latest source commit verified: `acc3440`
+
+## Summary
+
+Total INSTR.MD requirement groups found: 49
+Completed and tested: 49
+Partial: 0
+Failed: 0
+Blocked: 0
+
+Notes:
+
+- This checklist covers the active INSTR.MD performance/smoothness source of truth only.
+- Older admin/analytics backlog items are tracked separately in `docs/qa/md-requirements-checklist.md`.
+- Production fake data was not created. AI loading was tested locally with mocked admin/session/generation APIs to avoid fake production records and unnecessary OpenAI token spend.
+- Local paid `/go/gyana-pcos-51` is intentionally unavailable without local `FUNNEL_ACCESS_SECRET`; production paid entry was tested and works.
+
+## Requirement Checklist
+
+| # | Requirement | Implemented | Tested | Result | Issue found | Fix applied / evidence | Remaining blocker |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | Inspect Website Creator code | Yes | Yes | Pass | None current | `components/admin/admin-coach-sites-manager.tsx` inspected; preview debounce, wizard, AI progress, publish progress verified. | None |
+| 2 | Inspect coach template components | Yes | Yes | Pass | None current | `components/coach/public-coach-site-page.tsx`, CSS module, and Cloudflare `functions/coach/[slug].ts` inspected/tested. | None |
+| 3 | Inspect animation components | Yes | Yes | Pass | Continuous pieces existed | Grainient, carousel, global loader, graph hover, spotlight inspected and optimized/gated. | None |
+| 4 | Inspect glassmorphism/blur/shadow effects | Yes | Yes | Pass | Mobile blur can be expensive if not constrained | Mobile glass overrides and fallback blur reductions are present; no overflow/jank symptoms in matrix. | None |
+| 5 | Inspect background effects | Yes | Yes | Pass | WebGL/background effects could run too often | Grainient FPS reduced and visibility/reduced-motion checks verified. | None |
+| 6 | Inspect scroll animations/listeners | Yes | Yes | Pass | Scroll/pointer listeners could add mobile overhead | Public coach mobile has 0 pointermove spotlight listeners; scroll listener is rAF-scheduled. | None |
+| 7 | Inspect preview system | Yes | Yes | Pass | Preview could rerender too often | Preview component memoized; theme callback stabilized; preview side effect debounced. | None |
+| 8 | Inspect admin dashboard components | Yes | Yes | Pass | Graph hover previously updated directly | Graph hover now rAF-batched and skips redundant state changes. | None |
+| 9 | Inspect heavy dependencies | Yes | Yes | Pass | OGL/Three/WebGL can be heavy | WebGL effects gated/lowered; no new dependency added. | None |
+| 10 | Inspect image/video/media handling | Yes | Yes | Pass | Media failures must not break route | Image/video fallback/error logging exists; public routes tested without fallback. | None |
+| 11 | Find lag cause: too many animations at once | Yes | Yes | Pass | Carousel/background were candidates | Carousel pauses offscreen; background FPS reduced. | None |
+| 12 | Find lag cause: heavy blur/glass | Yes | Yes | Pass | Mobile blur can be expensive | Mobile-safe glass filters and no-overflow visual checks passed. | None |
+| 13 | Find lag cause: scroll/mousemove setState | Yes | Yes | Pass | Analytics graph pointer state was candidate | Graph hover is rAF-batched; coach spotlight pointer disabled on touch/mobile. | None |
+| 14 | Find lag cause: layout-shifting animations | Yes | Yes | Pass | No active page failures found | Runtime probes showed no horizontal overflow and no framework overlay. | None |
+| 15 | Find lag cause: preview rerender on input | Yes | Yes | Pass | Preview side effects could rerender too often | Preview sync is debounced; user input remains immediate for form responsiveness. | None |
+| 16 | Find lag cause: localStorage writes | Yes | Yes | Pass | Builder localStorage writes not found | No builder localStorage write loop. Live-viewer localStorage writes only a stable viewer id. | None |
+| 17 | Find lag cause: unclean timers/listeners | Yes | Yes | Pass | Long-running timers/listeners can leak | Carousel, loader, preview, graph, spotlight and Grainient cleanup paths verified in code. | None |
+| 18 | Use transform/opacity for animations where possible | Yes | Yes | Pass | None current | Public template/carousel/loader interactions use transform/opacity-oriented motion; no tested layout jank. | None |
+| 19 | Avoid animating width/height/top/left for core motion | Yes | Yes | Pass | Ripple uses positional sizing for transient click effect only | Primary motion paths are transform/opacity; transient ripple is scoped and removed. | None |
+| 20 | Reduce heavy blur intensity where it causes lag | Yes | Yes | Pass | None current | Mobile CSS has reduced/no backdrop filters in heavy sections. | None |
+| 21 | Disable/simplify heavy effects on mobile | Yes | Yes | Pass | Pointer spotlight would be unnecessary on touch | Mobile 390 public coach page had 0 pointermove listeners. | None |
+| 22 | Respect prefers-reduced-motion | Yes | Yes | Pass | None current | Coach template, Grainient, loader and animation CSS have reduced-motion fallbacks. | None |
+| 23 | Stop animations when offscreen | Yes | Yes | Pass | Paid carousel previously ran while offscreen | Probe confirmed `offscreenChanged=false`, `onscreenChanged=true`. | None |
+| 24 | Lazy-load heavy sections/components if needed | Yes | Yes | Pass | No additional lazy import needed after gating | Heavy preview is only mounted in wizard preview step; analytics details open in dialog on demand. | None |
+| 25 | Memoize expensive components | Yes | Yes | Pass | Preview callback identity could force rerender | `CoachSitePreview` memoized and callback stabilized. | None |
+| 26 | Debounce builder preview updates | Yes | Yes | Pass | None current | `PREVIEW_SYNC_DELAY_MS` path verified in code. | None |
+| 27 | Debounce localStorage writes | Yes | Yes | Pass | No builder localStorage write loop found | No action needed; live-viewer id is one-time stable storage. | None |
+| 28 | Clean up timers/listeners | Yes | Yes | Pass | None current | Code cleanup paths inspected; no live stuck loader after route checks. | None |
+| 29 | Optimize images/videos/media | Yes | Yes | Pass | Video iframe can abort in headless browser | Production page remains usable; YouTube abort is external iframe behavior, not app route failure. | None |
+| 30 | Use lightweight loading states | Yes | Yes | Pass | AI loading state needed proof | Local UI mock confirmed AI progress card and messages without production data or token spend. | None |
+| 31 | Keep scroll smooth/no overflow | Yes | Yes | Pass | None current | Production 28/28 route/viewport matrix passed no-overflow checks. | None |
+| 32 | Website Creator: no full preview regeneration on every keystroke | Yes | Yes | Pass | None current | Preview sync is debounced; preview not rebuilt until queued sync. | None |
+| 33 | Website Creator: memoize preview component | Yes | Yes | Pass | None current | `MemoizedCoachSitePreview` in manager; stable callback applied. | None |
+| 34 | Website Creator: keep dialog/wizard smooth | Yes | Yes | Pass | None current | Authenticated production Browser opened wizard; no overflow or 404. | None |
+| 35 | Coach template: reduce background effects on mobile | Yes | Yes | Pass | None current | Touch/mobile pointer spotlight disabled; CSS mobile reductions present. | None |
+| 36 | Coach template: keep hero visible early | Yes | Yes | Pass | None current | Mobile production public coach page first viewport shows coach/YW/register content. | None |
+| 37 | Coach template: disable parallax on small devices | Yes | Yes | Pass | None current | No mobile pointermove listener; desktop keeps one interactive listener. | None |
+| 38 | Coach template: keep only selected theme active | Yes | Yes | Pass | None current | Standalone preview theme link changes `data-theme`; builder preview uses selected theme only. | None |
+| 39 | Animations: shorter/smoother/reduced motion | Yes | Yes | Pass | None current | Loader removes promptly; Grainient reduced FPS; no stuck loader in post-deploy smoke. | None |
+| 40 | Glass effects: avoid nested expensive mobile layers | Yes | Yes | Pass | None current | Mobile no-overflow/no-error matrix passed admin/template/coach/paid routes. | None |
+| 41 | Admin panel: do not render all analytics details at once | Yes | Yes | Pass | None current | Main analytics page shows list; detail dashboard opens only after View Analytics. | None |
+| 42 | Admin panel: keep Overview lightweight | Yes | Yes | Pass | None current | Authenticated dashboard opened and scrolled without 404/overflow. | None |
+| 43 | Mobile: 320px support | Yes | Yes | Pass | Initial local preview needed loader wait | 320 production matrix passed; local preview content appears after loader by 1.5s. | None |
+| 44 | Mobile: 375px/390px/414px support | Yes | Yes | Pass | None current | Production matrix passed all listed phone widths. | None |
+| 45 | Tablet: 768px/1024px support | Yes | Yes | Pass | None current | Production and local matrices passed. | None |
+| 46 | Desktop support | Yes | Yes | Pass | None current | 1440 desktop probes passed; desktop pointer spotlight remains active. | None |
+| 47 | Manual test: admin panel, creator, analytics, template preview, public coach page | Yes | Yes | Pass | None current | Authenticated Browser and Playwright probes verified these flows. | None |
+| 48 | Manual test: AI generation loading state | Yes | Yes | Pass | Must not spend tokens or create fake production records | Local UI mock verified progress messages, generated preview, regenerate controls, no Copy Public Link before publish. | None |
+| 49 | Manual test: contact support/error and register button behavior | Yes | Yes | Pass | None current | Normal public coach page did not show support fallback; Register link points to `https://forms.gle/nsY5F1mcjZnZBbVo9`; fallback routes remain copyable and safe in prior matrix. | None |
+
+## Commands and UI Tests Run
+
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm build`
+- `pnpm test:admin-security`
+- `pnpm build:pages`
+- `pnpm build:pages-functions`
+- `pnpm run deploy`
+- Cloudflare deployment list confirmed production source `acc3440`.
+- Production HTTP checks:
+  - `/admin/dashboard`
+  - `/admin/login`
+  - `/coach/gyana-ranjan`
+  - `/coach-template-preview`
+  - `/go/gyana-pcos-51`
+- Production browser checks:
+  - Admin Dashboard authenticated route
+  - Website Creator open state
+  - Coach Analytics mobile menu navigation
+  - Coach Analytics detail dialog
+  - Coach Template Preview theme switch
+  - Public coach page mobile/desktop listener probe
+  - Paid carousel offscreen/onscreen animation probe
+- Local checks:
+  - Cloudflare Pages preview on `127.0.0.1:4198`
+  - Local Next UI mock on `127.0.0.1:4187` for AI generation loading state
+
+## Latest Results
+
+- Lint: pass
+- Type-check: pass
+- Next build: pass
+- Admin security tests: pass, 19/19
+- Cloudflare static build: pass
+- Cloudflare Pages Functions build: pass
+- Deploy: pass, production source `acc3440`
+- Production smoke after deploy: pass
+- Local AI loading-state UI mock: pass
+
+## Remaining Performance Risks
+
+- Adding more coach records, videos, or paid funnels should trigger the same breakpoint/performance matrix again.
+- Real AI/R2 publish testing should be done during a real coach creation, not with fake production data.
+- If future template work adds more WebGL, particles, or animated cards, keep mobile/touch gating mandatory.
+
+## Final INSTR.MD Status
+
+Pass. No important pending work remains against the active INSTR.MD performance and smoothness instructions.
