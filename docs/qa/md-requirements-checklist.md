@@ -3,18 +3,20 @@
 Test date: 2026-06-05
 Production URL tested: https://ywcoach.com
 Authenticated admin test: completed through existing production session. Gmail OTP value was not recorded in this file.
-Latest deployments tested: https://c701da4b.ywcoach.pages.dev, https://1d6159d6.ywcoach.pages.dev, https://bdf537c4.ywcoach.pages.dev, https://85e4c304.ywcoach.pages.dev, and https://ywcoach.com
+Latest deployments tested: https://c701da4b.ywcoach.pages.dev, https://1d6159d6.ywcoach.pages.dev, https://bdf537c4.ywcoach.pages.dev, https://85e4c304.ywcoach.pages.dev, https://1a57f24b.ywcoach.pages.dev, and https://ywcoach.com
 
 ## Summary
 
 Total requirement groups found: 31
-Completed and tested: 27
-Partial or blocked: 4
-Critical production bugs fixed in this pass: 4
+Completed and tested: 28
+Partial or blocked: 3
+Critical production bugs fixed in this pass: 5
 
 ## Latest Verification Addendum
 
 - 2026-06-05: Fixed and deployed admin route recovery for `/admin_panel` plus related admin aliases. Production Browser verification confirmed `/admin/dashboard`, `/admin_panel`, `/admin-panel`, `/admin-dashboard`, and `/dashboard` all land on the authenticated Admin Dashboard without `YW-ERR-404`.
+- 2026-06-05: Hardened admin route recovery again for encoded-space and nested admin aliases: `/admin%20panel`, `/admin%20dashboard`, `/admin-panel/dashboard`, `/admin_panel/dashboard`, `/adminpanel/dashboard`, `/Admin%20Panel`, and `/Admin/Dashboard` now redirect to `/admin/dashboard` without rendering the fallback 404.
+- 2026-06-05: Completed the authenticated admin breakpoint matrix after the mobile/sidebar fix. Production Browser evidence covers 45 checks: 9 admin sections across 320, 390, 768, 1024, and 1440px. No `YW-ERR-404`, no framework overlay, no unexpected Contact Support fallback, no horizontal overflow, and expected headings/dialogs were visible.
 - 2026-06-05: Added admin-maintenance regression coverage proving analytics backup produces both CSV and XLS payloads, stores both formats, exposes protected CSV/XLS download URLs, reads active admin recipients from the Admin DB role list, and blocks cleanup when active-admin email notification is not configured or not successful.
 - 2026-06-05: Re-tested production Coach Analytics in the authenticated Browser session. Main page shows the coach list/table, View Analytics opens the detailed panel with photo, report tools, AI summary, Combined/Paid/Free tabs, CSV and Excel controls; Manage moves to Coach Sites without `YW-ERR-404`; mobile 390px navigation reaches Coach Analytics with no horizontal overflow.
 - 2026-06-05: Replaced Coach Analytics `Open Site` popup button behavior with a real `target="_blank"` public-site link so the action is reliable and accessible while keeping disabled behavior for coaches without public URLs.
@@ -24,7 +26,7 @@ Critical production bugs fixed in this pass: 4
 
 | Source | Requirement group | Implemented | Tested | Result | Issue found | Fix applied | Remaining blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| INSTR.MD | Admin, builder, preview, and public pages must stay smooth without redesign | Partial | Yes | Partial | Public breakpoint sweep initially found paid support fallback horizontal overflow on 320-414px. | Fixed server-rendered paid support fallback box sizing and long-code wrapping; production retest passed. | Full authenticated admin breakpoint matrix is still partial; production admin mobile section test passed. |
+| INSTR.MD | Admin, builder, preview, and public pages must stay smooth without redesign | Yes | Yes | Pass | Public breakpoint sweep initially found paid support fallback horizontal overflow on 320-414px. Authenticated admin matrix later exposed mobile/tablet sidebar visibility risk. | Fixed server-rendered paid support fallback box sizing and long-code wrapping; fixed admin mobile/tablet sidebar height/scroll/open transform; production admin matrix now passes 45/45 checks across 320/390/768/1024/1440. | None for this requirement group. Re-run the matrix after future visual changes. |
 | INSTR.MD | Animations should use transform/opacity, reduce heavy blur/glow on mobile, avoid setState on scroll | Yes | Code reviewed | Pass | No new heavy animation was added in this pass. | No code change needed. | None found in this pass. |
 | INSTR.MD | Website Creator preview updates should be debounced/memoized and not regenerate every keystroke | Partial | Code reviewed | Partial | Deep creator publish flow was not executed with fake production coach data. | Existing creator code keeps generation action-driven; no fake production coach created. | Live AI/R2 creator test is intentionally reserved for real coach creation. |
 | INSTR.MD | Run lint, type-check, build after edits | Yes | Yes | Pass | Initial lint failed on setState-in-effect. | Replaced effect-based portal readiness with a render-time document guard. | None. |
@@ -60,7 +62,7 @@ Critical production bugs fixed in this pass: 4
 
 - Admin dashboard opened without `YW-ERR-404`.
 - Admin route recovery tested: `/Admin/Dashboard`, `/admin-panel`, `/dashboard`, `/admin/home`, and `/admin/dashboard/index` now redirect to the canonical admin dashboard/login flow without `YW-ERR-404`.
-- Admin mobile nav was tested through Menu for Overview, Coach Sites, Coach Analytics, Top Performers, Paid Masterclass Links/Settings, Error Reports, Backup/Cleanup, and Settings.
+- Admin mobile/tablet/desktop nav was tested through the authenticated production dashboard matrix for Overview, Coach Sites, Create Coach Site, Coach Analytics, Top Performers, Paid Masterclass Links/Settings, Error Reports, Backup/Cleanup, and Settings at 320/390/768/1024/1440px.
 - No horizontal overflow was detected in the tested mobile-width admin viewport.
 - Current production D1 `coach_sites` has Gyana Ranjan as a real published record with slug `gyana-ranjan`, theme `premium-feminine-wellness`, configured Google Form, photo, and video.
 - Coach Sites shows Gyana image/avatar.
@@ -86,6 +88,11 @@ Screenshot artifacts:
 - `artifacts/md-compliance/mobile-error-reports.png`
 - `artifacts/md-compliance/mobile-backup-cleanup.png`
 - `artifacts/md-compliance/mobile-settings.png`
+- `artifacts/md-compliance/admin-breakpoint-matrix-2026-06-05/precise-width-320.json`
+- `artifacts/md-compliance/admin-breakpoint-matrix-2026-06-05/precise-width-390.json`
+- `artifacts/md-compliance/admin-breakpoint-matrix-2026-06-05/precise-width-768.json`
+- `artifacts/md-compliance/admin-breakpoint-matrix-2026-06-05/precise-width-1024.json`
+- `artifacts/md-compliance/admin-breakpoint-matrix-2026-06-05/precise-width-1440.json`
 - `artifacts/md-compliance/production-coach-analytics-detail-after-fix.png`
 - `artifacts/md-compliance/production-paid-manage-after-fix.png`
 - `artifacts/md-compliance/production-error-cleanup-after-fix-scoped.png`
@@ -106,7 +113,7 @@ Screenshot artifacts:
 - `npx wrangler d1 execute ywcoach-admin --remote --command "INSERT INTO admin_users ... ON CONFLICT(email) DO UPDATE ..."`
 - `npx wrangler d1 execute ywcoach-admin --remote --command "UPDATE analytics_events SET coach_slug='gyana-ranjan' ..."`
 - Production browser UI checks through https://ywcoach.com/admin/dashboard
-- Production admin route alias checks for `/Admin/Dashboard`, `/admin-panel`, `/dashboard`, `/admin/home`, and `/admin/dashboard/index`
+- Production admin route alias checks for `/Admin/Dashboard`, `/Admin%20Panel`, `/admin%20panel`, `/admin%20dashboard`, `/admin-panel`, `/admin-panel/dashboard`, `/admin_panel/dashboard`, `/adminpanel/dashboard`, `/dashboard`, `/admin/home`, and `/admin/dashboard/index`
 - Production Playwright breakpoint sweep for public routes
 - Local Next preview breakpoint sweep on `127.0.0.1:4182`
 
@@ -125,5 +132,4 @@ Screenshot artifacts:
 2. Full live AI/R2 creator test is intentionally not run with fake media/coaches; run this with a real coach site creation.
 3. Full Website Creator publish journey should be tested with a real approved coach or a clearly labeled QA coach plus cleanup plan.
 4. More real coach records are needed to visually prove paid-only, free-only, and no-funnel states in production without adding fake data.
-5. Complete performance matrix across every listed breakpoint remains a recurring QA task after each visual change.
-6. Triage existing real Error Reports; 67 reports are still New.
+5. Triage existing real Error Reports; 67 reports are still New.
