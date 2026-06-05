@@ -107,6 +107,101 @@ test.describe("coach site dangerous actions", () => {
       ok: true
     });
 
+    const continueDraftList = await coachSitesRequest({
+      env,
+      request: new Request("http://127.0.0.1/api/admin/coach-sites", {
+        headers: {
+          cookie
+        }
+      })
+    });
+    expect(continueDraftList.status).toBe(200);
+    const continueDraftBody = await continueDraftList.json();
+    expect(continueDraftBody.coachSites).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          coachName: "Pipeline Coach",
+          googleFormUrl: "https://forms.gle/pipelineCoach",
+          publicUrl: "/coach/pipeline-coach",
+          slug: "pipeline-coach",
+          status: "draft"
+        })
+      ])
+    );
+
+    const updateSameDraft = await coachSitesRequest({
+      env,
+      request: jsonRequest(
+        "http://127.0.0.1/api/admin/coach-sites",
+        {
+          mode: "edit",
+          site: {
+            coachEmail: "pipeline@example.com",
+            coachName: "Pipeline Coach",
+            coachPhone: "+911234567890",
+            content: {
+              benefits: ["Updated benefit one", "Updated benefit two", "Updated benefit three"],
+              coachIntro: "Updated pipeline intro",
+              ctaText: "Register Now",
+              faq: [{ answer: "Updated answer", question: "Updated question" }],
+              heroHeadline: "Updated pipeline headline",
+              socialCopy: "Updated pipeline social copy",
+              subheadline: "Updated pipeline subheadline",
+              trustText: "Updated pipeline trust",
+              visionText: "Updated pipeline vision"
+            },
+            googleFormUrl: "https://forms.gle/pipelineCoach",
+            heroMediaType: "none",
+            id: "coach-site-pipeline",
+            niche: "Updated Pipeline Wellness",
+            publicUrl: "/coach/pipeline-coach",
+            registerButtonText: "Register Now",
+            selectedThemeId: "premium-feminine-wellness",
+            slug: "pipeline-coach",
+            status: "draft",
+            whatsappLink: "https://wa.me/911234567890"
+          }
+        },
+        { cookie, "x-yw-admin-csrf": csrfToken },
+        "POST"
+      )
+    });
+    expect(updateSameDraft.status).toBe(200);
+    expect(await updateSameDraft.json()).toMatchObject({
+      coachSite: {
+        niche: "Updated Pipeline Wellness",
+        publicUrl: "/coach/pipeline-coach",
+        selectedThemeId: "premium-feminine-wellness",
+        slug: "pipeline-coach",
+        status: "draft"
+      },
+      ok: true
+    });
+
+    const updatedDraftList = await coachSitesRequest({
+      env,
+      request: new Request("http://127.0.0.1/api/admin/coach-sites", {
+        headers: {
+          cookie
+        }
+      })
+    });
+    expect(updatedDraftList.status).toBe(200);
+    const updatedDraftBody = await updatedDraftList.json();
+    const pipelineDrafts = updatedDraftBody.coachSites.filter(
+      (site: { slug?: string }) => site.slug === "pipeline-coach"
+    );
+    expect(pipelineDrafts).toHaveLength(1);
+    expect(pipelineDrafts[0]).toMatchObject({
+      content: expect.objectContaining({
+        heroHeadline: "Updated pipeline headline"
+      }),
+      niche: "Updated Pipeline Wellness",
+      publicUrl: "/coach/pipeline-coach",
+      selectedThemeId: "premium-feminine-wellness",
+      status: "draft"
+    });
+
     const publishDraft = await coachSitesRequest({
       env,
       request: jsonRequest(
@@ -157,7 +252,7 @@ test.describe("coach site dangerous actions", () => {
     expect(publicPage.status).toBe(200);
     const html = await publicPage.text();
     expect(html).toContain("YW Nutritech coach network");
-    expect(html).toContain("Pipeline headline");
+    expect(html).toContain("Updated pipeline headline");
     expect(html).toContain("https://forms.gle/pipelineCoach");
     expect(html).not.toContain("Something went wrong");
   });
