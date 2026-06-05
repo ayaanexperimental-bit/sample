@@ -7,6 +7,7 @@ import {
   runAnalyticsBackup,
   runAnalyticsCleanupAfterBackup
 } from "../../lib/server/admin-maintenance";
+import { onRequest as backupCleanupRequest } from "../../functions/api/admin/backup-cleanup";
 
 const OLD_EVENT_TIME = 1_700_000_000;
 
@@ -42,6 +43,8 @@ test.describe("admin maintenance backup safeguards", () => {
     }
     expect(backup.backupDownloadUrl).toContain("format=csv");
     expect(backup.backupXlsDownloadUrl).toContain("format=xls");
+    expect(backup.backupDownloadUrl).toContain("token=");
+    expect(backup.backupXlsDownloadUrl).toContain("token=");
 
     const savedBackup = db.backups.get(backup.backupId);
     expect(savedBackup?.backup_csv).toContain("coach_site_view");
@@ -70,6 +73,48 @@ test.describe("admin maintenance backup safeguards", () => {
       fileName: expect.stringMatching(/\.xls$/)
     });
     expect(xlsDownload?.content).toContain("<Workbook");
+
+    const signedCsvResponse = await backupCleanupRequest({
+      env,
+      request: new Request(`https://ywcoach.com${backup.backupDownloadUrl}`)
+    });
+    expect(signedCsvResponse.status).toBe(200);
+    expect(signedCsvResponse.headers.get("content-type")).toBe("text/csv; charset=utf-8");
+    expect(await signedCsvResponse.text()).toContain("coach_site_view");
+
+    const signedXlsResponse = await backupCleanupRequest({
+      env,
+      request: new Request(`https://ywcoach.com${backup.backupXlsDownloadUrl}`)
+    });
+    expect(signedXlsResponse.status).toBe(200);
+    expect(signedXlsResponse.headers.get("content-type")).toBe(
+      "application/vnd.ms-excel; charset=utf-8"
+    );
+    expect(await signedXlsResponse.text()).toContain("<Workbook");
+
+    const tamperedUrl = backup.backupDownloadUrl.replace(/token=[^&]+/, "token=tampered");
+    const tamperedResponse = await backupCleanupRequest({
+      env,
+      request: new Request(`https://ywcoach.com${tamperedUrl}`)
+    });
+    expect(tamperedResponse.status).toBe(302);
+    expect(tamperedResponse.headers.get("location")).toContain("/admin/login?next=");
+
+    const legacyUrl = `/api/admin/backup-cleanup?download=${backup.backupId}&format=csv`;
+    const blockedLegacyResponse = await backupCleanupRequest({
+      env,
+      request: new Request(`https://ywcoach.com${legacyUrl}`)
+    });
+    expect(blockedLegacyResponse.status).toBe(302);
+
+    savedBackup!.notification_status = "sent";
+    const recentEmailedLegacyResponse = await backupCleanupRequest({
+      env,
+      request: new Request(`https://ywcoach.com${legacyUrl}`)
+    });
+    expect(recentEmailedLegacyResponse.status).toBe(200);
+    expect(await recentEmailedLegacyResponse.text()).toContain("coach_site_view");
+    savedBackup!.notification_status = "email_not_configured";
 
     const after = await getAdminMaintenanceStatus({
       currentAdminEmail: "owner@example.com",
@@ -269,6 +314,10 @@ class MaintenanceFakeD1 {
     }
 
     if (sql.includes("SELECT backup_csv, backup_xls, file_name")) {
+      return this.backups.get(String(params[0] || "")) || null;
+    }
+
+    if (sql.includes("SELECT created_at, notification_status")) {
       return this.backups.get(String(params[0] || "")) || null;
     }
 

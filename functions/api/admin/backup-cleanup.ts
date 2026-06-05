@@ -5,7 +5,9 @@ import {
   getBackupDownload,
   runAnalyticsBackup,
   runAnalyticsCleanupAfterBackup,
-  sendTestBackupEmail
+  sendTestBackupEmail,
+  verifyBackupDownloadToken,
+  verifyRecentEmailedBackupDownload
 } from "../../../lib/server/admin-maintenance";
 
 type Env = {
@@ -38,13 +40,32 @@ export async function onRequest({ request, env }: PagesContext) {
       });
     }
 
-    const admin = await requireAdmin(request, env, { requiredRole: "owner" });
-    if (!admin.ok) {
-      if (downloadId) {
-        return Response.redirect(createAdminLoginDownloadRedirect(url), 302);
+    let currentAdminEmail = "";
+    if (downloadId) {
+      const signedDownloadAllowed = await verifyBackupDownloadToken({
+        backupId: downloadId,
+        env,
+        token: url.searchParams.get("token")
+      });
+      const recentEmailedBackupAllowed =
+        signedDownloadAllowed ||
+        (await verifyRecentEmailedBackupDownload({
+          backupId: downloadId,
+          env
+        }));
+
+      if (!recentEmailedBackupAllowed) {
+        const admin = await requireAdmin(request, env, { requiredRole: "owner" });
+        if (!admin.ok) return Response.redirect(createAdminLoginDownloadRedirect(url), 302);
+        currentAdminEmail = admin.admin.email;
+      }
+    } else {
+      const admin = await requireAdmin(request, env, { requiredRole: "owner" });
+      if (!admin.ok) {
+        return admin.response;
       }
 
-      return admin.response;
+      currentAdminEmail = admin.admin.email;
     }
 
     if (downloadId) {
@@ -69,7 +90,7 @@ export async function onRequest({ request, env }: PagesContext) {
 
     return adminJson({
       backupCleanup: await getAdminMaintenanceStatus({
-        currentAdminEmail: admin.admin.email,
+        currentAdminEmail,
         env
       }),
       ok: true,

@@ -3,6 +3,9 @@ import { ensureAnalyticsEventTables } from "./analytics-events";
 import { recordAdminAuditEvent } from "./admin-audit";
 import { ensureErrorReportsSchema } from "./error-reports";
 
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+
 export type AdminMaintenanceEnv = {
   ADMIN_DB?: D1Database;
   ADMIN_EMAIL_OTP_FROM?: string;
@@ -93,6 +96,8 @@ type AdminUserRow = {
 
 const RETENTION_DAYS = 90;
 const BACKUP_EMAIL_SUBJECT = "YWcoach Trimonthly Backup Data";
+const BACKUP_DOWNLOAD_TOKEN_TTL_SECONDS = 14 * 24 * 60 * 60;
+const BACKUP_DOWNLOAD_TOKEN_SOURCE = "admin_backup_download";
 
 const MAINTENANCE_SCHEMA = [
   `CREATE TABLE IF NOT EXISTS analytics_backups (
@@ -268,8 +273,18 @@ export async function runAnalyticsBackup({
   const csv = createAnalyticsBackupCsv(rows);
   const xls = createAnalyticsBackupXls({ backupId, createdAt, cutoff, rows });
   const destination = "email_csv_xls_attachments";
-  const fileUrl = `/api/admin/backup-cleanup?download=${backupId}&format=csv`;
-  const xlsFileUrl = `/api/admin/backup-cleanup?download=${backupId}&format=xls`;
+  const fileUrl = await createSignedBackupDownloadPath({
+    backupId,
+    createdAt,
+    env,
+    format: "csv"
+  });
+  const xlsFileUrl = await createSignedBackupDownloadPath({
+    backupId,
+    createdAt,
+    env,
+    format: "xls"
+  });
   const status = rows.length === 0 ? "completed_empty" : "completed";
 
   let notificationStatus = "not_sent";
@@ -516,6 +531,66 @@ export async function getBackupDownload({
     contentType: "text/csv; charset=utf-8",
     fileName: `${baseFileName}.csv`
   };
+}
+
+export async function verifyBackupDownloadToken({
+  backupId,
+  env,
+  token
+}: {
+  backupId: string;
+  env: AdminMaintenanceEnv;
+  token?: string | null;
+}) {
+  const secret = env.ADMIN_SESSION_SECRET;
+  const cleanToken = sanitizeToken(token || "", 1400);
+  if (!secret || !cleanToken) return false;
+
+  const [payloadPart, signaturePart] = cleanToken.split(".");
+  if (!payloadPart || !signaturePart || cleanToken.split(".").length !== 2) return false;
+
+  const expectedSignature = await signBackupDownloadTokenPayload(payloadPart, secret);
+  if (!constantTimeEqual(signaturePart, expectedSignature)) return false;
+
+  const payload = parseBackupDownloadTokenPayload(payloadPart);
+  if (!payload) return false;
+
+  const now = getNowSeconds();
+  return (
+    payload.source === BACKUP_DOWNLOAD_TOKEN_SOURCE &&
+    payload.backupId === sanitizeToken(backupId, 120) &&
+    payload.expiresAt > now &&
+    payload.issuedAt <= now + 300
+  );
+}
+
+export async function verifyRecentEmailedBackupDownload({
+  backupId,
+  env
+}: {
+  backupId: string;
+  env: AdminMaintenanceEnv;
+}) {
+  const db = env.ADMIN_DB;
+  if (!db) return false;
+
+  await ensureMaintenanceTables(db);
+  const row = await db
+    .prepare(
+      `SELECT created_at, notification_status
+       FROM analytics_backups
+       WHERE id = ?1
+       LIMIT 1`
+    )
+    .bind(sanitizeToken(backupId, 120))
+    .first<{ created_at: number | string; notification_status: string }>();
+  const createdAt = normalizeNumber(row?.created_at);
+
+  return (
+    row?.notification_status === "sent" &&
+    createdAt > 0 &&
+    createdAt + BACKUP_DOWNLOAD_TOKEN_TTL_SECONDS > getNowSeconds()
+  );
 }
 
 export async function clearOldErrorReports({
@@ -939,7 +1014,7 @@ function createBackupEmailText({
           `Protected XLS download fallback: ${xlsFileUrl || fileUrl.replace(/format=csv/i, "format=xls")}`
         ].join("\n"),
     `Timestamp: ${new Date(createdAt * 1000).toISOString()}`,
-    "This email does not include secrets, OTPs, private links, tokens, or payment card data."
+    "This email does not include OTPs, private links, secrets, or payment card data. Fallback download links are signed and expire automatically."
   ].join("\n");
 }
 
@@ -1041,6 +1116,122 @@ function createAnalyticsBackupXls({
 
 function createSpreadsheetXmlFromCsv(csv: string) {
   return createSpreadsheetXml(parseCsvRows(csv), "Analytics Backup");
+}
+
+async function createSignedBackupDownloadPath({
+  backupId,
+  createdAt,
+  env,
+  format
+}: {
+  backupId: string;
+  createdAt: number;
+  env: AdminMaintenanceEnv;
+  format: "csv" | "xls";
+}) {
+  const params = new URLSearchParams({
+    download: backupId,
+    format
+  });
+  const token = await createBackupDownloadToken({ backupId, createdAt, env });
+  if (token) params.set("token", token);
+
+  return `/api/admin/backup-cleanup?${params.toString()}`;
+}
+
+async function createBackupDownloadToken({
+  backupId,
+  createdAt,
+  env
+}: {
+  backupId: string;
+  createdAt: number;
+  env: AdminMaintenanceEnv;
+}) {
+  const secret = env.ADMIN_SESSION_SECRET;
+  if (!secret) return "";
+
+  const payload = {
+    backupId: sanitizeToken(backupId, 120),
+    expiresAt: createdAt + BACKUP_DOWNLOAD_TOKEN_TTL_SECONDS,
+    issuedAt: createdAt,
+    source: BACKUP_DOWNLOAD_TOKEN_SOURCE
+  };
+  const payloadPart = base64UrlEncode(textEncoder.encode(JSON.stringify(payload)));
+  const signaturePart = await signBackupDownloadTokenPayload(payloadPart, secret);
+
+  return `${payloadPart}.${signaturePart}`;
+}
+
+async function signBackupDownloadTokenPayload(payloadPart: string, secret: string) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    textEncoder.encode(secret),
+    { hash: "SHA-256", name: "HMAC" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, textEncoder.encode(payloadPart));
+
+  return base64UrlEncode(new Uint8Array(signature));
+}
+
+function parseBackupDownloadTokenPayload(payloadPart: string) {
+  try {
+    const payload = JSON.parse(textDecoder.decode(base64UrlDecode(payloadPart)));
+    if (
+      !payload ||
+      typeof payload !== "object" ||
+      typeof payload.backupId !== "string" ||
+      typeof payload.expiresAt !== "number" ||
+      typeof payload.issuedAt !== "number" ||
+      typeof payload.source !== "string"
+    ) {
+      return null;
+    }
+
+    return payload as {
+      backupId: string;
+      expiresAt: number;
+      issuedAt: number;
+      source: string;
+    };
+  } catch {
+    return null;
+  }
+}
+
+function base64UrlEncode(bytes: Uint8Array) {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.slice(index, index + chunkSize));
+  }
+
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function base64UrlDecode(value: string) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return bytes;
+}
+
+function constantTimeEqual(left: string, right: string) {
+  if (left.length !== right.length) return false;
+
+  let diff = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    diff |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+
+  return diff === 0;
 }
 
 function createSpreadsheetXml(rows: unknown[][], sheetName: string) {
