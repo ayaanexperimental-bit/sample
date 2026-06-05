@@ -282,6 +282,29 @@ test.describe("admin auth security protections", () => {
     expect(backupCleanup.status).toBe(200);
     await expectJson(backupCleanup, { ok: true, persistence: "unavailable" });
 
+    const unauthenticatedBackupDownload = await backupCleanupRequest({
+      env,
+      request: new Request(
+        "https://ywcoach.com/api/admin/backup-cleanup?download=analytics-backup-test&format=xls"
+      )
+    });
+    expect(unauthenticatedBackupDownload.status).toBe(302);
+    expect(unauthenticatedBackupDownload.headers.get("location")).toBe(
+      "https://ywcoach.com/admin/login?next=%2Fapi%2Fadmin%2Fbackup-cleanup%3Fdownload%3Danalytics-backup-test%26format%3Dxls"
+    );
+
+    const unauthenticatedBackupDownloadHead = await backupCleanupRequest({
+      env,
+      request: new Request(
+        "https://ywcoach.com/api/admin/backup-cleanup?download=analytics-backup-test&format=csv",
+        { method: "HEAD" }
+      )
+    });
+    expect(unauthenticatedBackupDownloadHead.status).toBe(302);
+    expect(unauthenticatedBackupDownloadHead.headers.get("location")).toBe(
+      "https://ywcoach.com/admin/login?next=%2Fapi%2Fadmin%2Fbackup-cleanup%3Fdownload%3Danalytics-backup-test%26format%3Dcsv"
+    );
+
     const masterclassSettings = await masterclassSettingsRequest({
       env,
       request: new Request("https://ywcoach.com/api/admin/masterclass-settings", {

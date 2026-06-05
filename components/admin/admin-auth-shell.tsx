@@ -81,7 +81,7 @@ export function AdminAuthShell({
           setCsrfToken(typeof data.csrfToken === "string" ? data.csrfToken : "");
 
           if (initialStep !== "dashboard" && window.location.pathname !== "/admin/dashboard") {
-            window.location.replace("/admin/dashboard");
+            window.location.replace(getSafeAdminNextPath() || "/admin/dashboard");
             return;
           }
 
@@ -223,7 +223,7 @@ export function AdminAuthShell({
       setSessionEmail(data.admin.email);
       setCsrfToken(typeof data.csrfToken === "string" ? data.csrfToken : "");
       setOtp("");
-      window.location.replace("/admin/dashboard");
+      window.location.replace(getSafeAdminNextPath() || "/admin/dashboard");
     } catch {
       setOtpMessage({ text: GENERIC_AUTH_ERROR, tone: "error" });
     } finally {
@@ -715,4 +715,30 @@ function getPasswordChecks(password: string) {
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim().toLowerCase());
+}
+
+function getSafeAdminNextPath() {
+  if (typeof window === "undefined") return "";
+
+  const next = new URLSearchParams(window.location.search).get("next") || "";
+  if (!next.startsWith("/") || next.startsWith("//") || next.includes("\\") || next.length > 700) {
+    return "";
+  }
+
+  try {
+    const nextUrl = new URL(next, window.location.origin);
+    if (nextUrl.origin !== window.location.origin) return "";
+
+    const isAdminPage = nextUrl.pathname === "/admin/dashboard";
+    const isBackupDownload =
+      nextUrl.pathname === "/api/admin/backup-cleanup" &&
+      nextUrl.searchParams.has("download") &&
+      (nextUrl.searchParams.get("format") === "csv" ||
+        nextUrl.searchParams.get("format") === "xls" ||
+        !nextUrl.searchParams.has("format"));
+
+    return isAdminPage || isBackupDownload ? `${nextUrl.pathname}${nextUrl.search}` : "";
+  } catch {
+    return "";
+  }
 }

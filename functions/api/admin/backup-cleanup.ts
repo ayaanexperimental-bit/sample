@@ -29,12 +29,24 @@ type BackupCleanupActionBody = {
 };
 
 export async function onRequest({ request, env }: PagesContext) {
-  if (request.method === "GET") {
-    const admin = await requireAdmin(request, env, { requiredRole: "owner" });
-    if (!admin.ok) return admin.response;
-
+  if (request.method === "GET" || request.method === "HEAD") {
     const url = new URL(request.url);
     const downloadId = url.searchParams.get("download") || "";
+    if (request.method === "HEAD" && !downloadId) {
+      return adminJson({ ok: false, error: "Method not allowed." }, 405, {
+        allow: "GET, HEAD, POST"
+      });
+    }
+
+    const admin = await requireAdmin(request, env, { requiredRole: "owner" });
+    if (!admin.ok) {
+      if (downloadId) {
+        return Response.redirect(createAdminLoginDownloadRedirect(url), 302);
+      }
+
+      return admin.response;
+    }
+
     if (downloadId) {
       const requestedFormat = url.searchParams.get("format") === "xls" ? "xls" : "csv";
       const backup = await getBackupDownload({
@@ -46,7 +58,7 @@ export async function onRequest({ request, env }: PagesContext) {
         return adminJson({ ok: false, error: "Backup file was not found." }, 404);
       }
 
-      return new Response(backup.content, {
+      return new Response(request.method === "HEAD" ? null : backup.content, {
         headers: {
           "cache-control": "no-store",
           "content-disposition": `attachment; filename="${backup.fileName.replace(/"/g, "")}"`,
@@ -109,6 +121,13 @@ export async function onRequest({ request, env }: PagesContext) {
   }
 
   return adminJson({ ok: false, error: "Method not allowed." }, 405, {
-    allow: "GET, POST"
+    allow: "GET, HEAD, POST"
   });
+}
+
+function createAdminLoginDownloadRedirect(url: URL) {
+  const loginUrl = new URL("/admin/login", url.origin);
+  loginUrl.searchParams.set("next", `${url.pathname}${url.search}`);
+
+  return loginUrl.toString();
 }
