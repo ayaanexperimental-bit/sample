@@ -1985,7 +1985,8 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         var progressFrame = 0;
         var pointerFrame = 0;
         var pointerEvent = null;
-        var allowPointerSpotlight = !window.matchMedia('(hover: none), (pointer: coarse), (prefers-reduced-motion: reduce)').matches;
+        var pointerSpotlightQuery = window.matchMedia('(hover: none), (pointer: coarse), (prefers-reduced-motion: reduce)');
+        var allowPointerSpotlight = false;
         function updateProgress() {
           var max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
           var progress = Math.min(1, Math.max(0, window.scrollY / max));
@@ -2026,21 +2027,42 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         updateProgress();
         window.addEventListener('scroll', scheduleProgressUpdate, { passive: true });
         track('coach_site_view');
-        document.addEventListener('pointermove', function (event) {
+        function handlePointerMove(event) {
           if (!allowPointerSpotlight) return;
           pointerEvent = event;
           if (pointerFrame) return;
           pointerFrame = window.requestAnimationFrame(function () {
-          pointerFrame = 0;
-          var currentEvent = pointerEvent;
-          if (!currentEvent) return;
-          var card = currentEvent.target && currentEvent.target.closest ? currentEvent.target.closest('.spot-card, .support-card') : null;
-          if (!card) return;
-          var rect = card.getBoundingClientRect();
-          card.style.setProperty('--mouse-x', (currentEvent.clientX - rect.left) + 'px');
-          card.style.setProperty('--mouse-y', (currentEvent.clientY - rect.top) + 'px');
+            pointerFrame = 0;
+            var currentEvent = pointerEvent;
+            if (!currentEvent) return;
+            var card = currentEvent.target && currentEvent.target.closest ? currentEvent.target.closest('.spot-card, .support-card') : null;
+            if (!card) return;
+            var rect = card.getBoundingClientRect();
+            card.style.setProperty('--mouse-x', (currentEvent.clientX - rect.left) + 'px');
+            card.style.setProperty('--mouse-y', (currentEvent.clientY - rect.top) + 'px');
           });
-        }, { passive: true });
+        }
+        function syncPointerSpotlight() {
+          var nextAllowed = !pointerSpotlightQuery.matches;
+          if (nextAllowed === allowPointerSpotlight) return;
+          allowPointerSpotlight = nextAllowed;
+          if (allowPointerSpotlight) {
+            document.addEventListener('pointermove', handlePointerMove, { passive: true });
+            return;
+          }
+          document.removeEventListener('pointermove', handlePointerMove);
+          pointerEvent = null;
+          if (pointerFrame) {
+            window.cancelAnimationFrame(pointerFrame);
+            pointerFrame = 0;
+          }
+        }
+        syncPointerSpotlight();
+        if (pointerSpotlightQuery.addEventListener) {
+          pointerSpotlightQuery.addEventListener('change', syncPointerSpotlight);
+        } else if (pointerSpotlightQuery.addListener) {
+          pointerSpotlightQuery.addListener(syncPointerSpotlight);
+        }
         document.addEventListener('click', function (event) {
           var target = event.target && event.target.closest ? event.target.closest('[data-track]') : null;
           if (target) track(target.getAttribute('data-track'));

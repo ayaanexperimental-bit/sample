@@ -142,6 +142,8 @@ export function Infinite3DTestimonialsCarousel({
   const [isCentering, setIsCentering] = useState(false);
   const [touchedIndex, setTouchedIndex] = useState<number | null>(null);
   const [direction, setDirection] = useState<CarouselDirection>(1);
+  const [isCarouselInView, setIsCarouselInView] = useState(true);
+  const [isPageVisible, setIsPageVisible] = useState(true);
   const carouselRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const cardRefs = useRef<Array<HTMLElement | null>>([]);
@@ -169,6 +171,7 @@ export function Infinite3DTestimonialsCarousel({
     startY: 0
   });
   const testimonialCount = testimonials.length;
+  const shouldAnimateCarousel = isCarouselInView && isPageVisible;
 
   const markTouchInteraction = useCallback(() => {
     lastTouchInteractionRef.current = performance.now();
@@ -437,6 +440,10 @@ export function Infinite3DTestimonialsCarousel({
       return;
     }
 
+    if (!shouldAnimateCarousel) {
+      return;
+    }
+
     let animationFrame = 0;
     let lastTime = performance.now();
     const resizeObserver = new ResizeObserver(applyCardStyles);
@@ -489,7 +496,33 @@ export function Infinite3DTestimonialsCarousel({
       window.cancelAnimationFrame(animationFrame);
       resizeObserver.disconnect();
     };
-  }, [applyCardStyles, clearCardStyles, reducedMotion, testimonialCount]);
+  }, [applyCardStyles, clearCardStyles, reducedMotion, shouldAnimateCarousel, testimonialCount]);
+
+  useEffect(() => {
+    const carousel = carouselRef.current;
+
+    if (!carousel || !("IntersectionObserver" in window)) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsCarouselInView(Boolean(entry?.isIntersecting)),
+      { rootMargin: "240px 0px", threshold: 0.01 }
+    );
+
+    observer.observe(carousel);
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const syncPageVisibility = () => setIsPageVisible(document.visibilityState !== "hidden");
+
+    syncPageVisibility();
+    document.addEventListener("visibilitychange", syncPageVisibility);
+
+    return () => document.removeEventListener("visibilitychange", syncPageVisibility);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -571,6 +604,10 @@ export function Infinite3DTestimonialsCarousel({
   ]);
 
   useEffect(() => {
+    if (!shouldAnimateCarousel) {
+      return;
+    }
+
     const focusCheckInterval = window.setInterval(() => {
       const carousel = carouselRef.current;
       const activeElement = document.activeElement;
@@ -606,7 +643,13 @@ export function Infinite3DTestimonialsCarousel({
     return () => {
       window.clearInterval(focusCheckInterval);
     };
-  }, [centerCardForReading, isRecentTouchInteraction, pauseCarousel, resumeCarousel]);
+  }, [
+    centerCardForReading,
+    isRecentTouchInteraction,
+    pauseCarousel,
+    resumeCarousel,
+    shouldAnimateCarousel
+  ]);
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === "ArrowRight") {
