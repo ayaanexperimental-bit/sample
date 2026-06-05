@@ -3,8 +3,8 @@
 Source of truth: `C:\Users\Yours Wellness\Desktop\INSTR.MD`
 Test date: 2026-06-05
 Production URL: `https://ywcoach.com`
-Latest production deployment verified: `https://f2932dbf.ywcoach.pages.dev`
-Latest source commit verified: `aea3826`
+Latest production deployment verified: `https://5e12e976.ywcoach.pages.dev`
+Latest source commit verified: `c7bdaeb`
 
 ## Summary
 
@@ -19,6 +19,7 @@ Notes:
 - This checklist covers the active INSTR.MD performance/smoothness source of truth only.
 - Older admin/analytics backlog items are tracked separately in `docs/qa/md-requirements-checklist.md`.
 - Production fake data was not created. AI loading was tested locally with mocked admin/session/generation APIs to avoid fake production records and unnecessary OpenAI token spend.
+- The paid masterclass Grainient background now uses a universal adaptive visual capability policy: capable devices receive animated visuals, capable mobile/tablet devices receive reduced live visuals, and constrained/reduced-motion/save-data devices receive a premium static fallback.
 - Local paid `/go/gyana-pcos-51` is intentionally unavailable without local `FUNNEL_ACCESS_SECRET`; production paid entry was tested and works.
 - Post-fix admin recovery verification confirmed `/admin/users`, `/admin/panel`, `/admin/overview`, `/admin-panel`, `/admin_panel`, `/admin%20panel`, `/Admin/Dashboard`, `/admil/dashboard`, and `/dashboard` route to the admin dashboard/login flow without `YW-ERR-404` or unexpected Contact Support fallback.
 
@@ -30,7 +31,7 @@ Notes:
 | 2 | Inspect coach template components | Yes | Yes | Pass | None current | `components/coach/public-coach-site-page.tsx`, CSS module, and Cloudflare `functions/coach/[slug].ts` inspected/tested. | None |
 | 3 | Inspect animation components | Yes | Yes | Pass | Continuous pieces existed | Grainient, carousel, global loader, graph hover, spotlight inspected and optimized/gated. | None |
 | 4 | Inspect glassmorphism/blur/shadow effects | Yes | Yes | Pass | Mobile blur can be expensive if not constrained | Mobile glass overrides and fallback blur reductions are present; no overflow/jank symptoms in matrix. | None |
-| 5 | Inspect background effects | Yes | Yes | Pass | WebGL/background effects could run too often | Grainient FPS reduced and visibility/reduced-motion checks verified. | None |
+| 5 | Inspect background effects | Yes | Yes | Pass | WebGL/background effects could run too often or be disabled too broadly on capable phones/tablets | Grainient now uses adaptive full/reduced/static capability detection with visibility/reduced-motion checks, capped FPS, and a premium static fallback. | None |
 | 6 | Inspect scroll animations/listeners | Yes | Yes | Pass | Scroll/pointer listeners could add mobile overhead | Public coach mobile has 0 pointermove spotlight listeners; scroll listener is rAF-scheduled. | None |
 | 7 | Inspect preview system | Yes | Yes | Pass | Preview could rerender too often | Preview component memoized; theme callback stabilized; preview side effect debounced. | None |
 | 8 | Inspect admin dashboard components | Yes | Yes | Pass | Graph hover previously updated directly | Graph hover now rAF-batched and skips redundant state changes. | None |
@@ -46,7 +47,7 @@ Notes:
 | 18 | Use transform/opacity for animations where possible | Yes | Yes | Pass | None current | Public template/carousel/loader interactions use transform/opacity-oriented motion; no tested layout jank. | None |
 | 19 | Avoid animating width/height/top/left for core motion | Yes | Yes | Pass | Ripple uses positional sizing for transient click effect only | Primary motion paths are transform/opacity; transient ripple is scoped and removed. | None |
 | 20 | Reduce heavy blur intensity where it causes lag | Yes | Yes | Pass | None current | Mobile CSS has reduced/no backdrop filters in heavy sections. | None |
-| 21 | Disable/simplify heavy effects on mobile | Yes | Yes | Pass | Pointer spotlight would be unnecessary on touch | Mobile 390 public coach page had 0 pointermove listeners. | None |
+| 21 | Disable/simplify heavy effects on mobile | Yes | Yes | Pass | Pointer spotlight would be unnecessary on touch; mobile Grainient should not be blanket-disabled on capable devices | Mobile 390 public coach page had 0 pointermove listeners. Paid Grainient now uses reduced live mode for capable phones/tablets and static fallback only when device/network/motion support requires it. | None |
 | 22 | Respect prefers-reduced-motion | Yes | Yes | Pass | None current | Coach template, Grainient, loader and animation CSS have reduced-motion fallbacks. | None |
 | 23 | Stop animations when offscreen | Yes | Yes | Pass | Paid carousel previously ran while offscreen | Probe confirmed `offscreenChanged=false`, `onscreenChanged=true`. | None |
 | 24 | Lazy-load heavy sections/components if needed | Yes | Yes | Pass | No additional lazy import needed after gating | Heavy preview is only mounted in wizard preview step; analytics details open in dialog on demand. | None |
@@ -64,7 +65,7 @@ Notes:
 | 36 | Coach template: keep hero visible early | Yes | Yes | Pass | None current | Mobile production public coach page first viewport shows coach/YW/register content. | None |
 | 37 | Coach template: disable parallax on small devices | Yes | Yes | Pass | None current | No mobile pointermove listener; desktop keeps one interactive listener. | None |
 | 38 | Coach template: keep only selected theme active | Yes | Yes | Pass | None current | Standalone preview theme link changes `data-theme`; builder preview uses selected theme only. | None |
-| 39 | Animations: shorter/smoother/reduced motion | Yes | Yes | Pass | None current | Loader removes promptly; Grainient reduced FPS; no stuck loader in post-deploy smoke. | None |
+| 39 | Animations: shorter/smoother/reduced motion | Yes | Yes | Pass | None current | Loader removes promptly; Grainient uses full/reduced/static capability tiers; no stuck loader in post-deploy smoke. | None |
 | 40 | Glass effects: avoid nested expensive mobile layers | Yes | Yes | Pass | None current | Mobile no-overflow/no-error matrix passed admin/template/coach/paid routes. | None |
 | 41 | Admin panel: do not render all analytics details at once | Yes | Yes | Pass | None current | Main analytics page shows list; detail dashboard opens only after View Analytics. | None |
 | 42 | Admin panel: keep Overview lightweight | Yes | Yes | Pass | None current | Authenticated dashboard opened and scrolled without 404/overflow. | None |
@@ -85,7 +86,7 @@ Notes:
 - `pnpm build:pages`
 - `pnpm build:pages-functions`
 - `pnpm run deploy`
-- Cloudflare deployment list confirmed production source `aea3826`.
+- Cloudflare deployment output confirmed production source `c7bdaeb`.
 - Production HTTP checks:
   - `/admin/dashboard`
   - `/admin/login`
@@ -112,13 +113,15 @@ Notes:
 - Admin security tests: pass, 19/19
 - Cloudflare static build: pass
 - Cloudflare Pages Functions build: pass
-- Deploy: pass, production source `aea3826`
+- Deploy: pass, production source `c7bdaeb`
 - Production smoke after deploy: pass
+- Production `/go/gyana-pcos-51` Browser check: pass; normal flow did not show `YW-ERR-404` or Contact Support, CTA was visible, no horizontal overflow, and automated Browser correctly received static compatibility mode.
 - Local AI loading-state UI mock: pass
 
 ## Remaining Performance Risks
 
-- Adding more coach records, videos, or paid funnels should trigger the same breakpoint/performance matrix again.
+- Adding more coach records, videos, paid funnels, or heavy visual effects should trigger the same breakpoint/performance matrix again.
+- Real device animation level depends on the browser's WebGL2, motion, network, memory/core, pointer, and save-data signals. Devices that report constrained capability intentionally receive the static fallback.
 - Real AI/R2 publish testing should be done during a real coach creation, not with fake production data.
 - If future template work adds more WebGL, particles, or animated cards, keep mobile/touch gating mandatory.
 
