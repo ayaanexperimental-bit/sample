@@ -13274,6 +13274,43 @@ body:has(.levelup-clone) {
   z-index: 1;
 }
 
+/* Adaptive visual capability: capable devices get live Grainient, constrained
+   devices keep the same premium palette as a static compatibility layer. */
+.levelup-clone .ambient-background--full .grainient-container,
+.levelup-clone .ambient-background--full .ambient-background__webgl {
+  opacity: 0.9 !important;
+}
+
+.levelup-clone .ambient-background--reduced .grainient-container,
+.levelup-clone .ambient-background--reduced .ambient-background__webgl {
+  opacity: 0.62 !important;
+  mix-blend-mode: soft-light;
+}
+
+html[data-yw-visual-capability="static"] .ambient-background--grainient::before,
+html[data-yw-visual-capability="static"] .ambient-background--grainient::after,
+html[data-yw-visual-capability="static"] .grainient-skeleton,
+.ambient-background--static::before,
+.ambient-background--static::after,
+.ambient-background--static .grainient-skeleton {
+  animation: none !important;
+  transition: none !important;
+  will-change: auto !important;
+}
+
+html[data-yw-visual-capability="static"] .levelup-clone .ambient-background--grainient::before,
+.levelup-clone .ambient-background--static::before {
+  transform: translate3d(0, 0, 0) scale(1.02) !important;
+}
+
+html[data-yw-visual-capability="static"] .levelup-clone :is(
+  .price-shine-sweep,
+  .liquid-button-pool__caustics,
+  .liquid-button-pool__pressure
+) {
+  animation: none !important;
+}
+
 /* Mobile hero compaction: keep the same design, but bring the real-person video into view earlier. */
 @media (min-width: 769px) and (max-width: 1024px) {
   .levelup-hero {

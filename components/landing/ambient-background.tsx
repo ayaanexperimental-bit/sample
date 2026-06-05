@@ -2,30 +2,35 @@
 
 import { useEffect, useState } from "react";
 import Grainient from "@/components/react-bits/grainient/grainient";
+import {
+  type AdaptiveVisualCapability,
+  watchAdaptiveVisualCapability
+} from "@/lib/client/adaptive-visual-capability";
 
 export function AmbientBackground() {
-  const [webglReady, setWebglReady] = useState(false);
+  const [visualCapability, setVisualCapability] =
+    useState<AdaptiveVisualCapability>("static");
 
   useEffect(() => {
-    const desktopMotionQuery = window.matchMedia(
-      "(min-width: 1280px) and (prefers-reduced-motion: no-preference)"
-    );
+    const cleanup = watchAdaptiveVisualCapability((capability) => {
+      document.documentElement.dataset.ywVisualCapability = capability;
+      setVisualCapability(capability);
+    });
 
-    const syncWebglReadiness = () => {
-      setWebglReady(desktopMotionQuery.matches && !navigator.webdriver);
+    return () => {
+      cleanup();
     };
-
-    syncWebglReadiness();
-    desktopMotionQuery.addEventListener("change", syncWebglReadiness);
-
-    return () => desktopMotionQuery.removeEventListener("change", syncWebglReadiness);
   }, []);
+
+  const webglReady = visualCapability !== "static";
+  const isReducedVisuals = visualCapability === "reduced";
 
   return (
     <div
       className={`ambient-background ambient-background--grainient ${
         webglReady ? "ambient-background--webgl-ready" : "ambient-background--css-only"
-      }`}
+      } ambient-background--${visualCapability}`}
+      data-yw-visual-capability={visualCapability}
       aria-hidden="true"
     >
       {webglReady ? (
@@ -34,27 +39,27 @@ export function AmbientBackground() {
           color1="#f59ab8"
           color2="#ffe88f"
           color3="#b7d99c"
-          timeSpeed={1.2}
+          timeSpeed={isReducedVisuals ? 0.72 : 1.2}
           colorBalance={0}
-          warpStrength={1.14}
+          warpStrength={isReducedVisuals ? 0.82 : 1.14}
           warpFrequency={5}
-          warpSpeed={2.65}
-          warpAmplitude={44}
+          warpSpeed={isReducedVisuals ? 1.55 : 2.65}
+          warpAmplitude={isReducedVisuals ? 58 : 44}
           blendAngle={8}
           blendSoftness={0.05}
-          rotationAmount={620}
+          rotationAmount={isReducedVisuals ? 360 : 620}
           noiseScale={2}
-          grainAmount={0.08}
+          grainAmount={isReducedVisuals ? 0.045 : 0.08}
           grainScale={2}
           grainAnimated={false}
-          contrast={1.62}
+          contrast={isReducedVisuals ? 1.36 : 1.62}
           gamma={1}
-          saturation={1.16}
+          saturation={isReducedVisuals ? 1.06 : 1.16}
           centerX={0}
           centerY={0}
           zoom={0.9}
-          frameRate={14}
-          lowPowerFrameRate={6}
+          frameRate={isReducedVisuals ? 8 : 18}
+          lowPowerFrameRate={isReducedVisuals ? 6 : 10}
         />
       ) : null}
     </div>
