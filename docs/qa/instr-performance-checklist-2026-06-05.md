@@ -3,8 +3,8 @@
 Source of truth: `C:\Users\Yours Wellness\Desktop\INSTR.MD`
 Test date: 2026-06-05
 Production URL: `https://ywcoach.com`
-Latest production deployment verified: `https://a987a810.ywcoach.pages.dev`
-Latest source commit verified: `acc3440`
+Latest production deployment verified: `https://f2932dbf.ywcoach.pages.dev`
+Latest source commit verified: `aea3826`
 
 ## Summary
 
@@ -20,6 +20,7 @@ Notes:
 - Older admin/analytics backlog items are tracked separately in `docs/qa/md-requirements-checklist.md`.
 - Production fake data was not created. AI loading was tested locally with mocked admin/session/generation APIs to avoid fake production records and unnecessary OpenAI token spend.
 - Local paid `/go/gyana-pcos-51` is intentionally unavailable without local `FUNNEL_ACCESS_SECRET`; production paid entry was tested and works.
+- Post-fix admin recovery verification confirmed `/admin/users`, `/admin/panel`, `/admin/overview`, `/admin-panel`, `/admin_panel`, `/admin%20panel`, `/Admin/Dashboard`, `/admil/dashboard`, and `/dashboard` route to the admin dashboard/login flow without `YW-ERR-404` or unexpected Contact Support fallback.
 
 ## Requirement Checklist
 
@@ -84,7 +85,7 @@ Notes:
 - `pnpm build:pages`
 - `pnpm build:pages-functions`
 - `pnpm run deploy`
-- Cloudflare deployment list confirmed production source `acc3440`.
+- Cloudflare deployment list confirmed production source `aea3826`.
 - Production HTTP checks:
   - `/admin/dashboard`
   - `/admin/login`
@@ -111,7 +112,7 @@ Notes:
 - Admin security tests: pass, 19/19
 - Cloudflare static build: pass
 - Cloudflare Pages Functions build: pass
-- Deploy: pass, production source `acc3440`
+- Deploy: pass, production source `aea3826`
 - Production smoke after deploy: pass
 - Local AI loading-state UI mock: pass
 
