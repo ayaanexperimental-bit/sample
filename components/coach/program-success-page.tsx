@@ -28,7 +28,7 @@ export function ProgramSuccessPage({ thankYouVideoUrl }: { thankYouVideoUrl: str
           <section className="success-video-card" aria-label="Thank you video">
             {videoSource.kind === "youtube" ? (
               <iframe
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allow="accelerometer; autoplay; clipboard-write; compute-pressure; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
                 loading="lazy"
                 referrerPolicy="strict-origin-when-cross-origin"

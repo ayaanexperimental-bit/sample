@@ -582,14 +582,13 @@ function ThemePreviewSwitcher({
               {theme.previewLabel}
             </button>
           ) : (
-            <Link
+            <a
               data-active={theme.id === activeThemeId ? "true" : "false"}
               href={`/coach-template-preview?theme=${theme.id}`}
               key={theme.id}
-              prefetch={false}
             >
               {theme.previewLabel}
-            </Link>
+            </a>
           )
         )}
       </div>
@@ -693,7 +692,7 @@ function HeroMediaContent({
   if (heroMedia.embedVideoUrl) {
     return (
       <iframe
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allow="accelerometer; autoplay; clipboard-write; compute-pressure; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
         onError={handleMediaError}
         src={heroMedia.embedVideoUrl}

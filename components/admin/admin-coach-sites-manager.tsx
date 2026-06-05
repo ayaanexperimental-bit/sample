@@ -2,6 +2,7 @@
 
 import {
   memo,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -2900,6 +2901,15 @@ function PreviewAndEditStep({
     null
   );
   const selectedInspectLabel = selectedInspectScope ? getCopyScopeLabel(selectedInspectScope) : "";
+  const handlePreviewThemeChange = useStableCallback((selectedThemeId: CoachTemplateThemeId) => {
+    if (!previewSite) return;
+
+    onUpdateField("selectedThemeId", selectedThemeId);
+    onPreviewSiteChange({
+      ...previewSite,
+      selectedThemeId
+    });
+  });
 
   return (
     <div className={styles.previewEditStep}>
@@ -3042,13 +3052,7 @@ function PreviewAndEditStep({
 
       {previewSite ? (
         <CoachSitePreview
-          onThemeChange={(selectedThemeId) => {
-            onUpdateField("selectedThemeId", selectedThemeId);
-            onPreviewSiteChange({
-              ...previewSite,
-              selectedThemeId
-            });
-          }}
+          onThemeChange={handlePreviewThemeChange}
           inspectMode={inspectMode}
           onSelectInspectScope={setSelectedInspectScope}
           selectedInspectScope={selectedInspectScope}
@@ -3062,6 +3066,18 @@ function PreviewAndEditStep({
       )}
     </div>
   );
+}
+
+function useStableCallback<Args extends unknown[]>(callback: (...args: Args) => void) {
+  const callbackRef = useRef(callback);
+
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
+
+  return useCallback((...args: Args) => {
+    callbackRef.current(...args);
+  }, []);
 }
 
 function CursorInspectIcon() {
@@ -3280,7 +3296,7 @@ function HeroMediaStep({
           <div className={styles.mediaPreview} data-state={videoPreviewUrl ? "ready" : "empty"}>
             {videoPreviewUrl ? (
               <iframe
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allow="accelerometer; autoplay; clipboard-write; compute-pressure; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
                 src={videoPreviewUrl}
                 title="Hero video preview"

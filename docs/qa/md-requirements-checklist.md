@@ -3,14 +3,14 @@
 Test date: 2026-06-05
 Production URL tested: https://ywcoach.com
 Authenticated admin test: completed through existing production session. Gmail OTP value was not recorded in this file.
-Latest deployments tested: https://c701da4b.ywcoach.pages.dev, https://1d6159d6.ywcoach.pages.dev, https://bdf537c4.ywcoach.pages.dev, https://85e4c304.ywcoach.pages.dev, https://1a57f24b.ywcoach.pages.dev, and https://ywcoach.com
+Latest deployments tested: https://c701da4b.ywcoach.pages.dev, https://1d6159d6.ywcoach.pages.dev, https://bdf537c4.ywcoach.pages.dev, https://85e4c304.ywcoach.pages.dev, https://1a57f24b.ywcoach.pages.dev, https://14f82bbb.ywcoach.pages.dev, and https://ywcoach.com
 
 ## Summary
 
 Total requirement groups found: 31
-Completed and tested: 28
-Partial or blocked: 3
-Critical production bugs fixed in this pass: 5
+Completed and tested: 29
+Partial or blocked: 2
+Critical production bugs fixed in this pass: 6
 
 ## Latest Verification Addendum
 
@@ -25,6 +25,9 @@ Critical production bugs fixed in this pass: 5
 - 2026-06-05: Applied an INSTR.MD performance pass: Coach Analytics graph hover updates are throttled through `requestAnimationFrame` and skip redundant state changes; paid-page Grainient background now runs at lower FPS (`14fps` desktop / `6fps` low-power) while preserving the same visual design.
 - 2026-06-05: Production Browser performance matrix passed 20/20 checks across 320, 390, 768, 1024, and 1440px for Admin Dashboard, Coach Template Preview, `/coach/gyana-ranjan`, and `/gyana/pcos-51`: no horizontal overflow, no `YW-ERR-404`, no framework overlay, no unexpected support fallback, loader removed, and no relevant console errors.
 - 2026-06-05: Local production preview matrix passed 9/9 checks at 320, 768, and 1440px for Coach Template Preview, `/coach/gyana-ranjan`, and `/gyana/pcos-51` with the same no-overflow/no-error/no-loader criteria.
+- 2026-06-05: Fixed and deployed admin typo subpath recovery for `/admil/dashboard`, `/admim/dashboard`, `/admn/dashboard`, `/adminn/dashboard`, and `/admindashboard/overview`. Authenticated Browser verification confirmed `/admil/dashboard` redirects to `/admin/dashboard` with the active admin session, no `YW-ERR-404`, no Contact Support fallback, and no console errors.
+- 2026-06-05: Completed the second INSTR.MD performance pass: Website Creator preview memoization was hardened with a stable theme callback, template-preview Next RSC `.txt` prefetch misses now return 204, paid-page WebGL background is gated to real desktop/no reduced motion with a CSS fallback elsewhere, and iframe allowlists were cleaned to remove unsupported `web-share` while allowing `compute-pressure`.
+- 2026-06-05: Final responsive production matrix passed 21/21 checks across 320/375/390/414/768/1024/1440px for Coach Template Preview, `/coach/gyana-ranjan`, and `/go/gyana-pcos-51`: no horizontal overflow, no `YW-ERR-404`, no framework overlay, no unexpected Contact Support fallback, and no console warnings/errors.
 - Commands verified in this addendum: `pnpm lint`, `pnpm typecheck`, `pnpm test:admin-security`, `pnpm build`, and `pnpm build:pages-functions`.
 
 ## Checklist
@@ -33,7 +36,7 @@ Critical production bugs fixed in this pass: 5
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | INSTR.MD | Admin, builder, preview, and public pages must stay smooth without redesign | Yes | Yes | Pass | Public breakpoint sweep initially found paid support fallback horizontal overflow on 320-414px. Authenticated admin matrix later exposed mobile/tablet sidebar visibility risk. Later code audit found graph hover state updated directly on mousemove and paid Grainient could run heavier than needed. | Fixed server-rendered paid support fallback box sizing and long-code wrapping; fixed admin mobile/tablet sidebar height/scroll/open transform; throttled graph hover updates through `requestAnimationFrame`; lowered paid-page Grainient FPS. Production matrix now passes admin/template/coach/paid surfaces across 320/390/768/1024/1440. | None for this requirement group. Re-run the matrix after future visual changes. |
 | INSTR.MD | Animations should use transform/opacity, reduce heavy blur/glow on mobile, avoid setState on scroll | Yes | Code reviewed/UI tested | Pass | Coach Analytics graph updated React state directly on mousemove; paid-page WebGL background ran more frequently than needed for low-power viewports. | Graph hover is now animation-frame batched and skips redundant state changes; paid-page Grainient lowered to `14fps` desktop and `6fps` low-power. | None found in this pass. |
-| INSTR.MD | Website Creator preview updates should be debounced/memoized and not regenerate every keystroke | Partial | Code reviewed | Partial | Deep creator publish flow was not executed with fake production coach data. | Existing creator code keeps generation action-driven; no fake production coach created. | Live AI/R2 creator test is intentionally reserved for real coach creation. |
+| INSTR.MD | Website Creator preview updates should be debounced/memoized and not regenerate every keystroke | Yes | Code reviewed/production UI tested | Pass | `CoachSitePreview` was memoized, but its inline theme-change callback changed identity on every form render, so the preview could still rerender more than needed. | Added a stable callback wrapper for the preview theme change handler while preserving the latest form state. Existing creator code keeps AI generation action-driven; no fake production coach created. | None for preview performance. Live AI/R2 creator publish testing remains reserved for real coach creation under the Website Creator flow blockers. |
 | INSTR.MD | Run lint, type-check, build after edits | Yes | Yes | Pass | Initial lint failed on setState-in-effect. | Replaced effect-based portal readiness with a render-time document guard. | None. |
 | pendings.md | Clear Old Error Reports without requiring backup | Yes | Yes | Pass | Mobile dialog was previously off-screen when opened after scrolling. | Shared admin dialog now portals to document.body. | None. |
 | pendings.md | Error Reports cleanup must require confirmation text and offer fixed/ignored, 30d, 90d, stale-all options | Yes | Yes | Pass | Same off-screen dialog issue. | Portal fix. Confirmed modal text and options in production. | None. |
@@ -66,7 +69,7 @@ Critical production bugs fixed in this pass: 5
 ## Production Evidence
 
 - Admin dashboard opened without `YW-ERR-404`.
-- Admin route recovery tested: `/Admin/Dashboard`, `/admin-panel`, `/dashboard`, `/admin/home`, and `/admin/dashboard/index` now redirect to the canonical admin dashboard/login flow without `YW-ERR-404`.
+- Admin route recovery tested: `/Admin/Dashboard`, `/admin-panel`, `/dashboard`, `/admin/home`, `/admin/dashboard/index`, `/admil/dashboard`, `/admim/dashboard`, `/admn/dashboard`, `/adminn/dashboard`, and `/admindashboard/overview` now redirect to the canonical admin dashboard/login flow without `YW-ERR-404`.
 - Admin mobile/tablet/desktop nav was tested through the authenticated production dashboard matrix for Overview, Coach Sites, Create Coach Site, Coach Analytics, Top Performers, Paid Masterclass Links/Settings, Error Reports, Backup/Cleanup, and Settings at 320/390/768/1024/1440px.
 - No horizontal overflow was detected in the tested mobile-width admin viewport.
 - Current production D1 `coach_sites` has Gyana Ranjan as a real published record with slug `gyana-ranjan`, theme `premium-feminine-wellness`, configured Google Form, photo, and video.
@@ -123,6 +126,7 @@ Screenshot artifacts:
 - Production browser UI checks through https://ywcoach.com/admin/dashboard
 - Production admin route alias checks for `/Admin/Dashboard`, `/Admin%20Panel`, `/admin%20panel`, `/admin%20dashboard`, `/admin-panel`, `/admin-panel/dashboard`, `/admin_panel/dashboard`, `/adminpanel/dashboard`, `/dashboard`, `/admin/home`, and `/admin/dashboard/index`
 - Production Browser performance matrix for Admin Dashboard, Coach Template Preview, `/coach/gyana-ranjan`, and `/gyana/pcos-51` at 320/390/768/1024/1440
+- Production responsive matrix for Coach Template Preview, `/coach/gyana-ranjan`, and `/go/gyana-pcos-51` at 320/375/390/414/768/1024/1440
 - Local production preview matrix for Coach Template Preview, `/coach/gyana-ranjan`, and `/gyana/pcos-51` at 320/768/1440
 - Production Error Reports D1 triage queries and Admin UI check
 - Production Playwright breakpoint sweep for public routes

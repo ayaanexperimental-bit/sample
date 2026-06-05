@@ -801,7 +801,7 @@ export function LevelupClone() {
             <iframe
               src={YOUTUBE_HERO_EMBED_URL}
               title="PMOS consultation training video on YouTube"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allow="accelerometer; autoplay; clipboard-write; compute-pressure; encrypted-media; gyroscope; picture-in-picture"
               referrerPolicy="strict-origin-when-cross-origin"
               allowFullScreen
             />

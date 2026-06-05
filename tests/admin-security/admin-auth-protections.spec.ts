@@ -135,8 +135,11 @@ test.describe("admin auth security protections", () => {
 
     for (const aliasUrl of [
       "https://ywcoach.com/admil",
+      "https://ywcoach.com/admil/dashboard",
       "https://ywcoach.com/admim",
+      "https://ywcoach.com/admim/dashboard",
       "https://ywcoach.com/admn",
+      "https://ywcoach.com/admn/dashboard",
       "https://ywcoach.com/admin_panel",
       "https://ywcoach.com/admin%20panel",
       "https://ywcoach.com/admin%20dashboard",
@@ -147,7 +150,9 @@ test.describe("admin auth security protections", () => {
       "https://ywcoach.com/admin%20panel/settings",
       "https://ywcoach.com/adminpanel/coach-sites",
       "https://ywcoach.com/admindashboard",
+      "https://ywcoach.com/admindashboard/overview",
       "https://ywcoach.com/adminn",
+      "https://ywcoach.com/adminn/dashboard",
       "https://ywcoach.com/dashboard/overview"
     ]) {
       const adminPanelAlias = await middlewareRequest({
@@ -158,6 +163,20 @@ test.describe("admin auth security protections", () => {
       expect(adminPanelAlias.status).toBe(302);
       expect(adminPanelAlias.headers.get("location")).toBe("https://ywcoach.com/admin/dashboard");
     }
+
+    let rscPrefetchNextCalled = false;
+    const staticRscPrefetch = await middlewareRequest({
+      env,
+      next: async () => {
+        rscPrefetchNextCalled = true;
+        return new Response("missing static rsc payload");
+      },
+      request: new Request(
+        "https://ywcoach.com/coach-template-preview/__next.coach-template-preview.txt?_rsc=qa"
+      )
+    });
+    expect(rscPrefetchNextCalled).toBe(false);
+    expect(staticRscPrefetch.status).toBe(204);
 
     const blockedDashboardApi = await dashboardOverviewRequest({
       env,

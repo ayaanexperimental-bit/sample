@@ -89,10 +89,15 @@ function isAdminRecoveryPath(pathname: string) {
 
   if (
     safePathname === "/admil" ||
+    safePathname.startsWith("/admil/") ||
     safePathname === "/admim" ||
+    safePathname.startsWith("/admim/") ||
     safePathname === "/admn" ||
+    safePathname.startsWith("/admn/") ||
     safePathname === "/admindashboard" ||
+    safePathname.startsWith("/admindashboard/") ||
     safePathname === "/adminn" ||
+    safePathname.startsWith("/adminn/") ||
     safePathname === "/dashboard" ||
     safePathname.startsWith("/dashboard/") ||
     safePathname.startsWith("/admin-dashboard") ||

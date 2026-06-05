@@ -100,6 +100,13 @@ export async function onRequest(context: PagesContext) {
     });
   }
 
+  if (isStaticRscTextPrefetch(pathname, url)) {
+    return new Response(null, {
+      status: 204,
+      headers: NO_STORE_HEADERS
+    });
+  }
+
   if (isStaticOrApiPath(pathname)) {
     return context.next();
   }
@@ -257,6 +264,10 @@ function isStaticOrApiPath(pathname: string) {
   );
 }
 
+function isStaticRscTextPrefetch(pathname: string, url: URL) {
+  return pathname.includes("/__next.") && pathname.endsWith(".txt") && url.searchParams.has("_rsc");
+}
+
 function isProtectedAdminPagePath(pathname: string) {
   return pathname.startsWith("/admin/") && !PUBLIC_ADMIN_PAGE_PATHS.has(pathname);
 }
@@ -302,6 +313,16 @@ function isAdminLoginRecoveryPath(pathname: string) {
 
 function isAdminDashboardRecoveryPath(pathname: string) {
   return (
+    pathname === "/admil" ||
+    pathname.startsWith("/admil/") ||
+    pathname === "/admim" ||
+    pathname.startsWith("/admim/") ||
+    pathname === "/admn" ||
+    pathname.startsWith("/admn/") ||
+    pathname === "/adminn" ||
+    pathname.startsWith("/adminn/") ||
+    pathname === "/admindashboard" ||
+    pathname.startsWith("/admindashboard/") ||
     pathname === "/dashboard" ||
     pathname.startsWith("/dashboard/") ||
     pathname.startsWith("/admin-dashboard") ||
