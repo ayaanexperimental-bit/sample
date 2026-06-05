@@ -130,7 +130,7 @@ test.describe("admin auth security protections", () => {
     expect(futureAdminNextCalled).toBe(false);
     expect(unauthenticatedFutureAdminPage.status).toBe(302);
     expect(unauthenticatedFutureAdminPage.headers.get("location")).toBe(
-      "https://ywcoach.com/admin/login?next=%2Fadmin%2Fusers"
+      "https://ywcoach.com/admin/dashboard"
     );
 
     for (const aliasUrl of [

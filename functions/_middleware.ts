@@ -295,8 +295,16 @@ function getCanonicalAdminRedirect(pathname: string) {
     return "/admin/dashboard";
   }
 
-  if (lowerPathname === "/admin" || lowerPathname.startsWith("/admin/")) {
+  if (
+    lowerPathname === "/admin" ||
+    PUBLIC_ADMIN_PAGE_PATHS.has(lowerPathname) ||
+    PROTECTED_ADMIN_PAGE_PATHS.has(lowerPathname)
+  ) {
     return lowerPathname;
+  }
+
+  if (lowerPathname.startsWith("/admin/")) {
+    return "/admin/dashboard";
   }
 
   return null;
