@@ -1,0 +1,121 @@
+[
+  {
+    "width": 320,
+    "overview": {
+      "bodyOverflowX": false,
+      "docScrollHeight": 818,
+      "docClientHeight": 760,
+      "hasDashboard": true,
+      "hasMenuButton": true
+    },
+    "analytics": {
+      "bodyOverflowX": false,
+      "hasCoachList": true,
+      "hasGyana": true,
+      "hasGiantDetailByDefault": false,
+      "hasViewAction": true
+    }
+  },
+  {
+    "width": 375,
+    "overview": {
+      "bodyOverflowX": false,
+      "docScrollHeight": 818,
+      "docClientHeight": 760,
+      "hasDashboard": true,
+      "hasMenuButton": true
+    },
+    "analytics": {
+      "bodyOverflowX": false,
+      "hasCoachList": true,
+      "hasGyana": true,
+      "hasGiantDetailByDefault": false,
+      "hasViewAction": true
+    }
+  },
+  {
+    "width": 390,
+    "overview": {
+      "bodyOverflowX": false,
+      "docScrollHeight": 818,
+      "docClientHeight": 760,
+      "hasDashboard": true,
+      "hasMenuButton": true
+    },
+    "analytics": {
+      "bodyOverflowX": false,
+      "hasCoachList": true,
+      "hasGyana": true,
+      "hasGiantDetailByDefault": false,
+      "hasViewAction": true
+    }
+  },
+  {
+    "width": 414,
+    "overview": {
+      "bodyOverflowX": false,
+      "docScrollHeight": 818,
+      "docClientHeight": 760,
+      "hasDashboard": true,
+      "hasMenuButton": true
+    },
+    "analytics": {
+      "bodyOverflowX": false,
+      "hasCoachList": true,
+      "hasGyana": true,
+      "hasGiantDetailByDefault": false,
+      "hasViewAction": true
+    }
+  },
+  {
+    "width": 768,
+    "overview": {
+      "bodyOverflowX": false,
+      "docScrollHeight": 900,
+      "docClientHeight": 900,
+      "hasDashboard": true,
+      "hasMenuButton": true
+    },
+    "analytics": {
+      "bodyOverflowX": false,
+      "hasCoachList": true,
+      "hasGyana": true,
+      "hasGiantDetailByDefault": false,
+      "hasViewAction": true
+    }
+  },
+  {
+    "width": 1024,
+    "overview": {
+      "bodyOverflowX": false,
+      "docScrollHeight": 900,
+      "docClientHeight": 900,
+      "hasDashboard": true,
+      "hasMenuButton": true
+    },
+    "analytics": {
+      "bodyOverflowX": false,
+      "hasCoachList": true,
+      "hasGyana": true,
+      "hasGiantDetailByDefault": false,
+      "hasViewAction": true
+    }
+  },
+  {
+    "width": 1440,
+    "overview": {
+      "bodyOverflowX": false,
+      "docScrollHeight": 900,
+      "docClientHeight": 900,
+      "hasDashboard": true,
+      "hasMenuButton": true
+    },
+    "analytics": {
+      "bodyOverflowX": false,
+      "hasCoachList": true,
+      "hasGyana": true,
+      "hasGiantDetailByDefault": false,
+      "hasViewAction": true
+    }
+  }
+]

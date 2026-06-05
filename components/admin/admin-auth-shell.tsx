@@ -632,7 +632,7 @@ export function AdminAuthShell({
   }
 
   return (
-    <main className={styles.adminPage}>
+    <main className={`${styles.adminPage} ${step === "dashboard" ? styles.adminDashboardPage : ""}`}>
       <div className={styles.backdrop} aria-hidden="true" />
       <div className={`${styles.shell} ${step === "dashboard" ? styles.shellDashboard : ""}`}>
         {step === "dashboard" ? null : (

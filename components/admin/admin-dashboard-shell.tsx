@@ -4,6 +4,7 @@ import { type CSSProperties, type MouseEvent, useEffect, useMemo, useRef, useSta
 import { AdminCoachSitesManager } from "./admin-coach-sites-manager";
 import {
   AdminActionDialog,
+  AdminActionIcon,
   AdminHeader,
   type AdminNavSection,
   AdminPageShell,
@@ -108,6 +109,12 @@ type AdminAiAnalyticsPayload = {
     estimatedInputTokens: number;
     estimatedOutputTokens: number;
   };
+};
+
+type AnalyticsAiMenuAction = {
+  description?: string;
+  label: string;
+  onSelect?: () => void;
 };
 
 type AdminMaintenanceRoleChecklist = {
@@ -670,6 +677,47 @@ function OverviewView({
           >
             Create Coach Site
           </button>
+          <AnalyticsAiWidget
+            actions={[
+              {
+                description: "Summarize the current production snapshot.",
+                label: "Generate Overview Summary"
+              },
+              {
+                description: "Look for visit/click movement and anomalies.",
+                label: "Review Trends"
+              },
+              {
+                description: "Create prioritized admin next steps.",
+                label: "Generate Recommendations"
+              },
+              {
+                description: "Estimate next-week risk from available counters.",
+                label: "Predict Next 7 Days"
+              },
+              {
+                description: "Find coaches or funnels needing attention.",
+                label: "Find Underperforming Areas"
+              },
+              {
+                description: "Prepare a compact report for admin review.",
+                label: "Create Admin Report"
+              }
+            ]}
+            cacheLabel={overviewAiCache}
+            eyebrow="AI Executive Summary"
+            fallbackItems={overview.aiSummary}
+            insight={overviewAiInsight}
+            onGenerate={() => void generateOverviewAiInsights(false)}
+            onRefresh={() => void generateOverviewAiInsights(true)}
+            status={overviewAiStatus}
+            title={
+              overviewAiInsight
+                ? `Last generated ${new Date(overviewAiInsight.generatedAt).toLocaleString()}`
+                : "On-demand aggregate analysis"
+            }
+            usageEstimate={overviewAiUsage}
+          />
         </div>
       }
       eyebrow="Verified Admin Session"
@@ -770,21 +818,6 @@ function OverviewView({
       </section>
 
       <section className={styles.analyticsDashboardGrid}>
-        <AnalyticsAiWidget
-          cacheLabel={overviewAiCache}
-          eyebrow="AI Executive Summary"
-          fallbackItems={overview.aiSummary}
-          insight={overviewAiInsight}
-          onGenerate={() => void generateOverviewAiInsights(false)}
-          onRefresh={() => void generateOverviewAiInsights(true)}
-          status={overviewAiStatus}
-          title={
-            overviewAiInsight
-              ? `Last generated ${new Date(overviewAiInsight.generatedAt).toLocaleString()}`
-              : "On-demand aggregate analysis"
-          }
-          usageEstimate={overviewAiUsage}
-        />
         <AnalyticsWidget
           eyebrow="Recommended Actions"
           items={overview.recommendations}
@@ -1624,6 +1657,11 @@ function CoachAnalyticsView({
   >("all");
   const [coachChartCompareEnabled, setCoachChartCompareEnabled] = useState(true);
   const [coachChartRange, setCoachChartRange] = useState<AnalyticsChartRangeId>("max");
+  const [coachAiItems, setCoachAiItems] = useState<string[]>([
+    "Choose an AI action to inspect the currently filtered coach list."
+  ]);
+  const [coachAiStatus, setCoachAiStatus] = useState("");
+  const [coachAiCache, setCoachAiCache] = useState("");
   const preferEventSummaries = analyticsSource === "d1_analytics_events";
   const rows = useMemo(
     () => buildCoachAnalyticsRows(coachSites, analyticsSummaries, { preferEventSummaries }),
@@ -1679,8 +1717,101 @@ function CoachAnalyticsView({
     setActiveTab(row.availableTabs[0] || "combined");
   }
 
+  function runCoachAnalyticsAssistant(label: string) {
+    const visibleRows = filteredRows;
+    const totalVisits = sumNumbers(visibleRows.map((row) => row.combined.visits));
+    const totalClicks = sumNumbers(visibleRows.map((row) => row.combined.clicks));
+    const attention = visibleRows.filter((row) => row.lowActivityReasons.length > 0);
+    const best = visibleRows[0];
+    const paidCount = visibleRows.filter((row) => row.hasPaidMasterclass).length;
+    const freeCount = visibleRows.filter((row) => row.hasFreeGuestLink).length;
+
+    let items: string[];
+
+    if (visibleRows.length === 0) {
+      items = ["No coaches match the current filters."];
+    } else if (label.includes("Paid")) {
+      items = [
+        `Paid funnels visible: ${paidCount}.`,
+        `Payment-related counters are shown only from stored admin analytics/payment events.`,
+        best?.hasPaidMasterclass
+          ? `${best.coachName} has paid-funnel data available.`
+          : "No paid-only winner found in the current filtered list."
+      ];
+    } else if (label.includes("Free")) {
+      items = [
+        `Free Guest Link funnels visible: ${freeCount}.`,
+        `Free tracking counts visits and register/Google Form opens, not form submissions.`,
+        best?.hasFreeGuestLink
+          ? `${best.coachName} is the first visible free-funnel row after sorting.`
+          : "No free-funnel winner found in the current filtered list."
+      ];
+    } else if (label.includes("Recommendations")) {
+      items = [
+        attention.length
+          ? `${attention.length} visible coach records need attention.`
+          : "No visible coach-level issue detected from current counters.",
+        "Open a coach detail drawer before making coach-specific changes.",
+        "Use Manage only when link/contact/site settings need updates."
+      ];
+    } else if (label.includes("Report")) {
+      items = [
+        `Filtered coaches: ${visibleRows.length}.`,
+        `Visits: ${totalVisits.toLocaleString()} / Clicks: ${totalClicks.toLocaleString()}.`,
+        `Paid visible: ${paidCount} / Free visible: ${freeCount}.`
+      ];
+    } else {
+      items = [
+        `Filtered coaches: ${visibleRows.length}.`,
+        `Visits: ${totalVisits.toLocaleString()} / Clicks: ${totalClicks.toLocaleString()}.`,
+        `Best visible row: ${best ? `${best.coachName} (${best.bestFunnel})` : "not available"}.`
+      ];
+    }
+
+    setCoachAiItems(items);
+    setCoachAiStatus(`${label} ready from the current filtered rows.`);
+    setCoachAiCache("local filtered data");
+  }
+
   return (
-    <AdminPageShell eyebrow="Coach Sites" title="Coach Analytics">
+    <AdminPageShell
+      actions={
+        <AnalyticsAiWidget
+          actions={[
+            {
+              description: "Summarize the visible coach list.",
+              label: "Generate Coach Summary"
+            },
+            {
+              description: "Review visible paid funnel counters.",
+              label: "Review Paid Funnel"
+            },
+            {
+              description: "Review visible Free Guest Link counters.",
+              label: "Review Free Guest Link"
+            },
+            {
+              description: "Create coach-level next-step guidance.",
+              label: "Generate Coach Recommendations"
+            },
+            {
+              description: "Create a compact admin report from the filtered rows.",
+              label: "Create Coach Report"
+            }
+          ]}
+          cacheLabel={coachAiCache}
+          eyebrow="AI Coach Analytics"
+          fallbackItems={coachAiItems}
+          insight={null}
+          onGenerate={() => runCoachAnalyticsAssistant("Generate Coach Summary")}
+          onRefresh={() => runCoachAnalyticsAssistant("Generate Coach Summary")}
+          status={coachAiStatus}
+          title="On-demand coach list assistant"
+        />
+      }
+      eyebrow="Coach Sites"
+      title="Coach Analytics"
+    >
       <p className={styles.inlineNote}>
         Source:{" "}
         {source === "live-database" ? "Live coach-site database + paid funnel config" : source}.
@@ -1927,36 +2058,47 @@ function CoachAnalyticsView({
                         <td data-label="Actions">
                           <div className={styles.analyticsCoachActions}>
                             <button
-                              className={styles.primaryAction}
+                              aria-label={`View analytics for ${row.coachName}`}
+                              className={styles.iconAction}
+                              data-admin-tooltip="View analytics"
                               onClick={() => openCoachAnalytics(row)}
                               type="button"
                             >
-                              View Analytics
+                              <AdminActionIcon name="chart" />
+                              <span className={styles.visuallyHidden}>View Analytics</span>
                             </button>
                             <button
-                              className={styles.secondaryAction}
+                              aria-label={`Manage ${row.coachName}`}
+                              className={styles.iconAction}
+                              data-admin-tooltip="Manage coach site"
                               onClick={() => onSelect("coach-sites")}
                               type="button"
                             >
-                              Manage
+                              <AdminActionIcon name="settings" />
+                              <span className={styles.visuallyHidden}>Manage</span>
                             </button>
                             {publicHref ? (
                               <a
-                                className={styles.secondaryAction}
+                                aria-label={`Open public site for ${row.coachName}`}
+                                className={styles.iconAction}
+                                data-admin-tooltip="Open public site"
                                 href={publicHref}
                                 rel="noopener noreferrer"
                                 target="_blank"
                               >
-                                Open Site
+                                <AdminActionIcon name="open" />
+                                <span className={styles.visuallyHidden}>Open Site</span>
                               </a>
                             ) : (
                               <button
-                                className={styles.secondaryAction}
+                                aria-label={`No public site for ${row.coachName}`}
+                                className={styles.iconAction}
+                                data-admin-tooltip="No public site yet"
                                 disabled
-                                title="No public site yet."
                                 type="button"
                               >
-                                Open Site
+                                <AdminActionIcon name="open" />
+                                <span className={styles.visuallyHidden}>Open Site</span>
                               </button>
                             )}
                           </div>
@@ -2590,6 +2732,7 @@ function AnalyticsWidget({
 }
 
 function AnalyticsAiWidget({
+  actions,
   cacheLabel,
   eyebrow,
   fallbackItems,
@@ -2600,6 +2743,7 @@ function AnalyticsAiWidget({
   title,
   usageEstimate
 }: {
+  actions?: AnalyticsAiMenuAction[];
   cacheLabel: string;
   eyebrow: string;
   fallbackItems: string[];
@@ -2610,36 +2754,84 @@ function AnalyticsAiWidget({
   title: string;
   usageEstimate?: AdminAiAnalyticsPayload["usageEstimate"];
 }) {
+  const [open, setOpen] = useState(false);
+  const [activeAction, setActiveAction] = useState("");
   const items = insight ? formatAiInsightItems(insight) : fallbackItems;
+  const menuActions =
+    actions && actions.length > 0
+      ? actions
+      : [
+          {
+            description: insight ? "Refresh the current AI output." : "Generate a new AI review.",
+            label: insight ? "Refresh AI Overview" : "Generate AI Overview"
+          }
+        ];
+
+  function runAction(action: AnalyticsAiMenuAction) {
+    setActiveAction(action.label);
+    setOpen(true);
+
+    if (action.onSelect) {
+      action.onSelect();
+      return;
+    }
+
+    if (insight) {
+      onRefresh();
+    } else {
+      onGenerate();
+    }
+  }
 
   return (
-    <article className={styles.analyticsWidget}>
-      <p className={styles.kicker}>{eyebrow}</p>
-      <h3>{title}</h3>
-      <ul>
-        {items.map((item) => (
-          <li key={item}>{item}</li>
-        ))}
-      </ul>
-      <div className={styles.analyticsWidgetActions}>
-        <button
-          className={styles.primaryAction}
-          onClick={insight ? onRefresh : onGenerate}
-          type="button"
-        >
-          {insight ? "Refresh AI Overview" : "Generate AI Overview"}
-        </button>
-      </div>
-      {status || usageEstimate ? (
-        <p className={styles.inlineNote}>
-          {status || "AI ready."}
-          {cacheLabel ? ` Cache: ${cacheLabel}.` : ""}
-          {usageEstimate
-            ? ` Estimate: ${usageEstimate.approximateCostLevel}, ${usageEstimate.estimatedInputTokens} input / ${usageEstimate.estimatedOutputTokens} output tokens.`
-            : ""}
-        </p>
+    <div className={styles.aiAssistant} data-open={open ? "true" : "false"}>
+      <button
+        aria-expanded={open}
+        aria-label={eyebrow}
+        className={styles.aiAssistantButton}
+        data-admin-tooltip={eyebrow}
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        AI
+      </button>
+      {open ? (
+        <div className={styles.aiAssistantPanel} role="menu">
+          <div className={styles.aiAssistantHeader}>
+            <p className={styles.kicker}>{eyebrow}</p>
+            <h3>{title}</h3>
+            <button aria-label="Close AI assistant" onClick={() => setOpen(false)} type="button">
+              Close
+            </button>
+          </div>
+          <div className={styles.aiAssistantActions}>
+            {menuActions.map((action) => (
+              <button key={action.label} onClick={() => runAction(action)} role="menuitem" type="button">
+                <strong>{action.label}</strong>
+                {action.description ? <span>{action.description}</span> : null}
+              </button>
+            ))}
+          </div>
+          <div className={styles.aiAssistantResult}>
+            <strong>{activeAction || "Latest result"}</strong>
+            <ul>
+              {items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          {status || usageEstimate || cacheLabel ? (
+            <p className={styles.aiAssistantMeta}>
+              {status || "AI ready."}
+              {cacheLabel ? ` Cache: ${cacheLabel}.` : ""}
+              {usageEstimate
+                ? ` Estimate: ${usageEstimate.approximateCostLevel}, ${usageEstimate.estimatedInputTokens} input / ${usageEstimate.estimatedOutputTokens} output tokens.`
+                : ""}
+            </p>
+          ) : null}
+        </div>
       ) : null}
-    </article>
+    </div>
   );
 }
 
@@ -4248,6 +4440,11 @@ function ErrorReportsView({
   const [cleanupBusy, setCleanupBusy] = useState(false);
   const [copyMessage, setCopyMessage] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
+  const [errorAiItems, setErrorAiItems] = useState<string[]>([
+    "Choose an AI action to review the currently loaded error reports."
+  ]);
+  const [errorAiStatus, setErrorAiStatus] = useState("");
+  const [errorAiCache, setErrorAiCache] = useState("");
   const isLiveSource = source === "d1_table";
   const isLoadingSource = source === "loading";
   const cleanupConfirmed =
@@ -4268,6 +4465,58 @@ function ErrorReportsView({
     } catch {
       setCopyMessage("Copy unavailable.");
     }
+  }
+
+  function runErrorReportsAssistant(label: string) {
+    if (errorReports.length === 0) {
+      setErrorAiItems(["No error reports are currently loaded."]);
+      setErrorAiStatus(`${label} checked the current report list.`);
+      setErrorAiCache("current list");
+      return;
+    }
+
+    const openReports = errorReports.filter((report) => report.status === "New");
+    const byCode = new Map<string, number>();
+    const byCategory = new Map<string, number>();
+
+    errorReports.forEach((report) => {
+      const code = report.errorCode || report.referenceId || "Unknown";
+      byCode.set(code, (byCode.get(code) || 0) + 1);
+      byCategory.set(report.category || "uncategorized", (byCategory.get(report.category || "uncategorized") || 0) + 1);
+    });
+
+    const topCode = Array.from(byCode.entries()).sort((a, b) => b[1] - a[1])[0];
+    const topCategory = Array.from(byCategory.entries()).sort((a, b) => b[1] - a[1])[0];
+    const latest = errorReports[0];
+
+    if (label.includes("Codex")) {
+      if (latest) {
+        void copyAdminText("Codex prompt", createErrorReportBugPrompt(latest));
+      }
+      setErrorAiItems([
+        latest
+          ? `Copied a safe Codex fix prompt for ${latest.errorCode || latest.referenceId}.`
+          : "No report was available for prompt creation.",
+        "Prompt uses safe admin report fields only."
+      ]);
+    } else if (label.includes("Group")) {
+      setErrorAiItems([
+        `Top repeated code: ${topCode ? `${topCode[0]} (${topCode[1]})` : "none"}.`,
+        `Top category: ${topCategory ? `${topCategory[0]} (${topCategory[1]})` : "none"}.`,
+        `New reports still open: ${openReports.length}.`
+      ]);
+    } else {
+      setErrorAiItems([
+        `Loaded reports: ${errorReports.length}.`,
+        `New reports: ${openReports.length}.`,
+        latest
+          ? `Latest safe issue: ${latest.errorCode || latest.referenceId} on ${latest.pagePath}.`
+          : "No latest issue available."
+      ]);
+    }
+
+    setErrorAiStatus(`${label} ready from current protected report data.`);
+    setErrorAiCache("current reports");
   }
 
   async function updateReportStatus(report: AdminErrorReport, status: AdminErrorReport["status"]) {
@@ -4382,18 +4631,45 @@ function ErrorReportsView({
   return (
     <AdminPageShell
       actions={
-        <button
-          className={styles.dangerAction}
-          disabled={!isLiveSource}
-          onClick={() => {
-            setCleanupDialogOpen(true);
-            setCleanupConfirmation("");
-            setStatusMessage("");
-          }}
-          type="button"
-        >
-          Clear Old Error Reports
-        </button>
+        <div className={styles.pageActionCluster}>
+          <AnalyticsAiWidget
+            actions={[
+              {
+                description: "Summarize visible safe report fields.",
+                label: "Summarize Recent Errors"
+              },
+              {
+                description: "Group reports by repeated codes and categories.",
+                label: "Group Similar Issues"
+              },
+              {
+                description: "Copy a safe Codex prompt for the newest report.",
+                label: "Create Codex Fix Prompt"
+              }
+            ]}
+            cacheLabel={errorAiCache}
+            eyebrow="AI Error Review"
+            fallbackItems={errorAiItems}
+            insight={null}
+            onGenerate={() => runErrorReportsAssistant("Summarize Recent Errors")}
+            onRefresh={() => runErrorReportsAssistant("Summarize Recent Errors")}
+            status={errorAiStatus}
+            title="On-demand report assistant"
+          />
+          <button
+            className={styles.dangerAction}
+            data-admin-tooltip="Clear selected old reports after confirmation"
+            disabled={!isLiveSource}
+            onClick={() => {
+              setCleanupDialogOpen(true);
+              setCleanupConfirmation("");
+              setStatusMessage("");
+            }}
+            type="button"
+          >
+            Clear Old Error Reports
+          </button>
+        </div>
       }
       eyebrow="Reports"
       title="Error Reports"
@@ -4438,6 +4714,8 @@ function ErrorReportsView({
                       <code>{report.errorCode || report.referenceId}</code>
                       <small>{report.referenceId}</small>
                       <button
+                        aria-label={`Copy ${report.errorCode || report.referenceId}`}
+                        data-admin-tooltip="Copy error code"
                         onClick={() =>
                           void copyAdminText("Error code", report.errorCode || report.referenceId)
                         }
@@ -4457,19 +4735,27 @@ function ErrorReportsView({
                   <td>
                     <div className={styles.rowActions}>
                       <button
+                        aria-label={`View details for ${report.errorCode || report.referenceId}`}
+                        className={styles.iconAction}
+                        data-admin-tooltip="View error details"
                         onClick={() => {
                           setSelectedReport(report);
                           setStatusMessage("");
                         }}
                         type="button"
                       >
-                        View
+                        <AdminActionIcon name="eye" />
+                        <span className={styles.visuallyHidden}>View</span>
                       </button>
                       <button
+                        aria-label={`Mark ${report.errorCode || report.referenceId} fixed`}
+                        className={styles.iconAction}
+                        data-admin-tooltip="Mark fixed"
                         onClick={() => void updateReportStatus(report, "Fixed")}
                         type="button"
                       >
-                        Mark Fixed
+                        <AdminActionIcon name="check" />
+                        <span className={styles.visuallyHidden}>Mark Fixed</span>
                       </button>
                     </div>
                   </td>
@@ -4720,6 +5006,8 @@ function BackupCleanupView({
   const [errorCleanupConfirmation, setErrorCleanupConfirmation] = useState("");
   const [message, setMessage] = useState("");
   const [cleanupConfirmOpen, setCleanupConfirmOpen] = useState(false);
+  const [backupConfirmOpen, setBackupConfirmOpen] = useState(false);
+  const [testBackupEmailConfirmOpen, setTestBackupEmailConfirmOpen] = useState(false);
   const errorCleanupConfirmed =
     errorCleanupConfirmation.trim().toUpperCase() === ERROR_REPORT_CLEANUP_CONFIRMATION;
 
@@ -4841,6 +5129,7 @@ function BackupCleanupView({
       }
 
       if (action === "backup") {
+        setBackupConfirmOpen(false);
         setMessage(
           `Backup completed for ${payload.recordCount || 0} analytics records. Notification status: ${
             payload.notificationStatus || "not recorded"
@@ -4850,6 +5139,7 @@ function BackupCleanupView({
         setCleanupConfirmOpen(false);
         setMessage(`${payload.deletedCount || 0} old analytics events cleaned after backup.`);
       } else {
+        setTestBackupEmailConfirmOpen(false);
         setMessage("Test backup email sent to all active admin recipients.");
       }
     } catch {
@@ -4996,7 +5286,7 @@ function BackupCleanupView({
           <button
             className={styles.secondaryAction}
             disabled={Boolean(busyAction)}
-            onClick={() => void runMaintenanceAction("backup")}
+            onClick={() => setBackupConfirmOpen(true)}
             type="button"
           >
             {busyAction === "backup" ? "Running Backup..." : "Run Backup Now"}
@@ -5004,7 +5294,7 @@ function BackupCleanupView({
           <button
             className={styles.secondaryAction}
             disabled={Boolean(busyAction) || !activeStatus.backupEmailConfigured}
-            onClick={() => void runMaintenanceAction("test_backup_email")}
+            onClick={() => setTestBackupEmailConfirmOpen(true)}
             type="button"
           >
             {busyAction === "test_backup_email" ? "Sending..." : "Send Test Backup Email"}
@@ -5127,6 +5417,58 @@ function BackupCleanupView({
       <AdminActionDialog
         footer={
           <>
+            <button onClick={() => setBackupConfirmOpen(false)} type="button">
+              Cancel
+            </button>
+            <button
+              disabled={Boolean(busyAction)}
+              onClick={() => void runMaintenanceAction("backup")}
+              type="button"
+            >
+              {busyAction === "backup" ? "Running..." : "Run Backup"}
+            </button>
+          </>
+        }
+        onClose={() => setBackupConfirmOpen(false)}
+        open={backupConfirmOpen}
+        title="Run Analytics Backup"
+      >
+        <div className={styles.maintenanceDialog}>
+          <p className={styles.dialogCopy}>
+            This creates CSV and XLS backup files for current analytics data and emails them to
+            active admin recipients. No cleanup runs from this action.
+          </p>
+        </div>
+      </AdminActionDialog>
+      <AdminActionDialog
+        footer={
+          <>
+            <button onClick={() => setTestBackupEmailConfirmOpen(false)} type="button">
+              Cancel
+            </button>
+            <button
+              disabled={Boolean(busyAction) || !activeStatus.backupEmailConfigured}
+              onClick={() => void runMaintenanceAction("test_backup_email")}
+              type="button"
+            >
+              {busyAction === "test_backup_email" ? "Sending..." : "Send Test Email"}
+            </button>
+          </>
+        }
+        onClose={() => setTestBackupEmailConfirmOpen(false)}
+        open={testBackupEmailConfirmOpen}
+        title="Send Test Backup Email"
+      >
+        <div className={styles.maintenanceDialog}>
+          <p className={styles.dialogCopy}>
+            This sends a test backup email to active admin recipients so the email backup channel can
+            be verified before cleanup is used.
+          </p>
+        </div>
+      </AdminActionDialog>
+      <AdminActionDialog
+        footer={
+          <>
             <button onClick={() => setCleanupConfirmOpen(false)} type="button">
               Cancel
             </button>
@@ -5245,38 +5587,49 @@ function SettingsView({
       eyebrow="Settings"
       title="Settings"
     >
-      <section className={styles.statusGrid}>
-        <article className={styles.statusCard} data-tone="success">
-          <span>Protected</span>
-          <h3>Admin access</h3>
-          <p>Admin routes and write APIs remain protected behind the current auth foundation.</p>
+      <section className={styles.settingsPanelList} aria-label="Admin settings summary">
+        <article data-tone="success">
+          <div>
+            <strong>Admin access</strong>
+            <span>Admin routes and write APIs remain protected by the current auth foundation.</span>
+          </div>
+          <em>Protected</em>
         </article>
-        <article className={styles.statusCard} data-tone="success">
-          <span>Coach-specific</span>
-          <h3>Hidden error support</h3>
-          <p>
-            Error fallback pages use coach phone, WhatsApp, email, image/logo, and support text
-            first.
-          </p>
+        <article data-tone="success">
+          <div>
+            <strong>Hidden error support</strong>
+            <span>
+              Error fallback pages try coach phone, WhatsApp, email, image/logo, and support text
+              first.
+            </span>
+          </div>
+          <em>Coach-specific</em>
         </article>
-        <article className={styles.statusCard} data-tone="warning">
-          <span>Fallback</span>
-          <h3>Yours Wellness support</h3>
-          <p>
-            Default support appears only when an error fallback has no coach-specific support
-            details.
-          </p>
+        <article data-tone="warning">
+          <div>
+            <strong>Default YW support fallback</strong>
+            <span>Used only when an error fallback has no coach-specific support details.</span>
+          </div>
+          <em>Fallback</em>
         </article>
       </section>
 
-      <div className={styles.statusList}>
-        {control.security.map((item) => (
-          <div data-tone={item.tone} key={item.label}>
-            <strong>{item.label}</strong>
-            <span>{item.status}</span>
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.kicker}>Security Settings</p>
+            <h2>Current protection status</h2>
           </div>
-        ))}
-      </div>
+        </div>
+        <div className={styles.statusList}>
+          {control.security.map((item) => (
+            <div data-tone={item.tone} key={item.label}>
+              <strong>{item.label}</strong>
+              <span>{item.status}</span>
+            </div>
+          ))}
+        </div>
+      </section>
       <p className={styles.securityNote}>
         Strict DB admin role enforcement should stay disabled until the real admin row is verified.
       </p>

@@ -8,7 +8,7 @@ import {
   useRef,
   useState
 } from "react";
-import { AdminActionDialog } from "./admin-dashboard-layout";
+import { AdminActionDialog, AdminActionIcon } from "./admin-dashboard-layout";
 import {
   PublicCoachSitePage,
   type CoachTemplatePreviewInspectSection
@@ -176,10 +176,20 @@ function CoachSiteAvatar({ site }: { site: CoachSiteRecord }) {
   const coachName = site.coachName || "Unnamed coach";
 
   return (
-    <span aria-hidden="true" className={styles.coachAvatar}>
+    <span
+      aria-label={`${coachName} avatar`}
+      className={styles.coachAvatar}
+      data-has-photo={showPhoto ? "true" : "false"}
+      role="img"
+    >
       {showPhoto ? (
         // eslint-disable-next-line @next/next/no-img-element -- Coach images can be R2/external URLs and need safe fallback behavior.
-        <img alt="" loading="lazy" onError={() => setFailedPhotoUrl(photoUrl)} src={photoUrl} />
+        <img
+          alt={`${coachName} coach photo`}
+          loading="lazy"
+          onError={() => setFailedPhotoUrl(photoUrl)}
+          src={photoUrl}
+        />
       ) : (
         <span>{getCoachSiteInitials(coachName)}</span>
       )}
@@ -1743,7 +1753,12 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
           <p className={styles.kicker}>Coach Sites</p>
           <h2>{mode === "create" ? "Website creator" : "Referral websites"}</h2>
         </div>
-        <button className={styles.primaryAction} onClick={() => openCreatorDialog()} type="button">
+        <button
+          className={styles.primaryAction}
+          data-admin-tooltip="Open the multi-step website builder"
+          onClick={() => openCreatorDialog()}
+          type="button"
+        >
           Open Website Creator
         </button>
       </div>
@@ -1785,6 +1800,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
               aria-controls="archived-coaches-menu"
               aria-expanded={archivedMenuOpen}
               className={styles.secondaryAction}
+              data-admin-tooltip="Show archived coach sites"
               onClick={() => setArchivedMenuOpen((current) => !current)}
               type="button"
             >
@@ -1834,30 +1850,46 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
                             <td>
                               <div className={styles.rowActions}>
                                 <button
+                                  aria-label={`View ${site.coachName}`}
+                                  className={styles.iconAction}
+                                  data-admin-tooltip="View details"
                                   onClick={() => setDialog({ site, type: "manage" })}
                                   type="button"
                                 >
-                                  View
+                                  <AdminActionIcon name="eye" />
+                                  <span className={styles.visuallyHidden}>View</span>
                                 </button>
                                 <button
+                                  aria-label={`Preview ${site.coachName}`}
+                                  className={styles.iconAction}
+                                  data-admin-tooltip="Preview site"
                                   onClick={() => setDialog({ site, type: "preview" })}
                                   type="button"
                                 >
-                                  Preview
+                                  <AdminActionIcon name="open" />
+                                  <span className={styles.visuallyHidden}>Preview</span>
                                 </button>
                                 <button
+                                  aria-label={`Reactivate ${site.coachName}`}
+                                  className={styles.iconAction}
+                                  data-admin-tooltip="Restore this archived site"
                                   data-tone="success"
                                   onClick={() => setDialog({ site, type: "reactivate" })}
                                   type="button"
                                 >
-                                  Reactivate
+                                  <AdminActionIcon name="restore" />
+                                  <span className={styles.visuallyHidden}>Reactivate</span>
                                 </button>
                                 <button
+                                  aria-label={`Delete ${site.coachName} permanently`}
+                                  className={styles.iconAction}
+                                  data-admin-tooltip="Delete permanently"
                                   data-tone="danger"
                                   onClick={() => setDialog({ site, type: "remove" })}
                                   type="button"
                                 >
-                                  Delete Permanently
+                                  <AdminActionIcon name="trash" />
+                                  <span className={styles.visuallyHidden}>Delete Permanently</span>
                                 </button>
                               </div>
                             </td>
@@ -1913,29 +1945,48 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
                         <td>{formatCoachLastEdited(site)}</td>
                         <td>
                           <div className={styles.rowActions}>
-                            <button onClick={() => openCreatorDialog(site, 0)} type="button">
-                              Continue Editing
+                            <button
+                              aria-label={`Continue editing ${site.coachName}`}
+                              className={styles.iconAction}
+                              data-admin-tooltip="Continue editing draft"
+                              onClick={() => openCreatorDialog(site, 0)}
+                              type="button"
+                            >
+                              <AdminActionIcon name="edit" />
+                              <span className={styles.visuallyHidden}>Continue Editing</span>
                             </button>
                             <button
+                              aria-label={`Preview ${site.coachName}`}
+                              className={styles.iconAction}
+                              data-admin-tooltip="Preview draft"
                               onClick={() => setDialog({ site, type: "preview" })}
                               type="button"
                             >
-                              Preview
+                              <AdminActionIcon name="eye" />
+                              <span className={styles.visuallyHidden}>Preview</span>
                             </button>
                             <button
+                              aria-label={`Publish ${site.coachName}`}
+                              className={styles.iconAction}
+                              data-admin-tooltip="Publish draft"
                               onClick={() => {
                                 void publishDraftSite(site);
                               }}
                               type="button"
                             >
-                              Publish
+                              <AdminActionIcon name="check" />
+                              <span className={styles.visuallyHidden}>Publish</span>
                             </button>
                             <button
+                              aria-label={`Delete draft for ${site.coachName}`}
+                              className={styles.iconAction}
+                              data-admin-tooltip="Delete draft"
                               data-tone="danger"
                               onClick={() => setDialog({ site, type: "delete-draft" })}
                               type="button"
                             >
-                              Delete Draft
+                              <AdminActionIcon name="trash" />
+                              <span className={styles.visuallyHidden}>Delete Draft</span>
                             </button>
                           </div>
                         </td>
@@ -1987,11 +2038,14 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
                       </td>
                       <td>
                         <button
-                          className={styles.secondaryAction}
+                          aria-label={`Manage ${site.coachName}`}
+                          className={styles.iconAction}
+                          data-admin-tooltip="Manage coach site"
                           onClick={() => setDialog({ site, type: "manage" })}
                           type="button"
                         >
-                          Manage
+                          <AdminActionIcon name="settings" />
+                          <span className={styles.visuallyHidden}>Manage</span>
                         </button>
                       </td>
                     </tr>
@@ -3358,6 +3412,7 @@ function WizardFooter({
     <>
       <button
         className={styles.secondaryAction}
+        data-admin-tooltip="Close the website creator"
         disabled={publishSubmitting}
         onClick={onClose}
         type="button"
@@ -3366,6 +3421,7 @@ function WizardFooter({
       </button>
       <button
         className={styles.secondaryAction}
+        data-admin-tooltip="Go back one builder step"
         disabled={wizardStep === 0 || aiSubmitting || publishSubmitting}
         onClick={() => setWizardStep(Math.max(wizardStep - 1, 0))}
         type="button"
@@ -3374,6 +3430,7 @@ function WizardFooter({
       </button>
       <button
         className={styles.secondaryAction}
+        data-admin-tooltip="Save progress and continue later from Drafts"
         disabled={aiSubmitting || publishSubmitting}
         onClick={() => {
           void onSaveDraft();
@@ -3385,6 +3442,11 @@ function WizardFooter({
       {wizardStep < wizardSteps.length - 1 ? (
         <button
           className={styles.primaryAction}
+          data-admin-tooltip={
+            wizardStep === 3
+              ? "Generate copy and open the preview step"
+              : "Continue to the next builder step"
+          }
           disabled={aiSubmitting || publishSubmitting}
           onClick={() => {
             if (wizardStep === 3) {
@@ -3401,6 +3463,7 @@ function WizardFooter({
       ) : (
         <button
           className={styles.primaryAction}
+          data-admin-tooltip="Publish after validation and public-page verification"
           disabled={aiSubmitting || publishSubmitting}
           onClick={() => {
             void onPublish();
