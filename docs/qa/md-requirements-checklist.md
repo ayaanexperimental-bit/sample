@@ -3,7 +3,7 @@
 Test date: 2026-06-05
 Production URL tested: https://ywcoach.com
 Authenticated admin test: completed through existing production session. Gmail OTP value was not recorded in this file.
-Latest deployments tested: https://c701da4b.ywcoach.pages.dev, https://1d6159d6.ywcoach.pages.dev, https://bdf537c4.ywcoach.pages.dev, https://85e4c304.ywcoach.pages.dev, https://1a57f24b.ywcoach.pages.dev, https://14f82bbb.ywcoach.pages.dev, and https://ywcoach.com
+Latest deployments tested: https://c701da4b.ywcoach.pages.dev, https://1d6159d6.ywcoach.pages.dev, https://bdf537c4.ywcoach.pages.dev, https://85e4c304.ywcoach.pages.dev, https://1a57f24b.ywcoach.pages.dev, https://14f82bbb.ywcoach.pages.dev, https://1d35b67e.ywcoach.pages.dev, and https://ywcoach.com
 
 ## Summary
 
@@ -28,7 +28,9 @@ Critical production bugs fixed in this pass: 6
 - 2026-06-05: Fixed and deployed admin typo subpath recovery for `/admil/dashboard`, `/admim/dashboard`, `/admn/dashboard`, `/adminn/dashboard`, and `/admindashboard/overview`. Authenticated Browser verification confirmed `/admil/dashboard` redirects to `/admin/dashboard` with the active admin session, no `YW-ERR-404`, no Contact Support fallback, and no console errors.
 - 2026-06-05: Completed the second INSTR.MD performance pass: Website Creator preview memoization was hardened with a stable theme callback, template-preview Next RSC `.txt` prefetch misses now return 204, paid-page WebGL background is gated to real desktop/no reduced motion with a CSS fallback elsewhere, and iframe allowlists were cleaned to remove unsupported `web-share` while allowing `compute-pressure`.
 - 2026-06-05: Final responsive production matrix passed 21/21 checks across 320/375/390/414/768/1024/1440px for Coach Template Preview, `/coach/gyana-ranjan`, and `/go/gyana-pcos-51`: no horizontal overflow, no `YW-ERR-404`, no framework overlay, no unexpected Contact Support fallback, and no console warnings/errors.
-- Commands verified in this addendum: `pnpm lint`, `pnpm typecheck`, `pnpm test:admin-security`, `pnpm build`, and `pnpm build:pages-functions`.
+- 2026-06-05: Redeployed production so Cloudflare Pages source now matches repo commit `1d01599`. Live Browser checks confirm `/admin/dashboard`, `/admin_panel`, `/admin%20panel`, and `/admil/dashboard` open the admin dashboard/login flow without `YW-ERR-404` or unexpected Contact Support fallback.
+- 2026-06-05: Hardened `/support/error` for safe error-code query handling and prefetch-safe support links. Local Pages preview confirms `/support/error?code=YW-ERR-404` displays copyable `YW-ERR-404` with no horizontal overflow and no CSP console warning across 320/375/390/414/768/1024/1440px.
+- Commands verified in this addendum: `pnpm lint`, `pnpm typecheck`, `pnpm test:admin-security`, `pnpm build`, `pnpm build:pages`, and `pnpm build:pages-functions`.
 
 ## Checklist
 

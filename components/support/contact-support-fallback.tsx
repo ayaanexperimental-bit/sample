@@ -116,7 +116,7 @@ export function ContactSupportFallback({
     <main className={styles.shell}>
       <section className={styles.panel} aria-labelledby="support-fallback-title">
         <div className={styles.brandBar}>
-          <Link className={styles.brand} href="/">
+          <Link className={styles.brand} href="/" prefetch={false}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img alt="YW Nutritech" src="/images/yw-nutritech-logo.png" />
             <span>
@@ -185,7 +185,9 @@ export function ContactSupportFallback({
 
             <div className={styles.actions}>
               <a href={support.primaryHref}>Contact Support</a>
-              <Link href="/">Go Back Home</Link>
+              <Link href="/" prefetch={false}>
+                Go Back Home
+              </Link>
               {onReset ? (
                 <button onClick={onReset} type="button">
                   Try Again
