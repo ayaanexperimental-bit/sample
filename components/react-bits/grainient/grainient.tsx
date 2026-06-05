@@ -190,6 +190,7 @@ export default function Grainient({
     const lowPowerVisuals = window.matchMedia(LOW_POWER_VISUAL_QUERY);
 
     if (reducedMotion.matches) {
+      container.dataset.ywGrainientRenderer = "reduced-motion";
       return;
     }
 
@@ -208,11 +209,13 @@ export default function Grainient({
         )
       });
     } catch {
+      container.dataset.ywGrainientRenderer = "css-fallback";
       return;
     }
 
     const gl = renderer.gl;
     const canvas = gl.canvas;
+    container.dataset.ywGrainientRenderer = "webgl-active";
     canvas.style.width = "100%";
     canvas.style.height = "100%";
     canvas.style.display = "block";
@@ -324,6 +327,7 @@ export default function Grainient({
       reducedMotion.removeEventListener("change", syncPlayback);
       lowPowerVisuals.removeEventListener("change", syncPlayback);
       ctxMap.delete(container);
+      delete container.dataset.ywGrainientRenderer;
       canvas.remove();
       gl.getExtension("WEBGL_lose_context")?.loseContext();
     };

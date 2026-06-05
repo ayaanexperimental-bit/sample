@@ -32,20 +32,22 @@ export function getAdaptiveVisualCapability(win: Window = window): AdaptiveVisua
   const strictWebgl2 = supportsWebgl2(win, true);
   const basicWebgl2 = strictWebgl2 || supportsWebgl2(win, false);
 
-  if (reducedMotion || saveData || slowNetwork || nav.webdriver || !basicWebgl2) {
+  if (reducedMotion || saveData || slowNetwork || nav.webdriver) {
     return "static";
   }
 
   const memoryKnown = memory > 0;
   const coresKnown = cores > 0;
   const clearlyConstrained =
-    (memoryKnown && memory <= 2) ||
-    (coresKnown && cores <= 2) ||
-    (coarsePointer && memoryKnown && memory < 3) ||
-    (coarsePointer && coresKnown && cores < 4) ||
+    (memoryKnown && coresKnown && memory <= 2 && cores <= 4) ||
+    (memoryKnown && !coresKnown && memory <= 1) ||
+    (coresKnown && !memoryKnown && cores <= 2) ||
     (coarsePointer &&
       dpr >= 3.5 &&
-      ((memoryKnown && memory < 4) || (coresKnown && cores < 6)));
+      memoryKnown &&
+      coresKnown &&
+      memory <= 2 &&
+      cores <= 4);
 
   if (clearlyConstrained) {
     return "static";
@@ -59,7 +61,7 @@ export function getAdaptiveVisualCapability(win: Window = window): AdaptiveVisua
     return "reduced";
   }
 
-  return "reduced";
+  return basicWebgl2 ? "reduced" : "static";
 }
 
 export function watchAdaptiveVisualCapability(
