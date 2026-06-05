@@ -82,6 +82,7 @@ function isAdminRecoveryPath(pathname: string) {
     .replace(/\/{2,}/g, "/")
     .replace(/\/+$/, "");
   const safePathname = normalizedPathname || "/";
+  const compactPathname = safePathname.replace(/[-_]/g, "");
 
   if (safePathname === "/admin" || safePathname.startsWith("/admin/")) {
     return true;
@@ -104,7 +105,13 @@ function isAdminRecoveryPath(pathname: string) {
     safePathname.startsWith("/admin_dashboard") ||
     safePathname.startsWith("/admin-panel") ||
     safePathname.startsWith("/admin_panel") ||
-    safePathname.startsWith("/adminpanel")
+    safePathname.startsWith("/adminpanel") ||
+    compactPathname.startsWith("/admindashboard") ||
+    compactPathname.startsWith("/admindashbord") ||
+    compactPathname.startsWith("/admindashbaord") ||
+    compactPathname.startsWith("/adminpanel") ||
+    compactPathname.startsWith("/adminpanal") ||
+    compactPathname.startsWith("/adminpannel")
   ) {
     return true;
   }

@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import type { CSSProperties, ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AmbientBackground } from "@/components/landing/ambient-background";
 import { GlassCardInteractions } from "@/components/landing/glass-card-interactions";
 import { Infinite3DTestimonialsCarousel } from "@/components/landing/infinite-3d-testimonials-carousel";
@@ -550,6 +550,7 @@ export function LevelupClone() {
   const [slotsLeft, setSlotsLeft] = useState(7);
   const liveViewerCount = useLiveViewerCount();
   const [stickyVisible, setStickyVisible] = useState(false);
+  const stickyVisibleRef = useRef(false);
 
   useEffect(() => {
     void recordPaidAnalyticsEvent("paid_landing_view");
@@ -566,24 +567,33 @@ export function LevelupClone() {
     slotsTimer = window.setTimeout(dropSlot, (30 + Math.floor(Math.random() * 20)) * 1000);
 
     let stickyFrame = 0;
+    let heroElement: HTMLElement | null = null;
+    let registrationElement: HTMLElement | null = null;
+    let footerElement: HTMLElement | null = null;
     const handleScroll = () => {
       if (stickyFrame) return;
 
       stickyFrame = window.requestAnimationFrame(() => {
         stickyFrame = 0;
-        const hero = document.querySelector<HTMLElement>(".levelup-hero");
-        const registration = document.getElementById("registration");
-        const footer = document.querySelector<HTMLElement>(".levelup-footer");
+        heroElement ||= document.querySelector<HTMLElement>(".levelup-hero");
+        registrationElement ||= document.getElementById("registration");
+        footerElement ||= document.querySelector<HTMLElement>(".levelup-footer");
 
-        const heroCrossed = hero ? hero.getBoundingClientRect().bottom <= 0 : window.scrollY > 400;
-        const registrationReached = registration
-          ? registration.getBoundingClientRect().top <= window.innerHeight * 0.82
+        const heroCrossed = heroElement
+          ? heroElement.getBoundingClientRect().bottom <= 0
+          : window.scrollY > 400;
+        const registrationReached = registrationElement
+          ? registrationElement.getBoundingClientRect().top <= window.innerHeight * 0.82
           : false;
-        const footerReached = footer
-          ? footer.getBoundingClientRect().top <= window.innerHeight
+        const footerReached = footerElement
+          ? footerElement.getBoundingClientRect().top <= window.innerHeight
           : false;
+        const nextStickyVisible = heroCrossed && !registrationReached && !footerReached;
 
-        setStickyVisible(heroCrossed && !registrationReached && !footerReached);
+        if (stickyVisibleRef.current !== nextStickyVisible) {
+          stickyVisibleRef.current = nextStickyVisible;
+          setStickyVisible(nextStickyVisible);
+        }
       });
     };
     handleScroll();

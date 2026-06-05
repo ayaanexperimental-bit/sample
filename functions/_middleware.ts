@@ -312,6 +312,8 @@ function isAdminLoginRecoveryPath(pathname: string) {
 }
 
 function isAdminDashboardRecoveryPath(pathname: string) {
+  const compactPathname = pathname.replace(/[-_]/g, "");
+
   return (
     pathname === "/admil" ||
     pathname.startsWith("/admil/") ||
@@ -329,7 +331,13 @@ function isAdminDashboardRecoveryPath(pathname: string) {
     pathname.startsWith("/admin_dashboard") ||
     pathname.startsWith("/admin-panel") ||
     pathname.startsWith("/admin_panel") ||
-    pathname.startsWith("/adminpanel")
+    pathname.startsWith("/adminpanel") ||
+    compactPathname.startsWith("/admindashboard") ||
+    compactPathname.startsWith("/admindashbord") ||
+    compactPathname.startsWith("/admindashbaord") ||
+    compactPathname.startsWith("/adminpanel") ||
+    compactPathname.startsWith("/adminpanal") ||
+    compactPathname.startsWith("/adminpannel")
   );
 }
 
