@@ -2915,6 +2915,7 @@ function AnalyticsAiWidget({
     if (activeAction.includes("Prompt")) {
       return {
         body: "Preparing a safe Codex prompt from protected report fields only.",
+        steps: ["Reading visible reports", "Building safe prompt", "Preparing result"],
         title: "Generating report..."
       };
     }
@@ -2922,6 +2923,7 @@ function AnalyticsAiWidget({
     if (activeAction.includes("Group")) {
       return {
         body: "Grouping visible reports by repeated error codes and categories.",
+        steps: ["Collecting reports", "Grouping repeated issues", "Preparing result"],
         title: "Generating report..."
       };
     }
@@ -2929,6 +2931,7 @@ function AnalyticsAiWidget({
     if (activeAction.includes("Predict")) {
       return {
         body: "Reviewing current counters and estimating the next admin risk window.",
+        steps: ["Reading counters", "Reviewing movement", "Preparing prediction"],
         title: "Generating report..."
       };
     }
@@ -2937,89 +2940,116 @@ function AnalyticsAiWidget({
       body: activeAction
         ? `Running ${activeAction}. Results will appear in this same panel.`
         : "Reviewing the current protected admin data. Results will appear here.",
+      steps: ["Collecting data", "Reviewing trends", "Preparing report"],
       title: "Generating report..."
     };
   }
 
   const workingCopy = getWorkingCopy();
   const panel = open ? (
-    <div
-      aria-busy={busy}
-      className={styles.aiAssistantPanel}
-      data-busy={busy ? "true" : "false"}
-      role="dialog"
-    >
-      <div className={styles.aiAssistantHeader}>
-        <div>
-          <p className={styles.kicker}>{eyebrow}</p>
-          <h3>{title}</h3>
-        </div>
-        <button aria-label="Close AI assistant" onClick={() => setOpen(false)} type="button">
-          Close
-        </button>
-      </div>
-      <div className={styles.aiAssistantActions} aria-label="AI actions">
-        {menuActions.map((action) => (
+    <>
+      <div
+        aria-hidden="true"
+        className={styles.aiAssistantScrim}
+        onClick={() => {
+          if (!busy) setOpen(false);
+        }}
+      />
+      <div
+        aria-busy={busy}
+        aria-label={title}
+        aria-modal="true"
+        className={styles.aiAssistantPanel}
+        data-busy={busy ? "true" : "false"}
+        role="dialog"
+      >
+        <div className={styles.aiAssistantHeader}>
+          <div>
+            <p className={styles.kicker}>{eyebrow}</p>
+            <h3>{title}</h3>
+            <span>{busy ? workingCopy.title : status || "AI ready."}</span>
+          </div>
           <button
-            aria-busy={busy && activeAction === action.label}
-            data-active={activeAction === action.label ? "true" : "false"}
+            aria-label="Close AI assistant"
             disabled={busy}
-            key={action.label}
-            onClick={() => void runAction(action)}
+            onClick={() => setOpen(false)}
             type="button"
           >
-            <strong>{action.label}</strong>
-            {action.description ? <span>{action.description}</span> : null}
+            {busy ? "Working" : "Close"}
           </button>
-        ))}
-      </div>
-      {busy ? (
-        <div className={styles.aiAssistantLoading} aria-live="polite" role="status">
-          <span aria-hidden="true" />
-          <div>
-            <strong>{workingCopy.title}</strong>
-            <p>{workingCopy.body}</p>
+        </div>
+        <div className={styles.aiAssistantActions} aria-label="AI actions">
+          {menuActions.map((action) => (
+            <button
+              aria-busy={busy && activeAction === action.label}
+              data-active={activeAction === action.label ? "true" : "false"}
+              disabled={busy}
+              key={action.label}
+              onClick={() => void runAction(action)}
+              type="button"
+            >
+              <strong>{action.label}</strong>
+              {action.description ? <span>{action.description}</span> : null}
+            </button>
+          ))}
+        </div>
+        {busy ? (
+          <div className={styles.aiAssistantLoading} aria-live="polite" role="status">
+            <span aria-hidden="true" />
+            <div>
+              <strong>{workingCopy.title}</strong>
+              <p>{workingCopy.body}</p>
+              <ol>
+                {workingCopy.steps.map((step, index) => (
+                  <li key={step} data-active={index === 1 ? "true" : "false"}>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </div>
           </div>
-        </div>
-      ) : null}
-      {assistantError ? (
-        <div className={styles.aiAssistantError} role="status">
-          {assistantError}
-        </div>
-      ) : null}
-      {!busy ? (
-        <div className={styles.aiAssistantResult} aria-live="polite">
-          <strong>{activeAction || "Latest result"}</strong>
-          <ul>
-            {items.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      {status || usageEstimate || cacheLabel ? (
-        <p className={styles.aiAssistantMeta}>
-          {status || "AI ready."}
-          {cacheLabel ? ` Cache: ${cacheLabel}.` : ""}
-          {usageEstimate
-            ? ` Estimate: ${usageEstimate.approximateCostLevel}, ${usageEstimate.estimatedInputTokens} input / ${usageEstimate.estimatedOutputTokens} output tokens.`
-            : ""}
-        </p>
-      ) : null}
-    </div>
+        ) : null}
+        {assistantError ? (
+          <div className={styles.aiAssistantError} role="status">
+            {assistantError}
+          </div>
+        ) : null}
+        {!busy ? (
+          <div className={styles.aiAssistantResult} aria-live="polite">
+            <strong>{activeAction || "Latest result"}</strong>
+            <ul>
+              {items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {status || usageEstimate || cacheLabel ? (
+          <p className={styles.aiAssistantMeta}>
+            {status || "AI ready."}
+            {cacheLabel ? ` Cache: ${cacheLabel}.` : ""}
+            {usageEstimate
+              ? ` Estimate: ${usageEstimate.approximateCostLevel}, ${usageEstimate.estimatedInputTokens} input / ${usageEstimate.estimatedOutputTokens} output tokens.`
+              : ""}
+          </p>
+        ) : null}
+      </div>
+    </>
   ) : null;
 
   return (
     <div className={styles.aiAssistant} data-open={open ? "true" : "false"}>
       <button
         aria-expanded={open}
+        aria-busy={busy}
         aria-label={eyebrow}
         className={styles.aiAssistantButton}
         data-admin-tooltip={eyebrow}
+        data-loading={busy ? "true" : "false"}
         onClick={() => setOpen((current) => !current)}
         type="button"
       >
-        AI
+        {busy ? "..." : "AI"}
       </button>
       {panel && typeof document !== "undefined" ? createPortal(panel, document.body) : panel}
     </div>
@@ -3103,18 +3133,36 @@ function AdminActivityCenter({
 function ActionProgressCard({
   label,
   progress,
+  variant = "standard",
   steps
 }: {
   label: string;
   progress: number;
+  variant?: "delete" | "standard";
   steps: string[];
 }) {
   const safeProgress = Math.max(8, Math.min(100, Math.round(progress)));
 
   return (
-    <div className={styles.actionProgressCard} role="status" aria-live="polite">
+    <div
+      className={styles.actionProgressCard}
+      data-variant={variant}
+      role="status"
+      aria-live="polite"
+    >
       <div>
-        <span aria-hidden="true" />
+        <span
+          aria-hidden="true"
+          className={variant === "delete" ? styles.deleteProgressIcon : undefined}
+        >
+          {variant === "delete" ? (
+            <>
+              <i />
+              <i />
+              <b />
+            </>
+          ) : null}
+        </span>
         <strong>{label}</strong>
       </div>
       <div
@@ -3136,6 +3184,12 @@ function ActionProgressCard({
       </ul>
     </div>
   );
+}
+
+function waitForActionFeedback(ms = 650) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 }
 
 function formatAdminActivityTime(value: string) {
@@ -4798,7 +4852,9 @@ function ErrorReportsView({
     [errorReports, reportFilter]
   );
   const promptReport =
-    visibleErrorReports[0] || errorReports.find(isActiveErrorReport) || errorReports[0] || null;
+    reportFilter === "all"
+      ? visibleErrorReports[0] || null
+      : visibleErrorReports[0] || null;
 
   useEffect(() => {
     if (!copyMessage) return;
@@ -5057,13 +5113,16 @@ function ErrorReportsView({
         return;
       }
 
-      setCleanupStep("Refreshing report list");
+      const deletedCount = payload.deletedCount || 0;
+      setCleanupStep("Updating Error Reports list");
       await refreshReports();
+      setCleanupStep(`${deletedCount} reports cleared successfully`);
+      setStatusMessage(`${deletedCount} old error reports cleared.`);
+      await waitForActionFeedback();
       setCleanupDialogOpen(false);
       setCleanupConfirmation("");
-      setStatusMessage(`${payload.deletedCount || 0} old error reports cleared.`);
       onAdminActivity({
-        detail: `${payload.deletedCount || 0} old error reports cleared.`,
+        detail: `${deletedCount} old error reports cleared.`,
         label: "Error Reports",
         status: "success"
       });
@@ -5289,7 +5348,7 @@ function ErrorReportsView({
       <AdminActionDialog
         footer={
           <>
-            <button onClick={() => setCleanupDialogOpen(false)} type="button">
+            <button disabled={cleanupBusy} onClick={() => setCleanupDialogOpen(false)} type="button">
               Cancel
             </button>
             <button
@@ -5302,7 +5361,9 @@ function ErrorReportsView({
             </button>
           </>
         }
-        onClose={() => setCleanupDialogOpen(false)}
+        onClose={() => {
+          if (!cleanupBusy) setCleanupDialogOpen(false);
+        }}
         open={cleanupDialogOpen}
         title="Clear Old Error Reports"
         tone="danger"
@@ -5345,13 +5406,22 @@ function ErrorReportsView({
           </label>
           {cleanupBusy ? (
             <ActionProgressCard
-              label="Clearing old reports"
-              progress={cleanupStep.includes("Refreshing") ? 76 : 42}
+              label={
+                cleanupStep.includes("successfully") ? "Cleared successfully" : "Clearing old reports"
+              }
+              progress={
+                cleanupStep.includes("successfully")
+                  ? 100
+                  : cleanupStep.includes("Updating")
+                    ? 84
+                    : 46
+              }
               steps={[
                 "Confirmation checked",
                 cleanupStep || "Preparing cleanup request",
                 "Report list will refresh automatically"
               ]}
+              variant="delete"
             />
           ) : null}
         </div>
@@ -5602,7 +5672,7 @@ function BackupCleanupView({
       }
 
       const deletedCount = payload.deletedCount || 0;
-      setErrorCleanupStep("Refreshing maintenance status");
+      setErrorCleanupStep("Updating maintenance status");
       setStatus((current) =>
         current
           ? {
@@ -5615,9 +5685,11 @@ function BackupCleanupView({
             }
           : current
       );
+      setErrorCleanupStep(`${deletedCount} reports cleared successfully`);
+      setMessage(`${deletedCount} old error reports cleared. No analytics or coach data was touched.`);
+      await waitForActionFeedback();
       setErrorCleanupConfirmOpen(false);
       setErrorCleanupConfirmation("");
-      setMessage(`${deletedCount} old error reports cleared. No analytics or coach data was touched.`);
       onAdminActivity({
         detail: `${deletedCount} old error reports cleared from maintenance.`,
         label: "Backup/Cleanup",
@@ -6131,7 +6203,11 @@ function BackupCleanupView({
       <AdminActionDialog
         footer={
           <>
-            <button onClick={() => setErrorCleanupConfirmOpen(false)} type="button">
+            <button
+              disabled={errorCleanupBusy}
+              onClick={() => setErrorCleanupConfirmOpen(false)}
+              type="button"
+            >
               Cancel
             </button>
             <button
@@ -6144,7 +6220,9 @@ function BackupCleanupView({
             </button>
           </>
         }
-        onClose={() => setErrorCleanupConfirmOpen(false)}
+        onClose={() => {
+          if (!errorCleanupBusy) setErrorCleanupConfirmOpen(false);
+        }}
         open={errorCleanupConfirmOpen}
         title="Clear Old Error Reports"
         tone="danger"
@@ -6187,13 +6265,24 @@ function BackupCleanupView({
           </label>
           {errorCleanupBusy ? (
             <ActionProgressCard
-              label="Clearing old reports"
-              progress={errorCleanupStep.includes("Refreshing") ? 78 : 44}
+              label={
+                errorCleanupStep.includes("successfully")
+                  ? "Cleared successfully"
+                  : "Clearing old reports"
+              }
+              progress={
+                errorCleanupStep.includes("successfully")
+                  ? 100
+                  : errorCleanupStep.includes("Updating")
+                    ? 84
+                    : 46
+              }
               steps={[
                 "Confirmation checked",
                 errorCleanupStep || "Preparing stale report cleanup",
                 "Analytics and coach data stay untouched"
               ]}
+              variant="delete"
             />
           ) : null}
         </div>

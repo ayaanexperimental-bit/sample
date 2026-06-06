@@ -1,6 +1,6 @@
 # Heavy Failure-Point Reliability Audit
 
-Date: 2026-06-06
+Date: 2026-06-07
 
 Source of truth used: `C:\Users\Yours Wellness\Desktop\robust testing.md`
 
@@ -12,6 +12,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 
 - Admin AI buttons now show a body-level working/result drawer instead of cramped content spilling into the page; the drawer is viewport-contained on desktop and mobile.
 - Error Reports now default to Active issues, and Mark Fixed updates the UI immediately without requiring refresh.
+- Clear Old Error Reports now has confirmation-locked destructive progress feedback, a bin animation, duplicate-click protection, refreshed counts/list state, and a brief success state before the dialog closes.
 - Save Draft now has duplicate-click protection and a visible `Saving...` state.
 - Coach Website Creator copy generation now uses a broader structured content slot registry so public and preview templates can render niche-aware content instead of generic hardcoded placeholder sections.
 - Coach Website Creator Inspect mode now opens a focused editor for the selected preview section, supports manual edits, and can regenerate that specific section through the existing server-side AI copy flow.
@@ -24,7 +25,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 |---|---:|---:|---|---|---|---|---|
 | Universal action feedback for serious admin actions | Partial | Yes | Partial | Scope is platform-wide; current pass targeted AI, Error Reports, Save Draft, Publish panel already present | Added `ActionToast`, AI busy drawer, Mark Fixed loading, Save Draft busy state | Passed targeted flows | Full activity center and every single admin action still need broader production click pass |
 | Button-level micro feedback | Partial | Yes | Partial | Save Draft button did not show loading | Added `draftSubmitting` state/ref and `Saving...` text | Delayed POST test passed | Some existing actions still use older inline status only |
-| AI report/generation feedback | Yes | Yes | Pass | AI panel content was cramped, mixed with page content, and mobile fixed positioning could be clipped by admin scroll | Moved AI drawer into a React portal, added viewport-contained desktop/mobile sizing, scroll containment, working text, async action handling, error message | Desktop and 390px mobile portal screenshots verified; no horizontal overflow | None for current AI panel |
+| AI report/generation feedback | Yes | Yes | Pass | AI panel content was cramped, mixed with page content, and mobile fixed positioning could be clipped by admin scroll | Moved AI drawer into a React portal, added backdrop, viewport-contained desktop/mobile sizing, scroll containment, working steps, async action handling, and error message | Desktop and 390px mobile rebuilt-server screenshots verified; no horizontal overflow | None for current AI panel |
 | Result highlight after actions | Partial | Yes | Pass for Error Reports | Fixed report stayed visually stale in Active list | Added optimistic report status update and highlight marker | Mark Fixed test passed | Draft row highlight is visual through list update, not a timed pulse yet |
 | Full overlay only for long-running actions | Partial | Yes | Pass for tested flows | Publish already had progress panel; AI used cramped popover | AI drawer made compact; publish panel retained | Screenshots passed | Backup/Cleanup animation not fully covered in this edit |
 | Real-time UI updates after mutation | Yes for Error Reports and draft save | Yes | Pass | Mark Fixed remained in Active list in previous UX | Optimistic local state update, refresh with preserved updated status, close detail dialog on Fixed/Ignored | Active count 2 -> 1, Fixed tab shows item, All tab shows item | Production live D1 test still recommended after deploy |
@@ -34,7 +35,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 | Apply feedback to Publish | Yes | Build/visual | Pass | Previous work already had progress; current change preserved it | Publish panel keeps copy link hidden until verified success | Build passed; code inspected | Full production publish test needs real coach data/API session |
 | Apply feedback to Error Reports Mark Fixed | Yes | Yes | Pass | Fixed item remained in active list | Fixed filters/state/refetch/status message | Passed UI flow | None |
 | Error Report filters Active/New/Reviewing/Fixed/Ignored/All | Yes | Yes | Pass | Needed active exclusion of Fixed/Ignored | Existing filters verified with fixed flow | Active excludes Fixed; Fixed/All include item | None |
-| Clear Old Error Reports feedback | Partial | Code inspected | Partial | Clear flow exists but delete animation is not a full dustbin/progress animation | Existing confirmation + busy state retained | Not fully retested in this pass | Needs broader Backup/Cleanup/Error Reports production pass |
+| Clear Old Error Reports feedback | Yes | Yes | Pass | Clearing old reports could complete too silently and close before the admin saw progress | Added destructive progress card variant with bin animation, busy cancel/close guard, refreshed report list, success message, and short confirmation hold before closing | Rebuilt local production UI test passed: delete icon visible, success text shown, no overflow | Production live D1 pass still recommended after deploy |
 | Full template text slots dynamic/editable | Yes | Yes | Pass | Several visible sections still came from hardcoded generic text | Added content slot registry, expanded form/content fields, AI schema, public React renderer, Cloudflare renderer, and focused section editor | Build, public route tests, and local Website Creator preview tests passed | None for section-level slot editing |
 | AI generates structured full website content object | Yes | Typecheck/build | Pass | AI schema only covered a few sections | Expanded JSON schema and required fields from registry | Typecheck/build passed | Live OpenAI production generation not run in this pass to avoid creating fake production records |
 | Universal Inspect click-to-edit | Yes | Yes | Pass | Inspect mode selected sections but did not open a focused section editor | Added selected-section editor with content-only fields and preview-hotspot selection support | Preview hotspot click opened Hero copy editor; manual edit rendered in preview; no overflow | None for section-level inspect editing |
@@ -55,6 +56,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 | Error Reports | Mark one New report Fixed | Report disappears from Active immediately | Active count changed from 2 to 1; fixed report removed from Active | Pass |
 | Error Reports | Fixed tab | Fixed report appears | Fixed tab showed the report | Pass |
 | Error Reports | All tab | Fixed report remains visible with status | All tab showed the report | Pass |
+| Error Reports | Clear Old Error Reports | Confirmation required, destructive progress visible, stale fixed reports removed, counts update | `CLEAR OLD REPORTS` enabled the action; bin animation appeared; success showed `2 old error reports cleared`; desktop overflow false | Pass |
 | Error Reports mobile | Open AI assistant at 390px | Drawer remains readable, scrollable, and inside viewport | Portal drawer rendered at x=0, y=0, width=390, height=844 with no body overflow | Pass |
 | Website Creator | Save Draft with delayed API | Button shows `Saving...`, then success | `Saving...` visible; `Draft saved successfully.` visible | Pass |
 | Website Creator | Generate Preview | AI progress appears, preview opens with generated content | `Generating coach website copy...` appeared, preview opened, generated fields populated | Pass |
@@ -70,23 +72,26 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 
 1. AI report drawer could visually overlap and mash results into underlying content, especially when opened from admin page action areas.
 2. Mark Fixed updated the server but stale UI could leave the report in Active.
-3. Save Draft had no loading state and no duplicate-click guard.
-4. Coach template content model did not cover all visible template text slots.
-5. Mobile Error Reports safe-message text could be clipped by line clamping.
+3. Clear Old Error Reports needed an action-specific delete/progress animation and a visible completion state.
+4. Save Draft had no loading state and no duplicate-click guard.
+5. Coach template content model did not cover all visible template text slots.
+6. Mobile Error Reports safe-message text could be clipped by line clamping.
 
 ## Root Causes
 
 - AI actions were synchronous from the UI perspective and did not keep a guaranteed working state visible.
 - The AI drawer originally lived inside the admin page action cluster, so fixed/static positioning could inherit cramped layout or scroll offsets.
 - Error Reports state refresh could reintroduce stale status before the UI reflected the mutation.
+- Clear Old Error Reports used a basic busy state instead of the destructive-action progress pattern required by the source of truth.
 - Save Draft reused the generic upsert flow without its own action state.
 - Template preview/public renderer had hardcoded visible copy not represented in builder form or AI schema.
 - Mobile Error Reports styles used clamping instead of safe wrapping.
 
 ## Fixes Applied
 
-- Added async AI action handling, minimum visible working state, error state, and contained scrollable AI drawer rendered through a body-level React portal.
+- Added async AI action handling, minimum visible working state, working-step copy, error state, backdrop, and contained scrollable AI drawer rendered through a body-level React portal.
 - Added Error Reports optimistic status update, status-preserving refetch, row highlight, loading state, and toast.
+- Added delete/clear `ActionProgressCard` variant with bin animation, reduced-motion fallback, disabled duplicate close/cancel while clearing, refreshed-list verification, and success hold.
 - Added Save Draft `draftSubmitting` state/ref, disabled duplicate clicks, and `Saving...` button text.
 - Added `lib/coach-template-content-slots.ts`.
 - Expanded `CoachSiteContent`, form state, AI schema, generation scopes, validators, builder editors, React renderer, and Cloudflare renderer.
@@ -110,6 +115,7 @@ No new public error-code fallback was added in this pass because the changed flo
 - Public coach route: YW Nutritech and coach identity rendered; Contact Support fallback did not appear during normal load.
 - AI drawer desktop: readable, scroll-contained, not mashed into the page.
 - AI drawer mobile 390px: full viewport, readable, no top clipping, no horizontal overflow.
+- Clear Old Error Reports desktop: confirmation dialog stayed open during progress, showed delete icon/progress, then reported cleared count before closing.
 - Website Creator preview inspect desktop: focused section editor opened under Inspect mode and regenerated the Hero scope.
 - Website Creator preview inspect mobile 390px: focused editor stacked within a 356px content box with no horizontal body overflow.
 
@@ -120,13 +126,33 @@ No new public error-code fallback was added in this pass because the changed flo
 - `pnpm typecheck`
 - `pnpm lint`
 - `pnpm build`
-- Local Playwright/Chromium smoke tests through Node for admin Error Reports, AI drawer, Save Draft feedback, Website Creator preview inspect/edit/regenerate, public coach page breakpoints, and portal-based mobile drawer containment.
+- Local Playwright/Chromium smoke tests through Node for admin Error Reports Mark Fixed, Fixed tab, AI drawer loading/result states, Clear Old Error Reports progress/success, Save Draft feedback, Website Creator preview inspect/edit/regenerate, public coach page breakpoints, and portal-based mobile drawer containment.
 
 ## Build / Lint / Typecheck
 
 - `pnpm typecheck`: Pass
 - `pnpm lint`: Pass
 - `pnpm build`: Pass
+
+## Latest Rebuilt-Server Evidence
+
+Rendered UI test environment: `http://127.0.0.1:4201/admin/dashboard` using a rebuilt `next start` production server with protected local API route mocks.
+
+Browser plugin status: attempted first, but this session exposed no usable `browser.tabs.selected()` tab API. Fallback used: Playwright/Chromium.
+
+Focused test result:
+
+- Page identity: `Admin Dashboard | YW Coach`.
+- Default Error Reports active rows before fix action: `2`.
+- After marking `YW-ERR-5003` fixed: Active row count dropped to `1`, and `YW-ERR-5003` count in Active was `0`.
+- Fixed tab contained the marked report.
+- AI assistant showed `Generating report...` before showing result.
+- AI assistant result panel had scroll containment and no body overflow.
+- Clear Old Error Reports showed delete progress icon and success text.
+- Desktop body overflow: `false`.
+- Mobile 390px body overflow: `false`.
+- Mobile AI panel bounds: `x=0`, `y=0`, `width=390`, `height=844`.
+- Console/page errors: none.
 
 ## Visual Evidence
 
