@@ -16,6 +16,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 - Backup/Cleanup now keeps protected backup/test-email/cleanup dialogs open while the request runs, disables duplicate/cancel ambiguity during work, briefly holds success, and highlights the affected status section after completion.
 - Coach Sites destructive/status actions now show contextual progress cards for Delete Draft, Pause/Resume, Archive/Remove, and Reactivate; affected rows highlight after save/status changes.
 - Coach Analytics detail actions now show action-specific loading/ready states for AI insights, report generation, copy, text download, CSV/XLS download, and share; generated report/insight areas highlight after completion.
+- Paid Masterclass protected actions now show action-specific busy labels, duplicate-click protection, Activity Center feedback, and result highlighting for OTP send, private WhatsApp reveal/copy, payment link update, private WhatsApp update, and public link copy actions.
 - Save Draft now has duplicate-click protection and a visible `Saving...` state.
 - Coach Website Creator copy generation now uses a broader structured content slot registry so public and preview templates can render niche-aware content instead of generic hardcoded placeholder sections.
 - Coach Website Creator Inspect mode now opens a focused editor for the selected preview section, supports manual edits, and can regenerate that specific section through the existing server-side AI copy flow.
@@ -46,6 +47,8 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 | Coach Sites Reactivate feedback | Yes | Yes | Pass | Reactivate moved row optimistically before server confirmation and closed too early | Removed optimistic row move, added restore progress card, disabled close while busy, success hold, and row highlight after server success | Local UI test observed Restoring progress and final success; highlighted row count 1 | None |
 | Coach Analytics report/copy/download/share feedback | Yes | Yes | Pass | Detail drawer report actions changed output instantly with no visible work state or destination highlight | Added busy guards, `Generating/Copying/Preparing` labels, progress cards, Activity Center events, result messages, and report-card highlight | Local production UI test: report busy true, copy busy true, report highlight count 1, no desktop/mobile overflow | None |
 | Coach Analytics AI insight feedback | Yes | Yes | Pass | AI insight button showed status text but no clear action progress or result highlight | Added `insightBusy`, progress card, disabled duplicate clicks, success/failure activity, result toast, and AI widget highlight | Local production UI test: AI busy true, AI highlight count 1, no console issues | None |
+| Paid Masterclass OTP/reveal/copy feedback | Yes | Yes | Pass | Protected actions could feel frozen or silent after click | Added `Sending/Revealing/Copying` labels, progress card, disabled duplicate clicks, Activity Center events, and row/dialog highlight | Local protected UI test: send/reveal/copy busy states true, highlight count 2, no console issues | Real OTP delivery depends on production email config |
+| Paid Masterclass payment/WhatsApp update feedback | Yes | Yes | Pass | Payment/WhatsApp updates had generic working state and weak result destination feedback | Added action-specific `Saving` states, progress steps, preserved-failure text, server metadata refresh, result messages, and highlight pulse | Local protected UI test: payment and WhatsApp save busy states true, success text visible, desktop/mobile overflow false | None for UI; server validation remains authoritative |
 | Full template text slots dynamic/editable | Yes | Yes | Pass | Several visible sections still came from hardcoded generic text | Added content slot registry, expanded form/content fields, AI schema, public React renderer, Cloudflare renderer, and focused section editor | Build, public route tests, and local Website Creator preview tests passed | None for section-level slot editing |
 | AI generates structured full website content object | Yes | Typecheck/build | Pass | AI schema only covered a few sections | Expanded JSON schema and required fields from registry | Typecheck/build passed | Live OpenAI production generation not run in this pass to avoid creating fake production records |
 | Universal Inspect click-to-edit | Yes | Yes | Pass | Inspect mode selected sections but did not open a focused section editor | Added selected-section editor with content-only fields and preview-hotspot selection support | Preview hotspot click opened Hero copy editor; manual edit rendered in preview; no overflow | None for section-level inspect editing |
@@ -78,6 +81,12 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 | Coach Analytics | Copy Report | Button shows immediate copy progress and success feedback | `Copying...` appeared; `Coach report copied.` appeared | Pass |
 | Coach Analytics | Generate AI Insights | AI button shows working state, progress appears, result area highlights | `Generating AI coach insights...` appeared; `AI insights ready.` appeared; AI summary highlight count 1 | Pass |
 | Coach Analytics mobile | Detail drawer actions at 390px | Dialog remains usable, no horizontal overflow | Dialog bounds 390x844, body overflow false | Pass |
+| Paid Masterclass | Send OTP | Button shows immediate sending state and blocks duplicate clicks | `Sending...` appeared; OTP success message appeared; no console errors | Pass |
+| Paid Masterclass | Reveal private WhatsApp | OTP-gated reveal shows working state and never prints private link in public tables | `Revealing...` appeared; reveal success message appeared inside protected dialog | Pass |
+| Paid Masterclass | Copy private/public links | Copy actions show action-specific feedback | `Copying...` appeared for private link; public copy actions use the same guarded path | Pass |
+| Paid Masterclass | Update payment link | OTP-gated payment update shows progress and preserves checkout on failure | `Saving...` appeared; success message confirmed server-side save | Pass |
+| Paid Masterclass | Update private WhatsApp | OTP-gated WhatsApp update shows progress and server-side save result | `Saving...` appeared; success message confirmed D1 save | Pass |
+| Paid Masterclass mobile | Manage dialog at 390px | Dialog remains full-screen and readable, no horizontal overflow | Dialog bounds 390x844, body overflow false | Pass |
 | Website Creator | Save Draft with delayed API | Button shows `Saving...`, then success | `Saving...` visible; `Draft saved successfully.` visible | Pass |
 | Website Creator | Generate Preview | AI progress appears, preview opens with generated content | `Generating coach website copy...` appeared, preview opened, generated fields populated | Pass |
 | Website Creator | Inspect mode tray selection | Selected section opens focused editor | `Hero copy` opened a focused Hero copy editor | Pass |
@@ -99,6 +108,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 7. Backup/Cleanup successful actions closed before the admin could confidently see progress/result placement.
 8. Coach Sites status/destructive actions lacked contextual progress and result highlighting.
 9. Coach Analytics report and AI buttons could still feel instant/dead inside the detail drawer because they lacked button-level busy states and result highlighting.
+10. Paid Masterclass protected actions had real server-side safety, but the UI did not clearly tell the admin which OTP/reveal/copy/save action was running.
 
 ## Root Causes
 
@@ -123,6 +133,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 - Added Backup/Cleanup maintenance result highlighting, protected-dialog close guards, and short success holds.
 - Added Coach Sites row highlight, status/delete/archive/reactivate progress cards, busy guards, and server-confirmed reactivation.
 - Added Coach Analytics detail action feedback: button busy labels, duplicate-click guards, report/AI progress cards, Activity Center events, success/failure messages, and highlight pulses for generated report/insight areas.
+- Added Paid Masterclass action feedback: button busy labels, duplicate-click guards, protected-action progress card, Activity Center events, server metadata refresh, payment-preserved failure messaging, and row/dialog result highlighting.
 
 ## Error Fallbacks Added Or Updated
 
@@ -147,6 +158,8 @@ No new public error-code fallback was added in this pass because the changed flo
 - Coach Sites mobile 390px: no horizontal body overflow after the action-feedback changes.
 - Coach Analytics desktop: Generate Coach Report, Copy Report, and Generate AI Insights all showed visible progress and highlighted the resulting report/AI cards.
 - Coach Analytics mobile 390px: detail drawer filled the viewport cleanly, report actions completed, and no horizontal body overflow appeared.
+- Paid Masterclass desktop: Send OTP, Reveal Link, Copy Private Link, Update Payment Link, and Save Server Link all showed busy labels and success feedback with no horizontal body overflow.
+- Paid Masterclass mobile 390px: Manage Paid Masterclass dialog filled the viewport cleanly, Send OTP showed a visible busy label, and no horizontal body overflow appeared.
 - Website Creator preview inspect desktop: focused section editor opened under Inspect mode and regenerated the Hero scope.
 - Website Creator preview inspect mobile 390px: focused editor stacked within a 356px content box with no horizontal body overflow.
 
@@ -160,6 +173,7 @@ No new public error-code fallback was added in this pass because the changed flo
 - Local Playwright/Chromium smoke tests through Node for admin Error Reports Mark Fixed, Fixed tab, AI drawer loading/result states, Clear Old Error Reports progress/success, Save Draft feedback, Website Creator preview inspect/edit/regenerate, public coach page breakpoints, and portal-based mobile drawer containment.
 - Local Playwright/Chromium smoke tests through `@playwright/test` for Backup/Cleanup backup/test-email/cleanup feedback, Coach Sites delete draft, pause/resume, archive/reactivate, desktop/mobile overflow, row/section highlight, and console health.
 - Local Playwright/Chromium smoke tests through `@playwright/test` for Coach Analytics detail report generation, copy feedback, AI insight generation feedback, report/AI highlight, desktop/mobile overflow, and console health.
+- Local Playwright/Chromium smoke tests through `@playwright/test` for Paid Masterclass OTP send, private WhatsApp reveal/copy, payment link update, private WhatsApp update, desktop/mobile overflow, row/dialog highlight, and console health.
 
 ## Build / Lint / Typecheck
 
@@ -169,9 +183,9 @@ No new public error-code fallback was added in this pass because the changed flo
 
 ## Latest Rebuilt-Server Evidence
 
-Rendered UI test environment: `http://127.0.0.1:4201/admin/dashboard` using a rebuilt `next start` production server with protected local API route mocks.
+Rendered UI test environment: `http://127.0.0.1:4207/admin/dashboard` using a rebuilt `next start` production server with protected local API route mocks.
 
-Browser plugin status: attempted first, but this session exposed no usable `browser.tabs.selected()` tab API. Fallback used: Playwright/Chromium.
+Browser plugin status: attempted first through tool discovery, but this session exposed no usable Browser/Chrome control tool. Fallback used: Playwright/Chromium through `@playwright/test`.
 
 Focused test result:
 
@@ -189,6 +203,7 @@ Focused test result:
 - Backup/Cleanup focused test: backup highlight count `1`, desktop overflow `false`, console/page issues `[]`.
 - Coach Sites focused test: draft row count `1 -> 0`, highlighted row count `1`, desktop overflow `false`, mobile overflow `false`, console/page issues `[]`.
 - Coach Analytics detail focused test: report busy `true`, copy busy `true`, AI busy `true`, report highlight count `1`, AI highlight count `1`, desktop overflow `false`, mobile overflow `false`, mobile dialog bounds `390x844`, console/page issues `[]`.
+- Paid Masterclass focused test: send OTP busy `true`, reveal busy `true`, private-copy busy `true`, payment-save busy `true`, WhatsApp-save busy `true`, highlight count `2`, desktop overflow `false`, mobile overflow `false`, mobile dialog bounds `390x844`, console/page issues `[]`.
 
 ## Visual Evidence
 
@@ -206,6 +221,8 @@ Local screenshots saved under:
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\coach-sites-feedback-mobile.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\coach-analytics-action-feedback-desktop.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\coach-analytics-action-feedback-mobile.png`
+- `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\paid-masterclass-action-feedback-desktop.png`
+- `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\paid-masterclass-action-feedback-mobile.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\public-coach-mobile-320-final.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\public-coach-mobile-390-final.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\public-coach-tablet-768-final.png`

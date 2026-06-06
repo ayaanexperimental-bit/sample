@@ -820,6 +820,11 @@
   padding: 0.85rem;
 }
 
+.paidLinkCard[data-highlight="true"],
+.manageDialog[data-highlight="true"] {
+  animation: adminResultHighlight 2200ms ease-out;
+}
+
 .paidLinkCard h3 {
   margin: 0;
   color: #1d2939;
@@ -1160,6 +1165,27 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
+}
+
+.formActions button[data-loading="true"] {
+  position: relative;
+  cursor: progress;
+  opacity: 0.82;
+  padding-right: 2.1rem;
+}
+
+.formActions button[data-loading="true"]::after {
+  position: absolute;
+  right: 0.72rem;
+  top: 50%;
+  width: 0.78rem;
+  height: 0.78rem;
+  border: 2px solid rgb(8 122 115 / 0.2);
+  border-top-color: currentColor;
+  border-radius: 999px;
+  content: "";
+  transform: translateY(-50%);
+  animation: adminAiSpin 820ms linear infinite;
 }
 
 .previewEditStep {
@@ -3492,6 +3518,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .aiAssistantButton[data-loading="true"],
+  .formActions button[data-loading="true"]::after,
   .aiAssistantLoading > span {
     animation: none;
   }
@@ -3508,6 +3535,8 @@
   .section[data-highlight="true"],
   .draftsPanel[data-highlight="true"],
   .archiveMenu[data-highlight="true"],
+  .paidLinkCard[data-highlight="true"],
+  .manageDialog[data-highlight="true"],
   .table tr[data-highlight="true"] {
     animation: none;
     outline: 2px solid rgb(8 122 115 / 0.22);

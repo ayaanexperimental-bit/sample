@@ -549,7 +549,11 @@ export function AdminDashboardShell({
           />
         ) : null}
         {activeView === "paid-masterclass-settings" ? (
-          <MasterclassLinksView control={control} csrfToken={csrfToken} />
+          <MasterclassLinksView
+            control={control}
+            csrfToken={csrfToken}
+            onAdminActivity={recordAdminActionActivity}
+          />
         ) : null}
         {activeView === "error-reports" ? (
           <ErrorReportsView
@@ -4405,24 +4409,39 @@ function formatDeviceBreakdown(deviceBreakdown: CoachSiteRecord["analytics"]["de
 
 function MasterclassLinksView({
   control,
-  csrfToken
+  csrfToken,
+  onAdminActivity
 }: {
   control: typeof adminControlCenterData;
   csrfToken: string;
+  onAdminActivity: (activity: AdminActionActivityInput) => void;
 }) {
   const [managedLink, setManagedLink] = useState<AdminPaidMasterclassLink | null>(null);
   const [copyMessage, setCopyMessage] = useState("");
+  const [highlightedFunnelId, setHighlightedFunnelId] = useState("");
+  const [paidAction, setPaidAction] = useState<
+    | ""
+    | "copy_entry"
+    | "copy_paid"
+    | "copy_private"
+    | "copy_success"
+    | "reveal"
+    | "send_otp"
+    | "update_payment"
+    | "update_whatsapp"
+  >("");
   const [privateOtp, setPrivateOtp] = useState("");
   const [paymentPageDraft, setPaymentPageDraft] = useState("");
   const [paymentUpdateMessage, setPaymentUpdateMessage] = useState("");
   const [privateWhatsappDraft, setPrivateWhatsappDraft] = useState("");
   const [privateRevealUrl, setPrivateRevealUrl] = useState("");
   const [privateRevealMessage, setPrivateRevealMessage] = useState("");
-  const [privateRevealBusy, setPrivateRevealBusy] = useState(false);
   const [privateUpdateMessage, setPrivateUpdateMessage] = useState("");
   const [privateLinkMetadata, setPrivateLinkMetadata] = useState<
     Record<string, PrivateLinkMetadata>
   >({});
+  const highlightTimerRef = useRef<number | null>(null);
+  const privateRevealBusy = Boolean(paidAction);
 
   useEffect(() => {
     let cancelled = false;
@@ -4455,8 +4474,85 @@ function MasterclassLinksView({
     };
   }, []);
 
+  useEffect(
+    () => () => {
+      if (highlightTimerRef.current !== null) {
+        window.clearTimeout(highlightTimerRef.current);
+      }
+    },
+    []
+  );
+
   const paidMasterclassLinks = control.paidMasterclassLinks.map(applyPrivateLinkMetadata);
   const currentManagedLink = managedLink ? applyPrivateLinkMetadata(managedLink) : null;
+
+  function highlightPaidFunnel(funnelId: string) {
+    setHighlightedFunnelId(funnelId);
+
+    if (highlightTimerRef.current !== null) {
+      window.clearTimeout(highlightTimerRef.current);
+    }
+
+    highlightTimerRef.current = window.setTimeout(() => {
+      setHighlightedFunnelId("");
+      highlightTimerRef.current = null;
+    }, 2200);
+  }
+
+  async function holdPaidActionFeedback(milliseconds = 620) {
+    await new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
+  }
+
+  function getPaidActionLabel() {
+    if (paidAction === "send_otp") return "Sending OTP...";
+    if (paidAction === "reveal") return "Revealing private link...";
+    if (paidAction === "copy_private") return "Copying private link...";
+    if (paidAction === "update_payment") return "Saving payment link...";
+    if (paidAction === "update_whatsapp") return "Saving WhatsApp link...";
+    if (paidAction.startsWith("copy_")) return "Copying link...";
+    return "";
+  }
+
+  function getPaidActionSteps() {
+    if (paidAction === "send_otp") {
+      return ["Verifying admin session", "Sending email OTP", "Keeping private links hidden"];
+    }
+
+    if (paidAction === "reveal") {
+      return ["Checking OTP", "Fetching server-side link", "Starting auto-hide timer"];
+    }
+
+    if (paidAction === "update_payment") {
+      return ["Checking OTP", "Validating Razorpay URL", "Saving server-side payment link"];
+    }
+
+    if (paidAction === "update_whatsapp") {
+      return ["Checking OTP", "Validating WhatsApp invite", "Saving protected D1 record"];
+    }
+
+    return ["Preparing link", "Copying safely", "Confirming result"];
+  }
+
+  function getPaidButtonLabel(action: typeof paidAction, idleLabel: string) {
+    if (paidAction !== action) return idleLabel;
+    if (action === "send_otp") return "Sending...";
+    if (action === "reveal") return "Revealing...";
+    if (action === "update_payment") return "Saving...";
+    if (action === "update_whatsapp") return "Saving...";
+    return "Copying...";
+  }
+
+  function recordPaidAction(
+    label: string,
+    status: AdminActionActivityStatus,
+    detail: string
+  ) {
+    onAdminActivity({
+      detail,
+      label,
+      status
+    });
+  }
 
   function applyPrivateLinkMetadata(link: AdminPaidMasterclassLink) {
     const metadata = privateLinkMetadata[link.funnelId];
@@ -4481,62 +4577,83 @@ function MasterclassLinksView({
   }
 
   async function sendPrivateRevealOtp(link: AdminPaidMasterclassLink) {
-    setPrivateRevealBusy(true);
+    if (privateRevealBusy) return;
+
+    setPaidAction("send_otp");
     setPrivateRevealMessage("");
     setPrivateRevealUrl("");
+    recordPaidAction("Send masterclass OTP", "working", `Sending OTP for ${link.displayName}.`);
 
     try {
-      const response = await fetch("/api/admin/masterclass-private-link", {
-        body: JSON.stringify({
-          action: "send_otp",
-          entryPath: link.entryPath
+      const [response] = await Promise.all([
+        fetch("/api/admin/masterclass-private-link", {
+          body: JSON.stringify({
+            action: "send_otp",
+            entryPath: link.entryPath
+          }),
+          cache: "no-store",
+          credentials: "include",
+          headers: {
+            "content-type": "application/json",
+            "x-yw-admin-csrf": csrfToken
+          },
+          method: "POST"
         }),
-        cache: "no-store",
-        credentials: "include",
-        headers: {
-          "content-type": "application/json",
-          "x-yw-admin-csrf": csrfToken
-        },
-        method: "POST"
-      });
+        holdPaidActionFeedback()
+      ]);
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
         message?: string;
         ok?: boolean;
       };
 
-      setPrivateRevealMessage(
-        response.ok && payload.ok
-          ? payload.message || "OTP sent to the current admin email."
-          : payload.error || "Could not send OTP."
-      );
+      if (response.ok && payload.ok) {
+        setPrivateRevealMessage(payload.message || "OTP sent to the current admin email.");
+        highlightPaidFunnel(link.funnelId);
+        recordPaidAction("Send masterclass OTP", "success", "OTP sent to the current admin email.");
+      } else {
+        const message = payload.error || "Could not send OTP.";
+        setPrivateRevealMessage(message);
+        recordPaidAction("Send masterclass OTP", "error", message);
+      }
     } catch {
       setPrivateRevealMessage("Could not reach the reveal OTP API.");
+      recordPaidAction(
+        "Send masterclass OTP",
+        "error",
+        "Could not reach the reveal OTP API."
+      );
     } finally {
-      setPrivateRevealBusy(false);
+      setPaidAction("");
     }
   }
 
   async function revealPrivateWhatsapp(link: AdminPaidMasterclassLink) {
-    setPrivateRevealBusy(true);
+    if (privateRevealBusy) return;
+
+    setPaidAction("reveal");
     setPrivateRevealMessage("");
     setPrivateRevealUrl("");
+    recordPaidAction("Reveal private WhatsApp", "working", `Checking OTP for ${link.displayName}.`);
 
     try {
-      const response = await fetch("/api/admin/masterclass-private-link", {
-        body: JSON.stringify({
-          action: "reveal",
-          entryPath: link.entryPath,
-          otp: privateOtp
+      const [response] = await Promise.all([
+        fetch("/api/admin/masterclass-private-link", {
+          body: JSON.stringify({
+            action: "reveal",
+            entryPath: link.entryPath,
+            otp: privateOtp
+          }),
+          cache: "no-store",
+          credentials: "include",
+          headers: {
+            "content-type": "application/json",
+            "x-yw-admin-csrf": csrfToken
+          },
+          method: "POST"
         }),
-        cache: "no-store",
-        credentials: "include",
-        headers: {
-          "content-type": "application/json",
-          "x-yw-admin-csrf": csrfToken
-        },
-        method: "POST"
-      });
+        holdPaidActionFeedback()
+      ]);
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
         expiresInSeconds?: number;
@@ -4545,7 +4662,9 @@ function MasterclassLinksView({
       };
 
       if (!response.ok || !payload.ok || !payload.joinUrl) {
-        setPrivateRevealMessage(payload.error || "Could not reveal the private WhatsApp link.");
+        const message = payload.error || "Could not reveal the private WhatsApp link.";
+        setPrivateRevealMessage(message);
+        recordPaidAction("Reveal private WhatsApp", "error", message);
         return;
       }
 
@@ -4554,6 +4673,12 @@ function MasterclassLinksView({
         `Private link revealed. It will hide automatically in ${
           payload.expiresInSeconds || 20
         } seconds.`
+      );
+      highlightPaidFunnel(link.funnelId);
+      recordPaidAction(
+        "Reveal private WhatsApp",
+        "success",
+        "Private WhatsApp link revealed after OTP."
       );
       window.setTimeout(
         () => {
@@ -4564,32 +4689,47 @@ function MasterclassLinksView({
       );
     } catch {
       setPrivateRevealMessage("Could not reach the private reveal API.");
+      recordPaidAction(
+        "Reveal private WhatsApp",
+        "error",
+        "Could not reach the private reveal API."
+      );
     } finally {
-      setPrivateRevealBusy(false);
+      setPaidAction("");
     }
   }
 
   async function updatePrivateWhatsapp(link: AdminPaidMasterclassLink) {
-    setPrivateRevealBusy(true);
+    if (privateRevealBusy) return;
+
+    setPaidAction("update_whatsapp");
     setPrivateUpdateMessage("");
     setPrivateRevealUrl("");
+    recordPaidAction(
+      "Save private WhatsApp",
+      "working",
+      `Saving protected WhatsApp link for ${link.displayName}.`
+    );
 
     try {
-      const response = await fetch("/api/admin/masterclass-private-link", {
-        body: JSON.stringify({
-          action: "update_whatsapp",
-          entryCode: link.entryCode,
-          otp: privateOtp,
-          whatsappGroupUrl: privateWhatsappDraft
+      const [response] = await Promise.all([
+        fetch("/api/admin/masterclass-private-link", {
+          body: JSON.stringify({
+            action: "update_whatsapp",
+            entryCode: link.entryCode,
+            otp: privateOtp,
+            whatsappGroupUrl: privateWhatsappDraft
+          }),
+          cache: "no-store",
+          credentials: "include",
+          headers: {
+            "content-type": "application/json",
+            "x-yw-admin-csrf": csrfToken
+          },
+          method: "POST"
         }),
-        cache: "no-store",
-        credentials: "include",
-        headers: {
-          "content-type": "application/json",
-          "x-yw-admin-csrf": csrfToken
-        },
-        method: "POST"
-      });
+        holdPaidActionFeedback()
+      ]);
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
         metadata?: PrivateLinkMetadata;
@@ -4597,7 +4737,9 @@ function MasterclassLinksView({
       };
 
       if (!response.ok || !payload.ok || !payload.metadata) {
-        setPrivateUpdateMessage(payload.error || "Could not save the private WhatsApp link.");
+        const message = payload.error || "Could not save the private WhatsApp link.";
+        setPrivateUpdateMessage(message);
+        recordPaidAction("Save private WhatsApp", "error", message);
         return;
       }
 
@@ -4607,34 +4749,55 @@ function MasterclassLinksView({
       }));
       setPrivateWhatsappDraft("");
       setPrivateUpdateMessage("Private WhatsApp link saved server-side in D1.");
+      highlightPaidFunnel(link.funnelId);
+      recordPaidAction(
+        "Save private WhatsApp",
+        "success",
+        "Private WhatsApp link saved server-side in D1."
+      );
     } catch {
       setPrivateUpdateMessage("Could not reach the private link save API.");
+      recordPaidAction(
+        "Save private WhatsApp",
+        "error",
+        "Could not reach the private link save API."
+      );
     } finally {
-      setPrivateRevealBusy(false);
+      setPaidAction("");
     }
   }
 
   async function updatePaymentPageLink(link: AdminPaidMasterclassLink) {
-    setPrivateRevealBusy(true);
+    if (privateRevealBusy) return;
+
+    setPaidAction("update_payment");
     setPaymentUpdateMessage("");
     setPrivateRevealUrl("");
+    recordPaidAction(
+      "Update payment link",
+      "working",
+      `Saving protected payment link for ${link.displayName}.`
+    );
 
     try {
-      const response = await fetch("/api/admin/masterclass-private-link", {
-        body: JSON.stringify({
-          action: "update_payment",
-          entryCode: link.entryCode,
-          otp: privateOtp,
-          paymentPageUrl: paymentPageDraft
+      const [response] = await Promise.all([
+        fetch("/api/admin/masterclass-private-link", {
+          body: JSON.stringify({
+            action: "update_payment",
+            entryCode: link.entryCode,
+            otp: privateOtp,
+            paymentPageUrl: paymentPageDraft
+          }),
+          cache: "no-store",
+          credentials: "include",
+          headers: {
+            "content-type": "application/json",
+            "x-yw-admin-csrf": csrfToken
+          },
+          method: "POST"
         }),
-        cache: "no-store",
-        credentials: "include",
-        headers: {
-          "content-type": "application/json",
-          "x-yw-admin-csrf": csrfToken
-        },
-        method: "POST"
-      });
+        holdPaidActionFeedback()
+      ]);
       const payload = (await response.json().catch(() => ({}))) as {
         currentPaymentLinkPreserved?: boolean;
         error?: string;
@@ -4643,11 +4806,12 @@ function MasterclassLinksView({
       };
 
       if (!response.ok || !payload.ok || !payload.metadata) {
-        setPaymentUpdateMessage(
+        const message =
           payload.currentPaymentLinkPreserved
             ? `${payload.error || "Could not save the payment link."} Current checkout remains active.`
-            : payload.error || "Could not save the payment link."
-        );
+            : payload.error || "Could not save the payment link.";
+        setPaymentUpdateMessage(message);
+        recordPaidAction("Update payment link", "error", message);
         return;
       }
 
@@ -4657,37 +4821,67 @@ function MasterclassLinksView({
       }));
       setPaymentPageDraft("");
       setPaymentUpdateMessage("Payment page link saved server-side after OTP verification.");
+      highlightPaidFunnel(link.funnelId);
+      recordPaidAction(
+        "Update payment link",
+        "success",
+        "Payment page link saved server-side after OTP verification."
+      );
     } catch {
       setPaymentUpdateMessage(
         "Could not reach the payment link save API. Current checkout remains active."
       );
+      recordPaidAction(
+        "Update payment link",
+        "error",
+        "Could not reach the payment link save API. Current checkout remains active."
+      );
     } finally {
-      setPrivateRevealBusy(false);
+      setPaidAction("");
     }
   }
 
   async function copyPrivateWhatsappLink() {
-    if (!privateRevealUrl) return;
+    if (!privateRevealUrl || privateRevealBusy) return;
+
+    setPaidAction("copy_private");
+    recordPaidAction("Copy private WhatsApp", "working", "Copying revealed private link.");
 
     try {
-      await navigator.clipboard.writeText(privateRevealUrl);
+      await Promise.all([navigator.clipboard.writeText(privateRevealUrl), holdPaidActionFeedback(260)]);
       setPrivateRevealMessage("Private WhatsApp link copied.");
+      if (currentManagedLink) highlightPaidFunnel(currentManagedLink.funnelId);
+      recordPaidAction("Copy private WhatsApp", "success", "Private WhatsApp link copied.");
     } catch {
       setPrivateRevealMessage(`Private WhatsApp link: ${privateRevealUrl}`);
+      recordPaidAction("Copy private WhatsApp", "error", "Clipboard copy was unavailable.");
+    } finally {
+      setPaidAction("");
     }
   }
 
-  async function copyMasterclassPath(label: string, path: string) {
+  async function copyMasterclassPath(label: string, path: string, action: typeof paidAction) {
+    if (privateRevealBusy) return;
+
     const value =
       typeof window === "undefined" || path.startsWith("http")
         ? path
         : new URL(path, window.location.origin).toString();
 
+    setPaidAction(action);
+    setCopyMessage("");
+    recordPaidAction(label, "working", `Copying ${label.toLowerCase()}.`);
+
     try {
-      await navigator.clipboard.writeText(value);
+      await Promise.all([navigator.clipboard.writeText(value), holdPaidActionFeedback(260)]);
       setCopyMessage(`${label} copied.`);
+      if (currentManagedLink) highlightPaidFunnel(currentManagedLink.funnelId);
+      recordPaidAction(label, "success", `${label} copied.`);
     } catch {
       setCopyMessage(`${label}: ${value}`);
+      recordPaidAction(label, "error", "Clipboard copy was unavailable.");
+    } finally {
+      setPaidAction("");
     }
   }
 
@@ -4719,7 +4913,11 @@ function MasterclassLinksView({
         </div>
         <div className={styles.paidLinkList}>
           {paidMasterclassLinks.map((link) => (
-            <article className={styles.paidLinkCard} key={link.entryPath}>
+            <article
+              className={styles.paidLinkCard}
+              data-highlight={highlightedFunnelId === link.funnelId ? "true" : "false"}
+              key={link.entryPath}
+            >
               <div>
                 <p className={styles.kicker}>Masterclass</p>
                 <h3>{link.displayName}</h3>
@@ -4739,6 +4937,7 @@ function MasterclassLinksView({
               </div>
               <button
                 className={styles.primaryAction}
+                disabled={privateRevealBusy}
                 onClick={() => {
                   setCopyMessage("");
                   setPaymentPageDraft("");
@@ -4777,12 +4976,17 @@ function MasterclassLinksView({
       </p>
 
       <AdminActionDialog
-        onClose={() => setManagedLink(null)}
+        onClose={() => {
+          if (!privateRevealBusy) setManagedLink(null);
+        }}
         open={Boolean(managedLink)}
         title="Manage Paid Masterclass"
       >
         {currentManagedLink ? (
-          <div className={styles.manageDialog}>
+          <div
+            className={styles.manageDialog}
+            data-highlight={highlightedFunnelId === currentManagedLink.funnelId ? "true" : "false"}
+          >
             <div>
               <p className={styles.kicker}>Paid Website</p>
               <h3>{currentManagedLink.displayName}</h3>
@@ -4849,6 +5053,7 @@ function MasterclassLinksView({
             <div className={styles.formActions}>
               <button
                 className={styles.primaryAction}
+                disabled={privateRevealBusy}
                 onClick={() => openMasterclassPath(currentManagedLink.entryPath)}
                 type="button"
               >
@@ -4856,6 +5061,7 @@ function MasterclassLinksView({
               </button>
               <button
                 className={styles.secondaryAction}
+                disabled={privateRevealBusy}
                 onClick={() => openMasterclassPath(currentManagedLink.paidPagePath)}
                 type="button"
               >
@@ -4863,34 +5069,64 @@ function MasterclassLinksView({
               </button>
               <button
                 className={styles.secondaryAction}
+                aria-busy={paidAction === "copy_entry"}
+                data-loading={paidAction === "copy_entry" ? "true" : "false"}
+                disabled={privateRevealBusy}
                 onClick={() =>
-                  void copyMasterclassPath("Public entry link", currentManagedLink.entryPath)
+                  void copyMasterclassPath(
+                    "Public entry link",
+                    currentManagedLink.entryPath,
+                    "copy_entry"
+                  )
                 }
                 type="button"
               >
-                Copy Entry Link
+                {getPaidButtonLabel("copy_entry", "Copy Entry Link")}
               </button>
               <button
                 className={styles.secondaryAction}
+                aria-busy={paidAction === "copy_paid"}
+                data-loading={paidAction === "copy_paid" ? "true" : "false"}
+                disabled={privateRevealBusy}
                 onClick={() =>
-                  void copyMasterclassPath("Paid page link", currentManagedLink.paidPagePath)
+                  void copyMasterclassPath(
+                    "Paid page link",
+                    currentManagedLink.paidPagePath,
+                    "copy_paid"
+                  )
                 }
                 type="button"
               >
-                Copy Paid Page
+                {getPaidButtonLabel("copy_paid", "Copy Paid Page")}
               </button>
               <button
                 className={styles.secondaryAction}
+                aria-busy={paidAction === "copy_success"}
+                data-loading={paidAction === "copy_success" ? "true" : "false"}
+                disabled={privateRevealBusy}
                 onClick={() =>
-                  void copyMasterclassPath("Success page link", currentManagedLink.successPath)
+                  void copyMasterclassPath(
+                    "Success page link",
+                    currentManagedLink.successPath,
+                    "copy_success"
+                  )
                 }
                 type="button"
               >
-                Copy Success Link
+                {getPaidButtonLabel("copy_success", "Copy Success Link")}
               </button>
             </div>
 
             {copyMessage ? <p className={styles.inlineStatus}>{copyMessage}</p> : null}
+            {privateRevealBusy ? (
+              <ActionProgressCard
+                label={getPaidActionLabel()}
+                progress={
+                  paidAction === "update_payment" || paidAction === "update_whatsapp" ? 74 : 58
+                }
+                steps={getPaidActionSteps()}
+              />
+            ) : null}
             <div className={styles.privateRevealPanel}>
               <div>
                 <p className={styles.kicker}>Admin OTP Reveal</p>
@@ -4903,11 +5139,13 @@ function MasterclassLinksView({
               <div className={styles.formActions}>
                 <button
                   className={styles.secondaryAction}
+                  aria-busy={paidAction === "send_otp"}
+                  data-loading={paidAction === "send_otp" ? "true" : "false"}
                   disabled={privateRevealBusy}
                   onClick={() => void sendPrivateRevealOtp(currentManagedLink)}
                   type="button"
                 >
-                  {privateRevealBusy ? "Working..." : "Send OTP"}
+                  {getPaidButtonLabel("send_otp", "Send OTP")}
                 </button>
                 <label className={styles.compactField}>
                   <span>OTP</span>
@@ -4924,11 +5162,13 @@ function MasterclassLinksView({
                 </label>
                 <button
                   className={styles.primaryAction}
+                  aria-busy={paidAction === "reveal"}
+                  data-loading={paidAction === "reveal" ? "true" : "false"}
                   disabled={privateRevealBusy || privateOtp.length !== 6}
                   onClick={() => void revealPrivateWhatsapp(currentManagedLink)}
                   type="button"
                 >
-                  Reveal Link
+                  {getPaidButtonLabel("reveal", "Reveal Link")}
                 </button>
               </div>
               {privateRevealUrl ? (
@@ -4936,10 +5176,13 @@ function MasterclassLinksView({
                   <code>{privateRevealUrl}</code>
                   <button
                     className={styles.primaryAction}
+                    aria-busy={paidAction === "copy_private"}
+                    data-loading={paidAction === "copy_private" ? "true" : "false"}
+                    disabled={privateRevealBusy}
                     onClick={() => void copyPrivateWhatsappLink()}
                     type="button"
                   >
-                    Copy Private Link
+                    {getPaidButtonLabel("copy_private", "Copy Private Link")}
                   </button>
                 </div>
               ) : null}
@@ -4970,13 +5213,15 @@ function MasterclassLinksView({
               <div className={styles.formActions}>
                 <button
                   className={styles.primaryAction}
+                  aria-busy={paidAction === "update_payment"}
+                  data-loading={paidAction === "update_payment" ? "true" : "false"}
                   disabled={
                     privateRevealBusy || privateOtp.length !== 6 || !paymentPageDraft.trim()
                   }
                   onClick={() => void updatePaymentPageLink(currentManagedLink)}
                   type="button"
                 >
-                  Update Payment Link
+                  {getPaidButtonLabel("update_payment", "Update Payment Link")}
                 </button>
               </div>
               {paymentUpdateMessage ? (
@@ -5004,13 +5249,15 @@ function MasterclassLinksView({
               <div className={styles.formActions}>
                 <button
                   className={styles.primaryAction}
+                  aria-busy={paidAction === "update_whatsapp"}
+                  data-loading={paidAction === "update_whatsapp" ? "true" : "false"}
                   disabled={
                     privateRevealBusy || privateOtp.length !== 6 || !privateWhatsappDraft.trim()
                   }
                   onClick={() => void updatePrivateWhatsapp(currentManagedLink)}
                   type="button"
                 >
-                  Save Server Link
+                  {getPaidButtonLabel("update_whatsapp", "Save Server Link")}
                 </button>
               </div>
               {privateUpdateMessage ? (
