@@ -581,6 +581,7 @@
 }
 
 .tableWrap {
+  min-height: 10rem;
   max-height: min(48rem, 62vh);
   overflow-x: auto;
   overflow-y: auto;
@@ -2592,6 +2593,8 @@
 }
 
 .analyticsKpiGrid {
+  position: relative;
+  z-index: 0;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.9rem;
@@ -2599,11 +2602,14 @@
 
 .analyticsHeroPanel {
   position: relative;
-  overflow: hidden;
+  z-index: 1;
+  min-height: clamp(10rem, 15vw, 12.5rem);
+  overflow: visible;
+  isolation: isolate;
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(18rem, 0.9fr);
   gap: 1rem;
-  align-items: end;
+  align-items: stretch;
   border: 1px solid rgb(224 218 232);
   border-radius: 1.2rem;
   background:
@@ -2612,6 +2618,16 @@
     linear-gradient(135deg, rgb(255 255 255 / 0.96), rgb(248 250 252 / 0.9));
   box-shadow: 0 1.2rem 3.5rem rgb(31 41 55 / 0.08);
   padding: clamp(1rem, 2vw, 1.4rem);
+}
+
+.analyticsHeroPanel + .analyticsKpiGrid {
+  margin-top: 0.15rem;
+}
+
+.analyticsHeroPanel > div {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
 }
 
 .analyticsHeroPanel h2,
@@ -2633,6 +2649,7 @@
 }
 
 .analyticsHeroStats {
+  align-self: end;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.65rem;
@@ -4415,6 +4432,161 @@
   font-size: 0.94rem;
   font-weight: 650;
   line-height: 1.5;
+}
+
+.errorReportList {
+  display: grid;
+  gap: 0.75rem;
+  min-height: 12rem;
+  max-height: min(34rem, 48vh);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgb(20 184 166 / 0.24);
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 0% 0%, rgb(240 253 250 / 0.72), transparent 12rem),
+    rgb(255 255 255 / 0.72);
+  padding: 0.8rem;
+  scrollbar-width: thin;
+}
+
+.errorReportCard {
+  display: grid;
+  grid-template-columns: minmax(13rem, 0.8fr) minmax(0, 1.4fr) auto;
+  gap: 0.85rem;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid rgb(232 221 235);
+  border-radius: 0.9rem;
+  background: rgb(255 255 255 / 0.9);
+  box-shadow: 0 0.75rem 1.6rem rgb(31 41 55 / 0.05);
+  padding: 0.82rem;
+}
+
+.errorReportIdentity,
+.errorReportDetails,
+.errorReportActions,
+.errorReportBadges {
+  min-width: 0;
+}
+
+.errorReportIdentity {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.errorReportBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.errorReportBadges span {
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 999px;
+  background: rgb(117 96 108 / 0.08);
+  color: #4b3345;
+  padding: 0.24rem 0.52rem;
+  font-size: 0.68rem;
+  font-weight: 950;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.errorReportBadges span[data-status="New"],
+.errorReportBadges span[data-severity="high"] {
+  background: rgb(254 226 226 / 0.86);
+  color: #991b1b;
+}
+
+.errorReportBadges span[data-status="Fixed"] {
+  background: rgb(220 252 231 / 0.86);
+  color: #166534;
+}
+
+.errorReportBadges span[data-status="Reviewing"] {
+  background: rgb(239 246 255 / 0.9);
+  color: #1d4ed8;
+}
+
+.errorReportDetails {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.errorReportDetails div {
+  min-width: 0;
+  border-radius: 0.72rem;
+  background: rgb(249 250 251 / 0.86);
+  padding: 0.55rem 0.62rem;
+}
+
+.errorReportDetails span {
+  display: block;
+  color: #087a73;
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.errorReportDetails strong {
+  display: block;
+  margin-top: 0.2rem;
+  color: #344054;
+  font-size: 0.78rem;
+  font-weight: 820;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.errorReportActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+@media (max-width: 860px) {
+  .errorReportCard {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .errorReportActions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .errorReportList {
+    max-height: min(30rem, 55vh);
+    padding: 0.7rem;
+  }
+
+  .errorReportCard {
+    gap: 0.7rem;
+    padding: 0.82rem;
+  }
+
+  .errorReportDetails {
+    grid-template-columns: 1fr;
+  }
+
+  .errorReportDetails strong {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    overflow: hidden;
+  }
+
+  .errorReportActions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
 }
 
 .maintenanceGrid {

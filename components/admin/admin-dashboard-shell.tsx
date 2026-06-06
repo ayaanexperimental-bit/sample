@@ -4690,90 +4690,89 @@ function ErrorReportsView({
               : "D1 reports are not available in this environment. No fallback rows are shown."}
         </p>
       </div>
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Error code</th>
-              <th>Status</th>
-              <th>Severity</th>
-              <th>Category</th>
-              <th>Page</th>
-              <th>Support</th>
-              <th>User action</th>
-              <th>Safe message</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {errorReports.length > 0 ? (
-              errorReports.map((report) => (
-                <tr key={report.referenceId}>
-                  <td>
-                    <div className={styles.codeStack}>
-                      <code>{report.errorCode || report.referenceId}</code>
-                      <small>{report.referenceId}</small>
-                      <button
-                        aria-label={`Copy ${report.errorCode || report.referenceId}`}
-                        data-admin-tooltip="Copy error code"
-                        onClick={() =>
-                          void copyAdminText("Error code", report.errorCode || report.referenceId)
-                        }
-                        type="button"
-                      >
-                        Copy
-                      </button>
-                    </div>
-                  </td>
-                  <td>{report.status}</td>
-                  <td>{report.severity}</td>
-                  <td>{report.category}</td>
-                  <td>{report.pagePath}</td>
-                  <td>{report.supportSource || "default"}</td>
-                  <td>{report.userAction}</td>
-                  <td>{report.safeMessage}</td>
-                  <td>
-                    <div className={styles.rowActions}>
-                      <button
-                        aria-label={`View details for ${report.errorCode || report.referenceId}`}
-                        className={styles.iconAction}
-                        data-admin-tooltip="View error details"
-                        onClick={() => {
-                          setSelectedReport(report);
-                          setStatusMessage("");
-                        }}
-                        type="button"
-                      >
-                        <AdminActionIcon name="eye" />
-                        <span className={styles.visuallyHidden}>View</span>
-                      </button>
-                      <button
-                        aria-label={`Mark ${report.errorCode || report.referenceId} fixed`}
-                        className={styles.iconAction}
-                        data-admin-tooltip="Mark fixed"
-                        onClick={() => void updateReportStatus(report, "Fixed")}
-                        type="button"
-                      >
-                        <AdminActionIcon name="check" />
-                        <span className={styles.visuallyHidden}>Mark Fixed</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={9}>
-                  {isLiveSource
-                    ? "No live error reports yet. This is the correct production state until a fallback event is recorded."
-                    : isLoadingSource
-                      ? "Loading protected error reports..."
-                      : "No fallback reports available in this environment."}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className={styles.errorReportList} aria-label="Admin error report list">
+        {errorReports.length > 0 ? (
+          errorReports.map((report) => (
+            <article className={styles.errorReportCard} key={report.referenceId}>
+              <div className={styles.errorReportIdentity}>
+                <div className={styles.codeStack}>
+                  <code>{report.errorCode || report.referenceId}</code>
+                  <small>{report.referenceId}</small>
+                </div>
+                <div className={styles.errorReportBadges}>
+                  <span data-status={report.status}>{report.status}</span>
+                  <span data-severity={report.severity}>{report.severity}</span>
+                  <span>{report.category}</span>
+                </div>
+              </div>
+              <div className={styles.errorReportDetails}>
+                <div>
+                  <span>Page</span>
+                  <strong>{report.pagePath || "Unknown page"}</strong>
+                </div>
+                <div>
+                  <span>Support</span>
+                  <strong>{report.supportSource || "default"}</strong>
+                </div>
+                <div>
+                  <span>User action</span>
+                  <strong>{report.userAction || "Not recorded"}</strong>
+                </div>
+                <div>
+                  <span>Safe message</span>
+                  <strong>{report.safeMessage}</strong>
+                </div>
+              </div>
+              <div className={styles.errorReportActions}>
+                <button
+                  aria-label={`Copy ${report.errorCode || report.referenceId}`}
+                  className={styles.secondaryAction}
+                  data-admin-tooltip="Copy error code"
+                  onClick={() =>
+                    void copyAdminText("Error code", report.errorCode || report.referenceId)
+                  }
+                  type="button"
+                >
+                  Copy Code
+                </button>
+                <button
+                  aria-label={`View details for ${report.errorCode || report.referenceId}`}
+                  className={styles.iconAction}
+                  data-admin-tooltip="View error details"
+                  onClick={() => {
+                    setSelectedReport(report);
+                    setStatusMessage("");
+                  }}
+                  type="button"
+                >
+                  <AdminActionIcon name="eye" />
+                  <span className={styles.visuallyHidden}>View</span>
+                </button>
+                <button
+                  aria-label={`Mark ${report.errorCode || report.referenceId} fixed`}
+                  className={styles.iconAction}
+                  data-admin-tooltip="Mark fixed"
+                  onClick={() => void updateReportStatus(report, "Fixed")}
+                  type="button"
+                >
+                  <AdminActionIcon name="check" />
+                  <span className={styles.visuallyHidden}>Mark Fixed</span>
+                </button>
+              </div>
+            </article>
+          ))
+        ) : (
+          <div className={styles.emptyState} data-compact="true">
+            <h3>No error reports loaded</h3>
+            <p>
+              {isLiveSource
+                ? "No live error reports yet. This is the correct production state until a fallback event is recorded."
+                : isLoadingSource
+                  ? "Loading protected error reports..."
+                  : "No fallback reports available in this environment."}
+            </p>
+          </div>
+        )}
       </div>
       <div className={styles.reportPrompt}>
         <strong>Codex-ready bug prompt</strong>
