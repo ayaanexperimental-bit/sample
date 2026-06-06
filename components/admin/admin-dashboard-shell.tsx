@@ -58,6 +58,18 @@ type ActionDialogState = {
   tone?: "danger" | "standard";
 } | null;
 
+type AdminActionActivityStatus = "error" | "success" | "working";
+
+type AdminActionActivity = {
+  detail: string;
+  id: string;
+  label: string;
+  status: AdminActionActivityStatus;
+  timestamp: string;
+};
+
+type AdminActionActivityInput = Omit<AdminActionActivity, "id" | "timestamp">;
+
 type PrivateLinkMetadata = {
   configured: boolean;
   entryCode: string;
@@ -296,6 +308,8 @@ export function AdminDashboardShell({
   const [recentAnalyticsEvents, setRecentAnalyticsEvents] = useState<AnalyticsRecentEvent[]>([]);
   const [liveCoachSites, setLiveCoachSites] = useState<CoachSiteRecord[]>([]);
   const [coachSiteSource, setCoachSiteSource] = useState("loading");
+  const [activityCenterOpen, setActivityCenterOpen] = useState(false);
+  const [adminActionActivity, setAdminActionActivity] = useState<AdminActionActivity[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -417,6 +431,20 @@ export function AdminDashboardShell({
     setActionDialog({ body, title, tone });
   }
 
+  function recordAdminActionActivity(activity: AdminActionActivityInput) {
+    const timestamp = new Date().toISOString();
+    const id = `${timestamp}-${activity.label}-${Math.random().toString(36).slice(2, 8)}`;
+
+    setAdminActionActivity((current) => [
+      {
+        ...activity,
+        id,
+        timestamp
+      },
+      ...current
+    ].slice(0, 8));
+  }
+
   function selectView(viewId: string) {
     setActiveView(viewId as AdminViewId);
   }
@@ -456,6 +484,7 @@ export function AdminDashboardShell({
             onAnalyticsRangeChange={setAnalyticsRange}
             onAnalyticsCustomEndChange={setAnalyticsCustomEnd}
             onAnalyticsCustomStartChange={setAnalyticsCustomStart}
+            onAdminActivity={recordAdminActionActivity}
             previousAnalyticsSummaries={previousAnalyticsSummaries}
             recentEvents={recentAnalyticsEvents}
             source={coachSiteSource}
@@ -476,13 +505,21 @@ export function AdminDashboardShell({
             eyebrow="Coach Sites"
             title="All Coach Sites"
           >
-            <AdminCoachSitesManager csrfToken={csrfToken} mode="list" />
+            <AdminCoachSitesManager
+              csrfToken={csrfToken}
+              mode="list"
+              onAdminActivity={recordAdminActionActivity}
+            />
           </AdminPageShell>
         ) : null}
 
         {activeView === "create-coach-site" ? (
           <AdminPageShell eyebrow="Coach Sites" title="Create Coach Site">
-            <AdminCoachSitesManager csrfToken={csrfToken} mode="create" />
+            <AdminCoachSitesManager
+              csrfToken={csrfToken}
+              mode="create"
+              onAdminActivity={recordAdminActionActivity}
+            />
           </AdminPageShell>
         ) : null}
 
@@ -505,6 +542,7 @@ export function AdminDashboardShell({
             onAnalyticsCustomEndChange={setAnalyticsCustomEnd}
             onAnalyticsCustomStartChange={setAnalyticsCustomStart}
             onAnalyticsRangeChange={setAnalyticsRange}
+            onAdminActivity={recordAdminActionActivity}
             onSelect={setActiveView}
             source={coachSiteSource}
           />
@@ -516,15 +554,24 @@ export function AdminDashboardShell({
           <ErrorReportsView
             csrfToken={csrfToken}
             errorReports={errorReports}
+            onAdminActivity={recordAdminActionActivity}
             onReportsChange={setErrorReports}
             source={errorReportSource}
           />
         ) : null}
         {activeView === "backup-cleanup" ? (
-          <BackupCleanupView control={control} csrfToken={csrfToken} />
+          <BackupCleanupView
+            control={control}
+            csrfToken={csrfToken}
+            onAdminActivity={recordAdminActionActivity}
+          />
         ) : null}
         {activeView === "settings" ? (
-          <SettingsView control={control} onAction={openAction} />
+          <SettingsView
+            control={control}
+            onAction={openAction}
+            onAdminActivity={recordAdminActionActivity}
+          />
         ) : null}
       </div>
 
@@ -536,6 +583,11 @@ export function AdminDashboardShell({
       >
         <p className={styles.dialogCopy}>{actionDialog?.body}</p>
       </AdminActionDialog>
+      <AdminActivityCenter
+        items={adminActionActivity}
+        onToggle={() => setActivityCenterOpen((current) => !current)}
+        open={activityCenterOpen}
+      />
     </section>
   );
 }
@@ -551,6 +603,7 @@ function OverviewView({
   csrfToken,
   errorReports,
   onSelect,
+  onAdminActivity,
   onAnalyticsRangeChange,
   onAnalyticsCustomEndChange,
   onAnalyticsCustomStartChange,
@@ -567,6 +620,7 @@ function OverviewView({
   coachSites: CoachSiteRecord[];
   csrfToken: string;
   errorReports: AdminErrorReport[];
+  onAdminActivity: (activity: AdminActionActivityInput) => void;
   onAnalyticsCustomEndChange: (value: string) => void;
   onAnalyticsCustomStartChange: (value: string) => void;
   onAnalyticsRangeChange: (value: AnalyticsDateRangeId) => void;
@@ -750,6 +804,7 @@ function OverviewView({
             eyebrow="AI Executive Summary"
             fallbackItems={overview.aiSummary}
             insight={overviewAiInsight}
+            onActivity={onAdminActivity}
             onGenerate={() => generateOverviewAiInsights(false)}
             onRefresh={() => generateOverviewAiInsights(true)}
             status={overviewAiStatus}
@@ -1665,6 +1720,7 @@ function CoachAnalyticsView({
   onAnalyticsCustomEndChange,
   onAnalyticsCustomStartChange,
   onAnalyticsRangeChange,
+  onAdminActivity,
   onSelect,
   source
 }: {
@@ -1675,6 +1731,7 @@ function CoachAnalyticsView({
   analyticsSummaries: AnalyticsMetricSummary[];
   coachSites: CoachSiteRecord[];
   csrfToken: string;
+  onAdminActivity: (activity: AdminActionActivityInput) => void;
   onAnalyticsCustomEndChange: (value: string) => void;
   onAnalyticsCustomStartChange: (value: string) => void;
   onAnalyticsRangeChange: (value: AnalyticsDateRangeId) => void;
@@ -1845,6 +1902,7 @@ function CoachAnalyticsView({
           eyebrow="AI Coach Analytics"
           fallbackItems={coachAiItems}
           insight={null}
+          onActivity={onAdminActivity}
           onGenerate={() => runCoachAnalyticsAssistant("Generate Coach Summary")}
           onRefresh={() => runCoachAnalyticsAssistant("Generate Coach Summary")}
           status={coachAiStatus}
@@ -2779,6 +2837,7 @@ function AnalyticsAiWidget({
   eyebrow,
   fallbackItems,
   insight,
+  onActivity,
   onGenerate,
   onRefresh,
   status,
@@ -2790,6 +2849,7 @@ function AnalyticsAiWidget({
   eyebrow: string;
   fallbackItems: string[];
   insight: AdminAiAnalyticsInsight | null;
+  onActivity?: (activity: AdminActionActivityInput) => void;
   onGenerate: AnalyticsAiActionHandler;
   onRefresh: AnalyticsAiActionHandler;
   status: string;
@@ -2818,6 +2878,11 @@ function AnalyticsAiWidget({
     setAssistantError("");
     setOpen(true);
     setBusy(true);
+    onActivity?.({
+      detail: `${action.label} started.`,
+      label: "AI assistant",
+      status: "working"
+    });
 
     try {
       const minimumVisibleWorkState = new Promise<void>((resolve) =>
@@ -2828,8 +2893,18 @@ function AnalyticsAiWidget({
         : Promise.resolve(insight ? onRefresh() : onGenerate());
 
       await Promise.all([selectedTask, minimumVisibleWorkState]);
+      onActivity?.({
+        detail: `${action.label} ready.`,
+        label: "AI assistant",
+        status: "success"
+      });
     } catch {
       setAssistantError("AI action could not finish. Please retry from this panel.");
+      onActivity?.({
+        detail: `${action.label} could not finish.`,
+        label: "AI assistant",
+        status: "error"
+      });
     } finally {
       setBusy(false);
     }
@@ -2839,27 +2914,29 @@ function AnalyticsAiWidget({
     if (activeAction.includes("Prompt")) {
       return {
         body: "Preparing a safe Codex prompt from protected report fields only.",
-        title: "Preparing prompt..."
+        title: "Generating report..."
       };
     }
 
     if (activeAction.includes("Group")) {
       return {
         body: "Grouping visible reports by repeated error codes and categories.",
-        title: "Grouping reports..."
+        title: "Generating report..."
       };
     }
 
     if (activeAction.includes("Predict")) {
       return {
         body: "Reviewing current counters and estimating the next admin risk window.",
-        title: "Predicting next steps..."
+        title: "Generating report..."
       };
     }
 
     return {
-      body: "Reviewing the current protected admin data. Results will appear here.",
-      title: activeAction ? `${activeAction}...` : "Generating report..."
+      body: activeAction
+        ? `Running ${activeAction}. Results will appear in this same panel.`
+        : "Reviewing the current protected admin data. Results will appear here.",
+      title: "Generating report..."
     };
   }
 
@@ -2961,6 +3038,112 @@ function ActionToast({
       {message}
     </div>
   );
+}
+
+function AdminActivityCenter({
+  items,
+  onToggle,
+  open
+}: {
+  items: AdminActionActivity[];
+  onToggle: () => void;
+  open: boolean;
+}) {
+  const latest = items[0];
+
+  return (
+    <aside className={styles.activityCenter} data-open={open ? "true" : "false"}>
+      <button
+        aria-expanded={open}
+        className={styles.activityCenterButton}
+        data-status={latest?.status || "success"}
+        onClick={onToggle}
+        type="button"
+      >
+        <span>Activity</span>
+        {latest ? <strong>{latest.status}</strong> : <strong>ready</strong>}
+      </button>
+      {open ? (
+        <div className={styles.activityCenterPanel} role="region" aria-label="Admin action activity">
+          <div className={styles.activityCenterHeader}>
+            <div>
+              <p className={styles.kicker}>Task Center</p>
+              <h3>Recent admin actions</h3>
+            </div>
+            <button onClick={onToggle} type="button">
+              Close
+            </button>
+          </div>
+          {items.length > 0 ? (
+            <ul>
+              {items.map((item) => (
+                <li data-status={item.status} key={item.id}>
+                  <span />
+                  <div>
+                    <strong>{item.label}</strong>
+                    <p>{item.detail}</p>
+                    <small>{formatAdminActivityTime(item.timestamp)}</small>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className={styles.inlineNote}>
+              Serious admin actions will appear here when they start or finish.
+            </p>
+          )}
+        </div>
+      ) : null}
+    </aside>
+  );
+}
+
+function ActionProgressCard({
+  label,
+  progress,
+  steps
+}: {
+  label: string;
+  progress: number;
+  steps: string[];
+}) {
+  const safeProgress = Math.max(8, Math.min(100, Math.round(progress)));
+
+  return (
+    <div className={styles.actionProgressCard} role="status" aria-live="polite">
+      <div>
+        <span aria-hidden="true" />
+        <strong>{label}</strong>
+      </div>
+      <div
+        aria-label={`${label} progress`}
+        aria-valuemax={100}
+        aria-valuemin={0}
+        aria-valuenow={safeProgress}
+        className={styles.actionProgressBar}
+        role="progressbar"
+      >
+        <span style={{ width: `${safeProgress}%` }} />
+      </div>
+      <ul>
+        {steps.map((step, index) => (
+          <li data-active={index === steps.length - 1 ? "true" : "false"} key={step}>
+            {step}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function formatAdminActivityTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
 function getStatusMessageTone(message: string): "danger" | "standard" | "success" {
@@ -4575,11 +4758,13 @@ function MasterclassLinksView({
 function ErrorReportsView({
   csrfToken,
   errorReports,
+  onAdminActivity,
   onReportsChange,
   source
 }: {
   csrfToken: string;
   errorReports: AdminErrorReport[];
+  onAdminActivity: (activity: AdminActionActivityInput) => void;
   onReportsChange: (reports: AdminErrorReport[]) => void;
   source: string;
 }) {
@@ -4592,6 +4777,7 @@ function ErrorReportsView({
   const [cleanupBusy, setCleanupBusy] = useState(false);
   const [copyMessage, setCopyMessage] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
+  const [cleanupStep, setCleanupStep] = useState("");
   const [reportFilter, setReportFilter] = useState<ErrorReportFilterId>("active");
   const [updatingReportId, setUpdatingReportId] = useState("");
   const [errorAiItems, setErrorAiItems] = useState<string[]>([
@@ -4695,8 +4881,14 @@ function ErrorReportsView({
     if (updatingReportId) return;
 
     const updatedAt = new Date().toISOString();
+    const reportLabel = report.errorCode || report.referenceId;
     setUpdatingReportId(report.referenceId);
     setStatusMessage(status === "Fixed" ? "Marking error as fixed..." : `Marking ${status}...`);
+    onAdminActivity({
+      detail: `${reportLabel} status update started.`,
+      label: "Error Reports",
+      status: "working"
+    });
 
     try {
       const response = await fetch("/api/admin/error-reports", {
@@ -4719,23 +4911,45 @@ function ErrorReportsView({
 
       if (!response.ok || !payload.ok) {
         setStatusMessage(payload.error || "Could not update this report.");
+        onAdminActivity({
+          detail: `${reportLabel} could not be marked ${status}.`,
+          label: "Error Reports",
+          status: "error"
+        });
         return;
       }
 
-      onReportsChange(
-        errorReports.map((item) =>
-          item.referenceId === report.referenceId
-            ? { ...item, status, updatedAt }
-            : item
-        )
+      const updatedReports = errorReports.map((item) =>
+        item.referenceId === report.referenceId
+          ? { ...item, status, updatedAt }
+          : item
       );
+      onReportsChange(updatedReports);
       setHighlightedReportId(report.referenceId);
       setSelectedReport((current) => {
         if (current?.referenceId !== report.referenceId) return current;
         if (status === "Fixed" || status === "Ignored") return null;
         return { ...current, status, updatedAt };
       });
+      if (status === "Fixed") {
+        const nextActiveReports = updatedReports.filter(isActiveErrorReport);
+        setErrorAiItems([
+          `${reportLabel} marked Fixed and removed from Active reports.`,
+          `Active reports now: ${nextActiveReports.length}.`,
+          "Use Fixed or All to review handled reports."
+        ]);
+        setErrorAiStatus("Error report status refreshed after Mark Fixed.");
+        setErrorAiCache(`${reportFilter} reports updated`);
+      }
       setStatusMessage(status === "Fixed" ? "Error marked as fixed." : `Marked ${status}.`);
+      onAdminActivity({
+        detail:
+          status === "Fixed"
+            ? `${reportLabel} moved out of Active reports.`
+            : `${reportLabel} marked ${status}.`,
+        label: "Error Reports",
+        status: "success"
+      });
       void refreshReports({
         preserveUpdatedReport: { referenceId: report.referenceId, status, updatedAt },
         silent: true
@@ -4744,6 +4958,11 @@ function ErrorReportsView({
       setStatusMessage(
         "Could not update this report. The API stayed safe and no public data leaked."
       );
+      onAdminActivity({
+        detail: `${reportLabel} status update failed safely.`,
+        label: "Error Reports",
+        status: "error"
+      });
     } finally {
       setUpdatingReportId("");
     }
@@ -4796,9 +5015,16 @@ function ErrorReportsView({
     }
 
     setCleanupBusy(true);
+    setCleanupStep("Preparing cleanup request");
     setStatusMessage("Clearing selected old error reports...");
+    onAdminActivity({
+      detail: "Old Error Reports cleanup started.",
+      label: "Error Reports",
+      status: "working"
+    });
 
     try {
+      setCleanupStep("Sending protected cleanup request");
       const response = await fetch("/api/admin/error-reports", {
         body: JSON.stringify({
           action: "clear_old",
@@ -4820,15 +5046,33 @@ function ErrorReportsView({
 
       if (!response.ok || !payload.ok) {
         setStatusMessage(payload.error || "Could not clear selected old reports.");
+        setCleanupStep("Cleanup failed safely");
+        onAdminActivity({
+          detail: payload.error || "Old Error Reports cleanup could not complete.",
+          label: "Error Reports",
+          status: "error"
+        });
         return;
       }
 
+      setCleanupStep("Refreshing report list");
       await refreshReports();
       setCleanupDialogOpen(false);
       setCleanupConfirmation("");
       setStatusMessage(`${payload.deletedCount || 0} old error reports cleared.`);
+      onAdminActivity({
+        detail: `${payload.deletedCount || 0} old error reports cleared.`,
+        label: "Error Reports",
+        status: "success"
+      });
     } catch {
       setStatusMessage("Could not clear selected old reports. No other production data was touched.");
+      setCleanupStep("Cleanup failed safely");
+      onAdminActivity({
+        detail: "Old Error Reports cleanup failed safely.",
+        label: "Error Reports",
+        status: "error"
+      });
     } finally {
       setCleanupBusy(false);
     }
@@ -4853,13 +5097,14 @@ function ErrorReportsView({
               {
                 description: "Copy a safe Codex prompt for the newest report.",
                 label: "Create Codex Fix Prompt",
-                onSelect: () => runErrorReportsAssistant("Create Codex Fix Prompt")
+            onSelect: () => runErrorReportsAssistant("Create Codex Fix Prompt")
               }
             ]}
             cacheLabel={errorAiCache}
             eyebrow="AI Error Review"
             fallbackItems={errorAiItems}
             insight={null}
+            onActivity={onAdminActivity}
             onGenerate={() => runErrorReportsAssistant("Summarize Recent Errors")}
             onRefresh={() => runErrorReportsAssistant("Summarize Recent Errors")}
             status={errorAiStatus}
@@ -5096,6 +5341,17 @@ function ErrorReportsView({
               This confirmation is required because clearing reports is permanent.
             </small>
           </label>
+          {cleanupBusy ? (
+            <ActionProgressCard
+              label="Clearing old reports"
+              progress={cleanupStep.includes("Refreshing") ? 76 : 42}
+              steps={[
+                "Confirmation checked",
+                cleanupStep || "Preparing cleanup request",
+                "Report list will refresh automatically"
+              ]}
+            />
+          ) : null}
         </div>
       </AdminActionDialog>
       <AdminActionDialog
@@ -5240,10 +5496,12 @@ function ErrorReportsView({
 
 function BackupCleanupView({
   control,
-  csrfToken
+  csrfToken,
+  onAdminActivity
 }: {
   control: typeof adminControlCenterData;
   csrfToken: string;
+  onAdminActivity: (activity: AdminActionActivityInput) => void;
 }) {
   const [status, setStatus] = useState<AdminMaintenanceStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -5255,6 +5513,8 @@ function BackupCleanupView({
   >("fixed_ignored");
   const [errorCleanupConfirmation, setErrorCleanupConfirmation] = useState("");
   const [message, setMessage] = useState("");
+  const [maintenanceStep, setMaintenanceStep] = useState("");
+  const [errorCleanupStep, setErrorCleanupStep] = useState("");
   const [cleanupConfirmOpen, setCleanupConfirmOpen] = useState(false);
   const [backupConfirmOpen, setBackupConfirmOpen] = useState(false);
   const [testBackupEmailConfirmOpen, setTestBackupEmailConfirmOpen] = useState(false);
@@ -5299,9 +5559,16 @@ function BackupCleanupView({
     }
 
     setErrorCleanupBusy(true);
+    setErrorCleanupStep("Preparing stale report cleanup");
     setMessage("Clearing selected old error reports...");
+    onAdminActivity({
+      detail: "Maintenance stale-report cleanup started.",
+      label: "Backup/Cleanup",
+      status: "working"
+    });
 
     try {
+      setErrorCleanupStep("Sending protected cleanup request");
       const response = await fetch("/api/admin/error-reports", {
         body: JSON.stringify({
           action: "clear_old",
@@ -5323,10 +5590,17 @@ function BackupCleanupView({
 
       if (!response.ok || !payload.ok) {
         setMessage(payload.error || "Could not clear selected old error reports.");
+        setErrorCleanupStep("Cleanup failed safely");
+        onAdminActivity({
+          detail: payload.error || "Maintenance stale-report cleanup could not complete.",
+          label: "Backup/Cleanup",
+          status: "error"
+        });
         return;
       }
 
       const deletedCount = payload.deletedCount || 0;
+      setErrorCleanupStep("Refreshing maintenance status");
       setStatus((current) =>
         current
           ? {
@@ -5342,8 +5616,19 @@ function BackupCleanupView({
       setErrorCleanupConfirmOpen(false);
       setErrorCleanupConfirmation("");
       setMessage(`${deletedCount} old error reports cleared. No analytics or coach data was touched.`);
+      onAdminActivity({
+        detail: `${deletedCount} old error reports cleared from maintenance.`,
+        label: "Backup/Cleanup",
+        status: "success"
+      });
     } catch {
       setMessage("Could not clear selected old reports. No other production data was touched.");
+      setErrorCleanupStep("Cleanup failed safely");
+      onAdminActivity({
+        detail: "Maintenance stale-report cleanup failed safely.",
+        label: "Backup/Cleanup",
+        status: "error"
+      });
     } finally {
       setErrorCleanupBusy(false);
     }
@@ -5351,15 +5636,39 @@ function BackupCleanupView({
 
   async function runMaintenanceAction(action: "backup" | "cleanup" | "test_backup_email") {
     setBusyAction(action);
+    setMaintenanceStep(
+      action === "backup"
+        ? "Preparing analytics backup data"
+        : action === "cleanup"
+          ? "Verifying backup and email notification"
+          : "Preparing test backup email"
+    );
     setMessage(
       action === "backup"
         ? "Creating analytics backup..."
         : action === "cleanup"
           ? "Checking backup and active-admin notification before cleanup..."
-          : "Sending test backup email..."
+        : "Sending test backup email..."
     );
+    onAdminActivity({
+      detail:
+        action === "backup"
+          ? "Analytics backup started."
+          : action === "cleanup"
+            ? "Protected cleanup started."
+            : "Test backup email started.",
+      label: "Backup/Cleanup",
+      status: "working"
+    });
 
     try {
+      setMaintenanceStep(
+        action === "backup"
+          ? "Creating CSV and XLS backup files"
+          : action === "cleanup"
+            ? "Running cleanup only after backup checks pass"
+            : "Sending test email to active admins"
+      );
       const response = await fetch("/api/admin/backup-cleanup", {
         body: JSON.stringify({ action }),
         cache: "no-store",
@@ -5375,25 +5684,55 @@ function BackupCleanupView({
 
       if (!response.ok || !payload.ok) {
         setMessage(payload.error || "Maintenance action could not complete.");
+        setMaintenanceStep("Action failed safely");
+        onAdminActivity({
+          detail: payload.error || "Maintenance action could not complete.",
+          label: "Backup/Cleanup",
+          status: "error"
+        });
         return;
       }
 
       if (action === "backup") {
+        setMaintenanceStep("Backup delivered to active admins");
         setBackupConfirmOpen(false);
         setMessage(
           `Backup completed for ${payload.recordCount || 0} analytics records. Notification status: ${
             payload.notificationStatus || "not recorded"
           }.`
         );
+        onAdminActivity({
+          detail: `Backup completed for ${payload.recordCount || 0} analytics records.`,
+          label: "Backup/Cleanup",
+          status: "success"
+        });
       } else if (action === "cleanup") {
+        setMaintenanceStep("Cleanup completed");
         setCleanupConfirmOpen(false);
         setMessage(`${payload.deletedCount || 0} old analytics events cleaned after backup.`);
+        onAdminActivity({
+          detail: `${payload.deletedCount || 0} old analytics events cleaned after backup.`,
+          label: "Backup/Cleanup",
+          status: "success"
+        });
       } else {
+        setMaintenanceStep("Test email sent");
         setTestBackupEmailConfirmOpen(false);
         setMessage("Test backup email sent to all active admin recipients.");
+        onAdminActivity({
+          detail: "Test backup email sent to active admins.",
+          label: "Backup/Cleanup",
+          status: "success"
+        });
       }
     } catch {
       setMessage("Maintenance action failed safely. No destructive cleanup was run.");
+      setMaintenanceStep("Action failed safely");
+      onAdminActivity({
+        detail: "Maintenance action failed safely.",
+        label: "Backup/Cleanup",
+        status: "error"
+      });
     } finally {
       setBusyAction("");
     }
@@ -5688,6 +6027,23 @@ function BackupCleanupView({
             This creates CSV and XLS backup files for current analytics data and emails them to
             active admin recipients. No cleanup runs from this action.
           </p>
+          {busyAction === "backup" ? (
+            <ActionProgressCard
+              label="Running backup"
+              progress={
+                maintenanceStep.includes("Creating")
+                  ? 58
+                  : maintenanceStep.includes("delivered")
+                    ? 100
+                    : 28
+              }
+              steps={[
+                "Preparing analytics data",
+                maintenanceStep || "Creating backup files",
+                "Email delivery status will appear after completion"
+              ]}
+            />
+          ) : null}
         </div>
       </AdminActionDialog>
       <AdminActionDialog
@@ -5714,6 +6070,17 @@ function BackupCleanupView({
             This sends a test backup email to active admin recipients so the email backup channel can
             be verified before cleanup is used.
           </p>
+          {busyAction === "test_backup_email" ? (
+            <ActionProgressCard
+              label="Sending test backup email"
+              progress={maintenanceStep.includes("sent") ? 100 : 58}
+              steps={[
+                "Recipient list checked",
+                maintenanceStep || "Sending test email",
+                "Delivery result will appear here"
+              ]}
+            />
+          ) : null}
         </div>
       </AdminActionDialog>
       <AdminActionDialog
@@ -5746,6 +6113,17 @@ function BackupCleanupView({
             Coach profiles, coach sites, slugs, settings, payment links, private links, admins, and
             audit logs are not part of this cleanup.
           </p>
+          {busyAction === "cleanup" ? (
+            <ActionProgressCard
+              label="Running protected cleanup"
+              progress={maintenanceStep.includes("completed") ? 100 : 52}
+              steps={[
+                "Backup requirement checked",
+                maintenanceStep || "Running protected cleanup",
+                "Only eligible old analytics events are touched"
+              ]}
+            />
+          ) : null}
         </div>
       </AdminActionDialog>
       <AdminActionDialog
@@ -5805,6 +6183,17 @@ function BackupCleanupView({
               This confirmation is required because clearing reports is permanent.
             </small>
           </label>
+          {errorCleanupBusy ? (
+            <ActionProgressCard
+              label="Clearing old reports"
+              progress={errorCleanupStep.includes("Refreshing") ? 78 : 44}
+              steps={[
+                "Confirmation checked",
+                errorCleanupStep || "Preparing stale report cleanup",
+                "Analytics and coach data stay untouched"
+              ]}
+            />
+          ) : null}
         </div>
       </AdminActionDialog>
     </AdminPageShell>
@@ -5813,22 +6202,42 @@ function BackupCleanupView({
 
 function SettingsView({
   control,
-  onAction
+  onAction,
+  onAdminActivity
 }: {
   control: typeof adminControlCenterData;
+  onAdminActivity: (activity: AdminActionActivityInput) => void;
   onAction: (title: string, body: string) => void;
 }) {
+  const [settingsMessage, setSettingsMessage] = useState("");
+
+  useEffect(() => {
+    if (!settingsMessage) return;
+
+    const timeout = window.setTimeout(() => setSettingsMessage(""), 2200);
+
+    return () => window.clearTimeout(timeout);
+  }, [settingsMessage]);
+
+  function openSupportSettings() {
+    setSettingsMessage("Support settings opened.");
+    onAdminActivity({
+      detail: "Support settings information opened.",
+      label: "Settings",
+      status: "success"
+    });
+    onAction(
+      "Support Settings",
+      "Default Yours Wellness support is used only on error or unavailable fallback pages when coach-specific support details are missing. Coach details stay editable inside the Coach Site builder."
+    );
+  }
+
   return (
     <AdminPageShell
       actions={
         <button
           className={styles.secondaryAction}
-          onClick={() =>
-            onAction(
-              "Support Settings",
-              "Default Yours Wellness support is used only on error or unavailable fallback pages when coach-specific support details are missing. Coach details stay editable inside the Coach Site builder."
-            )
-          }
+          onClick={openSupportSettings}
           type="button"
         >
           Support Settings
@@ -5883,6 +6292,9 @@ function SettingsView({
       <p className={styles.securityNote}>
         Strict DB admin role enforcement should stay disabled until the real admin row is verified.
       </p>
+      {settingsMessage ? (
+        <ActionToast message={settingsMessage} tone="success" />
+      ) : null}
     </AdminPageShell>
   );
 }

@@ -44,6 +44,13 @@ import styles from "./admin-dashboard-shell.module.css";
 type AdminCoachSitesManagerProps = {
   csrfToken: string;
   mode?: "create" | "list";
+  onAdminActivity?: (activity: AdminActionActivityInput) => void;
+};
+
+type AdminActionActivityInput = {
+  detail: string;
+  label: string;
+  status: "error" | "success" | "working";
 };
 
 type CoachDialog =
@@ -521,7 +528,11 @@ function getCopyScopeLabel(scope: CopyRegenerationScope) {
   return "All copy";
 }
 
-export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachSitesManagerProps) {
+export function AdminCoachSitesManager({
+  csrfToken,
+  mode = "list",
+  onAdminActivity
+}: AdminCoachSitesManagerProps) {
   const [sites, setSites] = useState<CoachSiteRecord[]>([]);
   const [form, setForm] = useState<CoachSiteFormState>(EMPTY_COACH_SITE_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -550,6 +561,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   const [removeOtpSending, setRemoveOtpSending] = useState(false);
   const [removeReason, setRemoveReason] = useState(removalReasons[0]);
   const [removeSubmitting, setRemoveSubmitting] = useState<CoachSiteDangerStatus | null>(null);
+  const [deletingDraftId, setDeletingDraftId] = useState("");
   const [storageErrorCode, setStorageErrorCode] = useState("");
   const [storageMessage, setStorageMessage] = useState("");
   const [storageReady, setStorageReady] = useState(false);
@@ -557,6 +569,10 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   const previewSyncTimeoutRef = useRef<number | null>(null);
   const previewSyncFormRef = useRef<CoachSiteFormState | null>(null);
   const draftSubmittingRef = useRef(false);
+
+  function recordActivity(activity: AdminActionActivityInput) {
+    onAdminActivity?.(activity);
+  }
 
   useEffect(() => {
     if (mode === "create") {
@@ -896,6 +912,14 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       resetPublishProgress();
     }
     setMessage(status === "published" ? "Publishing site..." : "Saving draft...");
+    recordActivity({
+      detail:
+        status === "published"
+          ? `${site.coachName} publish started.`
+          : `${site.coachName} draft save started.`,
+      label: "Coach Sites",
+      status: "working"
+    });
 
     try {
       if (status === "published") {
@@ -938,6 +962,14 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
             "Publishing stopped because the coach-site database did not save this website."
           );
         }
+        recordActivity({
+          detail:
+            status === "published"
+              ? `${site.coachName} publish could not complete.`
+              : `${site.coachName} draft could not be saved.`,
+          label: "Coach Sites",
+          status: "error"
+        });
         return site;
       }
 
@@ -978,6 +1010,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
           finishPublishProgressError(
             "The website was saved, but final public verification failed. Do not share the link yet."
           );
+          recordActivity({
+            detail: `${savedSite.coachName} saved, but public verification failed.`,
+            label: "Coach Sites",
+            status: "error"
+          });
           return savedSite;
         }
       }
@@ -992,6 +1029,14 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
           ? `Successfully Published. Stable public link: ${savedSite.publicUrl}`
           : "Draft saved successfully."
       );
+      recordActivity({
+        detail:
+          status === "published"
+            ? `${savedSite.coachName} published and verified.`
+            : `${savedSite.coachName} draft saved successfully.`,
+        label: "Coach Sites",
+        status: "success"
+      });
       return savedSite;
     } catch {
       setSites(dedupeCoachSiteRecords(previousSites));
@@ -1013,6 +1058,14 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
           "Publishing stopped because the admin API connection did not respond."
         );
       }
+      recordActivity({
+        detail:
+          status === "published"
+            ? `${site.coachName} publish failed safely.`
+            : `${site.coachName} draft save failed safely.`,
+        label: "Coach Sites",
+        status: "error"
+      });
     } finally {
       if (status === "draft") {
         draftSubmittingRef.current = false;
@@ -1431,10 +1484,20 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     }
 
     setMessage("Publishing draft...");
+    recordActivity({
+      detail: `${site.coachName} draft publish started.`,
+      label: "Coach Sites",
+      status: "working"
+    });
 
     const publishedDraft = await persistSiteStatus(site, "published");
     if (!publishedDraft) {
       setMessage("Draft was not published. Fix the database/API issue and try again.");
+      recordActivity({
+        detail: `${site.coachName} draft publish failed.`,
+        label: "Coach Sites",
+        status: "error"
+      });
       return;
     }
 
@@ -1452,12 +1515,22 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       setMessage(
         "Published status saved, but public verification failed. Reopen and verify before sharing."
       );
+      recordActivity({
+        detail: `${publishedDraft.coachName} draft saved as published but verification failed.`,
+        label: "Coach Sites",
+        status: "error"
+      });
       return;
     }
 
     setPreviewSite((current) => (current?.id === site.id ? publishedDraft : current));
     setPublishedSite(publishedDraft);
     setMessage(`Successfully Published. Stable public link: ${publishedDraft.publicUrl}`);
+    recordActivity({
+      detail: `${publishedDraft.coachName} draft published and verified.`,
+      label: "Coach Sites",
+      status: "success"
+    });
     setDialog(null);
   }
 
@@ -1474,6 +1547,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     setPreviewSite((current) => (current?.id === site.id ? restoredSite : current));
     setDialog(null);
     setMessage("Coach site reactivated successfully.");
+    recordActivity({
+      detail: `${site.coachName} reactivation started.`,
+      label: "Coach Sites",
+      status: "working"
+    });
 
     try {
       const response = await fetch("/api/admin/coach-sites", {
@@ -1503,6 +1581,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
           technicalDetails: `PATCH /api/admin/coach-sites reactivate failed with ${response.status}`,
           userAction: "Reactivate archived coach site"
         });
+        recordActivity({
+          detail: `${site.coachName} could not be reactivated.`,
+          label: "Coach Sites",
+          status: "error"
+        });
         return;
       }
 
@@ -1513,6 +1596,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         current.map((item) => (item.id === site.id ? payload.coachSite! : item))
       );
       setPreviewSite((current) => (current?.id === site.id ? payload.coachSite! : current));
+      recordActivity({
+        detail: `${payload.coachSite.coachName} reactivated successfully.`,
+        label: "Coach Sites",
+        status: "success"
+      });
     } catch {
       setSites((current) => current.map((item) => (item.id === site.id ? site : item)));
       setPreviewSite((current) => (current?.id === site.id ? site : current));
@@ -1526,11 +1614,24 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         technicalDetails: "PATCH /api/admin/coach-sites reactivate network failure",
         userAction: "Reactivate archived coach site"
       });
+      recordActivity({
+        detail: `${site.coachName} reactivation failed safely.`,
+        label: "Coach Sites",
+        status: "error"
+      });
     }
   }
 
   async function deleteDraftSite(site: CoachSiteRecord) {
+    if (deletingDraftId) return;
+
+    setDeletingDraftId(site.id);
     setStorageMessage("Deleting draft...");
+    recordActivity({
+      detail: `${site.coachName || "Coach"} draft deletion started.`,
+      label: "Coach Sites",
+      status: "working"
+    });
 
     try {
       const response = await fetch("/api/admin/coach-sites", {
@@ -1558,6 +1659,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
           technicalDetails: `PATCH /api/admin/coach-sites delete_draft failed with ${response.status}`,
           userAction: "Delete coach site draft"
         });
+        recordActivity({
+          detail: `${site.coachName || "Coach"} draft could not be deleted.`,
+          label: "Coach Sites",
+          status: "error"
+        });
         return;
       }
 
@@ -1568,6 +1674,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       setPublishedSite((current) => (current?.id === site.id ? null : current));
       setStorageMessage("Draft deleted.");
       setMessage(`${site.coachName || "Coach"} draft deleted.`);
+      recordActivity({
+        detail: `${site.coachName || "Coach"} draft deleted.`,
+        label: "Coach Sites",
+        status: "success"
+      });
       setDialog(null);
     } catch {
       setStorageReady(false);
@@ -1578,6 +1689,13 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         technicalDetails: "PATCH /api/admin/coach-sites delete_draft network failure",
         userAction: "Delete coach site draft"
       });
+      recordActivity({
+        detail: `${site.coachName || "Coach"} draft delete failed safely.`,
+        label: "Coach Sites",
+        status: "error"
+      });
+    } finally {
+      setDeletingDraftId("");
     }
   }
 
@@ -1639,6 +1757,14 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
 
     setRemoveMessage("");
     setRemoveSubmitting(status);
+    recordActivity({
+      detail:
+        status === "archived"
+          ? `${site.coachName} archive confirmation submitted.`
+          : `${site.coachName} permanent remove confirmation submitted.`,
+      label: "Coach Sites",
+      status: "working"
+    });
 
     try {
       const response = await fetch("/api/admin/coach-sites", {
@@ -1661,6 +1787,14 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       if (!response.ok || !payload.ok || !payload.coachSite) {
         setRemoveMessage(payload.error || "Could not update this coach site.");
         setStorageReady(Boolean(payload.configured));
+        recordActivity({
+          detail:
+            status === "archived"
+              ? `${site.coachName} could not be archived.`
+              : `${site.coachName} could not be removed.`,
+          label: "Coach Sites",
+          status: "error"
+        });
         return;
       }
 
@@ -1678,9 +1812,25 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       setRemoveConfirm("");
       setRemoveOtp("");
       setRemoveMessage("");
+      recordActivity({
+        detail:
+          status === "archived"
+            ? `${payload.coachSite.coachName} archived successfully.`
+            : `${payload.coachSite.coachName} removed and hidden from active admin lists.`,
+        label: "Coach Sites",
+        status: "success"
+      });
       setDialog(null);
     } catch {
       setRemoveMessage("Could not reach admin API for this coach-site action.");
+      recordActivity({
+        detail:
+          status === "archived"
+            ? `${site.coachName} archive failed safely.`
+            : `${site.coachName} remove failed safely.`,
+        label: "Coach Sites",
+        status: "error"
+      });
     } finally {
       setRemoveSubmitting(null);
     }
@@ -1825,8 +1975,18 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
 
     try {
       await navigator.clipboard.writeText(link);
+      recordActivity({
+        detail: `${site.coachName} public link copied.`,
+        label: "Coach Sites",
+        status: "success"
+      });
     } catch {
       // The confirmation dialog still shows the stable link if clipboard is blocked.
+      recordActivity({
+        detail: `${site.coachName} link copy was blocked by the browser.`,
+        label: "Coach Sites",
+        status: "error"
+      });
     }
 
     setDialog({ link, site, type: "copy" });
@@ -2254,6 +2414,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         dialog={dialog}
         form={form}
         onAnalyzePaidFunnel={() => requestPaidFunnelAnalysis(form)}
+        onAdminActivity={onAdminActivity}
         onClose={() => setDialog(null)}
         onCopyAgain={(site) => void copyPublicLink(site)}
         onDeleteDraft={(site) => void deleteDraftSite(site)}
@@ -2284,6 +2445,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         previewSite={previewSite}
         publishProgress={publishProgress}
         publishedSite={publishedSite}
+        deletingDraftId={deletingDraftId}
         draftSubmitting={draftSubmitting}
         removeConfirm={removeConfirm}
         removeMessage={removeMessage}
@@ -2305,10 +2467,12 @@ function CoachDialogRenderer({
   aiMessage,
   aiSubmitting,
   csrfToken,
+  deletingDraftId,
   dialog,
   draftSubmitting,
   form,
   onAnalyzePaidFunnel,
+  onAdminActivity,
   onClose,
   onCopyAgain,
   onDeleteDraft,
@@ -2348,10 +2512,12 @@ function CoachDialogRenderer({
   aiMessage: string;
   aiSubmitting: boolean;
   csrfToken: string;
+  deletingDraftId: string;
   dialog: CoachDialog | null;
   draftSubmitting: boolean;
   form: CoachSiteFormState;
   onAnalyzePaidFunnel: () => Promise<PaidFunnelAnalysis | null>;
+  onAdminActivity?: (activity: AdminActionActivityInput) => void;
   onClose: () => void;
   onCopyAgain: (site: CoachSiteRecord) => void;
   onDeleteDraft: (site: CoachSiteRecord) => void;
@@ -2459,7 +2625,12 @@ function CoachDialogRenderer({
             ) : null}
 
             {wizardStep === 1 ? (
-              <HeroMediaStep csrfToken={csrfToken} form={form} onUpdateField={onUpdateField} />
+              <HeroMediaStep
+                csrfToken={csrfToken}
+                form={form}
+                onAdminActivity={onAdminActivity}
+                onUpdateField={onUpdateField}
+              />
             ) : null}
 
             {wizardStep === 2 ? (
@@ -2662,15 +2833,23 @@ function CoachDialogRenderer({
   }
 
   if (dialog.type === "delete-draft") {
+    const deletingCurrentDraft = deletingDraftId === dialog.site.id;
+
     return (
       <AdminActionDialog
         footer={
           <>
-            <button className={styles.secondaryAction} onClick={onClose} type="button">
+            <button
+              className={styles.secondaryAction}
+              disabled={deletingCurrentDraft}
+              onClick={onClose}
+              type="button"
+            >
               Cancel
             </button>
             <button
               className={styles.primaryAction}
+              disabled={deletingCurrentDraft}
               onClick={() => {
                 void onPublishDraft(dialog.site);
               }}
@@ -2680,10 +2859,11 @@ function CoachDialogRenderer({
             </button>
             <button
               className={styles.dangerAction}
+              disabled={deletingCurrentDraft}
               onClick={() => onDeleteDraft(dialog.site)}
               type="button"
             >
-              Delete Draft
+              {deletingCurrentDraft ? "Deleting..." : "Delete Draft"}
             </button>
           </>
         }
@@ -2696,6 +2876,29 @@ function CoachDialogRenderer({
           This removes the saved draft from the Drafts list. It is not public right now, and
           published coach sites are not affected.
         </p>
+        {deletingCurrentDraft ? (
+          <div className={styles.actionProgressCard} role="status" aria-live="polite">
+            <div>
+              <span aria-hidden="true" />
+              <strong>Deleting draft</strong>
+            </div>
+            <div
+              aria-label="Deleting draft progress"
+              aria-valuemax={100}
+              aria-valuemin={0}
+              aria-valuenow={58}
+              className={styles.actionProgressBar}
+              role="progressbar"
+            >
+              <span style={{ width: "58%" }} />
+            </div>
+            <ul>
+              <li>Protected admin request started</li>
+              <li data-active="true">Removing draft from reusable list</li>
+              <li>Published sites remain untouched</li>
+            </ul>
+          </div>
+        ) : null}
         <dl className={styles.definitionGrid}>
           <div>
             <dt>Coach</dt>
@@ -3402,16 +3605,19 @@ function CursorInspectIcon() {
 function HeroMediaStep({
   csrfToken,
   form,
+  onAdminActivity,
   onUpdateField
 }: {
   csrfToken: string;
   form: CoachSiteFormState;
+  onAdminActivity?: (activity: AdminActionActivityInput) => void;
   onUpdateField: <Key extends keyof CoachSiteFormState>(
     key: Key,
     value: CoachSiteFormState[Key]
   ) => void;
 }) {
   const [uploadMessage, setUploadMessage] = useState("");
+  const [uploadingMediaType, setUploadingMediaType] = useState<"" | "image" | "video">("");
   const imagePreviewUrl = form.photoUrl || form.logoUrl;
   const videoPreviewUrl = normalizeVideoEmbedUrl(form.videoUrl);
   const uploadedVideoUrl = isUploadedVideoSource(form.videoUrl) ? form.videoUrl : "";
@@ -3444,6 +3650,15 @@ function HeroMediaStep({
     setUploadMessage(
       mediaType === "image" ? `Optimizing ${file.name}...` : `Uploading ${file.name}...`
     );
+    setUploadingMediaType(mediaType);
+    onAdminActivity?.({
+      detail:
+        mediaType === "image"
+          ? `${file.name} photo optimization/upload started.`
+          : `${file.name} video upload started.`,
+      label: "Coach Sites",
+      status: "working"
+    });
 
     const preparedMedia =
       mediaType === "image"
@@ -3494,6 +3709,13 @@ function HeroMediaStep({
           payload.error ||
             `${uploadFile.name} is preview-only until Cloudflare R2 media storage is enabled.`
         );
+        onAdminActivity?.({
+          detail:
+            payload.error ||
+            `${uploadFile.name} saved as preview-only because permanent media storage did not respond.`,
+          label: "Coach Sites",
+          status: "error"
+        });
         return;
       }
 
@@ -3503,14 +3725,28 @@ function HeroMediaStep({
           ? `${uploadFile.name} uploaded to R2 (${formatBytes(uploadFile.size)}). ${preparedMedia.message}`
           : `${uploadFile.name} uploaded and saved for this coach site.`
       );
+      onAdminActivity?.({
+        detail:
+          mediaType === "image"
+            ? `${uploadFile.name} photo uploaded and saved.`
+            : `${uploadFile.name} video uploaded and saved.`,
+        label: "Coach Sites",
+        status: "success"
+      });
     } catch {
       const fallbackPreview = await readFileAsDataUrl(uploadFile);
       onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", fallbackPreview);
       setUploadMessage(
         `${uploadFile.name} is preview-only because the upload API was not reachable.`
       );
+      onAdminActivity?.({
+        detail: `${uploadFile.name} upload API was not reachable; preview-only fallback used.`,
+        label: "Coach Sites",
+        status: "error"
+      });
     } finally {
       URL.revokeObjectURL(previewUrl);
+      setUploadingMediaType("");
     }
   }
 
@@ -3537,10 +3773,15 @@ function HeroMediaStep({
             <span>Upload photo/image</span>
             <input
               accept={PHOTO_UPLOAD_ACCEPT}
+              disabled={uploadingMediaType === "image"}
               onChange={(event) => void handleMediaUpload(event.target.files?.[0], "image")}
               type="file"
             />
-            <small>JPEG, PNG, WebP, AVIF, GIF, HEIC, HEIF, BMP, and TIFF are supported.</small>
+            <small>
+              {uploadingMediaType === "image"
+                ? "Uploading photo. Please wait..."
+                : "JPEG, PNG, WebP, AVIF, GIF, HEIC, HEIF, BMP, and TIFF are supported."}
+            </small>
           </label>
           <TextField
             helper="Use a coach photo, logo, or hero image URL."
@@ -3582,10 +3823,15 @@ function HeroMediaStep({
             <span>Upload video</span>
             <input
               accept="video/*"
+              disabled={uploadingMediaType === "video"}
               onChange={(event) => void handleMediaUpload(event.target.files?.[0], "video")}
               type="file"
             />
-            <small>Use upload for a local video, or paste a YouTube/video URL below.</small>
+            <small>
+              {uploadingMediaType === "video"
+                ? "Uploading video. Please wait..."
+                : "Use upload for a local video, or paste a YouTube/video URL below."}
+            </small>
           </label>
           <TextField
             helper="YouTube watch, shorts, share, and embed links are supported."
