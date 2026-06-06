@@ -1238,6 +1238,53 @@
   padding: 1rem;
 }
 
+.inspectSectionEmpty,
+.inspectSectionEditor {
+  display: grid;
+  gap: 0.85rem;
+  border: 1px solid rgb(20 184 166 / 0.22);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at 12% 0%, rgb(20 184 166 / 0.12), transparent 12rem),
+    linear-gradient(135deg, rgb(255 255 255 / 0.94), rgb(239 253 250 / 0.72));
+  box-shadow: 0 18px 48px rgb(15 23 42 / 0.07);
+  padding: 1rem;
+}
+
+.inspectSectionEmpty h3,
+.inspectSectionEditor h3 {
+  margin: 0.2rem 0 0;
+  color: #172134;
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+
+.inspectSectionEmpty p,
+.inspectSectionEditor p {
+  margin: 0.35rem 0 0;
+  color: #586579;
+  font-size: 0.88rem;
+  font-weight: 740;
+  line-height: 1.5;
+}
+
+.inspectSectionEditorHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.inspectSectionEditorHeader .primaryAction {
+  min-width: 12rem;
+}
+
+.inspectSectionEditorGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
 .aiProgressCard strong {
   color: #251822;
   font-size: 1rem;
@@ -4500,6 +4547,7 @@
   .previewFacts,
   .previewHero,
   .previewGrid,
+  .inspectSectionEditorGrid,
   .previewInspectTray,
   .previewThemeBar,
   .previewRegisterBand {
@@ -4516,6 +4564,14 @@
 
   .previewInspectTray > div {
     justify-content: flex-start;
+  }
+
+  .inspectSectionEditorHeader {
+    grid-template-columns: 1fr;
+  }
+
+  .inspectSectionEditorHeader .primaryAction {
+    width: 100%;
   }
 
   .coachPreview[data-theme="apple-liquid-glass"],

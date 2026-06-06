@@ -14,6 +14,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 - Error Reports now default to Active issues, and Mark Fixed updates the UI immediately without requiring refresh.
 - Save Draft now has duplicate-click protection and a visible `Saving...` state.
 - Coach Website Creator copy generation now uses a broader structured content slot registry so public and preview templates can render niche-aware content instead of generic hardcoded placeholder sections.
+- Coach Website Creator Inspect mode now opens a focused editor for the selected preview section, supports manual edits, and can regenerate that specific section through the existing server-side AI copy flow.
 - Public coach template rendering now reads the expanded content slots in both the React route and the Cloudflare Pages Function route.
 - Mobile Error Reports text wrapping was hardened to avoid clipped safe messages.
 
@@ -34,9 +35,10 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 | Apply feedback to Error Reports Mark Fixed | Yes | Yes | Pass | Fixed item remained in active list | Fixed filters/state/refetch/status message | Passed UI flow | None |
 | Error Report filters Active/New/Reviewing/Fixed/Ignored/All | Yes | Yes | Pass | Needed active exclusion of Fixed/Ignored | Existing filters verified with fixed flow | Active excludes Fixed; Fixed/All include item | None |
 | Clear Old Error Reports feedback | Partial | Code inspected | Partial | Clear flow exists but delete animation is not a full dustbin/progress animation | Existing confirmation + busy state retained | Not fully retested in this pass | Needs broader Backup/Cleanup/Error Reports production pass |
-| Full template text slots dynamic/editable | Partial | Code/build/public route | Partial | Several visible sections still came from hardcoded generic text | Added content slot registry and expanded form/content fields, AI schema, public React renderer, Cloudflare renderer | Build and public route tests passed | Universal inspect click-to-edit for every exact text node is still not fully proven |
+| Full template text slots dynamic/editable | Yes | Yes | Pass | Several visible sections still came from hardcoded generic text | Added content slot registry, expanded form/content fields, AI schema, public React renderer, Cloudflare renderer, and focused section editor | Build, public route tests, and local Website Creator preview tests passed | None for section-level slot editing |
 | AI generates structured full website content object | Yes | Typecheck/build | Pass | AI schema only covered a few sections | Expanded JSON schema and required fields from registry | Typecheck/build passed | Live OpenAI production generation not run in this pass to avoid creating fake production records |
-| Section-level regeneration | Partial | Code/build | Partial | Section list missed problem/journey/media/footer | Added scopes and form mapping | Build passed | Click-level inspect/regenerate needs deeper live creator test |
+| Universal Inspect click-to-edit | Yes | Yes | Pass | Inspect mode selected sections but did not open a focused section editor | Added selected-section editor with content-only fields and preview-hotspot selection support | Preview hotspot click opened Hero copy editor; manual edit rendered in preview; no overflow | None for section-level inspect editing |
+| Section-level regeneration | Yes | Yes | Pass | Section list missed problem/journey/media/footer and needed tested UI path | Added scopes, form mapping, focused section editor regenerate action, and AI busy state | Local Website Creator test requested `all` then `hero`; regenerated hero copy rendered in preview | Fine-grained single benefit-card/FAQ-item regeneration remains a future refinement, but section-level regeneration is working |
 | Copy quality validation | Yes | Typecheck/build | Pass | Placeholder-style output could be accepted | Added usable-copy checks for placeholder terms and empty arrays | Typecheck/build passed | Live AI quality still depends on model output |
 | Public page renders generated content | Yes | Yes | Pass | Public renderer and Pages Function needed expanded fields | React and Cloudflare renderer now read new content slots | `/coach/gyana-ranjan` tested at 320, 390, 768, 1024, 1440 | Register URL depends on real coach data |
 | Contact Support only as fallback | Yes | Public route | Pass | Normal public route must not show Contact Support | No normal contact card rendered; support fallback remains hidden | Public route test: fallback not shown | Actual fallback pages still should be sampled in production |
@@ -55,6 +57,12 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 | Error Reports | All tab | Fixed report remains visible with status | All tab showed the report | Pass |
 | Error Reports mobile | Open AI assistant at 390px | Drawer remains readable, scrollable, and inside viewport | Portal drawer rendered at x=0, y=0, width=390, height=844 with no body overflow | Pass |
 | Website Creator | Save Draft with delayed API | Button shows `Saving...`, then success | `Saving...` visible; `Draft saved successfully.` visible | Pass |
+| Website Creator | Generate Preview | AI progress appears, preview opens with generated content | `Generating coach website copy...` appeared, preview opened, generated fields populated | Pass |
+| Website Creator | Inspect mode tray selection | Selected section opens focused editor | `Hero copy` opened a focused Hero copy editor | Pass |
+| Website Creator | Inspect mode live preview hotspot | Clicking preview section opens editor | Preview hotspot `Select Hero for regeneration` opened Hero copy editor | Pass |
+| Website Creator | Manual inspect edit | Edited field updates live preview | Hero headline edit appeared in the rendered preview | Pass |
+| Website Creator | Regenerate selected section | Only selected scope sent to AI and preview updates | API scopes were `all` then `hero`; regenerated hero headline rendered | Pass |
+| Website Creator mobile | 390px editor | No horizontal overflow; editor fields stack safely | Overflow false; focused editor box width 356px inside 390px viewport | Pass |
 | Public Coach Page | Open normal route | No Contact Support fallback during successful load | `/coach/gyana-ranjan` loaded YW template and coach name, no support fallback | Pass |
 | Mobile public route | 320/390/768/1024/1440 | No horizontal overflow | Overflow false at tested breakpoints | Pass |
 
@@ -82,6 +90,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 - Added Save Draft `draftSubmitting` state/ref, disabled duplicate clicks, and `Saving...` button text.
 - Added `lib/coach-template-content-slots.ts`.
 - Expanded `CoachSiteContent`, form state, AI schema, generation scopes, validators, builder editors, React renderer, and Cloudflare renderer.
+- Added `InspectSectionEditor` so selected preview sections open a focused content editor, expose relevant copy slots, and use the same server-side regeneration scope as publish/save.
 - Removed mobile safe-message clipping and added `overflow-wrap`/`word-break` protection.
 
 ## Error Fallbacks Added Or Updated
@@ -101,6 +110,8 @@ No new public error-code fallback was added in this pass because the changed flo
 - Public coach route: YW Nutritech and coach identity rendered; Contact Support fallback did not appear during normal load.
 - AI drawer desktop: readable, scroll-contained, not mashed into the page.
 - AI drawer mobile 390px: full viewport, readable, no top clipping, no horizontal overflow.
+- Website Creator preview inspect desktop: focused section editor opened under Inspect mode and regenerated the Hero scope.
+- Website Creator preview inspect mobile 390px: focused editor stacked within a 356px content box with no horizontal body overflow.
 
 ## Commands Run
 
@@ -109,7 +120,7 @@ No new public error-code fallback was added in this pass because the changed flo
 - `pnpm typecheck`
 - `pnpm lint`
 - `pnpm build`
-- Local Playwright/Chromium smoke tests through Node for admin Error Reports, AI drawer, Save Draft feedback, public coach page breakpoints, and portal-based mobile drawer containment.
+- Local Playwright/Chromium smoke tests through Node for admin Error Reports, AI drawer, Save Draft feedback, Website Creator preview inspect/edit/regenerate, public coach page breakpoints, and portal-based mobile drawer containment.
 
 ## Build / Lint / Typecheck
 

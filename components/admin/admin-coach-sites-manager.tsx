@@ -3398,6 +3398,25 @@ function PreviewAndEditStep({
         </div>
       ) : null}
 
+      {inspectMode && selectedInspectScope ? (
+        <InspectSectionEditor
+          aiSubmitting={aiSubmitting}
+          form={form}
+          onRegenerateCopy={onRegenerateCopy}
+          onUpdateField={onUpdateField}
+          scope={selectedInspectScope}
+        />
+      ) : inspectMode ? (
+        <div className={styles.inspectSectionEmpty}>
+          <p className={styles.kicker}>Inspect Mode</p>
+          <h3>Select a highlighted preview section</h3>
+          <p>
+            Click a preview section to edit only that section&apos;s content or regenerate that
+            section with AI. Layout, routes, security, and template design remain locked.
+          </p>
+        </div>
+      ) : null}
+
       <div className={styles.copyEditorPanel}>
         <div>
           <p className={styles.kicker}>Editable Copy</p>
@@ -3569,6 +3588,252 @@ function PreviewAndEditStep({
         </div>
       )}
     </div>
+  );
+}
+
+function InspectSectionEditor({
+  aiSubmitting,
+  form,
+  onRegenerateCopy,
+  onUpdateField,
+  scope
+}: {
+  aiSubmitting: boolean;
+  form: CoachSiteFormState;
+  onRegenerateCopy: (scope: CopyRegenerationScope) => Promise<void>;
+  onUpdateField: <Key extends keyof CoachSiteFormState>(
+    key: Key,
+    value: CoachSiteFormState[Key]
+  ) => void;
+  scope: PreviewInspectSection;
+}) {
+  const scopeLabel = getCopyScopeLabel(scope);
+
+  return (
+    <section className={styles.inspectSectionEditor} aria-live="polite">
+      <div className={styles.inspectSectionEditorHeader}>
+        <div>
+          <p className={styles.kicker}>Selected Section</p>
+          <h3>{scopeLabel} editor</h3>
+          <p>
+            Edits apply to the live preview immediately and are included when the draft is saved
+            or the site is published.
+          </p>
+        </div>
+        <button
+          className={styles.primaryAction}
+          disabled={aiSubmitting}
+          onClick={() => void onRegenerateCopy(scope)}
+          type="button"
+        >
+          {aiSubmitting ? "Regenerating..." : `Regenerate ${scopeLabel}`}
+        </button>
+      </div>
+      <div className={styles.inspectSectionEditorGrid}>
+        {scope === "hero" ? (
+          <>
+            <TextField
+              label="Hero brand badge"
+              onChange={(value) => onUpdateField("brandBadge", value)}
+              value={form.brandBadge}
+            />
+            <TextField
+              label="Hero brand support line"
+              onChange={(value) => onUpdateField("brandEyebrow", value)}
+              value={form.brandEyebrow}
+            />
+            <TextAreaField
+              label="Hero headline"
+              onChange={(value) => onUpdateField("heroHeadline", value)}
+              value={form.heroHeadline}
+            />
+            <TextAreaField
+              label="Subheadline"
+              onChange={(value) => onUpdateField("subheadline", value)}
+              value={form.subheadline}
+            />
+            <TextField
+              label="Hero trust label"
+              onChange={(value) => onUpdateField("heroTrustLine", value)}
+              value={form.heroTrustLine}
+            />
+            <TextField
+              label="Hero trust copy"
+              onChange={(value) => onUpdateField("heroMicroTrustText", value)}
+              value={form.heroMicroTrustText}
+            />
+          </>
+        ) : null}
+
+        {scope === "intro" ? (
+          <>
+            <TextAreaField
+              label="Intro heading"
+              onChange={(value) => onUpdateField("introHeading", value)}
+              value={form.introHeading}
+            />
+            <TextAreaField
+              label="Coach introduction"
+              onChange={(value) => onUpdateField("coachIntro", value)}
+              value={form.coachIntro}
+            />
+          </>
+        ) : null}
+
+        {scope === "vision" ? (
+          <TextAreaField
+            label="Mission / vision copy"
+            onChange={(value) => onUpdateField("visionText", value)}
+            value={form.visionText}
+          />
+        ) : null}
+
+        {scope === "problem" ? (
+          <>
+            <TextAreaField
+              label="Problem section heading"
+              onChange={(value) => onUpdateField("problemHeading", value)}
+              value={form.problemHeading}
+            />
+            <TextAreaField
+              label="Problem bullets"
+              onChange={(value) => onUpdateField("problemPointsText", value)}
+              placeholder="One problem point per line"
+              value={form.problemPointsText}
+            />
+            <TextAreaField
+              label="Trust note"
+              onChange={(value) => onUpdateField("trustText", value)}
+              value={form.trustText}
+            />
+          </>
+        ) : null}
+
+        {scope === "journey" ? (
+          <>
+            <TextAreaField
+              label="Journey heading"
+              onChange={(value) => onUpdateField("journeyHeading", value)}
+              value={form.journeyHeading}
+            />
+            <TextAreaField
+              helper="Each step uses three lines: label, title, description. Separate steps with a blank line."
+              label="Journey steps"
+              onChange={(value) => onUpdateField("journeyStepsText", value)}
+              placeholder={
+                "Profile\nMeet the coach\nGuests understand the coach story.\n\nFocus\nSee the wellness focus\nThe page explains the coach lens."
+              }
+              value={form.journeyStepsText}
+            />
+          </>
+        ) : null}
+
+        {scope === "benefits" ? (
+          <>
+            <TextAreaField
+              label="Benefits heading"
+              onChange={(value) => onUpdateField("benefitsHeading", value)}
+              value={form.benefitsHeading}
+            />
+            <TextAreaField
+              label="Benefits"
+              onChange={(value) => onUpdateField("benefitsText", value)}
+              placeholder="One benefit per line"
+              value={form.benefitsText}
+            />
+            <TextAreaField
+              helper="Optional. One description per benefit card."
+              label="Benefit descriptions"
+              onChange={(value) => onUpdateField("benefitDescriptionsText", value)}
+              placeholder="One benefit description per line"
+              value={form.benefitDescriptionsText}
+            />
+          </>
+        ) : null}
+
+        {scope === "media" ? (
+          <>
+            <TextField
+              label="Media label"
+              onChange={(value) => onUpdateField("mediaSubheading", value)}
+              value={form.mediaSubheading}
+            />
+            <TextAreaField
+              label="Media heading"
+              onChange={(value) => onUpdateField("mediaHeading", value)}
+              value={form.mediaHeading}
+            />
+            <TextAreaField
+              label="Media text"
+              onChange={(value) => onUpdateField("mediaBody", value)}
+              value={form.mediaBody}
+            />
+          </>
+        ) : null}
+
+        {scope === "cta" ? (
+          <>
+            <TextAreaField
+              label="CTA copy"
+              onChange={(value) => onUpdateField("ctaText", value)}
+              value={form.ctaText}
+            />
+            <TextField
+              label="Register button text"
+              onChange={(value) => onUpdateField("registerButtonText", value)}
+              value={form.registerButtonText}
+            />
+            <TextAreaField
+              label="Trust note"
+              onChange={(value) => onUpdateField("trustText", value)}
+              value={form.trustText}
+            />
+            <TextAreaField
+              helper="Hidden from normal public pages. Used only if a support fallback page is needed."
+              label="Fallback support text"
+              onChange={(value) => onUpdateField("supportText", value)}
+              value={form.supportText}
+            />
+          </>
+        ) : null}
+
+        {scope === "faq" ? (
+          <>
+            <TextAreaField
+              label="FAQ heading"
+              onChange={(value) => onUpdateField("faqHeading", value)}
+              value={form.faqHeading}
+            />
+            <TextAreaField
+              label="FAQ"
+              onChange={(value) => onUpdateField("faqText", value)}
+              placeholder={"Question\nAnswer\n\nQuestion\nAnswer"}
+              value={form.faqText}
+            />
+          </>
+        ) : null}
+
+        {scope === "footer" ? (
+          <>
+            <TextAreaField
+              label="Footer headline"
+              onChange={(value) => onUpdateField("footerHeadline", value)}
+              value={form.footerHeadline}
+            />
+            <TextAreaField
+              label="Footer legal/support text"
+              onChange={(value) => onUpdateField("footerText", value)}
+              value={form.footerText}
+            />
+            <TextAreaField
+              label="Social caption"
+              onChange={(value) => onUpdateField("socialCopy", value)}
+              value={form.socialCopy}
+            />
+          </>
+        ) : null}
+      </div>
+    </section>
   );
 }
 
