@@ -114,7 +114,7 @@ type AdminAiAnalyticsPayload = {
 type AnalyticsAiMenuAction = {
   description?: string;
   label: string;
-  onSelect?: () => void;
+  onSelect?: () => Promise<void> | void;
 };
 
 type AnalyticsAiActionHandler = () => Promise<void> | void;
@@ -2798,6 +2798,7 @@ function AnalyticsAiWidget({
 }) {
   const [open, setOpen] = useState(false);
   const [activeAction, setActiveAction] = useState("");
+  const [assistantError, setAssistantError] = useState("");
   const [busy, setBusy] = useState(false);
   const items = insight ? formatAiInsightItems(insight) : fallbackItems;
   const menuActions =
@@ -2811,25 +2812,58 @@ function AnalyticsAiWidget({
         ];
 
   async function runAction(action: AnalyticsAiMenuAction) {
+    if (busy) return;
+
     setActiveAction(action.label);
+    setAssistantError("");
     setOpen(true);
     setBusy(true);
 
     try {
-      if (action.onSelect) {
-        await Promise.resolve(action.onSelect());
-        return;
-      }
+      const minimumVisibleWorkState = new Promise<void>((resolve) =>
+        window.setTimeout(resolve, 760)
+      );
+      const selectedTask = action.onSelect
+        ? Promise.resolve(action.onSelect())
+        : Promise.resolve(insight ? onRefresh() : onGenerate());
 
-      if (insight) {
-        await Promise.resolve(onRefresh());
-      } else {
-        await Promise.resolve(onGenerate());
-      }
+      await Promise.all([selectedTask, minimumVisibleWorkState]);
+    } catch {
+      setAssistantError("AI action could not finish. Please retry from this panel.");
     } finally {
-      window.setTimeout(() => setBusy(false), 550);
+      setBusy(false);
     }
   }
+
+  function getWorkingCopy() {
+    if (activeAction.includes("Prompt")) {
+      return {
+        body: "Preparing a safe Codex prompt from protected report fields only.",
+        title: "Preparing prompt..."
+      };
+    }
+
+    if (activeAction.includes("Group")) {
+      return {
+        body: "Grouping visible reports by repeated error codes and categories.",
+        title: "Grouping reports..."
+      };
+    }
+
+    if (activeAction.includes("Predict")) {
+      return {
+        body: "Reviewing current counters and estimating the next admin risk window.",
+        title: "Predicting next steps..."
+      };
+    }
+
+    return {
+      body: "Reviewing the current protected admin data. Results will appear here.",
+      title: activeAction ? `${activeAction}...` : "Generating report..."
+    };
+  }
+
+  const workingCopy = getWorkingCopy();
 
   return (
     <div className={styles.aiAssistant} data-open={open ? "true" : "false"}>
@@ -2848,23 +2882,25 @@ function AnalyticsAiWidget({
           aria-busy={busy}
           className={styles.aiAssistantPanel}
           data-busy={busy ? "true" : "false"}
-          role="menu"
+          role="dialog"
         >
           <div className={styles.aiAssistantHeader}>
-            <p className={styles.kicker}>{eyebrow}</p>
-            <h3>{title}</h3>
+            <div>
+              <p className={styles.kicker}>{eyebrow}</p>
+              <h3>{title}</h3>
+            </div>
             <button aria-label="Close AI assistant" onClick={() => setOpen(false)} type="button">
               Close
             </button>
           </div>
-          <div className={styles.aiAssistantActions}>
+          <div className={styles.aiAssistantActions} aria-label="AI actions">
             {menuActions.map((action) => (
               <button
+                aria-busy={busy && activeAction === action.label}
                 data-active={activeAction === action.label ? "true" : "false"}
                 disabled={busy}
                 key={action.label}
                 onClick={() => void runAction(action)}
-                role="menuitem"
                 type="button"
               >
                 <strong>{action.label}</strong>
@@ -2873,24 +2909,29 @@ function AnalyticsAiWidget({
             ))}
           </div>
           {busy ? (
-            <div className={styles.aiAssistantLoading} role="status">
+            <div className={styles.aiAssistantLoading} aria-live="polite" role="status">
               <span aria-hidden="true" />
               <div>
-                <strong>
-                  {activeAction.includes("Prompt") ? "Preparing prompt..." : "Generating report..."}
-                </strong>
-                <p>Reviewing the current protected admin data. Results will appear here.</p>
+                <strong>{workingCopy.title}</strong>
+                <p>{workingCopy.body}</p>
               </div>
             </div>
           ) : null}
-          <div className={styles.aiAssistantResult}>
-            <strong>{activeAction || "Latest result"}</strong>
-            <ul>
-              {items.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
+          {assistantError ? (
+            <div className={styles.aiAssistantError} role="status">
+              {assistantError}
+            </div>
+          ) : null}
+          {!busy ? (
+            <div className={styles.aiAssistantResult} aria-live="polite">
+              <strong>{activeAction || "Latest result"}</strong>
+              <ul>
+                {items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {status || usageEstimate || cacheLabel ? (
             <p className={styles.aiAssistantMeta}>
               {status || "AI ready."}
@@ -2904,6 +2945,46 @@ function AnalyticsAiWidget({
       ) : null}
     </div>
   );
+}
+
+function ActionToast({
+  message,
+  tone = "standard"
+}: {
+  message: string;
+  tone?: "danger" | "standard" | "success";
+}) {
+  if (!message) return null;
+
+  return (
+    <div className={styles.actionToast} data-tone={tone} role="status">
+      {message}
+    </div>
+  );
+}
+
+function getStatusMessageTone(message: string): "danger" | "standard" | "success" {
+  const lowerMessage = message.toLowerCase();
+
+  if (
+    lowerMessage.includes("could not") ||
+    lowerMessage.includes("failed") ||
+    lowerMessage.includes("required") ||
+    lowerMessage.includes("unavailable")
+  ) {
+    return "danger";
+  }
+
+  if (
+    lowerMessage.includes("marked") ||
+    lowerMessage.includes("copied") ||
+    lowerMessage.includes("cleared") ||
+    lowerMessage.includes("ready")
+  ) {
+    return "success";
+  }
+
+  return "standard";
 }
 
 function PerformanceHeatmap({
@@ -4518,6 +4599,7 @@ function ErrorReportsView({
   ]);
   const [errorAiStatus, setErrorAiStatus] = useState("");
   const [errorAiCache, setErrorAiCache] = useState("");
+  const [highlightedReportId, setHighlightedReportId] = useState("");
   const isLiveSource = source === "d1_table";
   const isLoadingSource = source === "loading";
   const cleanupConfirmed =
@@ -4537,6 +4619,14 @@ function ErrorReportsView({
 
     return () => window.clearTimeout(timeout);
   }, [copyMessage]);
+
+  useEffect(() => {
+    if (!highlightedReportId) return;
+
+    const timeout = window.setTimeout(() => setHighlightedReportId(""), 2600);
+
+    return () => window.clearTimeout(timeout);
+  }, [highlightedReportId]);
 
   async function copyAdminText(label: string, value: string) {
     try {
@@ -4639,13 +4729,17 @@ function ErrorReportsView({
             : item
         )
       );
+      setHighlightedReportId(report.referenceId);
       setSelectedReport((current) => {
         if (current?.referenceId !== report.referenceId) return current;
         if (status === "Fixed" || status === "Ignored") return null;
         return { ...current, status, updatedAt };
       });
       setStatusMessage(status === "Fixed" ? "Error marked as fixed." : `Marked ${status}.`);
-      void refreshReports({ silent: true });
+      void refreshReports({
+        preserveUpdatedReport: { referenceId: report.referenceId, status, updatedAt },
+        silent: true
+      });
     } catch {
       setStatusMessage(
         "Could not update this report. The API stayed safe and no public data leaked."
@@ -4655,7 +4749,16 @@ function ErrorReportsView({
     }
   }
 
-  async function refreshReports(options: { silent?: boolean } = {}) {
+  async function refreshReports(
+    options: {
+      preserveUpdatedReport?: {
+        referenceId: string;
+        status: AdminErrorReport["status"];
+        updatedAt: string;
+      };
+      silent?: boolean;
+    } = {}
+  ) {
     try {
       const response = await fetch("/api/admin/error-reports", {
         cache: "no-store",
@@ -4665,7 +4768,19 @@ function ErrorReportsView({
         errorReports?: AdminErrorReport[];
       };
       if (response.ok && Array.isArray(payload.errorReports)) {
-        onReportsChange(payload.errorReports);
+        const refreshedReports = options.preserveUpdatedReport
+          ? payload.errorReports.map((report) =>
+              report.referenceId === options.preserveUpdatedReport?.referenceId
+                ? {
+                    ...report,
+                    status: options.preserveUpdatedReport.status,
+                    updatedAt: options.preserveUpdatedReport.updatedAt
+                  }
+                : report
+            )
+          : payload.errorReports;
+
+        onReportsChange(refreshedReports);
       }
     } catch {
       if (!options.silent) {
@@ -4727,15 +4842,18 @@ function ErrorReportsView({
             actions={[
               {
                 description: "Summarize visible safe report fields.",
-                label: "Summarize Recent Errors"
+                label: "Summarize Recent Errors",
+                onSelect: () => runErrorReportsAssistant("Summarize Recent Errors")
               },
               {
                 description: "Group reports by repeated codes and categories.",
-                label: "Group Similar Issues"
+                label: "Group Similar Issues",
+                onSelect: () => runErrorReportsAssistant("Group Similar Issues")
               },
               {
                 description: "Copy a safe Codex prompt for the newest report.",
-                label: "Create Codex Fix Prompt"
+                label: "Create Codex Fix Prompt",
+                onSelect: () => runErrorReportsAssistant("Create Codex Fix Prompt")
               }
             ]}
             cacheLabel={errorAiCache}
@@ -4807,7 +4925,11 @@ function ErrorReportsView({
       <div className={styles.errorReportList} aria-label="Admin error report list">
         {visibleErrorReports.length > 0 ? (
           visibleErrorReports.map((report) => (
-            <article className={styles.errorReportCard} key={report.referenceId}>
+            <article
+              className={styles.errorReportCard}
+              data-highlight={highlightedReportId === report.referenceId ? "true" : "false"}
+              key={report.referenceId}
+            >
               <div className={styles.errorReportIdentity}>
                 <div className={styles.codeStack}>
                   <code>{report.errorCode || report.referenceId}</code>
@@ -4866,6 +4988,7 @@ function ErrorReportsView({
                   aria-label={`Mark ${report.errorCode || report.referenceId} fixed`}
                   aria-busy={updatingReportId === report.referenceId}
                   className={styles.iconAction}
+                  data-loading={updatingReportId === report.referenceId ? "true" : "false"}
                   data-admin-tooltip="Mark fixed"
                   disabled={Boolean(updatingReportId)}
                   onClick={() => void updateReportStatus(report, "Fixed")}
@@ -4915,6 +5038,7 @@ function ErrorReportsView({
           {statusMessage}
         </p>
       ) : null}
+      <ActionToast message={statusMessage || copyMessage} tone={getStatusMessageTone(statusMessage || copyMessage)} />
       <AdminActionDialog
         footer={
           <>

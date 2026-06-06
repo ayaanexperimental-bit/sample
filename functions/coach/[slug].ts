@@ -600,47 +600,30 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
   const isPaused = false;
   const theme = getCoachTemplateTheme(site.selectedThemeId);
   const themeStyle = createThemeInlineStyle(theme.id);
+  const benefitDescriptions = getBenefitDescriptions(site);
+  const journeySteps = getJourneySteps(site);
   const benefits = getBenefits(site)
     .map(
       (benefit, index) => `
         <article class="spot-card benefit-card">
           <span>${String(index + 1).padStart(2, "0")}</span>
           <h3>${escapeHtml(benefit)}</h3>
-          <p>Coach-led education designed to make the next step calmer and clearer.</p>
+          <p>${escapeHtml(benefitDescriptions[index] || benefitDescriptions[0] || "")}</p>
         </article>`
     )
     .join("");
-  const journey = [
-    [
-      "01",
-      "Profile",
-      "Meet the coach",
-      "Guests understand the coach story, niche, mission, and guidance style."
-    ],
-    [
-      "02",
-      "Focus",
-      "See the wellness focus",
-      "The page explains the coach lens in a clear, trustworthy tone."
-    ],
-    [
-      "03",
-      "Action",
-      "Open registration",
-      "The CTA sends visitors to the coach registration form when configured."
-    ]
-  ]
+  const journey = journeySteps
     .map(
-      ([number, label, title, text]) => `
+      (step, index) => `
         <article class="spot-card journey-card">
-          <small>${number}</small>
-          <span>${label}</span>
-          <h3>${title}</h3>
-          <p>${text}</p>
+          <small>${String(index + 1).padStart(2, "0")}</small>
+          <span>${escapeHtml(step.label)}</span>
+          <h3>${escapeHtml(step.title)}</h3>
+          <p>${escapeHtml(step.description)}</p>
         </article>`
     )
     .join("");
-  const problems = createProblemPoints(site)
+  const problems = getProblemPoints(site)
     .map(
       (point) => `
         <article class="spot-card problem-item">
@@ -1854,15 +1837,15 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       <section class="hero" data-media="${escapeAttribute(site.heroMediaType || "image")}" id="top">
         <div class="hero-copy">
           <div class="trust-row">
-            <span>YW Nutritech coach network</span>
-            <span>Education-first wellness pathway</span>
+            <span>${escapeHtml(site.content.brandBadge)}</span>
+            <span>${escapeHtml(site.content.brandEyebrow)}</span>
           </div>
           <p class="kicker">${escapeHtml(site.niche)}</p>
           <h1>${escapeHtml(site.content.heroHeadline)}</h1>
           <p class="lead">${escapeHtml(site.content.subheadline)}</p>
           <div class="brand-assurance">
-            <span>YW care lens</span>
-            <strong>Nutrition, habits, lifestyle, education</strong>
+            <span>${escapeHtml(site.content.heroTrustLine)}</span>
+            <strong>${escapeHtml(site.content.heroMicroTrustText)}</strong>
           </div>
           <div class="actions">
             ${renderRegisterAction(site, "button primary", site.registerButtonText || site.content.ctaText || "Register Now")}
@@ -1881,7 +1864,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       <section class="section intro-section">
         <div class="section-head">
           <span>Coach Introduction</span>
-          <h2>Personal coach guidance inside a premium wellness-tech ecosystem.</h2>
+          <h2>${escapeHtml(site.content.introHeading)}</h2>
         </div>
         <div class="intro-grid">
           <article class="spot-card story-card">
@@ -1900,7 +1883,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       <section class="section problem-section">
         <div class="problem-copy">
           <span>Problem to solution</span>
-          <h2>For guests who need direction before committing to a bigger program.</h2>
+          <h2>${escapeHtml(site.content.problemHeading)}</h2>
           <p>${escapeHtml(site.content.trustText)}</p>
         </div>
         <div class="problem-list">${problems}</div>
@@ -1909,7 +1892,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       <section class="section journey-section" id="journey">
         <div class="section-head">
           <span>YW Nutritech pathway</span>
-          <h2>One page that moves from trust to action.</h2>
+          <h2>${escapeHtml(site.content.journeyHeading)}</h2>
         </div>
         <div class="journey-grid">${journey}</div>
       </section>
@@ -1917,7 +1900,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       <section class="section benefits-section" id="benefits">
         <div class="section-head">
           <span>Benefits</span>
-          <h2>Clean nutrition-tech cards without clutter.</h2>
+          <h2>${escapeHtml(site.content.benefitsHeading)}</h2>
         </div>
         <div class="benefit-grid">${benefits}</div>
       </section>
@@ -1926,13 +1909,13 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         <div class="video-frame" data-media="${escapeAttribute(site.heroMediaType || "none")}">
           ${renderMediaModule(site)}
           <span>Coach media module</span>
-          <strong>Coach image / video-ready area</strong>
-          <p>Media stays inside the fixed YW Nutritech template while keeping the coach visible.</p>
+          <strong>${escapeHtml(site.content.mediaHeading)}</strong>
+          <p>${escapeHtml(site.content.mediaBody)}</p>
         </div>
         <div class="media-notes">
-          <span>YW Nutritech ready</span>
-          <h2>Image, video, and no-media states stay consistent.</h2>
-          <p>Each coach can feel individual without leaving the premium YW Nutritech visual system.</p>
+          <span>${escapeHtml(site.content.mediaSubheading)}</span>
+          <h2>${escapeHtml(site.content.mediaHeading)}</h2>
+          <p>${escapeHtml(site.content.mediaBody)}</p>
         </div>
       </section>
 
@@ -1948,12 +1931,12 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       <section class="section faq-section">
         <div class="section-head">
           <span>FAQ</span>
-          <h2>Clean answers before registration.</h2>
+          <h2>${escapeHtml(site.content.faqHeading)}</h2>
         </div>
         <div class="faq-list">${faq}</div>
       </section>
 
-      ${renderFooterHtml()}`
+      ${renderFooterHtml(site)}`
       }
     </main>
     <script>
@@ -2218,15 +2201,14 @@ function renderSupportFallbackHtml({
 </html>`;
 }
 
-function renderFooterHtml() {
+function renderFooterHtml(site: PublicCoachSiteRecord) {
   return `
     <footer class="footer">
       <div>
         <span>YW Nutritech Coach Referral</span>
-        <h2>Yours Wellness Center</h2>
-        <p><strong>HOLISTIC HORMONE RESET SUPPORT FOR WOMEN</strong></p>
+        <h2>${escapeHtml(site.content.footerHeadline)}</h2>
         <p><strong>Copyright 2026 | Yours Wellness Center. All rights reserved.</strong></p>
-        <p>This page is for wellness education and lifestyle coaching support. It is not a substitute for medical advice, diagnosis, or treatment. Results vary based on individual health history, lifestyle, and consistency.</p>
+        <p>${escapeHtml(site.content.footerText)}</p>
         <p>NOT FACEBOOK: This site is not part of Facebook or Meta Platforms, Inc. It is not endorsed by Facebook in any way. Facebook is a trademark of Meta Platforms, Inc.</p>
       </div>
       <div class="footer-links">
@@ -2268,9 +2250,9 @@ function renderHeroMedia(site: PublicCoachSiteRecord) {
         <div class="media-caption"><span>Coach</span><strong>${escapeHtml(site.coachName)}</strong><small>${escapeHtml(site.niche)}</small></div>
       </div>
       <div class="signal-panel">
-        <span>YW Nutritech lens</span>
-        <strong>Coach-led wellness pathway</strong>
-        <small>Built for education-first nutrition and lifestyle support</small>
+        <span>${escapeHtml(site.content.mediaSubheading)}</span>
+        <strong>${escapeHtml(site.content.mediaHeading)}</strong>
+        <small>${escapeHtml(site.content.mediaBody)}</small>
       </div>
     </div>`;
 }
@@ -2338,6 +2320,16 @@ function createProblemPoints(site: PublicCoachSiteRecord) {
   ];
 }
 
+function getBenefitDescriptions(site: PublicCoachSiteRecord) {
+  const descriptions = site.content.benefitDescriptions.filter(Boolean);
+
+  return descriptions.length > 0
+    ? descriptions
+    : getBenefits(site).map(
+        () => "Coach-led education designed to make the next step calmer and clearer."
+      );
+}
+
 function getBenefits(site: PublicCoachSiteRecord) {
   return site.content.benefits.length > 0
     ? site.content.benefits
@@ -2346,6 +2338,36 @@ function getBenefits(site: PublicCoachSiteRecord) {
         "See the coach vision before opening the registration form.",
         "Move to the admin-provided Google Form only after the register click is tracked."
       ];
+}
+
+function getJourneySteps(site: PublicCoachSiteRecord) {
+  return site.content.journeySteps.length > 0
+    ? site.content.journeySteps
+    : [
+        {
+          description:
+            "Guests understand the coach story, niche, mission, and guidance style.",
+          label: "Profile",
+          title: `Meet ${site.coachName || "the coach"}`
+        },
+        {
+          description: "The page explains the coach lens in a clear, trustworthy tone.",
+          label: "Focus",
+          title: `See the ${site.niche || "wellness"} focus`
+        },
+        {
+          description:
+            "The CTA sends visitors to the coach registration form when configured.",
+          label: "Action",
+          title: "Open registration"
+        }
+      ];
+}
+
+function getProblemPoints(site: PublicCoachSiteRecord) {
+  const points = site.content.problemPoints.filter(Boolean);
+
+  return points.length > 0 ? points : createProblemPoints(site);
 }
 
 function getFaq(site: PublicCoachSiteRecord) {

@@ -96,14 +96,35 @@ type MediaUploadApiPayload = {
 };
 
 type GeneratedCoachCopy = {
+  benefitDescriptions?: string[];
   benefits?: string[];
+  benefitsHeading?: string;
+  brandBadge?: string;
+  brandEyebrow?: string;
   coachIntro?: string;
   ctaText?: string;
+  faqHeading?: string;
   faq?: Array<{
     answer: string;
     question: string;
   }>;
+  footerHeadline?: string;
+  footerText?: string;
+  heroMicroTrustText?: string;
   heroHeadline?: string;
+  heroTrustLine?: string;
+  introHeading?: string;
+  journeyHeading?: string;
+  journeySteps?: Array<{
+    description: string;
+    label: string;
+    title: string;
+  }>;
+  mediaBody?: string;
+  mediaHeading?: string;
+  mediaSubheading?: string;
+  problemHeading?: string;
+  problemPoints?: string[];
   socialCopy?: string;
   subheadline?: string;
   trustText?: string;
@@ -129,7 +150,18 @@ type PaidFunnelAnalysis = {
   title?: string;
 };
 
-type CopyRegenerationScope = "all" | "benefits" | "cta" | "faq" | "hero" | "intro" | "vision";
+type CopyRegenerationScope =
+  | "all"
+  | "benefits"
+  | "cta"
+  | "faq"
+  | "footer"
+  | "hero"
+  | "intro"
+  | "journey"
+  | "media"
+  | "problem"
+  | "vision";
 type PreviewInspectSection = CoachTemplatePreviewInspectSection;
 type CoachSiteDangerStatus = "archived" | "removed";
 type CurrentCoachSiteStatus = Exclude<CoachSiteStatus, "archived" | "removed">;
@@ -285,8 +317,12 @@ const previewInspectSections: PreviewInspectSection[] = [
   "hero",
   "intro",
   "vision",
+  "problem",
+  "journey",
   "benefits",
+  "media",
   "faq",
+  "footer",
   "cta"
 ];
 
@@ -346,11 +382,21 @@ function applyGeneratedCopyToForm(
   const faqText =
     content.faq?.map((item) => `${item.question}\n${item.answer}`).join("\n\n") || current.faqText;
   const benefitsText = content.benefits?.join("\n") || current.benefitsText;
+  const benefitDescriptionsText =
+    content.benefitDescriptions?.join("\n") || current.benefitDescriptionsText;
+  const journeyStepsText = content.journeySteps
+    ?.map((step) => `${step.label}\n${step.title}\n${step.description}`)
+    .join("\n\n") || current.journeyStepsText;
+  const problemPointsText = content.problemPoints?.join("\n") || current.problemPointsText;
 
   if (scope === "hero") {
     return {
       ...current,
+      brandBadge: content.brandBadge || current.brandBadge,
+      brandEyebrow: content.brandEyebrow || current.brandEyebrow,
       heroHeadline: content.heroHeadline || current.heroHeadline,
+      heroMicroTrustText: content.heroMicroTrustText || current.heroMicroTrustText,
+      heroTrustLine: content.heroTrustLine || current.heroTrustLine,
       subheadline: content.subheadline || current.subheadline
     };
   }
@@ -358,6 +404,8 @@ function applyGeneratedCopyToForm(
   if (scope === "benefits") {
     return {
       ...current,
+      benefitDescriptionsText,
+      benefitsHeading: content.benefitsHeading || current.benefitsHeading,
       benefitsText
     };
   }
@@ -365,6 +413,7 @@ function applyGeneratedCopyToForm(
   if (scope === "faq") {
     return {
       ...current,
+      faqHeading: content.faqHeading || current.faqHeading,
       faqText
     };
   }
@@ -372,7 +421,8 @@ function applyGeneratedCopyToForm(
   if (scope === "intro") {
     return {
       ...current,
-      coachIntro: content.coachIntro || current.coachIntro
+      coachIntro: content.coachIntro || current.coachIntro,
+      introHeading: content.introHeading || current.introHeading
     };
   }
 
@@ -391,13 +441,64 @@ function applyGeneratedCopyToForm(
     };
   }
 
+  if (scope === "problem") {
+    return {
+      ...current,
+      problemHeading: content.problemHeading || current.problemHeading,
+      problemPointsText,
+      trustText: content.trustText || current.trustText
+    };
+  }
+
+  if (scope === "journey") {
+    return {
+      ...current,
+      journeyHeading: content.journeyHeading || current.journeyHeading,
+      journeyStepsText
+    };
+  }
+
+  if (scope === "media") {
+    return {
+      ...current,
+      mediaBody: content.mediaBody || current.mediaBody,
+      mediaHeading: content.mediaHeading || current.mediaHeading,
+      mediaSubheading: content.mediaSubheading || current.mediaSubheading
+    };
+  }
+
+  if (scope === "footer") {
+    return {
+      ...current,
+      footerHeadline: content.footerHeadline || current.footerHeadline,
+      footerText: content.footerText || current.footerText
+    };
+  }
+
   return {
     ...current,
+    benefitDescriptionsText,
+    benefitsHeading: content.benefitsHeading || current.benefitsHeading,
     benefitsText,
+    brandBadge: content.brandBadge || current.brandBadge,
+    brandEyebrow: content.brandEyebrow || current.brandEyebrow,
     coachIntro: content.coachIntro || current.coachIntro,
     ctaText: content.ctaText || current.ctaText,
+    faqHeading: content.faqHeading || current.faqHeading,
     faqText,
+    footerHeadline: content.footerHeadline || current.footerHeadline,
+    footerText: content.footerText || current.footerText,
     heroHeadline: content.heroHeadline || current.heroHeadline,
+    heroMicroTrustText: content.heroMicroTrustText || current.heroMicroTrustText,
+    heroTrustLine: content.heroTrustLine || current.heroTrustLine,
+    introHeading: content.introHeading || current.introHeading,
+    journeyHeading: content.journeyHeading || current.journeyHeading,
+    journeyStepsText,
+    mediaBody: content.mediaBody || current.mediaBody,
+    mediaHeading: content.mediaHeading || current.mediaHeading,
+    mediaSubheading: content.mediaSubheading || current.mediaSubheading,
+    problemHeading: content.problemHeading || current.problemHeading,
+    problemPointsText,
     registerButtonText: current.registerButtonText || content.ctaText || "Register Now",
     socialCopy: content.socialCopy || current.socialCopy,
     subheadline: content.subheadline || current.subheadline,
@@ -410,8 +511,12 @@ function getCopyScopeLabel(scope: CopyRegenerationScope) {
   if (scope === "benefits") return "Benefits";
   if (scope === "cta") return "CTA section";
   if (scope === "faq") return "FAQ";
+  if (scope === "footer") return "Footer";
   if (scope === "hero") return "Hero copy";
   if (scope === "intro") return "Coach introduction";
+  if (scope === "journey") return "Journey";
+  if (scope === "media") return "Media";
+  if (scope === "problem") return "Problem";
   if (scope === "vision") return "Mission / vision";
   return "All copy";
 }
@@ -430,6 +535,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   const [message, setMessage] = useState("");
   const [aiMessage, setAiMessage] = useState("");
   const [aiSubmitting, setAiSubmitting] = useState(false);
+  const [draftSubmitting, setDraftSubmitting] = useState(false);
   const [publishProgress, setPublishProgress] = useState<PublishProgressState>({
     message: "",
     phase: "idle",
@@ -450,6 +556,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   const publishProgressTimerRef = useRef<number | null>(null);
   const previewSyncTimeoutRef = useRef<number | null>(null);
   const previewSyncFormRef = useRef<CoachSiteFormState | null>(null);
+  const draftSubmittingRef = useRef(false);
 
   useEffect(() => {
     if (mode === "create") {
@@ -714,13 +821,37 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
 
     return {
       ...sourceForm,
+      benefitDescriptionsText:
+        sourceForm.benefitDescriptionsText || fallbackSite.content.benefitDescriptions.join("\n"),
+      benefitsHeading: sourceForm.benefitsHeading || fallbackSite.content.benefitsHeading,
       benefitsText: sourceForm.benefitsText || fallbackSite.content.benefits.join("\n"),
+      brandBadge: sourceForm.brandBadge || fallbackSite.content.brandBadge,
+      brandEyebrow: sourceForm.brandEyebrow || fallbackSite.content.brandEyebrow,
       coachIntro: sourceForm.coachIntro || fallbackSite.content.coachIntro,
       ctaText: sourceForm.ctaText || fallbackSite.content.ctaText,
+      faqHeading: sourceForm.faqHeading || fallbackSite.content.faqHeading,
       faqText:
         sourceForm.faqText ||
         fallbackSite.content.faq.map((item) => `${item.question}\n${item.answer}`).join("\n\n"),
+      footerHeadline: sourceForm.footerHeadline || fallbackSite.content.footerHeadline,
+      footerText: sourceForm.footerText || fallbackSite.content.footerText,
       heroHeadline: sourceForm.heroHeadline || fallbackSite.content.heroHeadline,
+      heroMicroTrustText:
+        sourceForm.heroMicroTrustText || fallbackSite.content.heroMicroTrustText,
+      heroTrustLine: sourceForm.heroTrustLine || fallbackSite.content.heroTrustLine,
+      introHeading: sourceForm.introHeading || fallbackSite.content.introHeading,
+      journeyHeading: sourceForm.journeyHeading || fallbackSite.content.journeyHeading,
+      journeyStepsText:
+        sourceForm.journeyStepsText ||
+        fallbackSite.content.journeySteps
+          .map((step) => `${step.label}\n${step.title}\n${step.description}`)
+          .join("\n\n"),
+      mediaBody: sourceForm.mediaBody || fallbackSite.content.mediaBody,
+      mediaHeading: sourceForm.mediaHeading || fallbackSite.content.mediaHeading,
+      mediaSubheading: sourceForm.mediaSubheading || fallbackSite.content.mediaSubheading,
+      problemHeading: sourceForm.problemHeading || fallbackSite.content.problemHeading,
+      problemPointsText:
+        sourceForm.problemPointsText || fallbackSite.content.problemPoints.join("\n"),
       socialCopy: sourceForm.socialCopy || fallbackSite.content.socialCopy,
       subheadline: sourceForm.subheadline || fallbackSite.content.subheadline,
       trustText: sourceForm.trustText || fallbackSite.content.trustText,
@@ -731,6 +862,8 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
   async function upsertSite(status: CoachSiteStatus) {
     const validatedForm = validatePreviewForm(form, status);
     if (!validatedForm) return null;
+
+    if (status === "draft" && draftSubmittingRef.current) return null;
 
     const site = { ...buildPreviewSite(status, validatedForm), status };
     const duplicateSite = getDuplicateCoachSite(site, sites, { allowSameId: Boolean(editingId) });
@@ -758,6 +891,8 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
     if (status === "published") {
       startPublishProgress("Please wait. Site is being published...");
     } else {
+      draftSubmittingRef.current = true;
+      setDraftSubmitting(true);
       resetPublishProgress();
     }
     setMessage(status === "published" ? "Publishing site..." : "Saving draft...");
@@ -877,6 +1012,11 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         finishPublishProgressError(
           "Publishing stopped because the admin API connection did not respond."
         );
+      }
+    } finally {
+      if (status === "draft") {
+        draftSubmittingRef.current = false;
+        setDraftSubmitting(false);
       }
     }
 
@@ -1124,13 +1264,23 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
 
     return {
       ...sourceForm,
+      benefitsHeading:
+        sourceForm.benefitsHeading ||
+        `Practical ${analysis.niche || sourceForm.niche || "wellness"} support without clutter.`,
       benefitsText: sourceForm.benefitsText || keyPointsText,
       coachName: sourceForm.coachName || analysis.coachName || "",
       existingPaidFunnelUrl: analysis.sourceUrl,
       faqText: sourceForm.faqText || faqText,
       heroHeadline: sourceForm.heroHeadline || analysis.headings[0] || analysis.title || "",
+      introHeading:
+        sourceForm.introHeading ||
+        `Personal ${analysis.niche || sourceForm.niche || "wellness"} guidance inside a premium wellness-tech ecosystem.`,
       niche: sourceForm.niche || analysis.niche || "",
       paidFunnelContext: context,
+      problemHeading:
+        sourceForm.problemHeading ||
+        `For guests who need direction before committing to a bigger ${analysis.niche || sourceForm.niche || "wellness"} program.`,
+      problemPointsText: sourceForm.problemPointsText || keyPointsText,
       subheadline: sourceForm.subheadline || analysis.headings[1] || "",
       vision: sourceForm.vision || analysis.keyPoints[0] || ""
     };
@@ -1618,7 +1768,10 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
       });
       const html = await publicResponse.text();
       result.publicPageOk = publicResponse.ok && !html.includes("Something went wrong");
-      result.publicPageHasTemplateMarker = html.includes("YW Nutritech coach network");
+      result.publicPageHasTemplateMarker =
+        html.includes("YW Nutritech") &&
+        html.includes(site.coachName) &&
+        html.includes('data-track="coach_register_click"');
       result.publicPageHasRegisterLink = html.includes(site.googleFormUrl);
     } catch {
       result.publicPageOk = false;
@@ -2131,6 +2284,7 @@ export function AdminCoachSitesManager({ csrfToken, mode = "list" }: AdminCoachS
         previewSite={previewSite}
         publishProgress={publishProgress}
         publishedSite={publishedSite}
+        draftSubmitting={draftSubmitting}
         removeConfirm={removeConfirm}
         removeMessage={removeMessage}
         removeOtp={removeOtp}
@@ -2152,6 +2306,7 @@ function CoachDialogRenderer({
   aiSubmitting,
   csrfToken,
   dialog,
+  draftSubmitting,
   form,
   onAnalyzePaidFunnel,
   onClose,
@@ -2194,6 +2349,7 @@ function CoachDialogRenderer({
   aiSubmitting: boolean;
   csrfToken: string;
   dialog: CoachDialog | null;
+  draftSubmitting: boolean;
   form: CoachSiteFormState;
   onAnalyzePaidFunnel: () => Promise<PaidFunnelAnalysis | null>;
   onClose: () => void;
@@ -2247,6 +2403,7 @@ function CoachDialogRenderer({
             onGeneratePreview={onGeneratePreview}
             onPublish={onPublish}
             onSaveDraft={onSaveDraft}
+            draftSubmitting={draftSubmitting}
             publishSubmitting={publishProgress.phase === "publishing"}
             setWizardStep={setWizardStep}
             wizardStep={wizardStep}
@@ -3058,6 +3215,31 @@ function PreviewAndEditStep({
             onChange={(value) => onUpdateField("subheadline", value)}
             value={form.subheadline}
           />
+          <TextField
+            label="Hero brand badge"
+            onChange={(value) => onUpdateField("brandBadge", value)}
+            value={form.brandBadge}
+          />
+          <TextField
+            label="Hero brand support line"
+            onChange={(value) => onUpdateField("brandEyebrow", value)}
+            value={form.brandEyebrow}
+          />
+          <TextField
+            label="Hero trust label"
+            onChange={(value) => onUpdateField("heroTrustLine", value)}
+            value={form.heroTrustLine}
+          />
+          <TextField
+            label="Hero trust copy"
+            onChange={(value) => onUpdateField("heroMicroTrustText", value)}
+            value={form.heroMicroTrustText}
+          />
+          <TextAreaField
+            label="Intro section heading"
+            onChange={(value) => onUpdateField("introHeading", value)}
+            value={form.introHeading}
+          />
           <TextAreaField
             label="Coach introduction"
             onChange={(value) => onUpdateField("coachIntro", value)}
@@ -3069,15 +3251,70 @@ function PreviewAndEditStep({
             value={form.visionText}
           />
           <TextAreaField
+            label="Problem section heading"
+            onChange={(value) => onUpdateField("problemHeading", value)}
+            value={form.problemHeading}
+          />
+          <TextAreaField
+            label="Problem bullets"
+            onChange={(value) => onUpdateField("problemPointsText", value)}
+            placeholder="One problem point per line"
+            value={form.problemPointsText}
+          />
+          <TextAreaField
+            label="Journey section heading"
+            onChange={(value) => onUpdateField("journeyHeading", value)}
+            value={form.journeyHeading}
+          />
+          <TextAreaField
+            helper="Each step uses three lines: label, title, description. Separate steps with a blank line."
+            label="Journey steps"
+            onChange={(value) => onUpdateField("journeyStepsText", value)}
+            placeholder={"Profile\nMeet the coach\nGuests understand the coach story.\n\nFocus\nSee the wellness focus\nThe page explains the coach lens."}
+            value={form.journeyStepsText}
+          />
+          <TextAreaField
+            label="Benefits section heading"
+            onChange={(value) => onUpdateField("benefitsHeading", value)}
+            value={form.benefitsHeading}
+          />
+          <TextAreaField
             label="Benefits"
             onChange={(value) => onUpdateField("benefitsText", value)}
             placeholder="One benefit per line"
             value={form.benefitsText}
           />
           <TextAreaField
+            helper="Optional. One description per benefit card."
+            label="Benefit descriptions"
+            onChange={(value) => onUpdateField("benefitDescriptionsText", value)}
+            placeholder="One benefit description per line"
+            value={form.benefitDescriptionsText}
+          />
+          <TextField
+            label="Media section label"
+            onChange={(value) => onUpdateField("mediaSubheading", value)}
+            value={form.mediaSubheading}
+          />
+          <TextAreaField
+            label="Media section heading"
+            onChange={(value) => onUpdateField("mediaHeading", value)}
+            value={form.mediaHeading}
+          />
+          <TextAreaField
+            label="Media section text"
+            onChange={(value) => onUpdateField("mediaBody", value)}
+            value={form.mediaBody}
+          />
+          <TextAreaField
             label="CTA section text"
             onChange={(value) => onUpdateField("ctaText", value)}
             value={form.ctaText}
+          />
+          <TextAreaField
+            label="FAQ section heading"
+            onChange={(value) => onUpdateField("faqHeading", value)}
+            value={form.faqHeading}
           />
           <TextAreaField
             label="FAQ"
@@ -3095,6 +3332,16 @@ function PreviewAndEditStep({
             label="Trust note"
             onChange={(value) => onUpdateField("trustText", value)}
             value={form.trustText}
+          />
+          <TextAreaField
+            label="Footer headline"
+            onChange={(value) => onUpdateField("footerHeadline", value)}
+            value={form.footerHeadline}
+          />
+          <TextAreaField
+            label="Footer legal/support text"
+            onChange={(value) => onUpdateField("footerText", value)}
+            value={form.footerText}
           />
           <TextField
             label="Register button text"
@@ -3391,6 +3638,7 @@ function HeroMediaStep({
 
 function WizardFooter({
   aiSubmitting,
+  draftSubmitting,
   onClose,
   onGeneratePreview,
   onPublish,
@@ -3400,6 +3648,7 @@ function WizardFooter({
   wizardStep
 }: {
   aiSubmitting: boolean;
+  draftSubmitting: boolean;
   onClose: () => void;
   onGeneratePreview: () => Promise<boolean>;
   onPublish: () => Promise<CoachSiteRecord | null>;
@@ -3431,13 +3680,14 @@ function WizardFooter({
       <button
         className={styles.secondaryAction}
         data-admin-tooltip="Save progress and continue later from Drafts"
-        disabled={aiSubmitting || publishSubmitting}
+        aria-busy={draftSubmitting}
+        disabled={aiSubmitting || publishSubmitting || draftSubmitting}
         onClick={() => {
           void onSaveDraft();
         }}
         type="button"
       >
-        Save Draft
+        {draftSubmitting ? "Saving..." : "Save Draft"}
       </button>
       {wizardStep < wizardSteps.length - 1 ? (
         <button

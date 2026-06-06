@@ -5,6 +5,7 @@ import {
   type CoachSiteContent,
   type CoachSiteRecord,
   type CoachSiteStatus,
+  EMPTY_COACH_SITE_FORM,
   createCoachSiteFromForm,
   getCoachPublicUrl,
   normalizeCoachSlug,
@@ -472,6 +473,7 @@ function normalizeCoachSitePayload(payload: CoachSitePayload): CoachSiteRecord {
   const status = normalizeStatus(payload.status);
   const fallback = createCoachSiteFromForm({
     form: {
+      ...EMPTY_COACH_SITE_FORM,
       benefitsText: "",
       bio: sanitizeText(payload.bio, 1200),
       coachEmail: sanitizeText(payload.coachEmail, 240),
@@ -631,6 +633,7 @@ function createContentFallbackFromRow(row: CoachSiteRow): CoachSiteContent {
 
   return createCoachSiteFromForm({
     form: {
+      ...EMPTY_COACH_SITE_FORM,
       benefitsText: "",
       bio: sanitizeText(row.bio, 1200),
       coachEmail: sanitizeText(row.coach_email, 240),
@@ -672,12 +675,21 @@ function normalizeContent(
   if (!content || typeof content !== "object") return fallback;
 
   return {
+    benefitDescriptions: Array.isArray(content.benefitDescriptions)
+      ? content.benefitDescriptions
+          .map((item) => sanitizeText(String(item), 360))
+          .filter(Boolean)
+          .slice(0, 8)
+      : fallback.benefitDescriptions,
     benefits: Array.isArray(content.benefits)
       ? content.benefits
           .map((item) => sanitizeText(String(item), 280))
           .filter(Boolean)
           .slice(0, 8)
       : fallback.benefits,
+    benefitsHeading: sanitizeText(content.benefitsHeading, 240) || fallback.benefitsHeading,
+    brandBadge: sanitizeText(content.brandBadge, 160) || fallback.brandBadge,
+    brandEyebrow: sanitizeText(content.brandEyebrow, 160) || fallback.brandEyebrow,
     coachIntro: sanitizeText(content.coachIntro, 1200) || fallback.coachIntro,
     ctaText: sanitizeText(content.ctaText, 120) || fallback.ctaText,
     faq: Array.isArray(content.faq)
@@ -689,7 +701,35 @@ function normalizeContent(
           .filter((item) => item.answer && item.question)
           .slice(0, 8)
       : fallback.faq,
+    faqHeading: sanitizeText(content.faqHeading, 240) || fallback.faqHeading,
+    footerHeadline: sanitizeText(content.footerHeadline, 240) || fallback.footerHeadline,
+    footerText: sanitizeText(content.footerText, 900) || fallback.footerText,
     heroHeadline: sanitizeText(content.heroHeadline, 240) || fallback.heroHeadline,
+    heroMicroTrustText:
+      sanitizeText(content.heroMicroTrustText, 240) || fallback.heroMicroTrustText,
+    heroTrustLine: sanitizeText(content.heroTrustLine, 160) || fallback.heroTrustLine,
+    introHeading: sanitizeText(content.introHeading, 240) || fallback.introHeading,
+    journeyHeading: sanitizeText(content.journeyHeading, 240) || fallback.journeyHeading,
+    journeySteps: Array.isArray(content.journeySteps)
+      ? content.journeySteps
+          .map((item) => ({
+            description: sanitizeText(item?.description, 500),
+            label: sanitizeText(item?.label, 120),
+            title: sanitizeText(item?.title, 180)
+          }))
+          .filter((item) => item.description && item.label && item.title)
+          .slice(0, 5)
+      : fallback.journeySteps,
+    mediaBody: sanitizeText(content.mediaBody, 700) || fallback.mediaBody,
+    mediaHeading: sanitizeText(content.mediaHeading, 240) || fallback.mediaHeading,
+    mediaSubheading: sanitizeText(content.mediaSubheading, 240) || fallback.mediaSubheading,
+    problemHeading: sanitizeText(content.problemHeading, 260) || fallback.problemHeading,
+    problemPoints: Array.isArray(content.problemPoints)
+      ? content.problemPoints
+          .map((item) => sanitizeText(String(item), 280))
+          .filter(Boolean)
+          .slice(0, 8)
+      : fallback.problemPoints,
     socialCopy: sanitizeText(content.socialCopy, 500) || fallback.socialCopy,
     subheadline: sanitizeText(content.subheadline, 500) || fallback.subheadline,
     trustText: sanitizeText(content.trustText, 500) || fallback.trustText,

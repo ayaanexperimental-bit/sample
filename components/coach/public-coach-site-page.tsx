@@ -45,8 +45,12 @@ export type CoachTemplatePreviewInspectSection =
   | "benefits"
   | "cta"
   | "faq"
+  | "footer"
   | "hero"
   | "intro"
+  | "journey"
+  | "media"
+  | "problem"
   | "vision";
 
 const DEFAULT_SUPPORT_NAME = "Yours Wellness Support";
@@ -68,7 +72,9 @@ export function PublicCoachSitePage({
   const themeStyle = getCoachTemplateCssVariables(theme.id) as CSSProperties;
   const hasRegisterLink = Boolean(site.googleFormUrl);
   const heroMedia = getHeroMedia(site);
-  const problemPoints = createProblemPoints(site);
+  const benefitDescriptions = getBenefitDescriptions(site);
+  const journeySteps = getJourneySteps(site);
+  const problemPoints = getProblemPoints(site);
   const [activeFallback, setActiveFallback] = useState<{
     category: PublicWebsiteErrorCategory;
     message: string;
@@ -213,15 +219,15 @@ export function PublicCoachSitePage({
         {renderInspectHotspot("hero")}
         <div className={styles.heroCopy}>
           <div className={styles.trustRow}>
-            <span>YW Nutritech coach network</span>
-            <span>Education-first wellness pathway</span>
+            <span>{site.content.brandBadge}</span>
+            <span>{site.content.brandEyebrow}</span>
           </div>
           <p className={styles.kicker}>{site.niche}</p>
           <h1>{site.content.heroHeadline}</h1>
           <p className={styles.lead}>{site.content.subheadline}</p>
           <div className={styles.brandAssurance}>
-            <span>YW care lens</span>
-            <strong>Nutrition, habits, lifestyle, education</strong>
+            <span>{site.content.heroTrustLine}</span>
+            <strong>{site.content.heroMicroTrustText}</strong>
           </div>
           <div className={styles.heroActions}>
             <RegisterAction onMissingRegisterLink={showMissingRegisterFallback} site={site}>
@@ -241,9 +247,9 @@ export function PublicCoachSitePage({
               </div>
             </div>
             <div className={styles.signalPanel}>
-              <span>YW Nutritech lens</span>
-              <strong>Coach-led wellness pathway</strong>
-              <small>Built for education-first nutrition and lifestyle support</small>
+              <span>{site.content.mediaSubheading}</span>
+              <strong>{site.content.mediaHeading}</strong>
+              <small>{site.content.mediaBody}</small>
             </div>
           </div>
         ) : null}
@@ -271,7 +277,7 @@ export function PublicCoachSitePage({
       <section className={`${styles.section} ${styles.introSection}`}>
         <div className={styles.sectionHead}>
           <span>Coach Introduction</span>
-          <h2>Personal coach guidance inside a premium wellness-tech ecosystem.</h2>
+          <h2>{site.content.introHeading}</h2>
         </div>
         <div className={styles.introGrid}>
           <TemplateCard
@@ -297,10 +303,14 @@ export function PublicCoachSitePage({
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.problemSection}`}>
+      <section
+        className={getPreviewInspectClassName(`${styles.section} ${styles.problemSection}`)}
+        {...getPreviewInspectProps("problem")}
+      >
+        {renderInspectHotspot("problem")}
         <div className={styles.problemCopy}>
           <span>Problem to solution</span>
-          <h2>For guests who need direction before committing to a bigger program.</h2>
+          <h2>{site.content.problemHeading}</h2>
           <p>{site.content.trustText}</p>
         </div>
         <div className={styles.problemList}>
@@ -313,30 +323,25 @@ export function PublicCoachSitePage({
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.journeySection}`} id="journey">
+      <section
+        className={getPreviewInspectClassName(`${styles.section} ${styles.journeySection}`)}
+        id="journey"
+        {...getPreviewInspectProps("journey")}
+      >
+        {renderInspectHotspot("journey")}
         <div className={styles.sectionHead}>
           <span>YW Nutritech pathway</span>
-          <h2>One page that moves from trust to action.</h2>
+          <h2>{site.content.journeyHeading}</h2>
         </div>
         <div className={styles.journeyGrid}>
-          <TemplateCard spotlightColor="rgba(183, 93, 120, 0.16)">
-            <small>01</small>
-            <span>Profile</span>
-            <h3>Meet the coach</h3>
-            <p>Guests first understand the coach story, niche, mission, and guidance style.</p>
-          </TemplateCard>
-          <TemplateCard spotlightColor="rgba(183, 93, 120, 0.16)">
-            <small>02</small>
-            <span>Focus</span>
-            <h3>See the wellness focus</h3>
-            <p>The page explains the coach lens in a clear, trustworthy tone.</p>
-          </TemplateCard>
-          <TemplateCard spotlightColor="rgba(183, 93, 120, 0.16)">
-            <small>03</small>
-            <span>Action</span>
-            <h3>Open the registration step</h3>
-            <p>The CTA sends visitors to the coach registration form when configured.</p>
-          </TemplateCard>
+          {journeySteps.map((step, index) => (
+            <TemplateCard key={`${step.label}-${step.title}`} spotlightColor="rgba(183, 93, 120, 0.16)">
+              <small>{String(index + 1).padStart(2, "0")}</small>
+              <span>{step.label}</span>
+              <h3>{step.title}</h3>
+              <p>{step.description}</p>
+            </TemplateCard>
+          ))}
         </div>
       </section>
 
@@ -348,32 +353,34 @@ export function PublicCoachSitePage({
         {renderInspectHotspot("benefits")}
         <div className={styles.sectionHead}>
           <span>Benefits</span>
-          <h2>Clean nutrition-tech cards without clutter.</h2>
+          <h2>{site.content.benefitsHeading}</h2>
         </div>
         <div className={styles.benefitGrid}>
           {site.content.benefits.map((benefit, index) => (
             <TemplateCard key={benefit} spotlightColor="rgba(200, 184, 255, 0.22)">
               <span>{String(index + 1).padStart(2, "0")}</span>
               <h3>{benefit}</h3>
-              <p>Coach-led education designed to make the next step calmer and clearer.</p>
+              <p>{benefitDescriptions[index] || benefitDescriptions[0]}</p>
             </TemplateCard>
           ))}
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.mediaSection}`}>
+      <section
+        className={getPreviewInspectClassName(`${styles.section} ${styles.mediaSection}`)}
+        {...getPreviewInspectProps("media")}
+      >
+        {renderInspectHotspot("media")}
         <div className={styles.videoFrame} data-media={site.heroMediaType || "none"}>
           <HeroMediaContent heroMedia={heroMedia} site={site} compact />
           <span>Coach media module</span>
-          <strong>Coach image / video-ready area</strong>
-          <p>Media stays inside the fixed YW Nutritech template while keeping the coach visible.</p>
+          <strong>{site.content.mediaHeading}</strong>
+          <p>{site.content.mediaBody}</p>
         </div>
         <div className={styles.mediaNotes}>
-          <span>YW Nutritech ready</span>
-          <h2>Image, video, and no-media states stay consistent.</h2>
-          <p>
-            Each coach can feel individual without leaving the premium YW Nutritech visual system.
-          </p>
+          <span>{site.content.mediaSubheading}</span>
+          <h2>{site.content.mediaHeading}</h2>
+          <p>{site.content.mediaBody}</p>
         </div>
       </section>
 
@@ -400,7 +407,7 @@ export function PublicCoachSitePage({
         {renderInspectHotspot("faq")}
         <div className={styles.sectionHead}>
           <span>FAQ</span>
-          <h2>Clean answers before registration.</h2>
+          <h2>{site.content.faqHeading}</h2>
         </div>
         <div className={styles.faqList}>
           {site.content.faq.map((item) => (
@@ -412,14 +419,15 @@ export function PublicCoachSitePage({
         </div>
       </section>
 
-      <footer className={styles.footer}>
+      <footer
+        className={getPreviewInspectClassName(styles.footer)}
+        {...getPreviewInspectProps("footer")}
+      >
+        {renderInspectHotspot("footer")}
         <div>
           <span>YW Nutritech Coach Referral</span>
-          <h2>A refined wellness-tech template that keeps the coach at the center.</h2>
-          <p>
-            This page is for wellness education and lifestyle coaching support. It is not a
-            substitute for medical advice, diagnosis, or treatment.
-          </p>
+          <h2>{site.content.footerHeadline}</h2>
+          <p>{site.content.footerText}</p>
         </div>
         <div className={styles.footerLinks}>
           <Link href="/privacy">Privacy Policy</Link>
@@ -549,10 +557,18 @@ function getPreviewInspectLabel(scope: CoachTemplatePreviewInspectSection) {
       return "CTA";
     case "faq":
       return "FAQ";
+    case "footer":
+      return "Footer";
     case "hero":
       return "Hero";
     case "intro":
       return "Coach Intro";
+    case "journey":
+      return "Journey";
+    case "media":
+      return "Media";
+    case "problem":
+      return "Problem";
     case "vision":
       return "Mission";
     default:
@@ -745,6 +761,46 @@ function createProblemPoints(site: PublicCoachSiteRecord) {
     "Need a coach-led starting point before a deeper program",
     "Want education-friendly guidance that can sit alongside medical care"
   ];
+}
+
+function getBenefitDescriptions(site: PublicCoachSiteRecord) {
+  const descriptions = site.content.benefitDescriptions.filter(Boolean);
+
+  return descriptions.length > 0
+    ? descriptions
+    : site.content.benefits.map(
+        () => "Coach-led education designed to make the next step calmer and clearer."
+      );
+}
+
+function getJourneySteps(site: PublicCoachSiteRecord) {
+  return site.content.journeySteps.length > 0
+    ? site.content.journeySteps
+    : [
+        {
+          description:
+            "Guests understand the coach story, niche, mission, and guidance style.",
+          label: "Profile",
+          title: `Meet ${site.coachName || "the coach"}`
+        },
+        {
+          description: "The page explains the coach lens in a clear, trustworthy tone.",
+          label: "Focus",
+          title: `See the ${site.niche || "wellness"} focus`
+        },
+        {
+          description:
+            "The CTA sends visitors to the coach registration form when configured.",
+          label: "Action",
+          title: "Open registration"
+        }
+      ];
+}
+
+function getProblemPoints(site: PublicCoachSiteRecord) {
+  const points = site.content.problemPoints.filter(Boolean);
+
+  return points.length > 0 ? points : createProblemPoints(site);
 }
 
 function getSupportDetails(site: PublicCoachSiteRecord | null) {

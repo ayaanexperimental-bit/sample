@@ -2782,12 +2782,12 @@
 }
 
 .aiAssistantPanel {
-  position: absolute;
-  top: calc(100% + 0.65rem);
-  right: 0;
-  z-index: 90;
-  width: min(27rem, calc(100vw - 1.25rem));
-  max-height: min(34rem, calc(100dvh - 8rem));
+  position: fixed;
+  top: clamp(5.5rem, 11dvh, 7.25rem);
+  right: clamp(0.75rem, 3vw, 2rem);
+  z-index: 140;
+  width: min(32rem, calc(100vw - 1.5rem));
+  max-height: min(38rem, calc(100dvh - 7rem));
   display: grid;
   grid-template-rows: auto minmax(0, auto) auto minmax(0, 1fr) auto;
   gap: 0.75rem;
@@ -2832,7 +2832,7 @@
 .aiAssistantActions {
   display: grid;
   gap: 0.45rem;
-  max-height: min(18rem, 34dvh);
+  max-height: min(15rem, 28dvh);
   overflow: auto;
   padding-right: 0.08rem;
   scrollbar-width: thin;
@@ -2885,11 +2885,12 @@
   display: grid;
   gap: 0.45rem;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
   border: 1px solid rgb(8 122 115 / 0.12);
   border-radius: 0.85rem;
   background: rgb(8 122 115 / 0.06);
   padding: 0.72rem;
+  scrollbar-width: thin;
 }
 
 .aiAssistantLoading {
@@ -2931,7 +2932,7 @@
 .aiAssistantResult ul {
   display: grid;
   gap: 0.35rem;
-  max-height: min(12rem, 32dvh);
+  max-height: min(15rem, 34dvh);
   overflow: auto;
   margin: 0;
   padding-left: 1.05rem;
@@ -2948,6 +2949,46 @@
 .aiAssistantMeta {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.aiAssistantError {
+  border: 1px solid rgb(239 68 68 / 0.22);
+  border-radius: 0.85rem;
+  background: rgb(254 242 242 / 0.9);
+  color: #991b1b;
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.35;
+  padding: 0.72rem;
+}
+
+.actionToast {
+  position: fixed;
+  right: clamp(0.75rem, 2vw, 1.5rem);
+  bottom: clamp(0.75rem, 2vw, 1.5rem);
+  z-index: 180;
+  width: min(24rem, calc(100vw - 1.5rem));
+  border: 1px solid rgb(28 42 59 / 0.12);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.95);
+  box-shadow: 0 1rem 2.5rem rgb(31 41 55 / 0.16);
+  color: #344054;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.35;
+  padding: 0.78rem 1rem;
+}
+
+.actionToast[data-tone="success"] {
+  border-color: rgb(8 122 115 / 0.2);
+  background: linear-gradient(135deg, rgb(240 253 250 / 0.98), rgb(255 255 255 / 0.96));
+  color: #075f5b;
+}
+
+.actionToast[data-tone="danger"] {
+  border-color: rgb(239 68 68 / 0.2);
+  background: linear-gradient(135deg, rgb(254 242 242 / 0.98), rgb(255 255 255 / 0.96));
+  color: #991b1b;
 }
 
 @keyframes adminAiSpin {
@@ -4522,6 +4563,7 @@
   font-size: 0.94rem;
   font-weight: 650;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .errorReportList {
@@ -4610,6 +4652,19 @@
   background: rgb(255 255 255 / 0.9);
   box-shadow: 0 0.75rem 1.6rem rgb(31 41 55 / 0.05);
   padding: 0.82rem;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.errorReportCard[data-highlight="true"] {
+  border-color: rgb(8 122 115 / 0.32);
+  background:
+    linear-gradient(135deg, rgb(240 253 250 / 0.92), rgb(255 255 255 / 0.95));
+  box-shadow:
+    0 0 0 0.22rem rgb(8 122 115 / 0.08),
+    0 1rem 2.2rem rgb(8 122 115 / 0.1);
 }
 
 .errorReportIdentity,
@@ -4689,6 +4744,7 @@
   font-size: 0.78rem;
   font-weight: 820;
   line-height: 1.35;
+  word-break: break-word;
   overflow-wrap: anywhere;
 }
 
@@ -4696,6 +4752,22 @@
   display: flex;
   justify-content: flex-end;
   gap: 0.45rem;
+}
+
+.errorReportActions button[data-loading="true"] {
+  cursor: progress;
+  opacity: 0.76;
+  position: relative;
+}
+
+.errorReportActions button[data-loading="true"]::after {
+  position: absolute;
+  inset: 0.45rem;
+  border: 2px solid rgb(8 122 115 / 0.18);
+  border-top-color: #087a73;
+  border-radius: 999px;
+  content: "";
+  animation: adminAiSpin 820ms linear infinite;
 }
 
 @media (max-width: 860px) {
@@ -4723,13 +4795,6 @@
 
   .errorReportDetails {
     grid-template-columns: 1fr;
-  }
-
-  .errorReportDetails strong {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 4;
-    overflow: hidden;
   }
 
   .errorReportActions {

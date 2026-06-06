@@ -1,4 +1,5 @@
 import type { CoachSiteContent } from "../admin-coach-sites";
+import { requiredCoachTemplateContentFields } from "../coach-template-content-slots";
 import { getCachedAiResult, setCachedAiResult, createStableAiHash } from "./ai-cache-service";
 import { compressAiContext } from "./ai-context-compressor";
 import { getAiModelConfig, type AiModelConfigEnv } from "./ai-model-config";
@@ -8,7 +9,18 @@ export type CoachCopyAiEnv = AiModelConfigEnv & {
   OPENAI_API_KEY?: string;
 };
 
-export type CoachCopyScope = "all" | "benefits" | "cta" | "faq" | "hero" | "intro" | "vision";
+export type CoachCopyScope =
+  | "all"
+  | "benefits"
+  | "cta"
+  | "faq"
+  | "footer"
+  | "hero"
+  | "intro"
+  | "journey"
+  | "media"
+  | "problem"
+  | "vision";
 
 export type CoachCopyAiInput = {
   bio?: string;
@@ -63,6 +75,14 @@ const AI_COPY_SCHEMA = {
   schema: {
     additionalProperties: false,
     properties: {
+      benefitDescriptions: {
+        items: {
+          type: "string"
+        },
+        maxItems: 5,
+        minItems: 3,
+        type: "array"
+      },
       benefits: {
         items: {
           type: "string"
@@ -71,10 +91,22 @@ const AI_COPY_SCHEMA = {
         minItems: 3,
         type: "array"
       },
+      benefitsHeading: {
+        type: "string"
+      },
+      brandBadge: {
+        type: "string"
+      },
+      brandEyebrow: {
+        type: "string"
+      },
       coachIntro: {
         type: "string"
       },
       ctaText: {
+        type: "string"
+      },
+      faqHeading: {
         type: "string"
       },
       faq: {
@@ -95,8 +127,67 @@ const AI_COPY_SCHEMA = {
         minItems: 2,
         type: "array"
       },
+      footerHeadline: {
+        type: "string"
+      },
+      footerText: {
+        type: "string"
+      },
       heroHeadline: {
         type: "string"
+      },
+      heroMicroTrustText: {
+        type: "string"
+      },
+      heroTrustLine: {
+        type: "string"
+      },
+      introHeading: {
+        type: "string"
+      },
+      journeyHeading: {
+        type: "string"
+      },
+      journeySteps: {
+        items: {
+          additionalProperties: false,
+          properties: {
+            description: {
+              type: "string"
+            },
+            label: {
+              type: "string"
+            },
+            title: {
+              type: "string"
+            }
+          },
+          required: ["label", "title", "description"],
+          type: "object"
+        },
+        maxItems: 4,
+        minItems: 3,
+        type: "array"
+      },
+      mediaBody: {
+        type: "string"
+      },
+      mediaHeading: {
+        type: "string"
+      },
+      mediaSubheading: {
+        type: "string"
+      },
+      problemHeading: {
+        type: "string"
+      },
+      problemPoints: {
+        items: {
+          type: "string"
+        },
+        maxItems: 5,
+        minItems: 3,
+        type: "array"
       },
       socialCopy: {
         type: "string"
@@ -111,17 +202,7 @@ const AI_COPY_SCHEMA = {
         type: "string"
       }
     },
-    required: [
-      "heroHeadline",
-      "subheadline",
-      "coachIntro",
-      "visionText",
-      "benefits",
-      "ctaText",
-      "faq",
-      "trustText",
-      "socialCopy"
-    ],
+    required: requiredCoachTemplateContentFields,
     type: "object"
   },
   strict: true,
@@ -131,32 +212,38 @@ const AI_COPY_SCHEMA = {
 const AI_COPY_SCHEMA_PROPERTIES = AI_COPY_SCHEMA.schema.properties;
 
 const COPY_SCOPE_FIELDS: Record<CoachCopyScope, Array<keyof CoachSiteContent>> = {
-  all: [
+  all: requiredCoachTemplateContentFields,
+  benefits: ["benefitsHeading", "benefits", "benefitDescriptions"],
+  cta: ["ctaText", "trustText", "socialCopy"],
+  faq: ["faqHeading", "faq"],
+  footer: ["footerHeadline", "footerText"],
+  hero: [
+    "brandBadge",
+    "brandEyebrow",
     "heroHeadline",
     "subheadline",
-    "coachIntro",
-    "visionText",
-    "benefits",
-    "ctaText",
-    "faq",
-    "trustText",
+    "heroTrustLine",
+    "heroMicroTrustText",
     "socialCopy"
   ],
-  benefits: ["benefits"],
-  cta: ["ctaText", "trustText"],
-  faq: ["faq"],
-  hero: ["heroHeadline", "subheadline", "socialCopy"],
-  intro: ["coachIntro"],
+  intro: ["introHeading", "coachIntro"],
+  journey: ["journeyHeading", "journeySteps"],
+  media: ["mediaSubheading", "mediaHeading", "mediaBody"],
+  problem: ["problemHeading", "problemPoints", "trustText"],
   vision: ["visionText"]
 };
 
 const COPY_SCOPE_MAX_OUTPUT_TOKENS: Record<CoachCopyScope, number> = {
-  all: 1200,
+  all: 2600,
   benefits: 450,
   cta: 320,
   faq: 650,
+  footer: 320,
   hero: 360,
   intro: 300,
+  journey: 520,
+  media: 360,
+  problem: 460,
   vision: 300
 };
 
@@ -326,8 +413,11 @@ function createCoachCopyPrompt(input: CoachCopyAiInput, scope: CoachCopyScope) {
     "Do not invent coach credentials, medical claims, contact details, or outcomes that are not supported by admin fields or extracted page context.",
     "Do not publish coach phone, email, WhatsApp, or contact-support instructions in normal page copy.",
     "Tone: professional, supportive, clear, practical, and not medical-diagnosis oriented.",
+    "Use YW Nutritech brand language lightly. Keep it premium, wellness-tech, practical, and coach-specific.",
+    "Every visible text slot must be specific to the coach, niche, location, and available context. Avoid generic placeholder-like copy.",
+    "Keep legal/safety language education-first. Do not promise cures, guaranteed results, diagnosis, treatment, or disease reversal.",
     scope === "all"
-      ? "Generate all fixed-template copy sections."
+      ? `Generate the complete content object for these visible template fields: ${requiredCoachTemplateContentFields.join(", ")}.`
       : "Generate only the requested section fields in the schema. Do not include unrelated fields.",
     "Return structured copy only in the requested JSON schema."
   ].join("\n");
@@ -337,8 +427,12 @@ function getPromptScopeLabel(scope: CoachCopyScope) {
   if (scope === "benefits") return "benefits section only";
   if (scope === "cta") return "CTA and trust section only";
   if (scope === "faq") return "FAQ section only";
+  if (scope === "footer") return "footer section only";
   if (scope === "hero") return "hero headline and subheadline only";
   if (scope === "intro") return "coach introduction section only";
+  if (scope === "journey") return "journey section only";
+  if (scope === "media") return "media section only";
+  if (scope === "problem") return "problem-to-solution section only";
   if (scope === "vision") return "mission/vision section only";
   return "all sections";
 }
@@ -361,6 +455,7 @@ function parseCoachCopy(value: string, scope: CoachCopyScope): GeneratedCoachSit
   try {
     const parsed = JSON.parse(value) as unknown;
     if (!isCoachGeneratedCopy(parsed, scope)) return null;
+    if (!hasUsableCoachGeneratedCopy(parsed, scope)) return null;
 
     return parsed;
   } catch {
@@ -381,6 +476,10 @@ function isCoachGeneratedCopy(
       return Array.isArray(fieldValue) && fieldValue.every((item) => typeof item === "string");
     }
 
+    if (field === "benefitDescriptions" || field === "problemPoints") {
+      return Array.isArray(fieldValue) && fieldValue.every((item) => typeof item === "string");
+    }
+
     if (field === "faq") {
       return (
         Array.isArray(fieldValue) &&
@@ -391,8 +490,75 @@ function isCoachGeneratedCopy(
       );
     }
 
+    if (field === "journeySteps") {
+      return (
+        Array.isArray(fieldValue) &&
+        fieldValue.every(
+          (item) =>
+            isRecord(item) &&
+            typeof item.description === "string" &&
+            typeof item.label === "string" &&
+            typeof item.title === "string"
+        )
+      );
+    }
+
     return typeof fieldValue === "string";
   });
+}
+
+function hasUsableCoachGeneratedCopy(value: GeneratedCoachSiteCopy, scope: CoachCopyScope) {
+  return COPY_SCOPE_FIELDS[scope].every((field) => {
+    const fieldValue = value[field];
+
+    if (field === "benefits" || field === "benefitDescriptions" || field === "problemPoints") {
+      const items = fieldValue as string[] | undefined;
+
+      return (
+        Array.isArray(items) &&
+        items.length > 0 &&
+        items.every((item) => isUsableCopyText(item))
+      );
+    }
+
+    if (field === "faq") {
+      const items = fieldValue as GeneratedCoachSiteCopy["faq"];
+
+      return (
+        Array.isArray(items) &&
+        items.length > 0 &&
+        items.every(
+          (item) => isUsableCopyText(item.question) && isUsableCopyText(item.answer)
+        )
+      );
+    }
+
+    if (field === "journeySteps") {
+      const items = fieldValue as GeneratedCoachSiteCopy["journeySteps"];
+
+      return (
+        Array.isArray(items) &&
+        items.length > 0 &&
+        items.every(
+          (item) =>
+            isUsableCopyText(item.label) &&
+            isUsableCopyText(item.title) &&
+            isUsableCopyText(item.description)
+        )
+      );
+    }
+
+    return typeof fieldValue === "string" && isUsableCopyText(fieldValue);
+  });
+}
+
+function isUsableCopyText(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (normalized.length < 3) return false;
+
+  return !/\b(coach name|wellness niche|template media|placeholder|lorem ipsum|insert here|registration link pending)\b/i.test(
+    normalized
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -403,8 +569,12 @@ function normalizeCopyScope(value: unknown): CoachCopyScope {
   return value === "benefits" ||
     value === "cta" ||
     value === "faq" ||
+    value === "footer" ||
     value === "hero" ||
     value === "intro" ||
+    value === "journey" ||
+    value === "media" ||
+    value === "problem" ||
     value === "vision"
     ? value
     : "all";
