@@ -92,6 +92,8 @@ type PublishProgressState = {
   progress: number;
 };
 
+type CoachSiteActionProgressVariant = "delete" | "restore" | "standard";
+
 type MediaUploadApiPayload = {
   configured?: boolean;
   error?: string;
@@ -561,7 +563,14 @@ export function AdminCoachSitesManager({
   const [removeOtpSending, setRemoveOtpSending] = useState(false);
   const [removeReason, setRemoveReason] = useState(removalReasons[0]);
   const [removeSubmitting, setRemoveSubmitting] = useState<CoachSiteDangerStatus | null>(null);
+  const [removeActionStep, setRemoveActionStep] = useState("");
   const [deletingDraftId, setDeletingDraftId] = useState("");
+  const [deleteDraftStep, setDeleteDraftStep] = useState("");
+  const [statusSubmitting, setStatusSubmitting] = useState<"" | "paused" | "published">("");
+  const [statusActionStep, setStatusActionStep] = useState("");
+  const [reactivatingSiteId, setReactivatingSiteId] = useState("");
+  const [reactivateStep, setReactivateStep] = useState("");
+  const [highlightedSiteId, setHighlightedSiteId] = useState("");
   const [storageErrorCode, setStorageErrorCode] = useState("");
   const [storageMessage, setStorageMessage] = useState("");
   const [storageReady, setStorageReady] = useState(false);
@@ -569,6 +578,7 @@ export function AdminCoachSitesManager({
   const previewSyncTimeoutRef = useRef<number | null>(null);
   const previewSyncFormRef = useRef<CoachSiteFormState | null>(null);
   const draftSubmittingRef = useRef(false);
+  const siteHighlightTimerRef = useRef<number | null>(null);
 
   function recordActivity(activity: AdminActionActivityInput) {
     onAdminActivity?.(activity);
@@ -627,8 +637,32 @@ export function AdminCoachSitesManager({
       if (previewSyncTimeoutRef.current !== null) {
         window.clearTimeout(previewSyncTimeoutRef.current);
       }
+
+      if (siteHighlightTimerRef.current !== null) {
+        window.clearTimeout(siteHighlightTimerRef.current);
+      }
     };
   }, []);
+
+  function highlightCoachSite(siteId: string) {
+    if (!siteId) return;
+
+    if (siteHighlightTimerRef.current !== null) {
+      window.clearTimeout(siteHighlightTimerRef.current);
+    }
+
+    setHighlightedSiteId(siteId);
+    siteHighlightTimerRef.current = window.setTimeout(() => {
+      setHighlightedSiteId("");
+      siteHighlightTimerRef.current = null;
+    }, 2200);
+  }
+
+  function waitForCoachSiteActionFeedback(ms = 650) {
+    return new Promise<void>((resolve) => {
+      window.setTimeout(resolve, ms);
+    });
+  }
 
   const visibleSites = useMemo(() => sites.filter((site) => site.status !== "removed"), [sites]);
 
@@ -988,6 +1022,7 @@ export function AdminCoachSitesManager({
       );
       setPreviewSite(savedSite);
       setEditingId(savedSite.id);
+      highlightCoachSite(savedSite.id);
 
       if (status === "published") {
         updatePublishProgress("Verifying public website and registration link...", 78);
@@ -1454,24 +1489,62 @@ export function AdminCoachSitesManager({
   }
 
   async function updateSiteStatus(site: CoachSiteRecord, status: "paused" | "published") {
-    setMessage(status === "paused" ? "Pausing coach site..." : "Resuming coach site...");
+    if (statusSubmitting) return;
 
+    setStatusSubmitting(status);
+    setStatusActionStep(
+      status === "paused" ? "Preparing pause request" : "Preparing resume request"
+    );
+    setMessage(status === "paused" ? "Pausing coach site..." : "Resuming coach site...");
+    recordActivity({
+      detail:
+        status === "paused"
+          ? `${site.coachName} pause started.`
+          : `${site.coachName} resume started.`,
+      label: "Coach Sites",
+      status: "working"
+    });
+
+    setStatusActionStep("Saving status in coach-site database");
     const updatedSite = await persistSiteStatus(site, status);
     if (!updatedSite) {
+      setStatusActionStep("Status update failed safely");
+      setStatusSubmitting("");
       setMessage(
         status === "paused"
           ? "Coach site was not paused. Fix the database/API issue and try again."
           : "Coach site was not resumed. Fix the database/API issue and try again."
       );
+      recordActivity({
+        detail:
+          status === "paused"
+            ? `${site.coachName} could not be paused.`
+            : `${site.coachName} could not be resumed.`,
+        label: "Coach Sites",
+        status: "error"
+      });
       return;
     }
 
     setPreviewSite((current) => (current?.id === site.id ? updatedSite : current));
+    highlightCoachSite(updatedSite.id);
+    setStatusActionStep(status === "paused" ? "Paused successfully" : "Resumed successfully");
     setMessage(
       status === "paused"
         ? `${updatedSite.coachName} paused. Public link remains ${updatedSite.publicUrl}.`
         : `${updatedSite.coachName} resumed with the same public link: ${updatedSite.publicUrl}.`
     );
+    recordActivity({
+      detail:
+        status === "paused"
+          ? `${updatedSite.coachName} paused successfully.`
+          : `${updatedSite.coachName} resumed successfully.`,
+      label: "Coach Sites",
+      status: "success"
+    });
+    await waitForCoachSiteActionFeedback();
+    setStatusSubmitting("");
+    setStatusActionStep("");
     setDialog(null);
   }
 
@@ -1525,6 +1598,7 @@ export function AdminCoachSitesManager({
 
     setPreviewSite((current) => (current?.id === site.id ? publishedDraft : current));
     setPublishedSite(publishedDraft);
+    highlightCoachSite(publishedDraft.id);
     setMessage(`Successfully Published. Stable public link: ${publishedDraft.publicUrl}`);
     recordActivity({
       detail: `${publishedDraft.coachName} draft published and verified.`,
@@ -1535,18 +1609,11 @@ export function AdminCoachSitesManager({
   }
 
   async function reactivateArchivedSite(site: CoachSiteRecord) {
-    const restoredStatus: CoachSiteStatus = site.publishedAt ? "published" : "draft";
-    const restoredSite = {
-      ...site,
-      archivedAt: undefined,
-      status: restoredStatus,
-      updatedAt: new Date().toISOString()
-    };
+    if (reactivatingSiteId) return;
 
-    setSites((current) => current.map((item) => (item.id === site.id ? restoredSite : item)));
-    setPreviewSite((current) => (current?.id === site.id ? restoredSite : current));
-    setDialog(null);
-    setMessage("Coach site reactivated successfully.");
+    setReactivatingSiteId(site.id);
+    setReactivateStep("Restoring saved coach-site record");
+    setMessage("Reactivating coach site...");
     recordActivity({
       detail: `${site.coachName} reactivation started.`,
       label: "Coach Sites",
@@ -1570,8 +1637,7 @@ export function AdminCoachSitesManager({
       const payload = (await response.json().catch(() => ({}))) as CoachSitesApiPayload;
 
       if (!response.ok || !payload.ok || !payload.coachSite) {
-        setSites((current) => current.map((item) => (item.id === site.id ? site : item)));
-        setPreviewSite((current) => (current?.id === site.id ? site : current));
+        setReactivateStep("Reactivate failed safely");
         setStorageReady(Boolean(payload.configured));
         setStorageMessage(payload.error || "Could not reactivate this coach site.");
         reportAdminStorageIssue({
@@ -1596,14 +1662,17 @@ export function AdminCoachSitesManager({
         current.map((item) => (item.id === site.id ? payload.coachSite! : item))
       );
       setPreviewSite((current) => (current?.id === site.id ? payload.coachSite! : current));
+      highlightCoachSite(payload.coachSite.id);
+      setReactivateStep("Reactivated successfully");
       recordActivity({
         detail: `${payload.coachSite.coachName} reactivated successfully.`,
         label: "Coach Sites",
         status: "success"
       });
+      await waitForCoachSiteActionFeedback();
+      setDialog(null);
     } catch {
-      setSites((current) => current.map((item) => (item.id === site.id ? site : item)));
-      setPreviewSite((current) => (current?.id === site.id ? site : current));
+      setReactivateStep("Reactivate failed safely");
       setStorageReady(false);
       setStorageMessage("Could not reach admin API to reactivate this coach site.");
       reportAdminStorageIssue({
@@ -1619,6 +1688,8 @@ export function AdminCoachSitesManager({
         label: "Coach Sites",
         status: "error"
       });
+    } finally {
+      setReactivatingSiteId("");
     }
   }
 
@@ -1626,6 +1697,7 @@ export function AdminCoachSitesManager({
     if (deletingDraftId) return;
 
     setDeletingDraftId(site.id);
+    setDeleteDraftStep("Sending protected draft delete request");
     setStorageMessage("Deleting draft...");
     recordActivity({
       detail: `${site.coachName || "Coach"} draft deletion started.`,
@@ -1651,6 +1723,7 @@ export function AdminCoachSitesManager({
       const payload = (await response.json().catch(() => ({}))) as CoachSitesApiPayload;
 
       if (!response.ok || !payload.ok || !payload.coachSite) {
+        setDeleteDraftStep("Draft delete failed safely");
         setStorageReady(Boolean(payload.configured));
         reportAdminStorageIssue({
           category: payload.configured === false ? "database_failure" : "admin_action_issue",
@@ -1674,13 +1747,16 @@ export function AdminCoachSitesManager({
       setPublishedSite((current) => (current?.id === site.id ? null : current));
       setStorageMessage("Draft deleted.");
       setMessage(`${site.coachName || "Coach"} draft deleted.`);
+      setDeleteDraftStep("Draft deleted successfully");
       recordActivity({
         detail: `${site.coachName || "Coach"} draft deleted.`,
         label: "Coach Sites",
         status: "success"
       });
+      await waitForCoachSiteActionFeedback();
       setDialog(null);
     } catch {
+      setDeleteDraftStep("Draft delete failed safely");
       setStorageReady(false);
       reportAdminStorageIssue({
         category: "network_or_server_failure",
@@ -1696,6 +1772,7 @@ export function AdminCoachSitesManager({
       });
     } finally {
       setDeletingDraftId("");
+      setDeleteDraftStep("");
     }
   }
 
@@ -1757,6 +1834,9 @@ export function AdminCoachSitesManager({
 
     setRemoveMessage("");
     setRemoveSubmitting(status);
+    setRemoveActionStep(
+      status === "archived" ? "Sending archive request" : "Sending permanent remove request"
+    );
     recordActivity({
       detail:
         status === "archived"
@@ -1785,6 +1865,9 @@ export function AdminCoachSitesManager({
       const payload = (await response.json().catch(() => ({}))) as CoachSitesApiPayload;
 
       if (!response.ok || !payload.ok || !payload.coachSite) {
+        setRemoveActionStep(
+          status === "archived" ? "Archive failed safely" : "Remove failed safely"
+        );
         setRemoveMessage(payload.error || "Could not update this coach site.");
         setStorageReady(Boolean(payload.configured));
         recordActivity({
@@ -1809,19 +1892,29 @@ export function AdminCoachSitesManager({
         current.map((item) => (item.id === site.id ? payload.coachSite! : item))
       );
       setPreviewSite((current) => (current?.id === site.id ? payload.coachSite! : current));
+      if (status === "archived") {
+        highlightCoachSite(payload.coachSite.id);
+      }
       setRemoveConfirm("");
       setRemoveOtp("");
       setRemoveMessage("");
+      setRemoveActionStep(
+        status === "archived" ? "Archived successfully" : "Removed successfully"
+      );
       recordActivity({
         detail:
           status === "archived"
             ? `${payload.coachSite.coachName} archived successfully.`
             : `${payload.coachSite.coachName} removed and hidden from active admin lists.`,
-        label: "Coach Sites",
-        status: "success"
-      });
+          label: "Coach Sites",
+          status: "success"
+        });
+      await waitForCoachSiteActionFeedback();
       setDialog(null);
     } catch {
+      setRemoveActionStep(
+        status === "archived" ? "Archive failed safely" : "Remove failed safely"
+      );
       setRemoveMessage("Could not reach admin API for this coach-site action.");
       recordActivity({
         detail:
@@ -1833,6 +1926,7 @@ export function AdminCoachSitesManager({
       });
     } finally {
       setRemoveSubmitting(null);
+      setRemoveActionStep("");
     }
   }
 
@@ -2150,7 +2244,10 @@ export function AdminCoachSitesManager({
                       </thead>
                       <tbody>
                         {archivedSites.map((site) => (
-                          <tr key={site.id}>
+                          <tr
+                            data-highlight={highlightedSiteId === site.id ? "true" : undefined}
+                            key={site.id}
+                          >
                             <td>
                               <CoachSiteIdentityCell site={site} />
                             </td>
@@ -2245,7 +2342,10 @@ export function AdminCoachSitesManager({
                   </thead>
                   <tbody>
                     {draftSites.map((site) => (
-                      <tr key={site.id}>
+                      <tr
+                        data-highlight={highlightedSiteId === site.id ? "true" : undefined}
+                        key={site.id}
+                      >
                         <td>
                           <CoachSiteIdentityCell site={site} />
                         </td>
@@ -2330,7 +2430,10 @@ export function AdminCoachSitesManager({
               <tbody>
                 {managedSites.length > 0 ? (
                   managedSites.map((site) => (
-                    <tr key={site.id}>
+                    <tr
+                      data-highlight={highlightedSiteId === site.id ? "true" : undefined}
+                      key={site.id}
+                    >
                       <td>
                         <CoachSiteIdentityCell site={site} />
                       </td>
@@ -2431,6 +2534,7 @@ export function AdminCoachSitesManager({
           setRemoveMessage("");
           setRemoveOtp("");
           setRemoveSubmitting(null);
+          setRemoveActionStep("");
           setDialog(null);
         }}
         onReactivateSite={(site) => void reactivateArchivedSite(site)}
@@ -2446,13 +2550,19 @@ export function AdminCoachSitesManager({
         publishProgress={publishProgress}
         publishedSite={publishedSite}
         deletingDraftId={deletingDraftId}
+        deleteDraftStep={deleteDraftStep}
         draftSubmitting={draftSubmitting}
+        reactivatingSiteId={reactivatingSiteId}
+        reactivateStep={reactivateStep}
         removeConfirm={removeConfirm}
+        removeActionStep={removeActionStep}
         removeMessage={removeMessage}
         removeOtp={removeOtp}
         removeOtpSending={removeOtpSending}
         removeReason={removeReason}
         removeSubmitting={removeSubmitting}
+        statusActionStep={statusActionStep}
+        statusSubmitting={statusSubmitting}
         setRemoveConfirm={setRemoveConfirm}
         setRemoveOtp={setRemoveOtp}
         setRemoveReason={setRemoveReason}
@@ -2468,6 +2578,7 @@ function CoachDialogRenderer({
   aiSubmitting,
   csrfToken,
   deletingDraftId,
+  deleteDraftStep,
   dialog,
   draftSubmitting,
   form,
@@ -2497,12 +2608,17 @@ function CoachDialogRenderer({
   previewSite,
   publishProgress,
   publishedSite,
+  reactivatingSiteId,
+  reactivateStep,
   removeConfirm,
+  removeActionStep,
   removeMessage,
   removeOtp,
   removeOtpSending,
   removeReason,
   removeSubmitting,
+  statusActionStep,
+  statusSubmitting,
   setRemoveConfirm,
   setRemoveOtp,
   setRemoveReason,
@@ -2513,6 +2629,7 @@ function CoachDialogRenderer({
   aiSubmitting: boolean;
   csrfToken: string;
   deletingDraftId: string;
+  deleteDraftStep: string;
   dialog: CoachDialog | null;
   draftSubmitting: boolean;
   form: CoachSiteFormState;
@@ -2545,12 +2662,17 @@ function CoachDialogRenderer({
   previewSite: CoachSiteRecord | null;
   publishProgress: PublishProgressState;
   publishedSite: CoachSiteRecord | null;
+  reactivatingSiteId: string;
+  reactivateStep: string;
   removeConfirm: string;
+  removeActionStep: string;
   removeMessage: string;
   removeOtp: string;
   removeOtpSending: boolean;
   removeReason: string;
   removeSubmitting: CoachSiteDangerStatus | null;
+  statusActionStep: string;
+  statusSubmitting: "" | "paused" | "published";
   setRemoveConfirm: (value: string) => void;
   setRemoveOtp: (value: string) => void;
   setRemoveReason: (value: string) => void;
@@ -2877,27 +2999,16 @@ function CoachDialogRenderer({
           published coach sites are not affected.
         </p>
         {deletingCurrentDraft ? (
-          <div className={styles.actionProgressCard} role="status" aria-live="polite">
-            <div>
-              <span aria-hidden="true" />
-              <strong>Deleting draft</strong>
-            </div>
-            <div
-              aria-label="Deleting draft progress"
-              aria-valuemax={100}
-              aria-valuemin={0}
-              aria-valuenow={58}
-              className={styles.actionProgressBar}
-              role="progressbar"
-            >
-              <span style={{ width: "58%" }} />
-            </div>
-            <ul>
-              <li>Protected admin request started</li>
-              <li data-active="true">Removing draft from reusable list</li>
-              <li>Published sites remain untouched</li>
-            </ul>
-          </div>
+          <CoachSiteActionProgressCard
+            label={deleteDraftStep.includes("successfully") ? "Deleted successfully" : "Deleting draft"}
+            progress={deleteDraftStep.includes("successfully") ? 100 : 62}
+            steps={[
+              "Protected admin request started",
+              deleteDraftStep || "Removing draft from reusable list",
+              "Published sites remain untouched"
+            ]}
+            variant="delete"
+          />
         ) : null}
         <dl className={styles.definitionGrid}>
           <div>
@@ -2923,24 +3034,33 @@ function CoachDialogRenderer({
 
   if (dialog.type === "reactivate") {
     const restoredStatus = dialog.site.publishedAt ? "Published" : "Draft";
+    const reactivateBusy = reactivatingSiteId === dialog.site.id;
 
     return (
       <AdminActionDialog
         footer={
           <>
-            <button className={styles.secondaryAction} onClick={onClose} type="button">
+            <button
+              className={styles.secondaryAction}
+              disabled={reactivateBusy}
+              onClick={onClose}
+              type="button"
+            >
               Cancel
             </button>
             <button
               className={styles.primaryAction}
+              disabled={reactivateBusy}
               onClick={() => onReactivateSite(dialog.site)}
               type="button"
             >
-              Restore Site
+              {reactivateBusy ? "Restoring..." : "Restore Site"}
             </button>
           </>
         }
-        onClose={onClose}
+        onClose={() => {
+          if (!reactivateBusy) onClose();
+        }}
         open
         title="Reactivate Coach Site"
       >
@@ -2966,6 +3086,22 @@ function CoachDialogRenderer({
             <dd>{dialog.site.publicUrl}</dd>
           </div>
         </dl>
+        {reactivateBusy ? (
+          <CoachSiteActionProgressCard
+            label={
+              reactivateStep.includes("successfully")
+                ? "Reactivated successfully"
+                : "Restoring coach site"
+            }
+            progress={reactivateStep.includes("successfully") ? 100 : 58}
+            steps={[
+              "Archived record found",
+              reactivateStep || "Restoring saved coach-site record",
+              "Same public link stays active"
+            ]}
+            variant="restore"
+          />
+        ) : null}
       </AdminActionDialog>
     );
   }
@@ -3032,25 +3168,38 @@ function CoachDialogRenderer({
 
   if (dialog.type === "status") {
     const action = dialog.nextStatus === "paused" ? "Pause Site" : "Resume Site";
+    const statusBusy = statusSubmitting === dialog.nextStatus;
     return (
       <AdminActionDialog
         footer={
           <>
-            <button className={styles.secondaryAction} onClick={onClose} type="button">
+            <button
+              className={styles.secondaryAction}
+              disabled={statusBusy}
+              onClick={onClose}
+              type="button"
+            >
               Cancel
             </button>
             <button
               className={styles.primaryAction}
+              disabled={statusBusy}
               onClick={() => {
                 void onStatusConfirm(dialog.site, dialog.nextStatus);
               }}
               type="button"
             >
-              Confirm {action}
+              {statusBusy
+                ? dialog.nextStatus === "paused"
+                  ? "Pausing..."
+                  : "Resuming..."
+                : `Confirm ${action}`}
             </button>
           </>
         }
-        onClose={onClose}
+        onClose={() => {
+          if (!statusBusy) onClose();
+        }}
         open
         title={action}
       >
@@ -3060,6 +3209,25 @@ function CoachDialogRenderer({
             ? "Visitors will see the temporarily unavailable page with the hidden support fallback."
             : "Visitors will see the public coach site again."}
         </p>
+        {statusBusy ? (
+          <CoachSiteActionProgressCard
+            label={
+              statusActionStep.includes("successfully")
+                ? dialog.nextStatus === "paused"
+                  ? "Paused successfully"
+                  : "Resumed successfully"
+                : dialog.nextStatus === "paused"
+                  ? "Pausing coach site"
+                  : "Resuming coach site"
+            }
+            progress={statusActionStep.includes("successfully") ? 100 : 58}
+            steps={[
+              "Status change confirmed",
+              statusActionStep || "Saving status in coach-site database",
+              "Coach Sites list updates automatically"
+            ]}
+          />
+        ) : null}
       </AdminActionDialog>
     );
   }
@@ -3077,7 +3245,12 @@ function CoachDialogRenderer({
     <AdminActionDialog
       footer={
         <>
-          <button className={styles.secondaryAction} onClick={onRemoveCancel} type="button">
+          <button
+            className={styles.secondaryAction}
+            disabled={removeBusy}
+            onClick={onRemoveCancel}
+            type="button"
+          >
             Cancel
           </button>
           <button
@@ -3108,7 +3281,9 @@ function CoachDialogRenderer({
           </button>
         </>
       }
-      onClose={onRemoveCancel}
+      onClose={() => {
+        if (!removeBusy) onRemoveCancel();
+      }}
       open
       title="Archive or Remove Coach Site"
       tone="danger"
@@ -3210,6 +3385,31 @@ function CoachDialogRenderer({
           {removeMessage}
         </p>
       ) : null}
+      {removeBusy ? (
+        <CoachSiteActionProgressCard
+          label={
+            removeActionStep.includes("successfully")
+              ? removeSubmitting === "archived"
+                ? "Archived successfully"
+                : "Removed successfully"
+              : removeSubmitting === "archived"
+                ? "Archiving coach site"
+                : "Removing coach site"
+          }
+          progress={removeActionStep.includes("successfully") ? 100 : 62}
+          steps={[
+            "OTP and coach confirmation checked",
+            removeActionStep ||
+              (removeSubmitting === "archived"
+                ? "Moving site into Archived Coaches"
+                : "Hiding removed site from Admin lists"),
+            removeSubmitting === "archived"
+              ? "Coach data remains restorable"
+              : "Removed records stay hidden from normal lists"
+          ]}
+          variant={removeSubmitting === "archived" ? "restore" : "delete"}
+        />
+      ) : null}
     </AdminActionDialog>
   );
 }
@@ -3225,6 +3425,59 @@ function isRemovalConfirmationMatch(value: string, site: CoachSiteRecord) {
 
 function normalizeRemovalConfirmation(value: string) {
   return value.trim().toLowerCase();
+}
+
+function CoachSiteActionProgressCard({
+  label,
+  progress,
+  steps,
+  variant = "standard"
+}: {
+  label: string;
+  progress: number;
+  steps: string[];
+  variant?: CoachSiteActionProgressVariant;
+}) {
+  const normalizedProgress = Math.max(0, Math.min(100, progress));
+  const isDelete = variant === "delete";
+
+  return (
+    <div
+      className={styles.actionProgressCard}
+      data-variant={isDelete ? "delete" : undefined}
+      role="status"
+      aria-live="polite"
+    >
+      <div>
+        {isDelete ? (
+          <span className={styles.deleteProgressIcon} aria-hidden="true">
+            <i />
+            <i />
+          </span>
+        ) : (
+          <span aria-hidden="true" />
+        )}
+        <strong>{label}</strong>
+      </div>
+      <div
+        aria-label={`${label} progress`}
+        aria-valuemax={100}
+        aria-valuemin={0}
+        aria-valuenow={normalizedProgress}
+        className={styles.actionProgressBar}
+        role="progressbar"
+      >
+        <span style={{ width: `${normalizedProgress}%` }} />
+      </div>
+      <ul>
+        {steps.map((step, index) => (
+          <li data-active={index === Math.max(0, steps.length - 2) ? "true" : undefined} key={step}>
+            {step}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 function formatCoachLastEdited(site: CoachSiteRecord) {

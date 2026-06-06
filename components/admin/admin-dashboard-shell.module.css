@@ -956,6 +956,13 @@
   box-shadow: 0 0.75rem 1.8rem rgb(16 24 40 / 0.04);
 }
 
+.section[data-highlight="true"],
+.draftsPanel[data-highlight="true"],
+.archiveMenu[data-highlight="true"],
+.table tr[data-highlight="true"] {
+  animation: adminResultHighlight 2200ms ease-out;
+}
+
 .archiveMenuShell {
   display: grid;
   justify-items: start;
@@ -3450,6 +3457,27 @@
   }
 }
 
+@keyframes adminResultHighlight {
+  0% {
+    background-color: rgb(240 253 250 / 0.88);
+    box-shadow:
+      0 0 0 0 rgb(8 122 115 / 0.2),
+      0 0.8rem 2.2rem rgb(8 122 115 / 0.08);
+  }
+
+  38% {
+    background-color: rgb(255 241 247 / 0.58);
+    box-shadow:
+      0 0 0 0.24rem rgb(200 91 145 / 0.1),
+      0 1rem 2.6rem rgb(31 41 55 / 0.1);
+  }
+
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .aiAssistantButton[data-loading="true"],
   .aiAssistantLoading > span {
@@ -3463,6 +3491,15 @@
   .actionProgressCard > div:first-child > span,
   .actionProgressBar span {
     animation: none;
+  }
+
+  .section[data-highlight="true"],
+  .draftsPanel[data-highlight="true"],
+  .archiveMenu[data-highlight="true"],
+  .table tr[data-highlight="true"] {
+    animation: none;
+    outline: 2px solid rgb(8 122 115 / 0.22);
+    outline-offset: 2px;
   }
 
   .deleteProgressIcon::before,

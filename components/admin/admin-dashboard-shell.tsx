@@ -5587,9 +5587,13 @@ function BackupCleanupView({
   const [message, setMessage] = useState("");
   const [maintenanceStep, setMaintenanceStep] = useState("");
   const [errorCleanupStep, setErrorCleanupStep] = useState("");
+  const [highlightedMaintenance, setHighlightedMaintenance] = useState<
+    "" | "backup" | "cleanup" | "error-report-cleanup" | "test_backup_email"
+  >("");
   const [cleanupConfirmOpen, setCleanupConfirmOpen] = useState(false);
   const [backupConfirmOpen, setBackupConfirmOpen] = useState(false);
   const [testBackupEmailConfirmOpen, setTestBackupEmailConfirmOpen] = useState(false);
+  const maintenanceHighlightTimerRef = useRef<number | null>(null);
   const errorCleanupConfirmed =
     errorCleanupConfirmation.trim().toUpperCase() === ERROR_REPORT_CLEANUP_CONFIRMATION;
 
@@ -5623,6 +5627,28 @@ function BackupCleanupView({
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (maintenanceHighlightTimerRef.current !== null) {
+        window.clearTimeout(maintenanceHighlightTimerRef.current);
+      }
+    };
+  }, []);
+
+  function highlightMaintenanceResult(
+    target: "backup" | "cleanup" | "error-report-cleanup" | "test_backup_email"
+  ) {
+    if (maintenanceHighlightTimerRef.current !== null) {
+      window.clearTimeout(maintenanceHighlightTimerRef.current);
+    }
+
+    setHighlightedMaintenance(target);
+    maintenanceHighlightTimerRef.current = window.setTimeout(() => {
+      setHighlightedMaintenance("");
+      maintenanceHighlightTimerRef.current = null;
+    }, 2200);
+  }
 
   async function clearOldReportsFromMaintenance() {
     if (!errorCleanupConfirmed) {
@@ -5687,6 +5713,7 @@ function BackupCleanupView({
       );
       setErrorCleanupStep(`${deletedCount} reports cleared successfully`);
       setMessage(`${deletedCount} old error reports cleared. No analytics or coach data was touched.`);
+      highlightMaintenanceResult("error-report-cleanup");
       await waitForActionFeedback();
       setErrorCleanupConfirmOpen(false);
       setErrorCleanupConfirmation("");
@@ -5769,35 +5796,41 @@ function BackupCleanupView({
 
       if (action === "backup") {
         setMaintenanceStep("Backup delivered to active admins");
-        setBackupConfirmOpen(false);
         setMessage(
           `Backup completed for ${payload.recordCount || 0} analytics records. Notification status: ${
             payload.notificationStatus || "not recorded"
           }.`
         );
+        highlightMaintenanceResult("backup");
         onAdminActivity({
           detail: `Backup completed for ${payload.recordCount || 0} analytics records.`,
           label: "Backup/Cleanup",
           status: "success"
         });
+        await waitForActionFeedback();
+        setBackupConfirmOpen(false);
       } else if (action === "cleanup") {
         setMaintenanceStep("Cleanup completed");
-        setCleanupConfirmOpen(false);
         setMessage(`${payload.deletedCount || 0} old analytics events cleaned after backup.`);
+        highlightMaintenanceResult("cleanup");
         onAdminActivity({
           detail: `${payload.deletedCount || 0} old analytics events cleaned after backup.`,
           label: "Backup/Cleanup",
           status: "success"
         });
+        await waitForActionFeedback();
+        setCleanupConfirmOpen(false);
       } else {
         setMaintenanceStep("Test email sent");
-        setTestBackupEmailConfirmOpen(false);
         setMessage("Test backup email sent to all active admin recipients.");
+        highlightMaintenanceResult("test_backup_email");
         onAdminActivity({
           detail: "Test backup email sent to active admins.",
           label: "Backup/Cleanup",
           status: "success"
         });
+        await waitForActionFeedback();
+        setTestBackupEmailConfirmOpen(false);
       }
     } catch {
       setMessage("Maintenance action failed safely. No destructive cleanup was run.");
@@ -5887,7 +5920,10 @@ function BackupCleanupView({
         </article>
       </section>
 
-      <section className={styles.section}>
+      <section
+        className={styles.section}
+        data-highlight={highlightedMaintenance === "test_backup_email" ? "true" : undefined}
+      >
         <div className={styles.sectionHeader}>
           <div>
             <p className={styles.kicker}>Backup recipients</p>
@@ -5912,7 +5948,14 @@ function BackupCleanupView({
         ) : null}
       </section>
 
-      <section className={styles.section}>
+      <section
+        className={styles.section}
+        data-highlight={
+          highlightedMaintenance === "backup" || highlightedMaintenance === "cleanup"
+            ? "true"
+            : undefined
+        }
+      >
         <div className={styles.sectionHeader}>
           <div>
             <p className={styles.kicker}>Manual maintenance</p>
@@ -5968,7 +6011,7 @@ function BackupCleanupView({
             onClick={() => setCleanupConfirmOpen(true)}
             type="button"
           >
-            Run Cleanup After Backup
+            {busyAction === "cleanup" ? "Cleaning..." : "Run Cleanup After Backup"}
           </button>
           {activeStatus.backupDownloadUrl ? (
             <a className={styles.secondaryAction} href={activeStatus.backupDownloadUrl}>
@@ -5984,7 +6027,10 @@ function BackupCleanupView({
         {message ? <p className={styles.inlineStatus}>{message}</p> : null}
       </section>
 
-      <section className={styles.section}>
+      <section
+        className={styles.section}
+        data-highlight={highlightedMaintenance === "error-report-cleanup" ? "true" : undefined}
+      >
         <div className={styles.sectionHeader}>
           <div>
             <p className={styles.kicker}>Error Reports cleanup</p>
@@ -6080,7 +6126,7 @@ function BackupCleanupView({
       <AdminActionDialog
         footer={
           <>
-            <button onClick={() => setBackupConfirmOpen(false)} type="button">
+            <button disabled={busyAction === "backup"} onClick={() => setBackupConfirmOpen(false)} type="button">
               Cancel
             </button>
             <button
@@ -6092,7 +6138,9 @@ function BackupCleanupView({
             </button>
           </>
         }
-        onClose={() => setBackupConfirmOpen(false)}
+        onClose={() => {
+          if (busyAction !== "backup") setBackupConfirmOpen(false);
+        }}
         open={backupConfirmOpen}
         title="Run Analytics Backup"
       >
@@ -6123,7 +6171,11 @@ function BackupCleanupView({
       <AdminActionDialog
         footer={
           <>
-            <button onClick={() => setTestBackupEmailConfirmOpen(false)} type="button">
+            <button
+              disabled={busyAction === "test_backup_email"}
+              onClick={() => setTestBackupEmailConfirmOpen(false)}
+              type="button"
+            >
               Cancel
             </button>
             <button
@@ -6135,7 +6187,9 @@ function BackupCleanupView({
             </button>
           </>
         }
-        onClose={() => setTestBackupEmailConfirmOpen(false)}
+        onClose={() => {
+          if (busyAction !== "test_backup_email") setTestBackupEmailConfirmOpen(false);
+        }}
         open={testBackupEmailConfirmOpen}
         title="Send Test Backup Email"
       >
@@ -6160,7 +6214,7 @@ function BackupCleanupView({
       <AdminActionDialog
         footer={
           <>
-            <button onClick={() => setCleanupConfirmOpen(false)} type="button">
+            <button disabled={busyAction === "cleanup"} onClick={() => setCleanupConfirmOpen(false)} type="button">
               Cancel
             </button>
             <button
@@ -6173,7 +6227,9 @@ function BackupCleanupView({
             </button>
           </>
         }
-        onClose={() => setCleanupConfirmOpen(false)}
+        onClose={() => {
+          if (busyAction !== "cleanup") setCleanupConfirmOpen(false);
+        }}
         open={cleanupConfirmOpen}
         title="Run Analytics Cleanup"
         tone="danger"
