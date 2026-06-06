@@ -1,6 +1,7 @@
 "use client";
 
 import { type CSSProperties, type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AdminCoachSitesManager } from "./admin-coach-sites-manager";
 import {
   AdminActionDialog,
@@ -2941,6 +2942,72 @@ function AnalyticsAiWidget({
   }
 
   const workingCopy = getWorkingCopy();
+  const panel = open ? (
+    <div
+      aria-busy={busy}
+      className={styles.aiAssistantPanel}
+      data-busy={busy ? "true" : "false"}
+      role="dialog"
+    >
+      <div className={styles.aiAssistantHeader}>
+        <div>
+          <p className={styles.kicker}>{eyebrow}</p>
+          <h3>{title}</h3>
+        </div>
+        <button aria-label="Close AI assistant" onClick={() => setOpen(false)} type="button">
+          Close
+        </button>
+      </div>
+      <div className={styles.aiAssistantActions} aria-label="AI actions">
+        {menuActions.map((action) => (
+          <button
+            aria-busy={busy && activeAction === action.label}
+            data-active={activeAction === action.label ? "true" : "false"}
+            disabled={busy}
+            key={action.label}
+            onClick={() => void runAction(action)}
+            type="button"
+          >
+            <strong>{action.label}</strong>
+            {action.description ? <span>{action.description}</span> : null}
+          </button>
+        ))}
+      </div>
+      {busy ? (
+        <div className={styles.aiAssistantLoading} aria-live="polite" role="status">
+          <span aria-hidden="true" />
+          <div>
+            <strong>{workingCopy.title}</strong>
+            <p>{workingCopy.body}</p>
+          </div>
+        </div>
+      ) : null}
+      {assistantError ? (
+        <div className={styles.aiAssistantError} role="status">
+          {assistantError}
+        </div>
+      ) : null}
+      {!busy ? (
+        <div className={styles.aiAssistantResult} aria-live="polite">
+          <strong>{activeAction || "Latest result"}</strong>
+          <ul>
+            {items.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {status || usageEstimate || cacheLabel ? (
+        <p className={styles.aiAssistantMeta}>
+          {status || "AI ready."}
+          {cacheLabel ? ` Cache: ${cacheLabel}.` : ""}
+          {usageEstimate
+            ? ` Estimate: ${usageEstimate.approximateCostLevel}, ${usageEstimate.estimatedInputTokens} input / ${usageEstimate.estimatedOutputTokens} output tokens.`
+            : ""}
+        </p>
+      ) : null}
+    </div>
+  ) : null;
 
   return (
     <div className={styles.aiAssistant} data-open={open ? "true" : "false"}>
@@ -2954,72 +3021,7 @@ function AnalyticsAiWidget({
       >
         AI
       </button>
-      {open ? (
-        <div
-          aria-busy={busy}
-          className={styles.aiAssistantPanel}
-          data-busy={busy ? "true" : "false"}
-          role="dialog"
-        >
-          <div className={styles.aiAssistantHeader}>
-            <div>
-              <p className={styles.kicker}>{eyebrow}</p>
-              <h3>{title}</h3>
-            </div>
-            <button aria-label="Close AI assistant" onClick={() => setOpen(false)} type="button">
-              Close
-            </button>
-          </div>
-          <div className={styles.aiAssistantActions} aria-label="AI actions">
-            {menuActions.map((action) => (
-              <button
-                aria-busy={busy && activeAction === action.label}
-                data-active={activeAction === action.label ? "true" : "false"}
-                disabled={busy}
-                key={action.label}
-                onClick={() => void runAction(action)}
-                type="button"
-              >
-                <strong>{action.label}</strong>
-                {action.description ? <span>{action.description}</span> : null}
-              </button>
-            ))}
-          </div>
-          {busy ? (
-            <div className={styles.aiAssistantLoading} aria-live="polite" role="status">
-              <span aria-hidden="true" />
-              <div>
-                <strong>{workingCopy.title}</strong>
-                <p>{workingCopy.body}</p>
-              </div>
-            </div>
-          ) : null}
-          {assistantError ? (
-            <div className={styles.aiAssistantError} role="status">
-              {assistantError}
-            </div>
-          ) : null}
-          {!busy ? (
-            <div className={styles.aiAssistantResult} aria-live="polite">
-              <strong>{activeAction || "Latest result"}</strong>
-              <ul>
-                {items.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {status || usageEstimate || cacheLabel ? (
-            <p className={styles.aiAssistantMeta}>
-              {status || "AI ready."}
-              {cacheLabel ? ` Cache: ${cacheLabel}.` : ""}
-              {usageEstimate
-                ? ` Estimate: ${usageEstimate.approximateCostLevel}, ${usageEstimate.estimatedInputTokens} input / ${usageEstimate.estimatedOutputTokens} output tokens.`
-                : ""}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
+      {panel && typeof document !== "undefined" ? createPortal(panel, document.body) : panel}
     </div>
   );
 }

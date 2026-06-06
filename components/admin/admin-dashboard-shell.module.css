@@ -2784,14 +2784,16 @@
 }
 
 .aiAssistantPanel {
-  position: static;
+  position: fixed;
+  top: clamp(0.75rem, 2vw, 1.25rem);
+  right: clamp(0.75rem, 2vw, 1.25rem);
   z-index: 140;
-  width: min(30rem, calc(100vw - 1.3rem));
-  max-height: min(34rem, 62dvh);
+  width: min(34rem, calc(100vw - 1.5rem));
+  max-height: calc(100dvh - clamp(1.5rem, 4vw, 2.5rem));
   display: grid;
-  grid-template-rows: auto minmax(0, auto) auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, auto) auto minmax(8rem, 1fr) auto;
   gap: 0.75rem;
-  overflow: hidden;
+  overflow: auto;
   overscroll-behavior: contain;
   border: 1px solid rgb(224 218 232);
   border-radius: 1rem;
@@ -2832,7 +2834,7 @@
 .aiAssistantActions {
   display: grid;
   gap: 0.45rem;
-  max-height: min(13rem, 26dvh);
+  max-height: min(14rem, 28dvh);
   overflow: auto;
   padding-right: 0.08rem;
   scrollbar-width: thin;
@@ -2885,6 +2887,7 @@
   display: grid;
   gap: 0.45rem;
   min-height: 0;
+  max-height: min(18rem, 34dvh);
   overflow: auto;
   border: 1px solid rgb(8 122 115 / 0.12);
   border-radius: 0.85rem;
@@ -4411,9 +4414,10 @@
   }
 
   .aiAssistantPanel {
-    position: static;
-    width: 100%;
-    max-height: min(72dvh, 36rem);
+    position: fixed;
+    inset: auto 0.75rem 0.75rem;
+    width: auto;
+    max-height: min(78dvh, 38rem);
     border-radius: 1rem;
   }
 
@@ -4647,8 +4651,18 @@
   }
 
   .aiAssistantPanel {
-    max-height: 72dvh;
-    border-radius: 1rem;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    box-sizing: border-box;
+    width: auto;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+    background:
+      radial-gradient(circle at 10% 0%, rgb(255 237 246), transparent 11rem),
+      linear-gradient(145deg, #ffffff, #f8fafc);
   }
 
   .activityCenter {

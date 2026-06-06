@@ -10,7 +10,7 @@ Old `.md` files ignored: yes. This report only tracks the current `robust testin
 
 The current implementation strengthens the highest-risk admin and coach-site reliability gaps found in the active source-of-truth file:
 
-- Admin AI buttons now show a contained working/result drawer instead of cramped content spilling into the page.
+- Admin AI buttons now show a body-level working/result drawer instead of cramped content spilling into the page; the drawer is viewport-contained on desktop and mobile.
 - Error Reports now default to Active issues, and Mark Fixed updates the UI immediately without requiring refresh.
 - Save Draft now has duplicate-click protection and a visible `Saving...` state.
 - Coach Website Creator copy generation now uses a broader structured content slot registry so public and preview templates can render niche-aware content instead of generic hardcoded placeholder sections.
@@ -23,7 +23,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 |---|---:|---:|---|---|---|---|---|
 | Universal action feedback for serious admin actions | Partial | Yes | Partial | Scope is platform-wide; current pass targeted AI, Error Reports, Save Draft, Publish panel already present | Added `ActionToast`, AI busy drawer, Mark Fixed loading, Save Draft busy state | Passed targeted flows | Full activity center and every single admin action still need broader production click pass |
 | Button-level micro feedback | Partial | Yes | Partial | Save Draft button did not show loading | Added `draftSubmitting` state/ref and `Saving...` text | Delayed POST test passed | Some existing actions still use older inline status only |
-| AI report/generation feedback | Yes | Yes | Pass | AI panel content was cramped and mixed with page content | Fixed AI drawer layout, scroll containment, working text, async action handling, error message | Immediate loading test passed; desktop screenshot verified | None for current AI panel |
+| AI report/generation feedback | Yes | Yes | Pass | AI panel content was cramped, mixed with page content, and mobile fixed positioning could be clipped by admin scroll | Moved AI drawer into a React portal, added viewport-contained desktop/mobile sizing, scroll containment, working text, async action handling, error message | Desktop and 390px mobile portal screenshots verified; no horizontal overflow | None for current AI panel |
 | Result highlight after actions | Partial | Yes | Pass for Error Reports | Fixed report stayed visually stale in Active list | Added optimistic report status update and highlight marker | Mark Fixed test passed | Draft row highlight is visual through list update, not a timed pulse yet |
 | Full overlay only for long-running actions | Partial | Yes | Pass for tested flows | Publish already had progress panel; AI used cramped popover | AI drawer made compact; publish panel retained | Screenshots passed | Backup/Cleanup animation not fully covered in this edit |
 | Real-time UI updates after mutation | Yes for Error Reports and draft save | Yes | Pass | Mark Fixed remained in Active list in previous UX | Optimistic local state update, refresh with preserved updated status, close detail dialog on Fixed/Ignored | Active count 2 -> 1, Fixed tab shows item, All tab shows item | Production live D1 test still recommended after deploy |
@@ -41,7 +41,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 | Public page renders generated content | Yes | Yes | Pass | Public renderer and Pages Function needed expanded fields | React and Cloudflare renderer now read new content slots | `/coach/gyana-ranjan` tested at 320, 390, 768, 1024, 1440 | Register URL depends on real coach data |
 | Contact Support only as fallback | Yes | Public route | Pass | Normal public route must not show Contact Support | No normal contact card rendered; support fallback remains hidden | Public route test: fallback not shown | Actual fallback pages still should be sampled in production |
 | Error/fallback logging not exposed publicly | No new fallback added | Code inspected | Pass | This change did not introduce new public failure flow | Existing error-report API untouched except UI handling | Build passed | No new code needed |
-| Mobile/tablet/desktop visual reliability | Yes for touched public/admin routes | Yes | Pass | Mobile error details previously clipped | Removed mobile line clamp, added wrap rules, contained scroll | Mobile overflow false; screenshots saved | More admin pages should be sampled in broader release QA |
+| Mobile/tablet/desktop visual reliability | Yes for touched public/admin routes | Yes | Pass | Mobile error details and AI drawer could be clipped by constrained admin layout | Removed mobile line clamp, added wrap rules, moved AI drawer to body portal, contained scroll | Mobile overflow false; AI drawer box 390x844 at 390px viewport | More admin pages should be sampled in broader release QA |
 | Codebase audit and final QA report | Yes | Yes | Pass | Report file did not exist | Created this audit file | Completed | None |
 
 ## Expected vs Actual
@@ -53,13 +53,14 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 | Error Reports | Mark one New report Fixed | Report disappears from Active immediately | Active count changed from 2 to 1; fixed report removed from Active | Pass |
 | Error Reports | Fixed tab | Fixed report appears | Fixed tab showed the report | Pass |
 | Error Reports | All tab | Fixed report remains visible with status | All tab showed the report | Pass |
+| Error Reports mobile | Open AI assistant at 390px | Drawer remains readable, scrollable, and inside viewport | Portal drawer rendered at x=0, y=0, width=390, height=844 with no body overflow | Pass |
 | Website Creator | Save Draft with delayed API | Button shows `Saving...`, then success | `Saving...` visible; `Draft saved successfully.` visible | Pass |
 | Public Coach Page | Open normal route | No Contact Support fallback during successful load | `/coach/gyana-ranjan` loaded YW template and coach name, no support fallback | Pass |
 | Mobile public route | 320/390/768/1024/1440 | No horizontal overflow | Overflow false at tested breakpoints | Pass |
 
 ## Major Failure Points Found
 
-1. AI report drawer could visually overlap and mash results into underlying content.
+1. AI report drawer could visually overlap and mash results into underlying content, especially when opened from admin page action areas.
 2. Mark Fixed updated the server but stale UI could leave the report in Active.
 3. Save Draft had no loading state and no duplicate-click guard.
 4. Coach template content model did not cover all visible template text slots.
@@ -68,6 +69,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 ## Root Causes
 
 - AI actions were synchronous from the UI perspective and did not keep a guaranteed working state visible.
+- The AI drawer originally lived inside the admin page action cluster, so fixed/static positioning could inherit cramped layout or scroll offsets.
 - Error Reports state refresh could reintroduce stale status before the UI reflected the mutation.
 - Save Draft reused the generic upsert flow without its own action state.
 - Template preview/public renderer had hardcoded visible copy not represented in builder form or AI schema.
@@ -75,7 +77,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 
 ## Fixes Applied
 
-- Added async AI action handling, minimum visible working state, error state, and contained scrollable AI drawer.
+- Added async AI action handling, minimum visible working state, error state, and contained scrollable AI drawer rendered through a body-level React portal.
 - Added Error Reports optimistic status update, status-preserving refetch, row highlight, loading state, and toast.
 - Added Save Draft `draftSubmitting` state/ref, disabled duplicate clicks, and `Saving...` button text.
 - Added `lib/coach-template-content-slots.ts`.
@@ -98,6 +100,7 @@ No new public error-code fallback was added in this pass because the changed flo
 - Public coach route: no horizontal overflow at 320, 390, 768, 1024, 1440.
 - Public coach route: YW Nutritech and coach identity rendered; Contact Support fallback did not appear during normal load.
 - AI drawer desktop: readable, scroll-contained, not mashed into the page.
+- AI drawer mobile 390px: full viewport, readable, no top clipping, no horizontal overflow.
 
 ## Commands Run
 
@@ -106,7 +109,7 @@ No new public error-code fallback was added in this pass because the changed flo
 - `pnpm typecheck`
 - `pnpm lint`
 - `pnpm build`
-- Local Playwright/Chromium smoke tests through Node for admin Error Reports, AI drawer, Save Draft feedback, and public coach page breakpoints.
+- Local Playwright/Chromium smoke tests through Node for admin Error Reports, AI drawer, Save Draft feedback, public coach page breakpoints, and portal-based mobile drawer containment.
 
 ## Build / Lint / Typecheck
 
@@ -120,6 +123,8 @@ Local screenshots saved under:
 
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\error-reports-ai-flow-desktop.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\error-reports-fixed-flow-desktop.png`
+- `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\error-reports-ai-drawer-desktop-portal.png`
+- `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\error-reports-ai-drawer-mobile-portal.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\creator-save-draft-feedback-desktop.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\error-reports-mobile-final.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\public-coach-mobile-320-final.png`
@@ -135,4 +140,3 @@ Local screenshots saved under:
 - Global Activity Center and every single serious admin action animation are not fully implemented everywhere; current pass covers the highest-priority broken UX paths from this edit.
 
 Final reliability confidence: Partial
-
