@@ -2292,6 +2292,7 @@ function CoachAnalyticsView({
             analyticsRange={analyticsRange}
             coach={selectedCoach}
             csrfToken={csrfToken}
+            onAdminActivity={onAdminActivity}
             onTabChange={setActiveTab}
           />
         ) : null}
@@ -2812,15 +2813,17 @@ function getInitials(name: string) {
 
 function AnalyticsWidget({
   eyebrow,
+  highlight = false,
   items,
   title
 }: {
   eyebrow: string;
+  highlight?: boolean;
   items: string[];
   title: string;
 }) {
   return (
-    <article className={styles.analyticsWidget}>
+    <article className={styles.analyticsWidget} data-highlight={highlight ? "true" : "false"}>
       <p className={styles.kicker}>{eyebrow}</p>
       <h3>{title}</h3>
       <ul>
@@ -3302,14 +3305,17 @@ function CoachAnalyticsDetailPanel({
   analyticsRange,
   coach,
   csrfToken,
+  onAdminActivity,
   onTabChange
 }: {
   activeTab: CoachAnalyticsFunnelType;
   analyticsRange: AnalyticsDateRangeId;
   coach: CoachAnalyticsRow;
   csrfToken: string;
+  onAdminActivity: (activity: AdminActionActivityInput) => void;
   onTabChange: (tab: CoachAnalyticsFunnelType) => void;
 }) {
+  const [activeReportAction, setActiveReportAction] = useState("");
   const [copyMessage, setCopyMessage] = useState("");
   const [insightCache, setInsightCache] = useState("");
   const [insightGeneratedAt, setInsightGeneratedAt] = useState("");
@@ -3317,9 +3323,13 @@ function CoachAnalyticsDetailPanel({
   const [insightUsage, setInsightUsage] =
     useState<AdminAiAnalyticsPayload["usageEstimate"]>(undefined);
   const [insights, setInsights] = useState<string[]>([]);
+  const [insightBusy, setInsightBusy] = useState(false);
   const [reportFormat, setReportFormat] = useState<"admin" | "detailed" | "whatsapp">("whatsapp");
+  const [reportGeneratedAt, setReportGeneratedAt] = useState("");
+  const [reportHighlighted, setReportHighlighted] = useState(false);
   const [detailChartCompareEnabled, setDetailChartCompareEnabled] = useState(true);
   const [detailChartRange, setDetailChartRange] = useState<AnalyticsChartRangeId>("max");
+  const reportHighlightTimerRef = useRef<number | null>(null);
   const analyticsRangeLabel =
     analyticsRangeOptions.find((option) => option.value === analyticsRange)?.label ||
     analyticsRange;
@@ -3340,11 +3350,42 @@ function CoachAnalyticsDetailPanel({
     [analyticsRangeLabel, coach, insights, reportFormat]
   );
   const hasEnoughData = coach.combined.visits > 0 || coach.combined.clicks > 0;
+  const isReportActionBusy = Boolean(activeReportAction);
+
+  useEffect(
+    () => () => {
+      if (reportHighlightTimerRef.current !== null) {
+        window.clearTimeout(reportHighlightTimerRef.current);
+      }
+    },
+    []
+  );
+
+  function highlightReportArea() {
+    setReportHighlighted(true);
+
+    if (reportHighlightTimerRef.current !== null) {
+      window.clearTimeout(reportHighlightTimerRef.current);
+    }
+
+    reportHighlightTimerRef.current = window.setTimeout(() => {
+      setReportHighlighted(false);
+      reportHighlightTimerRef.current = null;
+    }, 2200);
+  }
+
+  async function holdActionFeedback(milliseconds = 560) {
+    await new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
+  }
 
   async function generateInsights(forceRefresh = false) {
+    if (insightBusy || isReportActionBusy) return;
+
     if (!hasEnoughData) {
       setInsights(["Not enough data for AI insights yet."]);
       setInsightGeneratedAt(new Date().toLocaleString());
+      setInsightStatus("Not enough data for AI insights yet.");
+      highlightReportArea();
       return;
     }
 
@@ -3353,24 +3394,36 @@ function CoachAnalyticsDetailPanel({
       return;
     }
 
+    const label = forceRefresh ? "Refresh AI Insights" : "Generate AI Insights";
+
+    setInsightBusy(true);
+    setCopyMessage("");
     setInsightStatus(forceRefresh ? "Refreshing AI insights..." : "Generating AI insights...");
+    onAdminActivity({
+      detail: `${coach.coachName} AI insights started.`,
+      label,
+      status: "working"
+    });
 
     try {
-      const response = await fetch("/api/admin/analytics-insights", {
-        body: JSON.stringify({
-          dateRange: analyticsRange,
-          forceRefresh,
-          payload: buildCoachAiPayload(coach, activeTab),
-          scope: "coach"
+      const [response] = await Promise.all([
+        fetch("/api/admin/analytics-insights", {
+          body: JSON.stringify({
+            dateRange: analyticsRange,
+            forceRefresh,
+            payload: buildCoachAiPayload(coach, activeTab),
+            scope: "coach"
+          }),
+          cache: "no-store",
+          credentials: "include",
+          headers: {
+            "content-type": "application/json",
+            "x-yw-admin-csrf": csrfToken
+          },
+          method: "POST"
         }),
-        cache: "no-store",
-        credentials: "include",
-        headers: {
-          "content-type": "application/json",
-          "x-yw-admin-csrf": csrfToken
-        },
-        method: "POST"
-      });
+        holdActionFeedback(780)
+      ]);
       const payload = (await response.json().catch(() => ({}))) as AdminAiAnalyticsPayload;
 
       if (response.ok && payload.ok && payload.insight) {
@@ -3381,6 +3434,13 @@ function CoachAnalyticsDetailPanel({
         setInsightStatus(
           `${payload.cache === "hit" ? "Cached" : "Generated"} with ${payload.insight.model}.`
         );
+        setCopyMessage("AI insights ready.");
+        highlightReportArea();
+        onAdminActivity({
+          detail: `${coach.coachName} AI insights ready.`,
+          label,
+          status: "success"
+        });
         return;
       }
 
@@ -3389,65 +3449,112 @@ function CoachAnalyticsDetailPanel({
           ? "AI Analytics is not configured yet."
           : payload.message || "AI insights could not be generated right now."
       );
+      onAdminActivity({
+        detail: `${coach.coachName} AI insights could not be generated.`,
+        label,
+        status: "error"
+      });
     } catch {
       setInsightStatus("AI insights could not be generated right now.");
+      onAdminActivity({
+        detail: `${coach.coachName} AI insights could not be generated.`,
+        label,
+        status: "error"
+      });
+    } finally {
+      setInsightBusy(false);
     }
+  }
+
+  async function runReportAction({
+    actionKey,
+    label,
+    run,
+    successMessage
+  }: {
+    actionKey: string;
+    label: string;
+    run: () => Promise<void> | void;
+    successMessage: string;
+  }) {
+    if (insightBusy || isReportActionBusy) return;
+
+    setActiveReportAction(actionKey);
+    setCopyMessage(`${label}...`);
+    onAdminActivity({
+      detail: `${label} for ${coach.coachName}.`,
+      label,
+      status: "working"
+    });
+
+    try {
+      await Promise.all([Promise.resolve(run()), holdActionFeedback(360)]);
+      setCopyMessage(successMessage);
+      highlightReportArea();
+      onAdminActivity({
+        detail: successMessage,
+        label,
+        status: "success"
+      });
+    } catch {
+      const failureMessage = `${label} could not finish. Report remains visible.`;
+      setCopyMessage(failureMessage);
+      onAdminActivity({
+        detail: failureMessage,
+        label,
+        status: "error"
+      });
+    } finally {
+      setActiveReportAction("");
+    }
+  }
+
+  function getReportButtonLabel(actionKey: string, idleLabel: string) {
+    if (activeReportAction !== actionKey) return idleLabel;
+
+    if (actionKey === "generate") return "Generating...";
+    if (actionKey === "copy") return "Copying...";
+    if (actionKey === "download-text") return "Downloading...";
+    if (actionKey === "download-csv") return "Preparing CSV...";
+    if (actionKey === "download-excel") return "Preparing Excel...";
+    if (actionKey === "share") return "Sharing...";
+    return "Working...";
   }
 
   async function copyReport() {
-    try {
-      await navigator.clipboard.writeText(reportText);
-      setCopyMessage("Coach report copied.");
-    } catch {
-      setCopyMessage("Copy unavailable. Report remains visible.");
-    }
+    await navigator.clipboard.writeText(reportText);
   }
 
   function downloadReport() {
-    try {
-      const blob = new Blob([reportText], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${coach.coachSlug || "coach"}-analytics-report.txt`;
-      link.click();
-      URL.revokeObjectURL(url);
-      setCopyMessage("Text report downloaded.");
-    } catch {
-      setCopyMessage("Download unavailable. Report remains visible.");
-    }
+    const blob = new Blob([reportText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${coach.coachSlug || "coach"}-analytics-report.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   function downloadCsvReport() {
-    try {
-      const blob = new Blob([csvReportText], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${coach.coachSlug || "coach"}-analytics-report.csv`;
-      link.click();
-      URL.revokeObjectURL(url);
-      setCopyMessage("Sheet CSV downloaded.");
-    } catch {
-      setCopyMessage("Sheet CSV download unavailable. Report remains visible.");
-    }
+    const blob = new Blob([csvReportText], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${coach.coachSlug || "coach"}-analytics-report.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   function downloadExcelReport() {
-    try {
-      const blob = new Blob([excelReportText], {
-        type: "application/vnd.ms-excel;charset=utf-8"
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${coach.coachSlug || "coach"}-analytics-report.xls`;
-      link.click();
-      URL.revokeObjectURL(url);
-      setCopyMessage("Excel workbook downloaded.");
-    } catch {
-      setCopyMessage("Excel download unavailable. Report remains visible.");
-    }
+    const blob = new Blob([excelReportText], {
+      type: "application/vnd.ms-excel;charset=utf-8"
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${coach.coachSlug || "coach"}-analytics-report.xls`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   async function shareSummary() {
@@ -3458,19 +3565,13 @@ function CoachAnalyticsDetailPanel({
           text: summary,
           title: `${coach.coachName} coach report`
         });
-        setCopyMessage("Share sheet opened.");
         return;
       } catch {
         // Fall back to clipboard below.
       }
     }
 
-    try {
-      await navigator.clipboard.writeText(summary);
-      setCopyMessage("Share summary copied.");
-    } catch {
-      setCopyMessage("Share unavailable. Summary remains visible.");
-    }
+    await navigator.clipboard.writeText(summary);
   }
 
   return (
@@ -3496,10 +3597,17 @@ function CoachAnalyticsDetailPanel({
       <section className={styles.analyticsDetailActions}>
         <button
           className={styles.primaryAction}
+          aria-busy={insightBusy}
+          data-loading={insightBusy ? "true" : "false"}
+          disabled={insightBusy || isReportActionBusy}
           onClick={() => void generateInsights(Boolean(insightGeneratedAt))}
           type="button"
         >
-          {insightGeneratedAt ? "Refresh AI Insights" : "Generate AI Insights"}
+          {insightBusy
+            ? "Generating..."
+            : insightGeneratedAt
+              ? "Refresh AI Insights"
+              : "Generate AI Insights"}
         </button>
         <label>
           Report format
@@ -3514,35 +3622,138 @@ function CoachAnalyticsDetailPanel({
         </label>
         <button
           className={styles.secondaryAction}
-          onClick={() => setCopyMessage("Coach report generated from current selected range.")}
+          aria-busy={activeReportAction === "generate"}
+          data-loading={activeReportAction === "generate" ? "true" : "false"}
+          disabled={insightBusy || isReportActionBusy}
+          onClick={() =>
+            void runReportAction({
+              actionKey: "generate",
+              label: "Generate Coach Report",
+              run: () => {
+                setReportGeneratedAt(new Date().toLocaleString());
+              },
+              successMessage: "Coach report ready from the current selected range."
+            })
+          }
           type="button"
         >
-          Generate Coach Report
-        </button>
-        <button className={styles.secondaryAction} onClick={() => void copyReport()} type="button">
-          Copy Report
-        </button>
-        <button className={styles.secondaryAction} onClick={downloadReport} type="button">
-          Download Report
-        </button>
-        <button className={styles.secondaryAction} onClick={downloadCsvReport} type="button">
-          Download Sheet CSV
-        </button>
-        <button className={styles.secondaryAction} onClick={downloadExcelReport} type="button">
-          Download Excel
+          {getReportButtonLabel("generate", "Generate Coach Report")}
         </button>
         <button
           className={styles.secondaryAction}
-          onClick={() => void shareSummary()}
+          aria-busy={activeReportAction === "copy"}
+          data-loading={activeReportAction === "copy" ? "true" : "false"}
+          disabled={insightBusy || isReportActionBusy}
+          onClick={() =>
+            void runReportAction({
+              actionKey: "copy",
+              label: "Copy Report",
+              run: copyReport,
+              successMessage: "Coach report copied."
+            })
+          }
           type="button"
         >
-          Share Summary
+          {getReportButtonLabel("copy", "Copy Report")}
+        </button>
+        <button
+          className={styles.secondaryAction}
+          aria-busy={activeReportAction === "download-text"}
+          data-loading={activeReportAction === "download-text" ? "true" : "false"}
+          disabled={insightBusy || isReportActionBusy}
+          onClick={() =>
+            void runReportAction({
+              actionKey: "download-text",
+              label: "Download Report",
+              run: downloadReport,
+              successMessage: "Text report downloaded."
+            })
+          }
+          type="button"
+        >
+          {getReportButtonLabel("download-text", "Download Report")}
+        </button>
+        <button
+          className={styles.secondaryAction}
+          aria-busy={activeReportAction === "download-csv"}
+          data-loading={activeReportAction === "download-csv" ? "true" : "false"}
+          disabled={insightBusy || isReportActionBusy}
+          onClick={() =>
+            void runReportAction({
+              actionKey: "download-csv",
+              label: "Download Sheet CSV",
+              run: downloadCsvReport,
+              successMessage: "Sheet CSV downloaded."
+            })
+          }
+          type="button"
+        >
+          {getReportButtonLabel("download-csv", "Download Sheet CSV")}
+        </button>
+        <button
+          className={styles.secondaryAction}
+          aria-busy={activeReportAction === "download-excel"}
+          data-loading={activeReportAction === "download-excel" ? "true" : "false"}
+          disabled={insightBusy || isReportActionBusy}
+          onClick={() =>
+            void runReportAction({
+              actionKey: "download-excel",
+              label: "Download Excel",
+              run: downloadExcelReport,
+              successMessage: "Excel workbook downloaded."
+            })
+          }
+          type="button"
+        >
+          {getReportButtonLabel("download-excel", "Download Excel")}
+        </button>
+        <button
+          className={styles.secondaryAction}
+          aria-busy={activeReportAction === "share"}
+          data-loading={activeReportAction === "share" ? "true" : "false"}
+          disabled={insightBusy || isReportActionBusy}
+          onClick={() =>
+            void runReportAction({
+              actionKey: "share",
+              label: "Share Summary",
+              run: shareSummary,
+              successMessage: "Share summary ready."
+            })
+          }
+          type="button"
+        >
+          {getReportButtonLabel("share", "Share Summary")}
         </button>
       </section>
+
+      {insightBusy ? (
+        <ActionProgressCard
+          label="Generating AI coach insights..."
+          progress={72}
+          steps={["Collecting coach counters", "Reviewing funnel signals", "Preparing insights"]}
+        />
+      ) : null}
+
+      {isReportActionBusy ? (
+        <ActionProgressCard
+          label={
+            activeReportAction === "generate"
+              ? "Preparing coach report..."
+              : "Preparing requested report action..."
+          }
+          progress={activeReportAction === "generate" ? 68 : 56}
+          steps={
+            activeReportAction === "generate"
+              ? ["Reading selected range", "Formatting safe report", "Highlighting result"]
+              : ["Preparing file or clipboard", "Keeping report visible", "Confirming result"]
+          }
+        />
+      ) : null}
 
       <section className={styles.analyticsDashboardGrid}>
         <AnalyticsWidget
           eyebrow="AI Coach Summary"
+          highlight={reportHighlighted && Boolean(insightGeneratedAt)}
           items={
             insights.length
               ? insights
@@ -3571,9 +3782,16 @@ function CoachAnalyticsDetailPanel({
           items={buildCoachPredictionItems(coach)}
           title="Based on available counters"
         />
-        <article className={styles.analyticsReportCard}>
+        <article
+          className={styles.analyticsReportCard}
+          data-highlight={reportHighlighted ? "true" : "false"}
+        >
           <p className={styles.kicker}>Coach Report</p>
-          <h3>Safe to copy after review</h3>
+          <h3>
+            {reportGeneratedAt
+              ? `Ready ${reportGeneratedAt}`
+              : "Safe to copy after review"}
+          </h3>
           <pre>{reportText}</pre>
           {copyMessage ? <p className={styles.inlineStatus}>{copyMessage}</p> : null}
         </article>

@@ -15,6 +15,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 - Clear Old Error Reports now has confirmation-locked destructive progress feedback, a bin animation, duplicate-click protection, refreshed counts/list state, and a brief success state before the dialog closes.
 - Backup/Cleanup now keeps protected backup/test-email/cleanup dialogs open while the request runs, disables duplicate/cancel ambiguity during work, briefly holds success, and highlights the affected status section after completion.
 - Coach Sites destructive/status actions now show contextual progress cards for Delete Draft, Pause/Resume, Archive/Remove, and Reactivate; affected rows highlight after save/status changes.
+- Coach Analytics detail actions now show action-specific loading/ready states for AI insights, report generation, copy, text download, CSV/XLS download, and share; generated report/insight areas highlight after completion.
 - Save Draft now has duplicate-click protection and a visible `Saving...` state.
 - Coach Website Creator copy generation now uses a broader structured content slot registry so public and preview templates can render niche-aware content instead of generic hardcoded placeholder sections.
 - Coach Website Creator Inspect mode now opens a focused editor for the selected preview section, supports manual edits, and can regenerate that specific section through the existing server-side AI copy flow.
@@ -43,6 +44,8 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 | Coach Sites Pause/Resume feedback | Yes | Yes | Pass | Status confirm dialog had no visible progress and could be closed while request was running | Added busy labels, disabled cancel/confirm during request, progress card, success hold, row highlight, and activity events | Local UI test observed Pausing/Resuming progress and final status messages | None |
 | Coach Sites Archive/Remove feedback | Yes | Yes | Pass | Archive/remove had OTP safety but no contextual progress card | Added progress card after confirmation+OTP, disabled cancel/close while busy, success hold, archive row highlight, and safe failure text | Local UI test observed Archiving progress and archived success message | Production OTP delivery still depends on existing admin OTP email config |
 | Coach Sites Reactivate feedback | Yes | Yes | Pass | Reactivate moved row optimistically before server confirmation and closed too early | Removed optimistic row move, added restore progress card, disabled close while busy, success hold, and row highlight after server success | Local UI test observed Restoring progress and final success; highlighted row count 1 | None |
+| Coach Analytics report/copy/download/share feedback | Yes | Yes | Pass | Detail drawer report actions changed output instantly with no visible work state or destination highlight | Added busy guards, `Generating/Copying/Preparing` labels, progress cards, Activity Center events, result messages, and report-card highlight | Local production UI test: report busy true, copy busy true, report highlight count 1, no desktop/mobile overflow | None |
+| Coach Analytics AI insight feedback | Yes | Yes | Pass | AI insight button showed status text but no clear action progress or result highlight | Added `insightBusy`, progress card, disabled duplicate clicks, success/failure activity, result toast, and AI widget highlight | Local production UI test: AI busy true, AI highlight count 1, no console issues | None |
 | Full template text slots dynamic/editable | Yes | Yes | Pass | Several visible sections still came from hardcoded generic text | Added content slot registry, expanded form/content fields, AI schema, public React renderer, Cloudflare renderer, and focused section editor | Build, public route tests, and local Website Creator preview tests passed | None for section-level slot editing |
 | AI generates structured full website content object | Yes | Typecheck/build | Pass | AI schema only covered a few sections | Expanded JSON schema and required fields from registry | Typecheck/build passed | Live OpenAI production generation not run in this pass to avoid creating fake production records |
 | Universal Inspect click-to-edit | Yes | Yes | Pass | Inspect mode selected sections but did not open a focused section editor | Added selected-section editor with content-only fields and preview-hotspot selection support | Preview hotspot click opened Hero copy editor; manual edit rendered in preview; no overflow | None for section-level inspect editing |
@@ -71,6 +74,10 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 | Coach Sites | Delete Draft | Destructive progress appears and draft row is removed | `Deleting draft` appeared; row-specific count changed from 1 to 0 | Pass |
 | Coach Sites | Pause / Resume | Dialog shows progress, blocks duplicate action, and row status updates | `Pausing coach site` and `Resuming coach site` appeared; final messages confirmed stable public link | Pass |
 | Coach Sites | Archive / Reactivate | Archive uses OTP-gated progress; Reactivate waits for server confirmation before moving row | `Archiving coach site` and `Restoring coach site` appeared; highlighted row count 1 after reactivate | Pass |
+| Coach Analytics | Generate Coach Report | Button shows loading, progress appears, report area highlights after ready | `Preparing coach report...` appeared; success text appeared; report card highlight count 1 | Pass |
+| Coach Analytics | Copy Report | Button shows immediate copy progress and success feedback | `Copying...` appeared; `Coach report copied.` appeared | Pass |
+| Coach Analytics | Generate AI Insights | AI button shows working state, progress appears, result area highlights | `Generating AI coach insights...` appeared; `AI insights ready.` appeared; AI summary highlight count 1 | Pass |
+| Coach Analytics mobile | Detail drawer actions at 390px | Dialog remains usable, no horizontal overflow | Dialog bounds 390x844, body overflow false | Pass |
 | Website Creator | Save Draft with delayed API | Button shows `Saving...`, then success | `Saving...` visible; `Draft saved successfully.` visible | Pass |
 | Website Creator | Generate Preview | AI progress appears, preview opens with generated content | `Generating coach website copy...` appeared, preview opened, generated fields populated | Pass |
 | Website Creator | Inspect mode tray selection | Selected section opens focused editor | `Hero copy` opened a focused Hero copy editor | Pass |
@@ -91,6 +98,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 6. Mobile Error Reports safe-message text could be clipped by line clamping.
 7. Backup/Cleanup successful actions closed before the admin could confidently see progress/result placement.
 8. Coach Sites status/destructive actions lacked contextual progress and result highlighting.
+9. Coach Analytics report and AI buttons could still feel instant/dead inside the detail drawer because they lacked button-level busy states and result highlighting.
 
 ## Root Causes
 
@@ -114,6 +122,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 - Removed mobile safe-message clipping and added `overflow-wrap`/`word-break` protection.
 - Added Backup/Cleanup maintenance result highlighting, protected-dialog close guards, and short success holds.
 - Added Coach Sites row highlight, status/delete/archive/reactivate progress cards, busy guards, and server-confirmed reactivation.
+- Added Coach Analytics detail action feedback: button busy labels, duplicate-click guards, report/AI progress cards, Activity Center events, success/failure messages, and highlight pulses for generated report/insight areas.
 
 ## Error Fallbacks Added Or Updated
 
@@ -136,6 +145,8 @@ No new public error-code fallback was added in this pass because the changed flo
 - Backup/Cleanup desktop: backup/test-email/cleanup progress cards were visible; no horizontal overflow; highlighted section appeared after backup success.
 - Coach Sites desktop: delete draft, pause/resume, archive, and reactivate progress cards were visible; row highlight appeared after reactivation.
 - Coach Sites mobile 390px: no horizontal body overflow after the action-feedback changes.
+- Coach Analytics desktop: Generate Coach Report, Copy Report, and Generate AI Insights all showed visible progress and highlighted the resulting report/AI cards.
+- Coach Analytics mobile 390px: detail drawer filled the viewport cleanly, report actions completed, and no horizontal body overflow appeared.
 - Website Creator preview inspect desktop: focused section editor opened under Inspect mode and regenerated the Hero scope.
 - Website Creator preview inspect mobile 390px: focused editor stacked within a 356px content box with no horizontal body overflow.
 
@@ -148,6 +159,7 @@ No new public error-code fallback was added in this pass because the changed flo
 - `pnpm build`
 - Local Playwright/Chromium smoke tests through Node for admin Error Reports Mark Fixed, Fixed tab, AI drawer loading/result states, Clear Old Error Reports progress/success, Save Draft feedback, Website Creator preview inspect/edit/regenerate, public coach page breakpoints, and portal-based mobile drawer containment.
 - Local Playwright/Chromium smoke tests through `@playwright/test` for Backup/Cleanup backup/test-email/cleanup feedback, Coach Sites delete draft, pause/resume, archive/reactivate, desktop/mobile overflow, row/section highlight, and console health.
+- Local Playwright/Chromium smoke tests through `@playwright/test` for Coach Analytics detail report generation, copy feedback, AI insight generation feedback, report/AI highlight, desktop/mobile overflow, and console health.
 
 ## Build / Lint / Typecheck
 
@@ -176,6 +188,7 @@ Focused test result:
 - Console/page errors: none.
 - Backup/Cleanup focused test: backup highlight count `1`, desktop overflow `false`, console/page issues `[]`.
 - Coach Sites focused test: draft row count `1 -> 0`, highlighted row count `1`, desktop overflow `false`, mobile overflow `false`, console/page issues `[]`.
+- Coach Analytics detail focused test: report busy `true`, copy busy `true`, AI busy `true`, report highlight count `1`, AI highlight count `1`, desktop overflow `false`, mobile overflow `false`, mobile dialog bounds `390x844`, console/page issues `[]`.
 
 ## Visual Evidence
 
@@ -191,6 +204,8 @@ Local screenshots saved under:
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\coach-sites-delete-draft-feedback.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\coach-sites-reactivate-feedback.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\coach-sites-feedback-mobile.png`
+- `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\coach-analytics-action-feedback-desktop.png`
+- `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\coach-analytics-action-feedback-mobile.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\public-coach-mobile-320-final.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\public-coach-mobile-390-final.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\public-coach-tablet-768-final.png`

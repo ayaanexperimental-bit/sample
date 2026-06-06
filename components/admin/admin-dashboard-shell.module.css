@@ -2761,6 +2761,18 @@
     border-color 160ms ease;
 }
 
+.analyticsWidget[data-highlight="true"],
+.analyticsReportCard[data-highlight="true"] {
+  border-color: rgb(8 122 115 / 0.42);
+  background:
+    radial-gradient(circle at 8% 0%, rgb(209 250 229 / 0.82), transparent 11rem),
+    linear-gradient(135deg, rgb(255 255 255 / 0.98), rgb(240 253 250 / 0.9));
+  box-shadow:
+    0 0 0 0.22rem rgb(8 122 115 / 0.12),
+    0 1.25rem 3rem rgb(8 122 115 / 0.12);
+  animation: adminResultHighlight 2200ms ease-out both;
+}
+
 .analyticsWidget:hover,
 .analyticsReportCard:hover,
 .analyticsCoachCard:hover {
@@ -4142,6 +4154,27 @@
 .analyticsDetailActions button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.analyticsDetailActions button[data-loading="true"] {
+  position: relative;
+  cursor: progress;
+  opacity: 0.78;
+  padding-right: 2.05rem;
+}
+
+.analyticsDetailActions button[data-loading="true"]::after {
+  position: absolute;
+  right: 0.7rem;
+  top: 50%;
+  width: 0.78rem;
+  height: 0.78rem;
+  border: 2px solid rgb(8 122 115 / 0.18);
+  border-top-color: #087a73;
+  border-radius: 999px;
+  content: "";
+  transform: translateY(-50%);
+  animation: adminAiSpin 820ms linear infinite;
 }
 
 .analyticsCoachIdentity {
