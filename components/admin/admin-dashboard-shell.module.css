@@ -414,6 +414,12 @@
   color: #075f5b;
 }
 
+.iconAction:disabled {
+  cursor: not-allowed;
+  filter: saturate(0.7);
+  opacity: 0.55;
+}
+
 .actionIcon {
   display: inline-grid;
   place-items: center;
@@ -2780,9 +2786,10 @@
   top: calc(100% + 0.65rem);
   right: 0;
   z-index: 90;
-  width: min(24rem, calc(100vw - 2rem));
+  width: min(27rem, calc(100vw - 1.25rem));
   max-height: min(34rem, calc(100dvh - 8rem));
   display: grid;
+  grid-template-rows: auto minmax(0, auto) auto minmax(0, 1fr) auto;
   gap: 0.75rem;
   overflow: auto;
   overscroll-behavior: contain;
@@ -2793,6 +2800,7 @@
     linear-gradient(145deg, rgb(255 255 255 / 0.98), rgb(248 250 252 / 0.96));
   box-shadow: 0 1.4rem 4rem rgb(31 41 55 / 0.16);
   padding: 0.9rem;
+  scrollbar-width: thin;
 }
 
 .aiAssistantHeader {
@@ -2824,6 +2832,10 @@
 .aiAssistantActions {
   display: grid;
   gap: 0.45rem;
+  max-height: min(18rem, 34dvh);
+  overflow: auto;
+  padding-right: 0.08rem;
+  scrollbar-width: thin;
 }
 
 .aiAssistantActions button {
@@ -2844,6 +2856,16 @@
   background: linear-gradient(135deg, rgb(255 255 255 / 0.95), rgb(255 241 247 / 0.8));
 }
 
+.aiAssistantActions button[data-active="true"] {
+  border-color: rgb(8 122 115 / 0.28);
+  background: linear-gradient(135deg, rgb(240 253 250 / 0.9), rgb(255 241 247 / 0.72));
+}
+
+.aiAssistantActions button:disabled {
+  cursor: progress;
+  opacity: 0.66;
+}
+
 .aiAssistantActions strong,
 .aiAssistantResult strong {
   color: #1d2939;
@@ -2862,19 +2884,58 @@
 .aiAssistantResult {
   display: grid;
   gap: 0.45rem;
+  min-height: 0;
+  overflow: hidden;
   border: 1px solid rgb(8 122 115 / 0.12);
   border-radius: 0.85rem;
   background: rgb(8 122 115 / 0.06);
   padding: 0.72rem;
 }
 
+.aiAssistantLoading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: center;
+  border: 1px solid rgb(8 122 115 / 0.16);
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, rgb(240 253 250 / 0.9), rgb(255 241 247 / 0.72));
+  color: #344054;
+  padding: 0.72rem;
+}
+
+.aiAssistantLoading > span {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgb(8 122 115 / 0.18);
+  border-top-color: #087a73;
+  border-radius: 999px;
+  animation: adminAiSpin 820ms linear infinite;
+}
+
+.aiAssistantLoading strong {
+  display: block;
+  color: #1d2939;
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.aiAssistantLoading p {
+  margin: 0.16rem 0 0;
+  color: #667085;
+  font-size: 0.74rem;
+  font-weight: 760;
+  line-height: 1.35;
+}
+
 .aiAssistantResult ul {
   display: grid;
   gap: 0.35rem;
-  max-height: 9rem;
+  max-height: min(12rem, 32dvh);
   overflow: auto;
   margin: 0;
   padding-left: 1.05rem;
+  scrollbar-width: thin;
 }
 
 .aiAssistantResult li {
@@ -2887,6 +2948,18 @@
 .aiAssistantMeta {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+@keyframes adminAiSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aiAssistantLoading > span {
+    animation: none;
+  }
 }
 
 .analyticsHeatmapGrid {
@@ -4072,8 +4145,16 @@
     position: fixed;
     inset: auto 0.75rem 0.75rem;
     width: auto;
-    max-height: min(72dvh, 34rem);
+    max-height: min(78dvh, 36rem);
     border-radius: 1rem;
+  }
+
+  .aiAssistantHeader {
+    grid-template-columns: 1fr;
+  }
+
+  .aiAssistantHeader button {
+    width: 100%;
   }
 
   .header,
@@ -4163,6 +4244,15 @@
 }
 
 @media (max-width: 700px) {
+  .errorReportToolbar {
+    align-items: stretch;
+    display: grid;
+  }
+
+  .errorReportTabs {
+    width: 100%;
+  }
+
   .analyticsCoachListPanel {
     padding: 0.75rem;
   }
@@ -4448,6 +4538,65 @@
     rgb(255 255 255 / 0.72);
   padding: 0.8rem;
   scrollbar-width: thin;
+}
+
+.errorReportToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 0.75rem;
+}
+
+.errorReportToolbar p {
+  margin: 0;
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.errorReportTabs {
+  display: flex;
+  gap: 0.45rem;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0.15rem 0.08rem 0.25rem;
+  scrollbar-width: thin;
+}
+
+.errorReportTabs button {
+  min-height: 2.35rem;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.42rem;
+  border: 1px solid rgb(168 85 137 / 0.14);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.78);
+  color: #4b3345;
+  cursor: pointer;
+  padding: 0 0.78rem;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.errorReportTabs button[data-active="true"] {
+  border-color: rgb(8 122 115 / 0.24);
+  background: linear-gradient(135deg, rgb(240 253 250 / 0.92), rgb(255 241 247 / 0.72));
+  color: #075f5b;
+  box-shadow: 0 0.55rem 1.2rem rgb(8 122 115 / 0.08);
+}
+
+.errorReportTabs strong {
+  min-width: 1.35rem;
+  border-radius: 999px;
+  background: rgb(117 96 108 / 0.1);
+  color: currentColor;
+  padding: 0.15rem 0.38rem;
+  font-size: 0.68rem;
+  line-height: 1.1;
+  text-align: center;
 }
 
 .errorReportCard {

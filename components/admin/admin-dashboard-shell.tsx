@@ -117,6 +117,8 @@ type AnalyticsAiMenuAction = {
   onSelect?: () => void;
 };
 
+type AnalyticsAiActionHandler = () => Promise<void> | void;
+
 type AdminMaintenanceRoleChecklist = {
   adminEmailPresent: boolean;
   adminEmailRole: string;
@@ -195,6 +197,46 @@ const analyticsChartRangeOptions: Array<{ label: string; value: AnalyticsChartRa
 
 const ADMIN_CSRF_HEADER_NAME = "x-yw-admin-csrf";
 const ERROR_REPORT_CLEANUP_CONFIRMATION = "CLEAR OLD REPORTS";
+
+type ErrorReportFilterId = "active" | "all" | "fixed" | "ignored" | "new" | "reviewing";
+
+const errorReportFilters: Array<{ id: ErrorReportFilterId; label: string }> = [
+  { id: "active", label: "Active" },
+  { id: "new", label: "New" },
+  { id: "reviewing", label: "Reviewing" },
+  { id: "fixed", label: "Fixed" },
+  { id: "ignored", label: "Ignored" },
+  { id: "all", label: "All" }
+];
+
+function isActiveErrorReport(report: AdminErrorReport) {
+  return report.status === "New" || report.status === "Reviewing";
+}
+
+function getFilteredErrorReports(reports: AdminErrorReport[], filter: ErrorReportFilterId) {
+  if (filter === "all") return reports;
+  if (filter === "active") return reports.filter(isActiveErrorReport);
+
+  const statusByFilter: Record<Exclude<ErrorReportFilterId, "active" | "all">, AdminErrorReport["status"]> = {
+    fixed: "Fixed",
+    ignored: "Ignored",
+    new: "New",
+    reviewing: "Reviewing"
+  };
+
+  return reports.filter((report) => report.status === statusByFilter[filter]);
+}
+
+function getErrorReportCounts(reports: AdminErrorReport[]) {
+  return {
+    active: reports.filter(isActiveErrorReport).length,
+    all: reports.length,
+    fixed: reports.filter((report) => report.status === "Fixed").length,
+    ignored: reports.filter((report) => report.status === "Ignored").length,
+    new: reports.filter((report) => report.status === "New").length,
+    reviewing: reports.filter((report) => report.status === "Reviewing").length
+  } satisfies Record<ErrorReportFilterId, number>;
+}
 
 const navSections: AdminNavSection[] = [
   {
@@ -708,8 +750,8 @@ function OverviewView({
             eyebrow="AI Executive Summary"
             fallbackItems={overview.aiSummary}
             insight={overviewAiInsight}
-            onGenerate={() => void generateOverviewAiInsights(false)}
-            onRefresh={() => void generateOverviewAiInsights(true)}
+            onGenerate={() => generateOverviewAiInsights(false)}
+            onRefresh={() => generateOverviewAiInsights(true)}
             status={overviewAiStatus}
             title={
               overviewAiInsight
@@ -2748,14 +2790,15 @@ function AnalyticsAiWidget({
   eyebrow: string;
   fallbackItems: string[];
   insight: AdminAiAnalyticsInsight | null;
-  onGenerate: () => void;
-  onRefresh: () => void;
+  onGenerate: AnalyticsAiActionHandler;
+  onRefresh: AnalyticsAiActionHandler;
   status: string;
   title: string;
   usageEstimate?: AdminAiAnalyticsPayload["usageEstimate"];
 }) {
   const [open, setOpen] = useState(false);
   const [activeAction, setActiveAction] = useState("");
+  const [busy, setBusy] = useState(false);
   const items = insight ? formatAiInsightItems(insight) : fallbackItems;
   const menuActions =
     actions && actions.length > 0
@@ -2767,19 +2810,24 @@ function AnalyticsAiWidget({
           }
         ];
 
-  function runAction(action: AnalyticsAiMenuAction) {
+  async function runAction(action: AnalyticsAiMenuAction) {
     setActiveAction(action.label);
     setOpen(true);
+    setBusy(true);
 
-    if (action.onSelect) {
-      action.onSelect();
-      return;
-    }
+    try {
+      if (action.onSelect) {
+        await Promise.resolve(action.onSelect());
+        return;
+      }
 
-    if (insight) {
-      onRefresh();
-    } else {
-      onGenerate();
+      if (insight) {
+        await Promise.resolve(onRefresh());
+      } else {
+        await Promise.resolve(onGenerate());
+      }
+    } finally {
+      window.setTimeout(() => setBusy(false), 550);
     }
   }
 
@@ -2796,7 +2844,12 @@ function AnalyticsAiWidget({
         AI
       </button>
       {open ? (
-        <div className={styles.aiAssistantPanel} role="menu">
+        <div
+          aria-busy={busy}
+          className={styles.aiAssistantPanel}
+          data-busy={busy ? "true" : "false"}
+          role="menu"
+        >
           <div className={styles.aiAssistantHeader}>
             <p className={styles.kicker}>{eyebrow}</p>
             <h3>{title}</h3>
@@ -2806,12 +2859,30 @@ function AnalyticsAiWidget({
           </div>
           <div className={styles.aiAssistantActions}>
             {menuActions.map((action) => (
-              <button key={action.label} onClick={() => runAction(action)} role="menuitem" type="button">
+              <button
+                data-active={activeAction === action.label ? "true" : "false"}
+                disabled={busy}
+                key={action.label}
+                onClick={() => void runAction(action)}
+                role="menuitem"
+                type="button"
+              >
                 <strong>{action.label}</strong>
                 {action.description ? <span>{action.description}</span> : null}
               </button>
             ))}
           </div>
+          {busy ? (
+            <div className={styles.aiAssistantLoading} role="status">
+              <span aria-hidden="true" />
+              <div>
+                <strong>
+                  {activeAction.includes("Prompt") ? "Preparing prompt..." : "Generating report..."}
+                </strong>
+                <p>Reviewing the current protected admin data. Results will appear here.</p>
+              </div>
+            </div>
+          ) : null}
           <div className={styles.aiAssistantResult}>
             <strong>{activeAction || "Latest result"}</strong>
             <ul>
@@ -4440,6 +4511,8 @@ function ErrorReportsView({
   const [cleanupBusy, setCleanupBusy] = useState(false);
   const [copyMessage, setCopyMessage] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
+  const [reportFilter, setReportFilter] = useState<ErrorReportFilterId>("active");
+  const [updatingReportId, setUpdatingReportId] = useState("");
   const [errorAiItems, setErrorAiItems] = useState<string[]>([
     "Choose an AI action to review the currently loaded error reports."
   ]);
@@ -4449,6 +4522,13 @@ function ErrorReportsView({
   const isLoadingSource = source === "loading";
   const cleanupConfirmed =
     cleanupConfirmation.trim().toUpperCase() === ERROR_REPORT_CLEANUP_CONFIRMATION;
+  const reportCounts = useMemo(() => getErrorReportCounts(errorReports), [errorReports]);
+  const visibleErrorReports = useMemo(
+    () => getFilteredErrorReports(errorReports, reportFilter),
+    [errorReports, reportFilter]
+  );
+  const promptReport =
+    visibleErrorReports[0] || errorReports.find(isActiveErrorReport) || errorReports[0] || null;
 
   useEffect(() => {
     if (!copyMessage) return;
@@ -4468,18 +4548,20 @@ function ErrorReportsView({
   }
 
   function runErrorReportsAssistant(label: string) {
-    if (errorReports.length === 0) {
-      setErrorAiItems(["No error reports are currently loaded."]);
+    const reportsForAi = visibleErrorReports;
+
+    if (reportsForAi.length === 0) {
+      setErrorAiItems([`No ${reportFilter} error reports are currently visible.`]);
       setErrorAiStatus(`${label} checked the current report list.`);
-      setErrorAiCache("current list");
+      setErrorAiCache(`${reportFilter} list`);
       return;
     }
 
-    const openReports = errorReports.filter((report) => report.status === "New");
+    const openReports = reportsForAi.filter(isActiveErrorReport);
     const byCode = new Map<string, number>();
     const byCategory = new Map<string, number>();
 
-    errorReports.forEach((report) => {
+    reportsForAi.forEach((report) => {
       const code = report.errorCode || report.referenceId || "Unknown";
       byCode.set(code, (byCode.get(code) || 0) + 1);
       byCategory.set(report.category || "uncategorized", (byCategory.get(report.category || "uncategorized") || 0) + 1);
@@ -4487,7 +4569,7 @@ function ErrorReportsView({
 
     const topCode = Array.from(byCode.entries()).sort((a, b) => b[1] - a[1])[0];
     const topCategory = Array.from(byCategory.entries()).sort((a, b) => b[1] - a[1])[0];
-    const latest = errorReports[0];
+    const latest = reportsForAi[0];
 
     if (label.includes("Codex")) {
       if (latest) {
@@ -4503,12 +4585,12 @@ function ErrorReportsView({
       setErrorAiItems([
         `Top repeated code: ${topCode ? `${topCode[0]} (${topCode[1]})` : "none"}.`,
         `Top category: ${topCategory ? `${topCategory[0]} (${topCategory[1]})` : "none"}.`,
-        `New reports still open: ${openReports.length}.`
+        `Active reports in this view: ${openReports.length}.`
       ]);
     } else {
       setErrorAiItems([
-        `Loaded reports: ${errorReports.length}.`,
-        `New reports: ${openReports.length}.`,
+        `Visible reports: ${reportsForAi.length}.`,
+        `Active reports: ${openReports.length}.`,
         latest
           ? `Latest safe issue: ${latest.errorCode || latest.referenceId} on ${latest.pagePath}.`
           : "No latest issue available."
@@ -4516,11 +4598,15 @@ function ErrorReportsView({
     }
 
     setErrorAiStatus(`${label} ready from current protected report data.`);
-    setErrorAiCache("current reports");
+    setErrorAiCache(`${reportFilter} reports`);
   }
 
   async function updateReportStatus(report: AdminErrorReport, status: AdminErrorReport["status"]) {
-    setStatusMessage("Updating error report...");
+    if (updatingReportId) return;
+
+    const updatedAt = new Date().toISOString();
+    setUpdatingReportId(report.referenceId);
+    setStatusMessage(status === "Fixed" ? "Marking error as fixed..." : `Marking ${status}...`);
 
     try {
       const response = await fetch("/api/admin/error-reports", {
@@ -4549,24 +4635,27 @@ function ErrorReportsView({
       onReportsChange(
         errorReports.map((item) =>
           item.referenceId === report.referenceId
-            ? { ...item, status, updatedAt: new Date().toISOString() }
+            ? { ...item, status, updatedAt }
             : item
         )
       );
-      setSelectedReport((current) =>
-        current?.referenceId === report.referenceId
-          ? { ...current, status, updatedAt: new Date().toISOString() }
-          : current
-      );
-      setStatusMessage(`Marked ${status}.`);
+      setSelectedReport((current) => {
+        if (current?.referenceId !== report.referenceId) return current;
+        if (status === "Fixed" || status === "Ignored") return null;
+        return { ...current, status, updatedAt };
+      });
+      setStatusMessage(status === "Fixed" ? "Error marked as fixed." : `Marked ${status}.`);
+      void refreshReports({ silent: true });
     } catch {
       setStatusMessage(
         "Could not update this report. The API stayed safe and no public data leaked."
       );
+    } finally {
+      setUpdatingReportId("");
     }
   }
 
-  async function refreshReports() {
+  async function refreshReports(options: { silent?: boolean } = {}) {
     try {
       const response = await fetch("/api/admin/error-reports", {
         cache: "no-store",
@@ -4579,7 +4668,9 @@ function ErrorReportsView({
         onReportsChange(payload.errorReports);
       }
     } catch {
-      setStatusMessage("Cleanup completed, but the refreshed list could not be loaded.");
+      if (!options.silent) {
+        setStatusMessage("The action completed, but the refreshed list could not be loaded.");
+      }
     }
   }
 
@@ -4690,9 +4781,32 @@ function ErrorReportsView({
               : "D1 reports are not available in this environment. No fallback rows are shown."}
         </p>
       </div>
+      <div className={styles.errorReportToolbar}>
+        <div className={styles.errorReportTabs} aria-label="Error report filters" role="tablist">
+          {errorReportFilters.map((filter) => (
+            <button
+              aria-selected={reportFilter === filter.id}
+              data-active={reportFilter === filter.id ? "true" : "false"}
+              key={filter.id}
+              onClick={() => {
+                setReportFilter(filter.id);
+                setStatusMessage("");
+              }}
+              role="tab"
+              type="button"
+            >
+              <span>{filter.label}</span>
+              <strong>{reportCounts[filter.id]}</strong>
+            </button>
+          ))}
+        </div>
+        <p>
+          {visibleErrorReports.length} shown / {errorReports.length} total
+        </p>
+      </div>
       <div className={styles.errorReportList} aria-label="Admin error report list">
-        {errorReports.length > 0 ? (
-          errorReports.map((report) => (
+        {visibleErrorReports.length > 0 ? (
+          visibleErrorReports.map((report) => (
             <article className={styles.errorReportCard} key={report.referenceId}>
               <div className={styles.errorReportIdentity}>
                 <div className={styles.codeStack}>
@@ -4750,23 +4864,29 @@ function ErrorReportsView({
                 </button>
                 <button
                   aria-label={`Mark ${report.errorCode || report.referenceId} fixed`}
+                  aria-busy={updatingReportId === report.referenceId}
                   className={styles.iconAction}
                   data-admin-tooltip="Mark fixed"
+                  disabled={Boolean(updatingReportId)}
                   onClick={() => void updateReportStatus(report, "Fixed")}
                   type="button"
                 >
                   <AdminActionIcon name="check" />
-                  <span className={styles.visuallyHidden}>Mark Fixed</span>
+                  <span className={styles.visuallyHidden}>
+                    {updatingReportId === report.referenceId ? "Updating" : "Mark Fixed"}
+                  </span>
                 </button>
               </div>
             </article>
           ))
         ) : (
           <div className={styles.emptyState} data-compact="true">
-            <h3>No error reports loaded</h3>
+            <h3>
+              No {reportFilter === "active" ? "active" : errorReportFilters.find((filter) => filter.id === reportFilter)?.label.toLowerCase()} reports
+            </h3>
             <p>
               {isLiveSource
-                ? "No live error reports yet. This is the correct production state until a fallback event is recorded."
+                ? "No reports match this filter. This is the correct state when issues have been handled or no fallback event is recorded."
                 : isLoadingSource
                   ? "Loading protected error reports..."
                   : "No fallback reports available in this environment."}
@@ -4777,12 +4897,12 @@ function ErrorReportsView({
       <div className={styles.reportPrompt}>
         <strong>Codex-ready bug prompt</strong>
         <code>
-          {errorReports[0] ? createErrorReportBugPrompt(errorReports[0]) : "No reports yet."}
+          {promptReport ? createErrorReportBugPrompt(promptReport) : "No reports yet."}
         </code>
-        {errorReports[0] ? (
+        {promptReport ? (
           <button
             onClick={() =>
-              void copyAdminText("Codex prompt", createErrorReportBugPrompt(errorReports[0]))
+              void copyAdminText("Codex prompt", createErrorReportBugPrompt(promptReport))
             }
             type="button"
           >
@@ -4790,7 +4910,11 @@ function ErrorReportsView({
           </button>
         ) : null}
       </div>
-      {statusMessage ? <p className={styles.inlineStatus}>{statusMessage}</p> : null}
+      {statusMessage ? (
+        <p className={styles.inlineStatus} role="status">
+          {statusMessage}
+        </p>
+      ) : null}
       <AdminActionDialog
         footer={
           <>
@@ -4855,22 +4979,25 @@ function ErrorReportsView({
           selectedReport ? (
             <>
               <button
+                disabled={Boolean(updatingReportId)}
                 onClick={() => void updateReportStatus(selectedReport, "Reviewing")}
                 type="button"
               >
-                Mark Reviewing
+                {updatingReportId === selectedReport.referenceId ? "Updating..." : "Mark Reviewing"}
               </button>
               <button
+                disabled={Boolean(updatingReportId)}
                 onClick={() => void updateReportStatus(selectedReport, "Fixed")}
                 type="button"
               >
-                Mark Fixed
+                {updatingReportId === selectedReport.referenceId ? "Updating..." : "Mark Fixed"}
               </button>
               <button
+                disabled={Boolean(updatingReportId)}
                 onClick={() => void updateReportStatus(selectedReport, "Ignored")}
                 type="button"
               >
-                Ignore
+                {updatingReportId === selectedReport.referenceId ? "Updating..." : "Ignore"}
               </button>
             </>
           ) : null
