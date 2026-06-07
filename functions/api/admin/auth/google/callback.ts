@@ -9,6 +9,7 @@ import {
   verifyAdminGoogleStateFromRequest
 } from "../../../../../lib/server/admin-auth";
 import { recordAdminAuditEvent } from "../../../../../lib/server/admin-audit";
+import { recordAdminLoginAudit } from "../../../../../lib/server/admin-rbac";
 import { checkAdminRateLimit } from "../../../../../lib/server/admin-rate-limit";
 
 type Env = {
@@ -20,6 +21,7 @@ type Env = {
   ADMIN_OAUTH_STATE_SECRET?: string;
   ADMIN_REQUIRE_DB_ADMIN_ROLES?: string;
   ADMIN_SESSION_SECRET?: string;
+  ROOT_OWNER_EMAIL?: string;
 };
 
 type PagesContext = {
@@ -143,6 +145,13 @@ export async function onRequest({ request, env }: PagesContext) {
         request,
         type: "blocked_attempt"
       });
+      await recordAdminLoginAudit({
+        email,
+        env,
+        loginMethod: "google",
+        loginStatus: "unauthorized",
+        request
+      });
       return redirectWithClearedState("/admin/login?google=unauthorized", request);
     }
 
@@ -157,6 +166,13 @@ export async function onRequest({ request, env }: PagesContext) {
     }
 
     await recordAdminAuditEvent({ email, env, request, type: "otp_verified" });
+    await recordAdminLoginAudit({
+      email,
+      env,
+      loginMethod: "google",
+      loginStatus: "success",
+      request
+    });
 
     return redirectWithCookies(verifiedState.redirectPath || "/admin", request, [
       sessionCookie,
@@ -168,6 +184,13 @@ export async function onRequest({ request, env }: PagesContext) {
       reason: "google_callback_failed",
       request,
       type: "blocked_attempt"
+    });
+    await recordAdminLoginAudit({
+      email: "",
+      env,
+      loginMethod: "google",
+      loginStatus: "failed",
+      request
     });
     return redirectWithClearedState(
       `/admin/login?google=failed&message=${encodeURIComponent(GENERIC_ADMIN_AUTH_ERROR)}`,

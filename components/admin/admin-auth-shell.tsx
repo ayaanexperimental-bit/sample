@@ -13,10 +13,18 @@ type AdminAuthShellProps = {
   requireSession?: boolean;
 };
 
+export type AdminAccessProfileClient = {
+  displayName?: string;
+  email: string;
+  isOwner?: boolean;
+  modules?: string[];
+  permissions?: string[];
+  role?: string;
+  roleKey?: string;
+};
+
 type AdminApiResponse = {
-  admin?: {
-    email?: string;
-  };
+  admin?: AdminAccessProfileClient;
   authenticated?: boolean;
   csrfToken?: string | null;
   error?: string;
@@ -39,6 +47,7 @@ export function AdminAuthShell({
 }: AdminAuthShellProps) {
   const [step, setStep] = useState<AdminAuthStep>(initialStep);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [adminAccess, setAdminAccess] = useState<AdminAccessProfileClient | null>(null);
   const [csrfToken, setCsrfToken] = useState("");
   const [sessionEmail, setSessionEmail] = useState("");
 
@@ -77,6 +86,7 @@ export function AdminAuthShell({
         if (cancelled) return;
 
         if (response.ok && data.authenticated && typeof data.admin?.email === "string") {
+          setAdminAccess(data.admin);
           setSessionEmail(data.admin.email);
           setCsrfToken(typeof data.csrfToken === "string" ? data.csrfToken : "");
 
@@ -88,6 +98,7 @@ export function AdminAuthShell({
           setStep("dashboard");
         } else {
           setSessionEmail("");
+          setAdminAccess(null);
           setCsrfToken("");
 
           if (requireSession) {
@@ -100,6 +111,7 @@ export function AdminAuthShell({
       } catch {
         if (!cancelled) {
           setSessionEmail("");
+          setAdminAccess(null);
           setCsrfToken("");
 
           if (requireSession) {
@@ -221,6 +233,7 @@ export function AdminAuthShell({
       }
 
       setSessionEmail(data.admin.email);
+      setAdminAccess(data.admin);
       setCsrfToken(typeof data.csrfToken === "string" ? data.csrfToken : "");
       setOtp("");
       window.location.replace(getSafeAdminNextPath() || "/admin/dashboard");
@@ -324,6 +337,7 @@ export function AdminAuthShell({
     } finally {
       setCsrfToken("");
       setSessionEmail("");
+      setAdminAccess(null);
       setStep("login");
       window.location.replace("/admin/login");
     }
@@ -624,6 +638,7 @@ export function AdminAuthShell({
       >
         <AdminDashboardShell
           csrfToken={csrfToken}
+          adminAccess={adminAccess}
           onLogout={handleLogout}
           sessionEmail={sessionEmail}
         />

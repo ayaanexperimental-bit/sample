@@ -40,7 +40,10 @@ export async function onRequest({ request, env }: PagesContext) {
     return adminJson({ ok: false, error: "Method not allowed." }, 405, { allow: "POST" });
   }
 
-  const admin = await requireAdmin(request, env, { requireCsrf: true });
+  const admin = await requireAdmin(request, env, {
+    requireCsrf: true,
+    requiredPermission: "coach_analytics.ai_insights"
+  });
   if (!admin.ok) return admin.response;
 
   const body = await readJsonBody<AnalyticsInsightBody>(request);

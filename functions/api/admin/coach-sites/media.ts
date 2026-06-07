@@ -61,7 +61,10 @@ export async function onRequest({ request, env }: PagesContext) {
     return adminJson({ ok: false, error: "Method not allowed." }, 405, { allow: "POST" });
   }
 
-  const admin = await requireAdmin(request, env, { requireCsrf: true, requiredRole: "owner" });
+  const admin = await requireAdmin(request, env, {
+    requireCsrf: true,
+    requiredAnyPermission: ["website_creator.create", "website_creator.edit"]
+  });
   if (!admin.ok) return admin.response;
 
   if (!env.COACH_MEDIA_BUCKET) {

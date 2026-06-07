@@ -7,6 +7,7 @@ import {
   isValidAdminEmail,
   normalizeAdminEmail
 } from "./admin-auth";
+import { recordAdminLoginAudit } from "./admin-rbac";
 
 const textEncoder = new TextEncoder();
 
@@ -26,6 +27,7 @@ type AdminEmailOtpEnv = {
   ADMIN_OTP_TTL_SECONDS?: string;
   ADMIN_SESSION_SECRET?: string;
   RESEND_API_KEY?: string;
+  ROOT_OWNER_EMAIL?: string;
 };
 
 export type AdminEmailOtpContext = {
@@ -77,6 +79,13 @@ export async function startAdminEmailOtp({
   await cleanupExpiredOtps(env.ADMIN_DB);
 
   if (!(await isAdminEmailAuthorized(normalizedEmail, env))) {
+    await recordAdminLoginAudit({
+      email: normalizedEmail,
+      env,
+      loginMethod: "email_otp",
+      loginStatus: "unauthorized",
+      request
+    });
     await insertAdminAuditEvent(env.ADMIN_DB, {
       email: normalizedEmail,
       reason: "email_not_allowlisted",
@@ -87,6 +96,13 @@ export async function startAdminEmailOtp({
 
   const requestLimitOk = await checkRecentOtpRequestLimit(env.ADMIN_DB, normalizedEmail);
   if (!requestLimitOk) {
+    await recordAdminLoginAudit({
+      email: normalizedEmail,
+      env,
+      loginMethod: "email_otp",
+      loginStatus: "rate_limited",
+      request
+    });
     await insertAdminAuditEvent(env.ADMIN_DB, {
       email: normalizedEmail,
       reason: "recent_request_limit",
@@ -156,6 +172,13 @@ export async function verifyAdminEmailOtp({
   }
 
   if (!(await isAdminEmailAuthorized(normalizedEmail, env))) {
+    await recordAdminLoginAudit({
+      email: normalizedEmail,
+      env,
+      loginMethod: "email_otp",
+      loginStatus: "unauthorized",
+      request
+    });
     await insertAdminAuditEvent(env.ADMIN_DB, {
       email: normalizedEmail,
       reason: "email_not_allowlisted",
@@ -176,6 +199,13 @@ export async function verifyAdminEmailOtp({
     .first<AdminOtpRow>();
 
   if (!row) {
+    await recordAdminLoginAudit({
+      email: normalizedEmail,
+      env,
+      loginMethod: "email_otp",
+      loginStatus: "invalid_or_expired",
+      request
+    });
     await insertAdminAuditEvent(env.ADMIN_DB, {
       email: normalizedEmail,
       reason: "no_active_challenge",
@@ -187,6 +217,13 @@ export async function verifyAdminEmailOtp({
   const nextAttempts = row.attempts + 1;
   if (nextAttempts > row.max_attempts) {
     await expireOtpChallenge(env.ADMIN_DB, row.id, nextAttempts);
+    await recordAdminLoginAudit({
+      email: normalizedEmail,
+      env,
+      loginMethod: "email_otp",
+      loginStatus: "too_many_attempts",
+      request
+    });
     return { ok: false, reason: "too_many_attempts" as const };
   }
 
@@ -211,6 +248,13 @@ export async function verifyAdminEmailOtp({
       reason: "bad_code",
       type: "email_otp_failed"
     });
+    await recordAdminLoginAudit({
+      email: normalizedEmail,
+      env,
+      loginMethod: "email_otp",
+      loginStatus: "bad_code",
+      request
+    });
     return { ok: false, reason: "invalid_or_expired" as const };
   }
 
@@ -232,6 +276,13 @@ export async function verifyAdminEmailOtp({
   await insertAdminAuditEvent(env.ADMIN_DB, {
     email: normalizedEmail,
     type: "email_otp_verified"
+  });
+  await recordAdminLoginAudit({
+    email: normalizedEmail,
+    env,
+    loginMethod: "email_otp",
+    loginStatus: "success",
+    request
   });
 
   return {

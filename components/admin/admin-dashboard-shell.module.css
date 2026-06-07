@@ -2548,6 +2548,36 @@
   padding: 0 0.65rem;
 }
 
+.dialogFooter button {
+  min-height: 2.45rem;
+  border: 1px solid rgb(168 85 137 / 0.18);
+  border-radius: 0.7rem;
+  background: #ffffff;
+  color: #2b1d2a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 900;
+  padding: 0.55rem 0.85rem;
+}
+
+.dialogFooter button:last-child {
+  border-color: rgb(8 122 115 / 0.28);
+  background: linear-gradient(135deg, #20a7b5, #176fb5 52%, #ce3f8a);
+  color: #ffffff;
+}
+
+.dialogFooter button[data-tone="danger"] {
+  border-color: rgb(180 35 24 / 0.24);
+  background: rgb(255 245 245);
+  color: #8f1f16;
+}
+
+.dialogFooter button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
 .dialogBody {
   min-width: 0;
   overflow: auto;
@@ -5609,5 +5639,321 @@
 
   .productionPreviewFrame {
     max-height: 72vh;
+  }
+}
+
+.adminUsersGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.adminUsersGrid div,
+.reviewPanel {
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid rgb(8 122 115 / 0.16);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.9), rgb(240 253 251 / 0.72));
+  padding: 0.95rem;
+}
+
+.adminUsersGrid strong,
+.reviewPanel strong {
+  color: #172033;
+  font-size: 0.98rem;
+}
+
+.adminUsersGrid span,
+.reviewPanel span,
+.reviewPanel p {
+  color: #667085;
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.adminUsersTableWrap {
+  overflow-x: auto;
+  border: 1px solid rgb(168 85 137 / 0.12);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 0.82);
+}
+
+.adminUsersTable {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+}
+
+.adminUsersTable th,
+.adminUsersTable td {
+  border-bottom: 1px solid rgb(168 85 137 / 0.1);
+  padding: 0.85rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.adminUsersTable th {
+  color: #087a73;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adminUsersTable td strong,
+.adminInviteList strong {
+  display: block;
+  color: #172033;
+  font-size: 0.92rem;
+}
+
+.adminUsersTable td span,
+.adminInviteList span {
+  display: block;
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.statusPill {
+  display: inline-flex !important;
+  width: fit-content;
+  border-radius: 999px;
+  background: rgb(8 122 115 / 0.1);
+  color: #087a73 !important;
+  padding: 0.32rem 0.62rem;
+  font-size: 0.72rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.statusPill[data-status="disabled"] {
+  background: rgb(183 121 31 / 0.12);
+  color: #7a500b !important;
+}
+
+.statusPill[data-status="inactive"] {
+  background: rgb(159 42 32 / 0.1);
+  color: #92251e !important;
+}
+
+.tableActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.tableActions button {
+  border: 1px solid rgb(168 85 137 / 0.18);
+  border-radius: 0.65rem;
+  background: #fff;
+  color: #2b1d2a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0.52rem 0.68rem;
+}
+
+.tableActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.adminInviteList {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.adminInviteList article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  border: 1px solid rgb(168 85 137 / 0.12);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 0.82);
+  padding: 0.85rem;
+}
+
+.adminInviteList em {
+  border-radius: 999px;
+  background: rgb(16 32 51 / 0.07);
+  color: #344054;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+  padding: 0.35rem 0.65rem;
+  text-transform: uppercase;
+}
+
+.adminWizard {
+  display: grid;
+  gap: 1rem;
+}
+
+.adminWizardSteps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.adminWizardSteps span {
+  border: 1px solid rgb(168 85 137 / 0.16);
+  border-radius: 999px;
+  background: #fff;
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0.45rem 0.7rem;
+}
+
+.adminWizardSteps span[data-active="true"] {
+  border-color: rgb(8 122 115 / 0.3);
+  background: rgb(8 122 115 / 0.1);
+  color: #087a73;
+}
+
+.adminFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.adminFormGrid label,
+.permissionMatrix fieldset {
+  display: grid;
+  gap: 0.38rem;
+  border: 1px solid rgb(168 85 137 / 0.12);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 0.82);
+  padding: 0.8rem;
+}
+
+.adminFormGrid span,
+.permissionMatrix legend {
+  color: #7a5268;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adminFormGrid input,
+.adminFormGrid textarea {
+  width: 100%;
+  border: 1px solid rgb(168 85 137 / 0.18);
+  border-radius: 0.75rem;
+  background: #fff;
+  color: #172033;
+  font: inherit;
+  padding: 0.72rem 0.8rem;
+}
+
+.fullWidthField {
+  grid-column: 1 / -1;
+}
+
+.adminRoleGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.adminRoleGrid button {
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid rgb(168 85 137 / 0.14);
+  border-radius: var(--radius-md);
+  background: #fff;
+  color: #172033;
+  cursor: pointer;
+  padding: 0.9rem;
+  text-align: left;
+}
+
+.adminRoleGrid button[data-active="true"] {
+  border-color: rgb(8 122 115 / 0.32);
+  background: rgb(240 253 251 / 0.86);
+}
+
+.adminRoleGrid span {
+  color: #667085;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.permissionMatrix {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.permissionMatrix fieldset {
+  border-color: rgb(168 85 137 / 0.14);
+}
+
+.permissionMatrix label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: start;
+  color: #172033;
+}
+
+.permissionMatrix input {
+  margin-top: 0.25rem;
+}
+
+.permissionMatrix strong {
+  display: block;
+  color: #172033;
+  font-size: 0.86rem;
+}
+
+.permissionMatrix small {
+  display: block;
+  color: #667085;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.toggleLine {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.55rem !important;
+  width: fit-content;
+  border: 1px solid rgb(8 122 115 / 0.16);
+  border-radius: 999px;
+  background: rgb(240 253 251 / 0.8);
+  color: #172033;
+  font-size: 0.82rem;
+  font-weight: 900;
+  padding: 0.55rem 0.78rem;
+}
+
+@media (max-width: 900px) {
+  .adminUsersGrid,
+  .adminRoleGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .adminInviteList article {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .adminFormGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .adminUsersTable {
+    min-width: 760px;
   }
 }

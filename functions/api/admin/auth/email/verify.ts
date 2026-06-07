@@ -9,6 +9,7 @@ import {
   readJsonBody
 } from "../../../../../lib/server/admin-auth";
 import { verifyAdminEmailOtp } from "../../../../../lib/server/admin-email-otp";
+import { getAdminAccessProfile } from "../../../../../lib/server/admin-rbac";
 import { checkAdminRateLimit } from "../../../../../lib/server/admin-rate-limit";
 
 type Env = {
@@ -23,6 +24,7 @@ type Env = {
   ADMIN_OTP_TTL_SECONDS?: string;
   ADMIN_SESSION_SECRET?: string;
   RESEND_API_KEY?: string;
+  ROOT_OWNER_EMAIL?: string;
 };
 
 type PagesContext = {
@@ -67,10 +69,11 @@ export async function onRequest({ request, env }: PagesContext) {
       return adminJson({ ok: false, error: GENERIC_ADMIN_AUTH_ERROR }, status);
     }
     const csrfToken = await createAdminCsrfToken({ env, session: result.session });
+    const profile = await getAdminAccessProfile(result.email, env);
 
     return adminJson(
       {
-        admin: { email: result.email },
+        admin: profile || { email: result.email },
         authenticated: true,
         csrfToken,
         ok: true

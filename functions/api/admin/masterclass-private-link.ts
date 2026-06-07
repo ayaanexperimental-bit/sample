@@ -48,7 +48,7 @@ type PrivateLinkBody = {
 
 export async function onRequest({ request, env }: PagesContext) {
   if (request.method === "GET") {
-    const admin = await requireAdmin(request, env, { requiredRole: "owner" });
+    const admin = await requireAdmin(request, env, { requiredPermission: "paid_masterclass.view_settings" });
     if (!admin.ok) return admin.response;
 
     return adminJson({
@@ -62,7 +62,10 @@ export async function onRequest({ request, env }: PagesContext) {
     return adminJson({ ok: false, error: "Method not allowed." }, 405, { allow: "GET, POST" });
   }
 
-  const admin = await requireAdmin(request, env, { requireCsrf: true, requiredRole: "owner" });
+  const admin = await requireAdmin(request, env, {
+    requireCsrf: true,
+    requiredPermission: "paid_masterclass.view_settings"
+  });
   if (!admin.ok) return admin.response;
 
   const body = await readJsonBody<PrivateLinkBody>(request);
@@ -75,6 +78,15 @@ export async function onRequest({ request, env }: PagesContext) {
   }
 
   if (action === "send_otp") {
+    const otpAdmin = await requireAdmin(request, env, {
+      requireCsrf: true,
+      requiredAnyPermission: [
+        "paid_masterclass.reveal_private_links",
+        "paid_masterclass.edit_settings"
+      ]
+    });
+    if (!otpAdmin.ok) return otpAdmin.response;
+
     const result = await startAdminEmailOtp({
       email: admin.admin.email,
       env,
@@ -106,6 +118,12 @@ export async function onRequest({ request, env }: PagesContext) {
   }
 
   if (action === "reveal") {
+    const revealAdmin = await requireAdmin(request, env, {
+      requireCsrf: true,
+      requiredPermission: "paid_masterclass.reveal_private_links"
+    });
+    if (!revealAdmin.ok) return revealAdmin.response;
+
     const otp = typeof body?.otp === "string" ? body.otp.trim() : "";
     if (!isValidOtp(otp)) {
       return adminJson({ ok: false, error: "Enter a valid 6-digit OTP." }, 400);
@@ -135,6 +153,12 @@ export async function onRequest({ request, env }: PagesContext) {
   }
 
   if (action === "update_whatsapp") {
+    const updateAdmin = await requireAdmin(request, env, {
+      requireCsrf: true,
+      requiredPermission: "paid_masterclass.edit_settings"
+    });
+    if (!updateAdmin.ok) return updateAdmin.response;
+
     const otp = typeof body?.otp === "string" ? body.otp.trim() : "";
     if (!isValidOtp(otp)) {
       return adminJson({ ok: false, error: "Enter a valid 6-digit OTP before saving." }, 400);
@@ -175,6 +199,12 @@ export async function onRequest({ request, env }: PagesContext) {
   }
 
   if (action === "update_payment") {
+    const updateAdmin = await requireAdmin(request, env, {
+      requireCsrf: true,
+      requiredPermission: "paid_masterclass.edit_settings"
+    });
+    if (!updateAdmin.ok) return updateAdmin.response;
+
     const otp = typeof body?.otp === "string" ? body.otp.trim() : "";
     if (!isValidOtp(otp)) {
       return adminJson({ ok: false, error: "Enter a valid 6-digit OTP before saving." }, 400);

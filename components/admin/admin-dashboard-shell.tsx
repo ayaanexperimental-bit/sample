@@ -3,6 +3,7 @@
 import { type CSSProperties, type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AdminCoachSitesManager } from "./admin-coach-sites-manager";
+import { AdminUserManagement } from "./admin-user-management";
 import {
   AdminActionDialog,
   AdminActionIcon,
@@ -37,12 +38,24 @@ import {
 import { adminDashboardData } from "../../lib/admin-dashboard-data";
 
 type AdminDashboardShellProps = {
+  adminAccess?: AdminAccessProfileClient | null;
   csrfToken: string;
   onLogout: () => void;
   sessionEmail?: string;
 };
 
+type AdminAccessProfileClient = {
+  displayName?: string;
+  email: string;
+  isOwner?: boolean;
+  modules?: string[];
+  permissions?: string[];
+  role?: string;
+  roleKey?: string;
+};
+
 type AdminViewId =
+  | "admin-users"
   | "backup-cleanup"
   | "coach-analytics"
   | "coach-sites"
@@ -268,12 +281,14 @@ const navSections: AdminNavSection[] = [
       },
       { id: "error-reports", label: "Error Reports", description: "Recent issues" },
       { id: "backup-cleanup", label: "Backup/Cleanup", description: "Retention controls" },
-      { id: "settings", label: "Settings", description: "Admin and support basics" }
+      { id: "settings", label: "Settings", description: "Admin and support basics" },
+      { id: "admin-users", label: "Admin Users", description: "Owner role controls" }
     ]
   }
 ];
 
 const viewTitles: Record<AdminViewId, string> = {
+  "admin-users": "Admin Users",
   "backup-cleanup": "Backup & Cleanup",
   "coach-analytics": "Coach Analytics",
   "coach-sites": "Coach Sites",
@@ -285,7 +300,33 @@ const viewTitles: Record<AdminViewId, string> = {
   "top-coaches": "Top Performing Coaches"
 };
 
+const viewPermissionById: Record<AdminViewId, string> = {
+  "admin-users": "admin_users.manage",
+  "backup-cleanup": "backup_cleanup.view",
+  "coach-analytics": "coach_analytics.view",
+  "coach-sites": "coach_sites.view",
+  "create-coach-site": "website_creator.create",
+  "error-reports": "error_reports.view",
+  overview: "overview.view",
+  "paid-masterclass-settings": "paid_masterclass.view_settings",
+  settings: "settings.view",
+  "top-coaches": "coach_analytics.top_performers"
+};
+
+function hasAdminPermission(profile: AdminAccessProfileClient | null | undefined, permission: string) {
+  return Boolean(profile?.isOwner || profile?.permissions?.includes(permission));
+}
+
+function canAccessAdminView(
+  profile: AdminAccessProfileClient | null | undefined,
+  viewId: AdminViewId
+) {
+  if (viewId === "admin-users") return Boolean(profile?.isOwner);
+  return hasAdminPermission(profile, viewPermissionById[viewId]);
+}
+
 export function AdminDashboardShell({
+  adminAccess,
   csrfToken,
   onLogout,
   sessionEmail
@@ -311,8 +352,34 @@ export function AdminDashboardShell({
   const [coachSiteSource, setCoachSiteSource] = useState("loading");
   const [activityCenterOpen, setActivityCenterOpen] = useState(false);
   const [adminActionActivity, setAdminActionActivity] = useState<AdminActionActivity[]>([]);
+  const visibleNavSections = useMemo(
+    () =>
+      navSections
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) => canAccessAdminView(adminAccess, item.id as AdminViewId))
+        }))
+        .filter((section) => section.items.length > 0),
+    [adminAccess]
+  );
 
   useEffect(() => {
+    if (canAccessAdminView(adminAccess, activeView)) return;
+    const firstAllowed = visibleNavSections[0]?.items[0]?.id as AdminViewId | undefined;
+    if (!firstAllowed) return;
+    const frame = window.requestAnimationFrame(() => setActiveView(firstAllowed));
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeView, adminAccess, visibleNavSections]);
+
+  useEffect(() => {
+    if (!hasAdminPermission(adminAccess, "error_reports.view")) {
+      const frame = window.requestAnimationFrame(() => {
+        setErrorReports([]);
+        setErrorReportSource("not-authorized");
+      });
+      return () => window.cancelAnimationFrame(frame);
+    }
+
     let active = true;
 
     async function loadErrorReports() {
@@ -342,9 +409,20 @@ export function AdminDashboardShell({
     return () => {
       active = false;
     };
-  }, []);
+  }, [adminAccess]);
 
   useEffect(() => {
+    if (!hasAdminPermission(adminAccess, "coach_analytics.view")) {
+      const frame = window.requestAnimationFrame(() => {
+        setAnalyticsSummaries([]);
+        setPreviousAnalyticsSummaries([]);
+        setRecentAnalyticsEvents([]);
+        setAnalyticsRangeMeta(null);
+        setAnalyticsSource("not-authorized");
+      });
+      return () => window.cancelAnimationFrame(frame);
+    }
+
     let active = true;
 
     async function loadAnalyticsEvents() {
@@ -392,9 +470,17 @@ export function AdminDashboardShell({
     return () => {
       active = false;
     };
-  }, [analyticsCustomEnd, analyticsCustomStart, analyticsRange]);
+  }, [adminAccess, analyticsCustomEnd, analyticsCustomStart, analyticsRange]);
 
   useEffect(() => {
+    if (!hasAdminPermission(adminAccess, "coach_sites.view")) {
+      const frame = window.requestAnimationFrame(() => {
+        setLiveCoachSites([]);
+        setCoachSiteSource("not-authorized");
+      });
+      return () => window.cancelAnimationFrame(frame);
+    }
+
     let active = true;
 
     async function loadCoachSites() {
@@ -426,7 +512,7 @@ export function AdminDashboardShell({
     return () => {
       active = false;
     };
-  }, []);
+  }, [adminAccess]);
 
   function openAction(title: string, body: string, tone: "danger" | "standard" = "standard") {
     setActionDialog({ body, title, tone });
@@ -447,7 +533,9 @@ export function AdminDashboardShell({
   }
 
   function selectView(viewId: string) {
-    setActiveView(viewId as AdminViewId);
+    const nextView = viewId as AdminViewId;
+    if (!canAccessAdminView(adminAccess, nextView)) return;
+    setActiveView(nextView);
   }
 
   return (
@@ -455,7 +543,7 @@ export function AdminDashboardShell({
       <AdminSidebar
         activeView={activeView}
         mobileOpen={mobileNavOpen}
-        nav={navSections}
+        nav={visibleNavSections}
         onCloseMobile={() => setMobileNavOpen(false)}
         onSelect={selectView}
       />
@@ -495,6 +583,7 @@ export function AdminDashboardShell({
         {activeView === "coach-sites" ? (
           <AdminPageShell
             actions={
+              hasAdminPermission(adminAccess, "website_creator.create") ? (
               <button
                 className={styles.primaryAction}
                 onClick={() => setActiveView("create-coach-site")}
@@ -502,6 +591,7 @@ export function AdminDashboardShell({
               >
                 Create Coach Site
               </button>
+              ) : null
             }
             eyebrow="Coach Sites"
             title="All Coach Sites"
@@ -573,8 +663,16 @@ export function AdminDashboardShell({
         ) : null}
         {activeView === "settings" ? (
           <SettingsView
+            adminAccess={adminAccess}
             control={control}
             onAction={openAction}
+            onAdminActivity={recordAdminActionActivity}
+            onOpenAdminUsers={() => setActiveView("admin-users")}
+          />
+        ) : null}
+        {activeView === "admin-users" ? (
+          <AdminUserManagement
+            csrfToken={csrfToken}
             onAdminActivity={recordAdminActionActivity}
           />
         ) : null}
@@ -6852,13 +6950,17 @@ function BackupCleanupView({
 }
 
 function SettingsView({
+  adminAccess,
   control,
   onAction,
-  onAdminActivity
+  onAdminActivity,
+  onOpenAdminUsers
 }: {
+  adminAccess?: AdminAccessProfileClient | null;
   control: typeof adminControlCenterData;
   onAdminActivity: (activity: AdminActionActivityInput) => void;
   onAction: (title: string, body: string) => void;
+  onOpenAdminUsers: () => void;
 }) {
   const [settingsMessage, setSettingsMessage] = useState("");
   const [settingsAction, setSettingsAction] = useState<"" | "support">("");
@@ -6925,16 +7027,23 @@ function SettingsView({
   return (
     <AdminPageShell
       actions={
-        <button
-          aria-busy={settingsAction === "support"}
-          className={styles.secondaryAction}
-          data-loading={settingsAction === "support" ? "true" : "false"}
-          disabled={Boolean(settingsAction)}
-          onClick={() => void openSupportSettings()}
-          type="button"
-        >
-          {settingsAction === "support" ? "Opening..." : "Support Settings"}
-        </button>
+        <>
+          {adminAccess?.isOwner ? (
+            <button className={styles.primaryAction} onClick={onOpenAdminUsers} type="button">
+              Add / Manage Users
+            </button>
+          ) : null}
+          <button
+            aria-busy={settingsAction === "support"}
+            className={styles.secondaryAction}
+            data-loading={settingsAction === "support" ? "true" : "false"}
+            disabled={Boolean(settingsAction)}
+            onClick={() => void openSupportSettings()}
+            type="button"
+          >
+            {settingsAction === "support" ? "Opening..." : "Support Settings"}
+          </button>
+        </>
       }
       eyebrow="Settings"
       title="Settings"

@@ -55,7 +55,7 @@ type CoachSitesBody = {
 
 export async function onRequest({ request, env }: PagesContext) {
   if (request.method === "GET") {
-    const admin = await requireAdmin(request, env, { requiredRole: "owner" });
+    const admin = await requireAdmin(request, env, { requiredPermission: "coach_sites.view" });
     if (!admin.ok) return admin.response;
 
     let persistedSites: CoachSiteRecord[] | null;
@@ -77,12 +77,17 @@ export async function onRequest({ request, env }: PagesContext) {
   }
 
   if (request.method === "POST") {
-    const admin = await requireAdmin(request, env, { requireCsrf: true, requiredRole: "owner" });
+    const admin = await requireAdmin(request, env, { requireCsrf: true });
     if (!admin.ok) return admin.response;
 
     const body = await readJsonBody<CoachSitesBody>(request);
     const site = parseCoachSiteBody(body?.site);
     const mode = body?.mode === "edit" ? "edit" : "create";
+    const writeAdmin = await requireAdmin(request, env, {
+      requireCsrf: true,
+      requiredPermission: mode === "edit" ? "website_creator.edit" : "website_creator.create"
+    });
+    if (!writeAdmin.ok) return writeAdmin.response;
     if (!site) {
       return adminJson({ ok: false, error: "Coach site payload is required." }, 400);
     }
@@ -145,7 +150,7 @@ export async function onRequest({ request, env }: PagesContext) {
   }
 
   if (request.method === "PATCH") {
-    const admin = await requireAdmin(request, env, { requireCsrf: true, requiredRole: "owner" });
+    const admin = await requireAdmin(request, env, { requireCsrf: true, requiredPermission: "coach_sites.view" });
     if (!admin.ok) return admin.response;
 
     const body = await readJsonBody<CoachSitesBody>(request);
@@ -158,6 +163,12 @@ export async function onRequest({ request, env }: PagesContext) {
     }
 
     if (action === "reactivate") {
+      const reactivateAdmin = await requireAdmin(request, env, {
+        requireCsrf: true,
+        requiredPermission: "coach_sites.archive"
+      });
+      if (!reactivateAdmin.ok) return reactivateAdmin.response;
+
       if (!env.ADMIN_DB) {
         return adminJson(
           { configured: false, error: "Coach site database is not configured.", ok: false },
@@ -214,6 +225,12 @@ export async function onRequest({ request, env }: PagesContext) {
     }
 
     if (action === "delete_draft") {
+      const draftAdmin = await requireAdmin(request, env, {
+        requireCsrf: true,
+        requiredPermission: "website_creator.save_draft"
+      });
+      if (!draftAdmin.ok) return draftAdmin.response;
+
       if (!status) {
         return adminJson({ ok: false, error: "Coach site id and status are required." }, 400);
       }
@@ -281,6 +298,12 @@ export async function onRequest({ request, env }: PagesContext) {
     }
 
     if (status === "published") {
+      const publishAdmin = await requireAdmin(request, env, {
+        requireCsrf: true,
+        requiredPermission: "website_creator.publish"
+      });
+      if (!publishAdmin.ok) return publishAdmin.response;
+
       if (!env.ADMIN_DB) {
         return adminJson(
           { configured: false, error: "Coach site database is not configured.", ok: false },
@@ -308,6 +331,12 @@ export async function onRequest({ request, env }: PagesContext) {
     }
 
     if (isDangerousStatus(status)) {
+      const dangerAdmin = await requireAdmin(request, env, {
+        requireCsrf: true,
+        requiredPermission: status === "removed" ? "coach_sites.remove" : "coach_sites.archive"
+      });
+      if (!dangerAdmin.ok) return dangerAdmin.response;
+
       if (!env.ADMIN_DB) {
         return adminJson(
           { configured: false, error: "Coach site database is not configured.", ok: false },
@@ -371,6 +400,12 @@ export async function onRequest({ request, env }: PagesContext) {
       if (!otpOk) {
         return adminJson({ ok: false, error: "OTP is invalid, expired, or not configured." }, 401);
       }
+    } else if (status !== "published") {
+      const editAdmin = await requireAdmin(request, env, {
+        requireCsrf: true,
+        requiredPermission: "coach_sites.edit"
+      });
+      if (!editAdmin.ok) return editAdmin.response;
     }
 
     let updatedSite: CoachSiteRecord | null;

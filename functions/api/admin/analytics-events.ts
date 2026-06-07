@@ -27,7 +27,7 @@ export async function onRequest({ request, env }: PagesContext) {
     return adminJson({ ok: false, error: "Method not allowed." }, 405, { allow: "GET" });
   }
 
-  const admin = await requireAdmin(request, env, { requiredRole: "owner" });
+  const admin = await requireAdmin(request, env, { requiredPermission: "coach_analytics.view" });
   if (!admin.ok) return admin.response;
 
   if (!env.ADMIN_DB) {

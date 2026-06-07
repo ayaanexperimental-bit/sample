@@ -39,7 +39,7 @@ const ALLOWED_STATUSES = new Set<AdminErrorReportStatus>([
 
 export async function onRequest({ request, env }: PagesContext) {
   if (request.method === "GET") {
-    const admin = await requireAdmin(request, env, { requiredRole: "owner" });
+    const admin = await requireAdmin(request, env, { requiredPermission: "error_reports.view" });
     if (!admin.ok) return admin.response;
 
     const reports = await listWebsiteErrorReports(env);
@@ -54,13 +54,22 @@ export async function onRequest({ request, env }: PagesContext) {
   }
 
   if (request.method === "POST" || request.method === "PATCH") {
-    const admin = await requireAdmin(request, env, { requireCsrf: true, requiredRole: "owner" });
+    const admin = await requireAdmin(request, env, {
+      requireCsrf: true,
+      requiredPermission: "error_reports.view"
+    });
     if (!admin.ok) return admin.response;
 
     const body = await readJsonBody<ErrorReportActionBody>(request);
     const action = typeof body?.action === "string" ? body.action.trim() : "";
 
     if (action === "clear_old") {
+      const cleanupAdmin = await requireAdmin(request, env, {
+        requireCsrf: true,
+        requiredPermission: "error_reports.clear_stale"
+      });
+      if (!cleanupAdmin.ok) return cleanupAdmin.response;
+
       const cleanupFilter =
         typeof body?.cleanupFilter === "string" ? body.cleanupFilter.trim() : "";
       if (!isErrorReportCleanupFilter(cleanupFilter)) {
@@ -80,6 +89,12 @@ export async function onRequest({ request, env }: PagesContext) {
     const referenceId = typeof body?.referenceId === "string" ? body.referenceId.trim() : "";
     const status = typeof body?.status === "string" ? body.status.trim() : "";
     const adminNotes = typeof body?.adminNotes === "string" ? body.adminNotes.trim() : "";
+
+    const statusAdmin = await requireAdmin(request, env, {
+      requireCsrf: true,
+      requiredPermission: "error_reports.mark_status"
+    });
+    if (!statusAdmin.ok) return statusAdmin.response;
 
     if (!referenceId || !ALLOWED_STATUSES.has(status as AdminErrorReportStatus)) {
       return adminJson({ ok: false, error: "Reference ID and valid status are required." }, 400);

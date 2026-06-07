@@ -55,12 +55,12 @@ export async function onRequest({ request, env }: PagesContext) {
         }));
 
       if (!recentEmailedBackupAllowed) {
-        const admin = await requireAdmin(request, env, { requiredRole: "owner" });
+        const admin = await requireAdmin(request, env, { requiredPermission: "backup_cleanup.download" });
         if (!admin.ok) return Response.redirect(createAdminLoginDownloadRedirect(url), 302);
         currentAdminEmail = admin.admin.email;
       }
     } else {
-      const admin = await requireAdmin(request, env, { requiredRole: "owner" });
+      const admin = await requireAdmin(request, env, { requiredPermission: "backup_cleanup.view" });
       if (!admin.ok) {
         return admin.response;
       }
@@ -99,7 +99,10 @@ export async function onRequest({ request, env }: PagesContext) {
   }
 
   if (request.method === "POST") {
-    const admin = await requireAdmin(request, env, { requireCsrf: true, requiredRole: "owner" });
+    const admin = await requireAdmin(request, env, {
+      requireCsrf: true,
+      requiredPermission: "backup_cleanup.view"
+    });
     if (!admin.ok) return admin.response;
 
     const body = await readJsonBody<BackupCleanupActionBody>(request);
@@ -108,6 +111,14 @@ export async function onRequest({ request, env }: PagesContext) {
     if (action !== "backup" && action !== "cleanup" && action !== "test_backup_email") {
       return adminJson({ ok: false, error: "Unsupported backup/cleanup action." }, 400);
     }
+
+    const actionPermission =
+      action === "cleanup" ? "backup_cleanup.run_cleanup" : "backup_cleanup.run_backup";
+    const actionAdmin = await requireAdmin(request, env, {
+      requireCsrf: true,
+      requiredPermission: actionPermission
+    });
+    if (!actionAdmin.ok) return actionAdmin.response;
 
     const result =
       action === "cleanup"

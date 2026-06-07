@@ -456,7 +456,7 @@ test.describe("admin auth security protections", () => {
     expect(strictSession.status).toBe(200);
     const strictSessionBody = await strictSession.json();
     expect(strictSessionBody).toMatchObject({
-      admin: { email: dbOnlyAdminEmail, role: "owner" },
+      admin: { email: dbOnlyAdminEmail, role: "admin" },
       authenticated: true
     });
 
@@ -490,7 +490,7 @@ test.describe("admin auth security protections", () => {
           ADMIN_DB: createAdminRoleDb(role) as never,
           ADMIN_REQUIRE_DB_ADMIN_ROLES: "true"
         })
-      ).resolves.toBe("owner");
+      ).resolves.toBe(role);
     }
 
     await expect(
@@ -559,12 +559,22 @@ function createEmptyErrorReportsDb() {
 function createAdminRoleDb(role: string) {
   return {
     prepare: () => {
-      const statement = {
-        bind: () => statement,
-        first: async <T>() => ({ role } as T)
+      const stmt = {
+        bind: () => stmt,
+        first: async <T>() => {
+          return {
+            email: role === "viewer" ? "viewer@example.com" : `${role}@example.com`,
+            first_name: "",
+            is_owner: role === "owner" ? 1 : 0,
+            last_name: "",
+            role,
+            role_key: role === "owner" ? "owner" : "custom",
+            status: "active"
+          } as T;
+        }
       };
 
-      return statement;
+      return stmt;
     }
   };
 }

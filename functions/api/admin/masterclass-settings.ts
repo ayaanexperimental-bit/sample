@@ -23,7 +23,7 @@ type MasterclassSettingsBody = {
 
 export async function onRequest({ request, env }: PagesContext) {
   if (request.method === "GET") {
-    const admin = await requireAdmin(request, env, { requiredRole: "owner" });
+    const admin = await requireAdmin(request, env, { requiredPermission: "paid_masterclass.view_settings" });
     if (!admin.ok) return admin.response;
 
     return adminJson({
@@ -35,7 +35,10 @@ export async function onRequest({ request, env }: PagesContext) {
   }
 
   if (request.method === "POST" || request.method === "PATCH") {
-    const admin = await requireAdmin(request, env, { requireCsrf: true, requiredRole: "owner" });
+    const admin = await requireAdmin(request, env, {
+      requireCsrf: true,
+      requiredPermission: "paid_masterclass.edit_settings"
+    });
     if (!admin.ok) return admin.response;
 
     const body = await readJsonBody<MasterclassSettingsBody>(request);

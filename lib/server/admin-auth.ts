@@ -1,4 +1,9 @@
 import type { D1Database } from "@cloudflare/workers-types";
+import {
+  canPerformAdminAction,
+  getAdminAccessProfile,
+  type AdminRole
+} from "./admin-rbac";
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -20,6 +25,7 @@ export type AdminAuthEnv = {
   ADMIN_OAUTH_STATE_SECRET?: string;
   ADMIN_REQUIRE_DB_ADMIN_ROLES?: string;
   ADMIN_SESSION_SECRET?: string;
+  ROOT_OWNER_EMAIL?: string;
 };
 
 export type AdminSessionPayload = {
@@ -29,8 +35,6 @@ export type AdminSessionPayload = {
   otpVerified: true;
   source: "admin_auth";
 };
-
-export type AdminRole = "owner";
 
 type SignedTokenPayload = Record<string, unknown>;
 
@@ -52,8 +56,13 @@ type AdminCsrfPayload = {
 export type RequireAdminResult =
   | {
       admin: {
+        displayName: string;
         email: string;
+        isOwner: boolean;
+        modules: string[];
+        permissions: string[];
         role: AdminRole;
+        roleKey: string;
       };
       ok: true;
       session: AdminSessionPayload;
@@ -84,13 +93,17 @@ export async function readJsonBody<T extends Record<string, unknown>>(request: R
   }
 }
 
+export type RequireAdminOptions = {
+  requiredAnyPermission?: string[];
+  requiredPermission?: string;
+  requireCsrf?: boolean;
+  requiredRole?: AdminRole;
+};
+
 export async function requireAdmin(
   request: Request,
   env: AdminAuthEnv,
-  options: {
-    requireCsrf?: boolean;
-    requiredRole?: AdminRole;
-  } = {}
+  options: RequireAdminOptions = {}
 ): Promise<RequireAdminResult> {
   const session = await verifyAdminSessionFromRequest(request, env);
   if (!session) {
@@ -100,8 +113,33 @@ export async function requireAdmin(
     };
   }
 
-  const role = await getAdminRoleForEmail(session.email, env);
-  if (!role || role !== (options.requiredRole || "owner")) {
+  const profile = await getAdminAccessProfile(session.email, env);
+  if (!profile) {
+    return {
+      ok: false,
+      response: adminJson({ authenticated: false, error: "Admin authentication required." }, 401)
+    };
+  }
+
+  if (options.requiredRole && profile.role !== options.requiredRole) {
+    return {
+      ok: false,
+      response: adminJson({ authenticated: false, error: "Admin authorization required." }, 403)
+    };
+  }
+
+  if (options.requiredPermission && !canPerformAdminAction(profile, options.requiredPermission)) {
+    return {
+      ok: false,
+      response: adminJson({ authenticated: false, error: "Admin authorization required." }, 403)
+    };
+  }
+
+  if (
+    options.requiredAnyPermission?.length &&
+    !profile.isOwner &&
+    !options.requiredAnyPermission.some((permission) => profile.permissions.includes(permission))
+  ) {
     return {
       ok: false,
       response: adminJson({ authenticated: false, error: "Admin authorization required." }, 403)
@@ -120,12 +158,34 @@ export async function requireAdmin(
 
   return {
     admin: {
+      displayName: profile.displayName,
       email: session.email,
-      role
+      isOwner: profile.isOwner,
+      modules: profile.modules,
+      permissions: profile.permissions,
+      role: profile.role,
+      roleKey: profile.roleKey
     },
     ok: true,
     session
   };
+}
+
+export function requireOwner(
+  request: Request,
+  env: AdminAuthEnv,
+  options: Omit<RequireAdminOptions, "requiredRole"> = {}
+) {
+  return requireAdmin(request, env, { ...options, requiredRole: "owner" });
+}
+
+export function requirePermission(
+  request: Request,
+  env: AdminAuthEnv,
+  permission: string,
+  options: Omit<RequireAdminOptions, "requiredPermission"> = {}
+) {
+  return requireAdmin(request, env, { ...options, requiredPermission: permission });
 }
 
 export async function createAdminSessionCookie({
@@ -257,8 +317,8 @@ export async function verifyAdminSessionFromRequest(request: Request, env: Admin
   const now = Math.floor(Date.now() / 1000);
   if (payload.expiresAt <= now) return null;
 
-  const role = await getAdminRoleForEmail(payload.email, env);
-  if (!role) return null;
+  const profile = await getAdminAccessProfile(payload.email, env);
+  if (!profile) return null;
 
   return payload;
 }
@@ -321,14 +381,8 @@ export async function getAdminRoleForEmail(
   email: string,
   env: AdminAuthEnv
 ): Promise<AdminRole | null> {
-  const databaseRole = await getAdminRoleFromDatabase(email, env);
-  if (databaseRole) return databaseRole;
-
-  if (env.ADMIN_REQUIRE_DB_ADMIN_ROLES === "true") {
-    return null;
-  }
-
-  return isAdminEmailAllowed(email, env) ? "owner" : null;
+  const profile = await getAdminAccessProfile(email, env);
+  return profile?.role || null;
 }
 
 export function isAdminDemoAuthEnabled(env: AdminAuthEnv) {
@@ -374,31 +428,6 @@ function parseAdminAllowedEmails(env: AdminAuthEnv) {
       .map((email) => normalizeAdminEmail(email))
       .filter(Boolean)
   );
-}
-
-async function getAdminRoleFromDatabase(
-  email: string,
-  env: AdminAuthEnv
-): Promise<AdminRole | null> {
-  const normalizedEmail = normalizeAdminEmail(email);
-  const db = env.ADMIN_DB;
-  if (!db || !normalizedEmail) return null;
-
-  try {
-    const row = await db
-      .prepare("SELECT role FROM admin_users WHERE email = ? AND status = 'active' LIMIT 1")
-      .bind(normalizedEmail)
-      .first<{ role: string }>();
-
-    return isDatabaseAdminRole(row?.role) ? "owner" : null;
-  } catch {
-    // Keep allowlisted admins reviewable until the optional admin_users table is migrated.
-    return null;
-  }
-}
-
-function isDatabaseAdminRole(role: string | undefined) {
-  return role === "owner" || role === "admin" || role === "super_admin";
 }
 
 function hasTrustedAdminRequestOrigin(request: Request) {

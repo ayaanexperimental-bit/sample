@@ -94,6 +94,14 @@ type AdminUserRow = {
   status: string;
 };
 
+type AdminLoginAuditBackupRow = {
+  created_at: number | string;
+  device_info_safe: string;
+  email: string;
+  login_method: string;
+  login_status: string;
+};
+
 const RETENTION_DAYS = 90;
 const BACKUP_EMAIL_SUBJECT = "YWcoach Trimonthly Backup Data";
 const BACKUP_DOWNLOAD_TOKEN_TTL_SECONDS = 14 * 24 * 60 * 60;
@@ -156,7 +164,17 @@ const MAINTENANCE_SCHEMA = [
     created_at INTEGER NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS idx_analytics_event_rollups_backup
-    ON analytics_event_rollups (backup_id)`
+    ON analytics_event_rollups (backup_id)`,
+  `CREATE TABLE IF NOT EXISTS admin_login_audit_logs (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL DEFAULT '',
+    login_status TEXT NOT NULL,
+    login_method TEXT NOT NULL,
+    device_info_safe TEXT NOT NULL DEFAULT '',
+    ip_hash TEXT NOT NULL DEFAULT '',
+    user_agent_hash TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL
+  )`
 ];
 
 export async function getAdminMaintenanceStatus({
@@ -263,6 +281,7 @@ export async function runAnalyticsBackup({
   const cutoff = getRetentionCutoffSeconds();
   const recipients = await getActiveBackupRecipients(db);
   const rows = await listOldAnalyticsRows(db, cutoff);
+  const loginAuditRows = await listMaskedLoginAuditRows(db);
   const backupId = `analytics-backup-${crypto.randomUUID()}`;
   const createdAt = getNowSeconds();
   const baseFileName = `ywcoach-analytics-backup-${new Date(createdAt * 1000)
@@ -270,8 +289,8 @@ export async function runAnalyticsBackup({
     .slice(0, 10)}`;
   const csvFileName = `${baseFileName}.csv`;
   const xlsFileName = `${baseFileName}.xls`;
-  const csv = createAnalyticsBackupCsv(rows);
-  const xls = createAnalyticsBackupXls({ backupId, createdAt, cutoff, rows });
+  const csv = createAnalyticsBackupCsv(rows, loginAuditRows);
+  const xls = createAnalyticsBackupXls({ backupId, createdAt, cutoff, loginAuditRows, rows });
   const destination = "email_csv_xls_attachments";
   const fileUrl = await createSignedBackupDownloadPath({
     backupId,
@@ -815,6 +834,23 @@ async function listOldAnalyticsRows(db: D1Database, cutoff: number) {
   return result.results || [];
 }
 
+async function listMaskedLoginAuditRows(db: D1Database): Promise<AdminLoginAuditBackupRow[]> {
+  try {
+    const rows = await db
+      .prepare(
+        `SELECT email, login_status, login_method, device_info_safe, created_at
+         FROM admin_login_audit_logs
+         ORDER BY created_at DESC
+         LIMIT 500`
+      )
+      .all<AdminLoginAuditBackupRow>();
+
+    return rows.results || [];
+  } catch {
+    return [];
+  }
+}
+
 async function preserveAnalyticsRollups({
   backupId,
   cutoff,
@@ -1025,7 +1061,10 @@ function createBackupEmailHtml(input: Parameters<typeof createBackupEmailText>[0
     .join("");
 }
 
-function createAnalyticsBackupCsv(rows: Array<Record<string, unknown>>) {
+function createAnalyticsBackupCsv(
+  rows: Array<Record<string, unknown>>,
+  loginAuditRows: AdminLoginAuditBackupRow[] = []
+) {
   const headers = [
     "id",
     "event_name",
@@ -1049,6 +1088,34 @@ function createAnalyticsBackupCsv(rows: Array<Record<string, unknown>>) {
     ...rows.map((row) => headers.map((header) => csvEscape(String(row[header] ?? ""))).join(","))
   ];
 
+  if (loginAuditRows.length > 0) {
+    const auditHeaders = [
+      "record_type",
+      "email_masked",
+      "login_status",
+      "login_method",
+      "device_info_safe",
+      "created_at"
+    ];
+    lines.push(
+      "",
+      "masked_admin_login_audit",
+      auditHeaders.join(","),
+      ...loginAuditRows.map((row) =>
+        [
+          "admin_login_audit",
+          maskEmail(row.email),
+          row.login_status,
+          row.login_method,
+          sanitizeText(row.device_info_safe, 120),
+          row.created_at
+        ]
+          .map((value) => csvEscape(String(value ?? "")))
+          .join(",")
+      )
+    );
+  }
+
   return lines.join("\n");
 }
 
@@ -1056,11 +1123,13 @@ function createAnalyticsBackupXls({
   backupId,
   createdAt,
   cutoff,
+  loginAuditRows = [],
   rows
 }: {
   backupId: string;
   createdAt: number;
   cutoff: number;
+  loginAuditRows?: AdminLoginAuditBackupRow[];
   rows: Array<Record<string, unknown>>;
 }) {
   const headers = [
@@ -1110,6 +1179,29 @@ function createAnalyticsBackupXls({
       row.created_date || ""
     ])
   ];
+
+  if (loginAuditRows.length > 0) {
+    tableRows.push(
+      [],
+      ["masked_admin_login_audit"],
+      [
+        "record_type",
+        "email_masked",
+        "login_status",
+        "login_method",
+        "device_info_safe",
+        "created_at"
+      ],
+      ...loginAuditRows.map((row) => [
+        "admin_login_audit",
+        maskEmail(row.email),
+        row.login_status,
+        row.login_method,
+        sanitizeText(row.device_info_safe, 120),
+        row.created_at
+      ])
+    );
+  }
 
   return createSpreadsheetXml(tableRows, "Analytics Backup");
 }

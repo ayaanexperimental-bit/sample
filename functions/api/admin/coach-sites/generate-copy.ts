@@ -48,7 +48,10 @@ export async function onRequest({ request, env }: PagesContext) {
     return adminJson({ ok: false, error: "Method not allowed." }, 405, { allow: "POST" });
   }
 
-  const admin = await requireAdmin(request, env, { requireCsrf: true });
+  const admin = await requireAdmin(request, env, {
+    requireCsrf: true,
+    requiredPermission: "website_creator.ai_copy"
+  });
   if (!admin.ok) {
     return admin.response;
   }

@@ -8,6 +8,7 @@ type Env = {
   ADMIN_DEV_OTP?: string;
   ADMIN_REQUIRE_DB_ADMIN_ROLES?: string;
   ADMIN_SESSION_SECRET?: string;
+  ROOT_OWNER_EMAIL?: string;
 };
 
 type PagesContext = {
