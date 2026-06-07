@@ -542,95 +542,128 @@ export async function verifyAdminInviteToken({
   request: Request;
   token: string;
 }) {
-  const db = await getConfiguredDb(env);
-  const now = nowSeconds();
-  const row = await getInviteByToken({ db, env, token });
-  if (!row) return { ok: false as const, error: "Admin invite is invalid or expired." };
-  if (!pendingInviteStatuses.has(row.status) && row.status !== "failed") {
-    return { ok: false as const, error: "Admin invite is no longer active." };
-  }
-  if (Number(row.expires_at || 0) <= now) {
-    await db
-      .prepare("UPDATE admin_invites SET status = 'expired', updated_at = ?1 WHERE id = ?2")
-      .bind(now, row.id)
-      .run();
-    return { ok: false as const, error: "Admin invite is expired." };
-  }
-
-  const existingAdmin = await db
-    .prepare("SELECT role, is_owner, status FROM admin_users WHERE email = ?1 LIMIT 1")
-    .bind(row.email)
-    .first<{ is_owner?: number | string | null; role: string; status: string }>();
-  if (existingAdmin?.status === "active") {
-    return { ok: false, error: "This admin account is already active." };
-  }
-  if (existingAdmin?.role === "owner" || isTruthy(existingAdmin?.is_owner)) {
-    return { ok: false, error: "The root owner account cannot be modified by invite." };
-  }
-
-  const rolePayload = parseRolePayload(row.role_payload);
-  const roleKey = sanitizeRoleKey(rolePayload.roleKey);
-  const permissions = sanitizePermissions(safeJsonArray(row.permission_payload));
-
-  await db
-    .prepare(
-      `INSERT INTO admin_users
-       (email, role, status, created_at, updated_at, id, first_name, last_name, phone, note,
-        role_key, is_owner, created_by, last_verified_at, backup_notifications_enabled,
-        receive_security_backup)
-       VALUES (?1, 'admin', 'active', ?2, ?2, ?1, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?2, 1, 0)
-       ON CONFLICT(email) DO UPDATE SET
-         role = 'admin',
-         status = 'active',
-         first_name = excluded.first_name,
-         last_name = excluded.last_name,
-         phone = excluded.phone,
-         note = excluded.note,
-         role_key = excluded.role_key,
-         is_owner = 0,
-         last_verified_at = excluded.last_verified_at,
-         updated_at = excluded.updated_at`
-    )
-    .bind(
-      row.email,
-      now,
-      row.first_name || "",
-      row.last_name || "",
-      row.phone || "",
-      row.note || "",
-      roleKey,
-      row.created_by || "invite"
-    )
-    .run();
-
-  await replaceAdminPermissions({
-    actorEmail: row.created_by || "invite",
-    db,
-    email: row.email,
-    permissions: permissions.length ? permissions : getTemplatePermissions(roleKey),
-    timestamp: now
-  });
-
-  await db
-    .prepare(
-      "UPDATE admin_invites SET status = 'active', verified_at = ?1, updated_at = ?1 WHERE id = ?2"
-    )
-    .bind(now, row.id)
-    .run();
+  let db: D1Database | null = null;
+  let failureStage = "configure_db";
+  let inviteEmail = "";
 
   try {
-    await recordAdminSecurityAudit({
-      action: "admin_invite_verified",
-      actorEmail: row.created_by || "",
-      env,
-      request,
-      targetEmail: row.email
-    });
-  } catch {
-    // Account activation must not fail just because the secondary audit write failed.
-  }
+    db = await getConfiguredDb(env);
+    const now = nowSeconds();
+    failureStage = "lookup_invite";
+    const row = await getInviteByToken({ db, env, token });
+    if (!row) return { ok: false as const, error: "Admin invite is invalid or expired." };
+    inviteEmail = row.email;
 
-  return { ok: true, email: row.email };
+    failureStage = "validate_invite_status";
+    if (!pendingInviteStatuses.has(row.status) && row.status !== "failed") {
+      return { ok: false as const, error: "Admin invite is no longer active." };
+    }
+    if (Number(row.expires_at || 0) <= now) {
+      await db
+        .prepare("UPDATE admin_invites SET status = 'expired', updated_at = ?1 WHERE id = ?2")
+        .bind(now, row.id)
+        .run();
+      return { ok: false as const, error: "Admin invite is expired." };
+    }
+
+    failureStage = "check_existing_admin";
+    const existingAdmin = await db
+      .prepare("SELECT role, is_owner, status FROM admin_users WHERE email = ?1 LIMIT 1")
+      .bind(row.email)
+      .first<{ is_owner?: number | string | null; role: string; status: string }>();
+    if (existingAdmin?.status === "active") {
+      return { ok: false, error: "This admin account is already active." };
+    }
+    if (existingAdmin?.role === "owner" || isTruthy(existingAdmin?.is_owner)) {
+      return { ok: false, error: "The root owner account cannot be modified by invite." };
+    }
+
+    failureStage = "parse_invite_payload";
+    const rolePayload = parseRolePayload(row.role_payload);
+    const roleKey = sanitizeRoleKey(rolePayload.roleKey);
+    const permissions = sanitizePermissions(safeJsonArray(row.permission_payload));
+
+    failureStage = "upsert_admin_user";
+    await db
+      .prepare(
+        `INSERT INTO admin_users
+         (email, role, status, created_at, updated_at, id, first_name, last_name, phone, note,
+          role_key, is_owner, created_by, last_verified_at, backup_notifications_enabled,
+          receive_security_backup)
+         VALUES (?1, 'admin', 'active', ?2, ?2, ?1, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?2, 1, 0)
+         ON CONFLICT(email) DO UPDATE SET
+           role = 'admin',
+           status = 'active',
+           first_name = excluded.first_name,
+           last_name = excluded.last_name,
+           phone = excluded.phone,
+           note = excluded.note,
+           role_key = excluded.role_key,
+           is_owner = 0,
+           last_verified_at = excluded.last_verified_at,
+           updated_at = excluded.updated_at`
+      )
+      .bind(
+        row.email,
+        now,
+        row.first_name || "",
+        row.last_name || "",
+        row.phone || "",
+        row.note || "",
+        roleKey,
+        row.created_by || "invite"
+      )
+      .run();
+
+    failureStage = "replace_permissions";
+    await replaceAdminPermissions({
+      actorEmail: row.created_by || "invite",
+      db,
+      email: row.email,
+      permissions: permissions.length ? permissions : getTemplatePermissions(roleKey),
+      timestamp: now
+    });
+
+    failureStage = "mark_invite_active";
+    await db
+      .prepare(
+        "UPDATE admin_invites SET status = 'active', verified_at = ?1, updated_at = ?1 WHERE id = ?2"
+      )
+      .bind(now, row.id)
+      .run();
+
+    try {
+      await recordAdminSecurityAudit({
+        action: "admin_invite_verified",
+        actorEmail: row.created_by || "",
+        env,
+        request,
+        targetEmail: row.email
+      });
+    } catch {
+      // Account activation must not fail just because the secondary audit write failed.
+    }
+
+    return { ok: true, email: row.email };
+  } catch (error) {
+    await recordAdminInviteVerificationFailure({
+      env,
+      error,
+      request,
+      stage: failureStage,
+      targetEmail: inviteEmail,
+      tokenPresent: Boolean(token)
+    });
+
+    if (db && inviteEmail && failureStage === "mark_invite_active") {
+      return { ok: true as const, email: inviteEmail };
+    }
+
+    return {
+      ok: false as const,
+      error: "Admin invite activation failed. Please ask the owner to resend the invite."
+    };
+  }
 }
 
 export async function getAdminInviteTokenStatus({
@@ -680,11 +713,15 @@ export async function recordAdminInviteVerificationFailure({
   env,
   error,
   request,
+  stage = "unknown",
+  targetEmail = "",
   tokenPresent
 }: {
   env: AdminUserManagementEnv;
   error: unknown;
   request?: Request;
+  stage?: string;
+  targetEmail?: string;
   tokenPresent: boolean;
 }) {
   try {
@@ -694,9 +731,12 @@ export async function recordAdminInviteVerificationFailure({
       env,
       metadata: {
         errorName: error instanceof Error ? error.name : "unknown",
+        message: error instanceof Error ? sanitizeText(error.message, 160) : "",
+        stage: sanitizeText(stage, 80),
         tokenPresent
       },
-      request
+      request,
+      targetEmail
     });
   } catch {
     // Failure logging should never make the public invite page fail harder.

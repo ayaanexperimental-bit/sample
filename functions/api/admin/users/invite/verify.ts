@@ -1,6 +1,5 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import {
-  getAdminInviteTokenStatus,
   recordAdminInviteVerificationFailure,
   verifyAdminInviteToken
 } from "../../../../../lib/server/admin-user-management";
@@ -44,17 +43,8 @@ export async function onRequest({ request, env }: PagesContext) {
 
   try {
     if (request.method === "GET") {
-      const status = await getAdminInviteTokenStatus({ env, request, token });
-      if (!status.ok) {
-        return inviteResultPage({
-          message: status.error || "This admin invite link is invalid or expired.",
-          status: 400,
-          title: "Invite unavailable"
-        });
-      }
-
       return inviteAcceptPage({
-        adminEmail: status.email || "this admin",
+        adminEmail: "this admin",
         status: 200,
         token
       });
@@ -79,6 +69,7 @@ export async function onRequest({ request, env }: PagesContext) {
       env,
       error,
       request,
+      stage: "route",
       tokenPresent: Boolean(token)
     });
     return inviteResultPage({
