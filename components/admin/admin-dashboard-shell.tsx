@@ -7030,6 +7030,7 @@ function SettingsView({
         <>
           {adminAccess?.isOwner ? (
             <button className={styles.primaryAction} onClick={onOpenAdminUsers} type="button">
+              <UserPlusIcon />
               Add / Manage Users
             </button>
           ) : null}
@@ -7114,5 +7115,16 @@ function SettingsView({
         <ActionToast message={settingsMessage} tone="success" />
       ) : null}
     </AdminPageShell>
+  );
+}
+
+function UserPlusIcon() {
+  return (
+    <svg aria-hidden="true" className={styles.buttonIcon} viewBox="0 0 24 24">
+      <path d="M15 19a6 6 0 0 0-12 0" />
+      <path d="M9 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+      <path d="M19 8v6" />
+      <path d="M22 11h-6" />
+    </svg>
   );
 }

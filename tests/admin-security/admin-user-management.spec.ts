@@ -53,6 +53,28 @@ test.describe("admin user management RBAC", () => {
       });
       expect(listBody.permissionDefinitions.length).toBeGreaterThan(8);
 
+      const missingNameInvite = await adminUsersRequest({
+        env,
+        request: jsonRequest(
+          "https://ywcoach.com/api/admin/users",
+          {
+            action: "create_invite",
+            invite: {
+              email: "missing-name@example.com",
+              firstName: "",
+              lastName: "Admin",
+              roleKey: "website_creator"
+            }
+          },
+          { cookie, "x-yw-admin-csrf": csrfToken }
+        )
+      });
+      expect(missingNameInvite.status).toBe(400);
+      expect(await missingNameInvite.json()).toMatchObject({
+        ok: false,
+        error: "First name is required."
+      });
+
       const createInvite = await adminUsersRequest({
         env,
         request: jsonRequest(
@@ -62,6 +84,7 @@ test.describe("admin user management RBAC", () => {
             invite: {
               email: CREATOR_EMAIL,
               firstName: "Creator",
+              lastName: "Admin",
               permissions: [
                 "overview.view",
                 "website_creator.create",
@@ -89,7 +112,12 @@ test.describe("admin user management RBAC", () => {
           "https://ywcoach.com/api/admin/users",
           {
             action: "create_invite",
-            invite: { email: CREATOR_EMAIL, roleKey: "website_creator" }
+            invite: {
+              email: CREATOR_EMAIL,
+              firstName: "Creator",
+              lastName: "Admin",
+              roleKey: "website_creator"
+            }
           },
           { cookie, "x-yw-admin-csrf": csrfToken }
         )
@@ -109,7 +137,7 @@ test.describe("admin user management RBAC", () => {
           "PATCH"
         )
       });
-      expect(ownerSuspend.status).toBe(400);
+      expect(ownerSuspend.status).toBe(403);
       expect(await ownerSuspend.json()).toMatchObject({
         ok: false,
         error: "The root owner account cannot be suspended or revoked."
@@ -147,7 +175,12 @@ test.describe("admin user management RBAC", () => {
           "https://ywcoach.com/api/admin/users",
           {
             action: "create_invite",
-            invite: { email: CREATOR_EMAIL, roleKey: "analytics" }
+            invite: {
+              email: CREATOR_EMAIL,
+              firstName: "Creator",
+              lastName: "Admin",
+              roleKey: "analytics"
+            }
           },
           { cookie, "x-yw-admin-csrf": csrfToken }
         )
@@ -280,6 +313,15 @@ function handleFirst(
   values: unknown[],
   harness: ReturnType<typeof createAdminUsersDb>
 ) {
+  if (statement.includes("COUNT(*) AS count") && statement.includes("FROM admin_invites")) {
+    const actorEmail = String(values[0] || "").toLowerCase();
+    const windowStart = Number(values[1] || 0);
+    return {
+      count: Array.from(harness.invites.values()).filter(
+        (invite) => invite.created_by === actorEmail && Number(invite.created_at || 0) >= windowStart
+      ).length
+    };
+  }
   if (statement.includes("FROM admin_users WHERE role = 'owner'")) {
     return harness.adminUsers.get(OWNER_EMAIL) || null;
   }

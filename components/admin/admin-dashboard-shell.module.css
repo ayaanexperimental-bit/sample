@@ -347,6 +347,18 @@
   text-decoration: none;
 }
 
+.buttonIcon {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  fill: none;
+  margin-right: 0.45rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.1;
+}
+
 .logoutButton {
   border: 1px solid rgb(168 85 137 / 0.18);
   background: rgb(255 255 255 / 0.78);

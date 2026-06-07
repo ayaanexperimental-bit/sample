@@ -70,7 +70,7 @@ export async function onRequest({ request, env }: PagesContext) {
         input: isRecord(body?.invite) ? body.invite : {},
         request
       });
-      return adminJson(result, result.ok ? 200 : 400);
+      return adminJson(result, getAdminUserActionStatus(result));
     }
 
     if (request.method === "POST" && action === "resend_invite") {
@@ -81,7 +81,7 @@ export async function onRequest({ request, env }: PagesContext) {
         inviteId,
         request
       });
-      return adminJson(result, result.ok ? 200 : 400);
+      return adminJson(result, getAdminUserActionStatus(result));
     }
 
     if (request.method === "PATCH" && action === "revoke_invite") {
@@ -92,7 +92,7 @@ export async function onRequest({ request, env }: PagesContext) {
         inviteId,
         request
       });
-      return adminJson(result, result.ok ? 200 : 400);
+      return adminJson(result, getAdminUserActionStatus(result));
     }
 
     if (request.method === "PATCH" && action === "update_admin") {
@@ -102,7 +102,7 @@ export async function onRequest({ request, env }: PagesContext) {
         input: isRecord(body?.user) ? body.user : {},
         request
       });
-      return adminJson(result, result.ok ? 200 : 400);
+      return adminJson(result, getAdminUserActionStatus(result));
     }
 
     if (
@@ -118,7 +118,7 @@ export async function onRequest({ request, env }: PagesContext) {
         env,
         request
       });
-      return adminJson(result, result.ok ? 200 : 400);
+      return adminJson(result, getAdminUserActionStatus(result));
     }
   } catch {
     return adminJson({ ok: false, error: "Admin user action failed safely." }, 503);
@@ -129,4 +129,9 @@ export async function onRequest({ request, env }: PagesContext) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getAdminUserActionStatus(result: { forbidden?: unknown; ok?: unknown }) {
+  if (result.ok) return 200;
+  return result.forbidden ? 403 : 400;
 }

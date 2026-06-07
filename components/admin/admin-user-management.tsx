@@ -354,6 +354,7 @@ export function AdminUserManagement({
     <AdminPageShell
       actions={
         <button className={styles.primaryAction} onClick={openInviteWizard} type="button">
+          <UserPlusIcon />
           Add New Admin
         </button>
       }
@@ -640,6 +641,7 @@ export function AdminUserManagement({
           <input
             autoComplete="given-name"
             onChange={(event) => setForm((current) => ({ ...current, firstName: event.target.value }))}
+            required
             value={form.firstName}
           />
         </label>
@@ -648,6 +650,7 @@ export function AdminUserManagement({
           <input
             autoComplete="family-name"
             onChange={(event) => setForm((current) => ({ ...current, lastName: event.target.value }))}
+            required
             value={form.lastName}
           />
         </label>
@@ -755,6 +758,17 @@ export function AdminUserManagement({
   function getRoleLabel(roleKey: string) {
     return roleTemplates.find((role) => role.key === roleKey)?.label || (roleKey === "owner" ? "Owner" : "Custom");
   }
+}
+
+function UserPlusIcon() {
+  return (
+    <svg aria-hidden="true" className={styles.buttonIcon} viewBox="0 0 24 24">
+      <path d="M15 19a6 6 0 0 0-12 0" />
+      <path d="M9 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+      <path d="M19 8v6" />
+      <path d="M22 11h-6" />
+    </svg>
+  );
 }
 
 function WizardSteps({ activeStep }: { activeStep: number }) {

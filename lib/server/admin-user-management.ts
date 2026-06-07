@@ -14,6 +14,7 @@ const textEncoder = new TextEncoder();
 
 const INVITE_TTL_SECONDS = 48 * 60 * 60;
 const MAX_INVITE_RESENDS = 3;
+const MAX_INVITES_PER_OWNER_PER_HOUR = 20;
 
 type AdminUserManagementEnv = AdminRbacEnv & {
   ADMIN_EMAIL_OTP_FROM?: string;
@@ -169,6 +170,18 @@ export async function createAdminInvite({
 
   if (parsed.email === normalizeEmail(actorEmail)) {
     return { ok: false, error: "Owner is already active. Do not invite the current owner." };
+  }
+  const inviteWindowStart = nowSeconds() - 60 * 60;
+  const recentInviteCount = await db
+    .prepare(
+      `SELECT COUNT(*) AS count
+       FROM admin_invites
+       WHERE created_by = ?1 AND created_at >= ?2`
+    )
+    .bind(normalizeEmail(actorEmail), inviteWindowStart)
+    .first<{ count?: number | string | null }>();
+  if (Number(recentInviteCount?.count || 0) >= MAX_INVITES_PER_OWNER_PER_HOUR) {
+    return { ok: false, error: "Admin invite rate limit reached. Try again later." };
   }
 
   const existingAdmin = await db
@@ -390,7 +403,19 @@ export async function updateManagedAdmin({
     .first<{ email: string; is_owner?: number | string | null; role: string; status: string }>();
   if (!row) return { ok: false, error: "Admin user not found." };
   if (row.role === "owner" || isTruthy(row.is_owner)) {
-    return { ok: false, error: "The root owner account cannot be changed from this panel." };
+    await recordAdminSecurityAudit({
+      action: "owner_modification_blocked",
+      actorEmail,
+      env,
+      metadata: { attemptedAction: "update_admin" },
+      request,
+      targetEmail: email
+    });
+    return {
+      ok: false,
+      error: "The root owner account cannot be changed from this panel.",
+      forbidden: true
+    };
   }
 
   const roleKey = sanitizeRoleKey(typeof input.roleKey === "string" ? input.roleKey : "custom");
@@ -468,7 +493,19 @@ export async function setManagedAdminStatus({
     .first<{ email: string; is_owner?: number | string | null; role: string; status: string }>();
   if (!row) return { ok: false, error: "Admin user not found." };
   if (row.role === "owner" || isTruthy(row.is_owner)) {
-    return { ok: false, error: "The root owner account cannot be suspended or revoked." };
+    await recordAdminSecurityAudit({
+      action: "owner_modification_blocked",
+      actorEmail,
+      env,
+      metadata: { attemptedAction: `admin_user_${action}` },
+      request,
+      targetEmail: normalizedEmail
+    });
+    return {
+      ok: false,
+      error: "The root owner account cannot be suspended or revoked.",
+      forbidden: true
+    };
   }
 
   const nextStatus = action === "reactivate" ? "active" : action === "suspend" ? "disabled" : "inactive";
@@ -627,6 +664,11 @@ async function getInviteById(db: D1Database, inviteId: string) {
 function parseInviteInput(input: InviteInput) {
   const email = normalizeEmail(typeof input.email === "string" ? input.email : "");
   if (!isValidEmail(email)) return { ok: false as const, error: "Valid admin email is required." };
+  const firstName = sanitizeText(input.firstName, 80);
+  const lastName = sanitizeText(input.lastName, 80);
+
+  if (!firstName) return { ok: false as const, error: "First name is required." };
+  if (!lastName) return { ok: false as const, error: "Last name is required." };
 
   const roleKey = sanitizeRoleKey(typeof input.roleKey === "string" ? input.roleKey : "custom");
   const permissions =
@@ -641,8 +683,8 @@ function parseInviteInput(input: InviteInput) {
   return {
     ok: true as const,
     email,
-    firstName: sanitizeText(input.firstName, 80),
-    lastName: sanitizeText(input.lastName, 80),
+    firstName,
+    lastName,
     note: sanitizeText(input.note, 500),
     permissions,
     phone: sanitizeText(input.phone, 40),
