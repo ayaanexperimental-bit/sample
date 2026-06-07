@@ -2894,7 +2894,7 @@ function AnalyticsAiWidget({
 
     try {
       const minimumVisibleWorkState = new Promise<void>((resolve) =>
-        window.setTimeout(resolve, 760)
+        window.setTimeout(resolve, 900)
       );
       const selectedTask = action.onSelect
         ? Promise.resolve(action.onSelect())
@@ -3049,14 +3049,14 @@ function AnalyticsAiWidget({
       <button
         aria-expanded={open}
         aria-busy={busy}
-        aria-label={eyebrow}
+        aria-label={busy ? `${eyebrow}: generating report` : eyebrow}
         className={styles.aiAssistantButton}
         data-admin-tooltip={eyebrow}
         data-loading={busy ? "true" : "false"}
         onClick={() => setOpen((current) => !current)}
         type="button"
       >
-        {busy ? "..." : "AI"}
+        {busy ? "AI..." : "AI"}
       </button>
       {panel && typeof document !== "undefined" ? createPortal(panel, document.body) : panel}
     </div>
@@ -4103,12 +4103,21 @@ function InsightList({ coach }: { coach: CoachAnalyticsRow }) {
 }
 
 function formatAiInsightItems(insight: AdminAiAnalyticsInsight) {
+  const keyTrends = Array.isArray(insight.keyTrends) ? insight.keyTrends : [];
+  const recommendations = Array.isArray(insight.recommendations) ? insight.recommendations : [];
+  const predictions = Array.isArray(insight.predictions) ? insight.predictions : [];
+  const warnings = Array.isArray(insight.warnings) ? insight.warnings : [];
+  const summary =
+    typeof insight.summary === "string" && insight.summary.trim()
+      ? insight.summary.trim()
+      : "AI report completed.";
+
   return [
-    `Summary: ${insight.summary}`,
-    ...insight.keyTrends.map((item) => `Trend: ${item}`),
-    ...insight.recommendations.map((item) => `Action: ${item}`),
-    ...insight.predictions.map((item) => `Likely prediction: ${item}`),
-    ...insight.warnings.map((item) => `Warning: ${item}`)
+    `Summary: ${summary}`,
+    ...keyTrends.map((item) => `Trend: ${item}`),
+    ...recommendations.map((item) => `Action: ${item}`),
+    ...predictions.map((item) => `Likely prediction: ${item}`),
+    ...warnings.map((item) => `Warning: ${item}`)
   ].slice(0, 10);
 }
 
@@ -5307,14 +5316,30 @@ function ErrorReportsView({
   const [errorAiStatus, setErrorAiStatus] = useState("");
   const [errorAiCache, setErrorAiCache] = useState("");
   const [highlightedReportId, setHighlightedReportId] = useState("");
+  const [reportStatusOverrides, setReportStatusOverrides] = useState<
+    Record<string, { status: AdminErrorReport["status"]; updatedAt: string }>
+  >({});
   const isLiveSource = source === "d1_table";
   const isLoadingSource = source === "loading";
   const cleanupConfirmed =
     cleanupConfirmation.trim().toUpperCase() === ERROR_REPORT_CLEANUP_CONFIRMATION;
-  const reportCounts = useMemo(() => getErrorReportCounts(errorReports), [errorReports]);
+  const displayErrorReports = useMemo(
+    () =>
+      errorReports.map((report) => {
+        const override = reportStatusOverrides[report.referenceId];
+        return override
+          ? { ...report, status: override.status, updatedAt: override.updatedAt }
+          : report;
+      }),
+    [errorReports, reportStatusOverrides]
+  );
+  const reportCounts = useMemo(
+    () => getErrorReportCounts(displayErrorReports),
+    [displayErrorReports]
+  );
   const visibleErrorReports = useMemo(
-    () => getFilteredErrorReports(errorReports, reportFilter),
-    [errorReports, reportFilter]
+    () => getFilteredErrorReports(displayErrorReports, reportFilter),
+    [displayErrorReports, reportFilter]
   );
   const promptReport =
     reportFilter === "all"
@@ -5424,6 +5449,7 @@ function ErrorReportsView({
           status
         }),
         cache: "no-store",
+        credentials: "include",
         headers: {
           "content-type": "application/json",
           [ADMIN_CSRF_HEADER_NAME]: csrfToken
@@ -5447,6 +5473,10 @@ function ErrorReportsView({
           ? { ...item, status, updatedAt }
           : item
       );
+      setReportStatusOverrides((current) => ({
+        ...current,
+        [report.referenceId]: { status, updatedAt }
+      }));
       onReportsChange(updatedReports);
       setHighlightedReportId(report.referenceId);
       setSelectedReport((current) => {
@@ -5522,6 +5552,15 @@ function ErrorReportsView({
             )
           : payload.errorReports;
 
+        if (options.preserveUpdatedReport) {
+          setReportStatusOverrides((current) => ({
+            ...current,
+            [options.preserveUpdatedReport!.referenceId]: {
+              status: options.preserveUpdatedReport!.status,
+              updatedAt: options.preserveUpdatedReport!.updatedAt
+            }
+          }));
+        }
         onReportsChange(refreshedReports);
       }
     } catch {
@@ -6822,6 +6861,9 @@ function SettingsView({
   onAction: (title: string, body: string) => void;
 }) {
   const [settingsMessage, setSettingsMessage] = useState("");
+  const [settingsAction, setSettingsAction] = useState<"" | "support">("");
+  const [highlightedSettings, setHighlightedSettings] = useState("");
+  const settingsHighlightTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!settingsMessage) return;
@@ -6831,10 +6873,45 @@ function SettingsView({
     return () => window.clearTimeout(timeout);
   }, [settingsMessage]);
 
-  function openSupportSettings() {
-    setSettingsMessage("Support settings opened.");
+  useEffect(
+    () => () => {
+      if (settingsHighlightTimerRef.current !== null) {
+        window.clearTimeout(settingsHighlightTimerRef.current);
+      }
+    },
+    []
+  );
+
+  function highlightSettingsResult(sectionId: string) {
+    setHighlightedSettings(sectionId);
+
+    if (settingsHighlightTimerRef.current !== null) {
+      window.clearTimeout(settingsHighlightTimerRef.current);
+    }
+
+    settingsHighlightTimerRef.current = window.setTimeout(() => {
+      setHighlightedSettings("");
+      settingsHighlightTimerRef.current = null;
+    }, 2200);
+  }
+
+  async function openSupportSettings() {
+    if (settingsAction) return;
+
+    setSettingsAction("support");
+    setSettingsMessage("");
     onAdminActivity({
-      detail: "Support settings information opened.",
+      detail: "Reviewing support fallback settings.",
+      label: "Settings",
+      status: "working"
+    });
+
+    await waitForActionFeedback();
+
+    setSettingsMessage("Support settings ready.");
+    highlightSettingsResult("support");
+    onAdminActivity({
+      detail: "Support fallback settings opened and highlighted.",
       label: "Settings",
       status: "success"
     });
@@ -6842,23 +6919,43 @@ function SettingsView({
       "Support Settings",
       "Default Yours Wellness support is used only on error or unavailable fallback pages when coach-specific support details are missing. Coach details stay editable inside the Coach Site builder."
     );
+    setSettingsAction("");
   }
 
   return (
     <AdminPageShell
       actions={
         <button
+          aria-busy={settingsAction === "support"}
           className={styles.secondaryAction}
-          onClick={openSupportSettings}
+          data-loading={settingsAction === "support" ? "true" : "false"}
+          disabled={Boolean(settingsAction)}
+          onClick={() => void openSupportSettings()}
           type="button"
         >
-          Support Settings
+          {settingsAction === "support" ? "Opening..." : "Support Settings"}
         </button>
       }
       eyebrow="Settings"
       title="Settings"
     >
-      <section className={styles.settingsPanelList} aria-label="Admin settings summary">
+      {settingsAction === "support" ? (
+        <ActionProgressCard
+          label="Opening support settings"
+          progress={64}
+          steps={[
+            "Checking current fallback rules",
+            "Keeping coach-specific data protected",
+            "Opening the support settings summary"
+          ]}
+        />
+      ) : null}
+
+      <section
+        className={styles.settingsPanelList}
+        aria-label="Admin settings summary"
+        data-highlight={highlightedSettings === "support" ? "true" : undefined}
+      >
         <article data-tone="success">
           <div>
             <strong>Admin access</strong>

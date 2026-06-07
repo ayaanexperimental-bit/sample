@@ -2251,6 +2251,10 @@
   padding: 0.85rem;
 }
 
+.settingsPanelList[data-highlight="true"] article {
+  animation: adminResultHighlight 2200ms ease-out;
+}
+
 .settingsPanelList article[data-tone="success"] {
   border-color: rgb(8 122 115 / 0.18);
 }
@@ -2707,7 +2711,7 @@
 }
 
 .analyticsHeroPanel + .analyticsKpiGrid {
-  margin-top: 0.15rem;
+  margin-top: 1rem;
 }
 
 .analyticsHeroPanel > div {
@@ -2851,7 +2855,7 @@
 }
 
 .aiAssistantButton {
-  min-width: 2.8rem;
+  min-width: 3.25rem;
   min-height: 2.6rem;
   border: 1px solid rgb(255 255 255 / 0.58);
   border-radius: 999px;
@@ -2895,12 +2899,13 @@
   top: clamp(0.75rem, 2vw, 1.25rem);
   right: clamp(0.75rem, 2vw, 1.25rem);
   z-index: 140;
-  width: min(30rem, calc(100vw - 1.5rem));
+  width: min(34rem, calc(100vw - 1.5rem));
   max-height: calc(100dvh - clamp(1.5rem, 4vw, 2.5rem));
   display: grid;
-  grid-template-rows: auto minmax(0, auto) auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, auto) auto minmax(8rem, 1fr) auto;
   gap: 0.75rem;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
   border: 1px solid rgb(224 218 232);
   border-radius: 1rem;
@@ -2961,8 +2966,9 @@
 .aiAssistantActions {
   display: grid;
   gap: 0.45rem;
-  max-height: min(12rem, 26dvh);
-  overflow: auto;
+  max-height: min(10rem, 24dvh);
+  overflow-x: hidden;
+  overflow-y: auto;
   padding-right: 0.08rem;
   scrollbar-width: thin;
 }
@@ -2979,7 +2985,7 @@
   background: rgb(255 255 255 / 0.72);
   color: #332435;
   cursor: pointer;
-  padding: 0.62rem 0.7rem;
+  padding: 0.58rem 0.68rem;
   text-align: left;
 }
 
@@ -3018,7 +3024,7 @@
   display: grid;
   gap: 0.45rem;
   min-height: 0;
-  max-height: min(20rem, 38dvh);
+  max-height: min(22rem, 42dvh);
   overflow: auto;
   border: 1px solid rgb(8 122 115 / 0.12);
   border-radius: 0.85rem;
@@ -3103,7 +3109,7 @@
   display: grid;
   gap: 0.35rem;
   max-height: none;
-  overflow: auto;
+  overflow: visible;
   margin: 0;
   padding-left: 1.05rem;
   scrollbar-width: thin;
@@ -3114,6 +3120,7 @@
   font-size: 0.78rem;
   font-weight: 780;
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .aiAssistantMeta {
@@ -3537,6 +3544,7 @@
   .archiveMenu[data-highlight="true"],
   .paidLinkCard[data-highlight="true"],
   .manageDialog[data-highlight="true"],
+  .settingsPanelList[data-highlight="true"] article,
   .table tr[data-highlight="true"] {
     animation: none;
     outline: 2px solid rgb(8 122 115 / 0.22);
@@ -4999,6 +5007,8 @@
   }
 
   .aiAssistantPanel {
+    display: flex;
+    flex-direction: column;
     top: 0;
     right: 0;
     bottom: 0;
@@ -5007,10 +5017,27 @@
     width: auto;
     height: 100dvh;
     max-height: none;
+    overflow-x: hidden;
+    overflow-y: auto;
     border-radius: 0;
     background:
       radial-gradient(circle at 10% 0%, rgb(255 237 246), transparent 11rem),
       linear-gradient(145deg, #ffffff, #f8fafc);
+  }
+
+  .aiAssistantActions {
+    flex: 0 0 auto;
+    max-height: 34dvh;
+  }
+
+  .aiAssistantLoading,
+  .aiAssistantResult {
+    flex: 1 1 auto;
+  }
+
+  .aiAssistantResult {
+    max-height: none;
+    min-height: 8rem;
   }
 
   .activityCenter {
@@ -5191,7 +5218,8 @@
   gap: 0.75rem;
   min-height: 12rem;
   max-height: min(34rem, 48vh);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: contain;
   border: 1px solid rgb(20 184 166 / 0.24);
   border-radius: 1rem;
@@ -5263,7 +5291,7 @@
 
 .errorReportCard {
   display: grid;
-  grid-template-columns: minmax(13rem, 0.8fr) minmax(0, 1.4fr) auto;
+  grid-template-columns: minmax(11rem, 0.78fr) minmax(0, 1.45fr) minmax(7.4rem, auto);
   gap: 0.85rem;
   align-items: center;
   min-width: 0;
@@ -5372,6 +5400,12 @@
   display: flex;
   justify-content: flex-end;
   gap: 0.45rem;
+  min-width: 0;
+}
+
+.errorReportActions .secondaryAction,
+.errorReportActions .iconAction {
+  min-width: 0;
 }
 
 .errorReportActions button[data-loading="true"] {

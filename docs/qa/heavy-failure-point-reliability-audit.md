@@ -11,6 +11,7 @@ Old `.md` files ignored: yes. This report only tracks the current `robust testin
 The current implementation strengthens the highest-risk admin and coach-site reliability gaps found in the active source-of-truth file:
 
 - Admin AI buttons now show a body-level working/result drawer instead of cramped content spilling into the page; the drawer is viewport-contained on desktop and mobile.
+- Admin AI result rendering now tolerates malformed/missing insight arrays so a bad AI payload does not crash the admin panel into the global support fallback.
 - Error Reports now default to Active issues, and Mark Fixed updates the UI immediately without requiring refresh.
 - Clear Old Error Reports now has confirmation-locked destructive progress feedback, a bin animation, duplicate-click protection, refreshed counts/list state, and a brief success state before the dialog closes.
 - Backup/Cleanup now keeps protected backup/test-email/cleanup dialogs open while the request runs, disables duplicate/cancel ambiguity during work, briefly holds success, and highlights the affected status section after completion.
@@ -101,7 +102,8 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 
 1. AI report drawer could visually overlap and mash results into underlying content, especially when opened from admin page action areas.
 2. Mark Fixed updated the server but stale UI could leave the report in Active.
-3. Clear Old Error Reports needed an action-specific delete/progress animation and a visible completion state.
+3. Malformed AI insight payloads could make the admin client read `.map()` on missing arrays and show the emergency Contact Support fallback instead of a safe admin-side AI message.
+4. Clear Old Error Reports needed an action-specific delete/progress animation and a visible completion state.
 4. Save Draft had no loading state and no duplicate-click guard.
 5. Coach template content model did not cover all visible template text slots.
 6. Mobile Error Reports safe-message text could be clipped by line clamping.
@@ -114,6 +116,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 
 - AI actions were synchronous from the UI perspective and did not keep a guaranteed working state visible.
 - The AI drawer originally lived inside the admin page action cluster, so fixed/static positioning could inherit cramped layout or scroll offsets.
+- The AI result formatter trusted all server fields blindly instead of defensively normalizing arrays and summary text.
 - Error Reports state refresh could reintroduce stale status before the UI reflected the mutation.
 - Clear Old Error Reports used a basic busy state instead of the destructive-action progress pattern required by the source of truth.
 - Save Draft reused the generic upsert flow without its own action state.
@@ -123,6 +126,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 ## Fixes Applied
 
 - Added async AI action handling, minimum visible working state, working-step copy, error state, backdrop, and contained scrollable AI drawer rendered through a body-level React portal.
+- Added defensive AI insight formatting so missing `keyTrends`, `recommendations`, `predictions`, `warnings`, or summary text cannot crash the admin panel.
 - Added Error Reports optimistic status update, status-preserving refetch, row highlight, loading state, and toast.
 - Added delete/clear `ActionProgressCard` variant with bin animation, reduced-motion fallback, disabled duplicate close/cancel while clearing, refreshed-list verification, and success hold.
 - Added Save Draft `draftSubmitting` state/ref, disabled duplicate clicks, and `Saving...` button text.
@@ -137,7 +141,7 @@ The current implementation strengthens the highest-risk admin and coach-site rel
 
 ## Error Fallbacks Added Or Updated
 
-No new public error-code fallback was added in this pass because the changed flows are admin UI state handling and content-slot normalization. The reliability rule was followed: fix the working flow first, keep Contact Support as the existing emergency fallback only.
+No new public error-code fallback was added in this pass because the changed flows are admin UI state handling and AI report rendering. The reliability rule was followed: the malformed AI payload crash path was prevented with defensive formatting first, and Contact Support remains the existing emergency fallback only.
 
 ## Codebase Risk Patterns Found
 
@@ -171,6 +175,7 @@ No new public error-code fallback was added in this pass because the changed flo
 - `pnpm lint`
 - `pnpm build`
 - Local Playwright/Chromium smoke tests through Node for admin Error Reports Mark Fixed, Fixed tab, AI drawer loading/result states, Clear Old Error Reports progress/success, Save Draft feedback, Website Creator preview inspect/edit/regenerate, public coach page breakpoints, and portal-based mobile drawer containment.
+- Local Playwright/Chromium smoke tests through Node for Overview AI loading/result states and Error Reports AI loading/result states at desktop and 390px mobile.
 - Local Playwright/Chromium smoke tests through `@playwright/test` for Backup/Cleanup backup/test-email/cleanup feedback, Coach Sites delete draft, pause/resume, archive/reactivate, desktop/mobile overflow, row/section highlight, and console health.
 - Local Playwright/Chromium smoke tests through `@playwright/test` for Coach Analytics detail report generation, copy feedback, AI insight generation feedback, report/AI highlight, desktop/mobile overflow, and console health.
 - Local Playwright/Chromium smoke tests through `@playwright/test` for Paid Masterclass OTP send, private WhatsApp reveal/copy, payment link update, private WhatsApp update, desktop/mobile overflow, row/dialog highlight, and console health.
@@ -183,9 +188,9 @@ No new public error-code fallback was added in this pass because the changed flo
 
 ## Latest Rebuilt-Server Evidence
 
-Rendered UI test environment: `http://127.0.0.1:4207/admin/dashboard` using a rebuilt `next start` production server with protected local API route mocks.
+Rendered UI test environment: `http://127.0.0.1:4210/admin/dashboard` using a rebuilt `next start` production server with protected local API route mocks.
 
-Browser plugin status: attempted first through tool discovery, but this session exposed no usable Browser/Chrome control tool. Fallback used: Playwright/Chromium through `@playwright/test`.
+Browser plugin status: attempted first through tool discovery. The Browser bridge attached but did not expose the documented `browser.documentation()` control API in this session, so fallback used Playwright/Chromium through `@playwright/test`.
 
 Focused test result:
 
@@ -195,6 +200,10 @@ Focused test result:
 - Fixed tab contained the marked report.
 - AI assistant showed `Generating report...` before showing result.
 - AI assistant result panel had scroll containment and no body overflow.
+- Overview AI button changed to `AI...` while generating; final generated result text appeared after loading.
+- Overview AI desktop panel bounds: `x=876`, `y=20`, `width=544`, `height=631.5`; result box `513.2x204.9`; body overflow `false`.
+- Overview AI mobile panel bounds: `x=0`, `y=0`, `width=390`, `height=844`; result box `359.2x355.2`; body overflow `false`.
+- Error Reports AI desktop result box `513.2x112.6`; mobile result box `359.2x458.9`; body overflow `false` for both.
 - Clear Old Error Reports showed delete progress icon and success text.
 - Desktop body overflow: `false`.
 - Mobile 390px body overflow: `false`.
@@ -213,6 +222,14 @@ Local screenshots saved under:
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\error-reports-fixed-flow-desktop.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\error-reports-ai-drawer-desktop-portal.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\error-reports-ai-drawer-mobile-portal.png`
+- `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\overview-ai-assistant-desktop.png`
+- `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\overview-ai-assistant-mobile.png`
+- `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\ai-error-assistant-desktop.png`
+- `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\ai-error-assistant-mobile.png`
+- `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\error-reports-active-before-desktop.png`
+- `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\error-reports-fixed-all-desktop.png`
+- `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\error-reports-active-before-mobile.png`
+- `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\error-reports-fixed-all-mobile.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\creator-save-draft-feedback-desktop.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\error-reports-mobile-final.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\backup-cleanup-progress-highlight.png`

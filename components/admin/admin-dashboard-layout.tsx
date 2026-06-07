@@ -102,6 +102,7 @@ export function AdminSidebar({
               {section.items.map((item) => (
                 <button
                   aria-current={activeView === item.id ? "page" : undefined}
+                  aria-label={`${item.label}: ${item.description}`}
                   className={styles.navButton}
                   data-active={activeView === item.id ? "true" : "false"}
                   key={item.id}
