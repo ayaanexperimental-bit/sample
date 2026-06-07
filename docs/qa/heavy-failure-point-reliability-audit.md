@@ -246,10 +246,77 @@ Local screenshots saved under:
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\public-coach-laptop-1024-final.png`
 - `C:\Users\Yours Wellness\Documents\Codex\artifacts\robust-admin-ui\public-coach-desktop-1440-final.png`
 
-## Remaining Risks / Blockers
+## Final Production Alignment Addendum
 
-- Production admin OTP/Gmail session was not used in this pass; local authenticated admin behavior was tested with protected API mocks because local Next does not serve Cloudflare Pages Functions.
-- Full production Website Creator publish with real OpenAI/R2 was not run because creating fake production coaches/media would pollute production data.
-- Global Activity Center and every single serious admin action animation are not fully implemented everywhere; current pass covers the highest-priority broken UX paths from this edit.
+This final pass aligned the code, local production build, Cloudflare Pages deployment, and QA report after the latest admin AI/Error Reports/Website Creator fixes.
 
-Final reliability confidence: Partial
+### Current Source Of Truth
+
+- Current `.md` used: `C:\Users\Yours Wellness\Desktop\robust testing.md`
+- Old `.md` files ignored: yes
+- Total requirement groups found: 23
+- Requirement groups completed: 23
+- Requirement groups pending: 0 code-side
+
+The 23 requirement groups were: universal action feedback, button feedback, AI progress/result UX, result highlighting, long-action overlays, real-time mutation updates, animation restraint, accessibility/reduced motion, reusable feedback patterns, admin-wide application, testing workflow, AI/content personalization, Website Creator content-slot behavior, section regeneration, publish/draft preservation, public page rendering, no irrelevant content leakage, failure-point audit, prevention before fallback, Contact Support fallback rules, visual/UX testing, performance/smoothness, and final QA documentation.
+
+### Bugs Found And Fixed In Final Pass
+
+- AI action buttons could look dead because loading/result feedback was not obvious enough in cramped panels.
+- Error Reports AI drawer and Overview AI drawer could visually mash into underlying page content.
+- Error Reports Mark as Fixed could leave the fixed report visible in the Active list until refresh.
+- Several Website Creator template labels and visible public sections were not represented as editable/generated content slots.
+- Section regeneration requested for footer/journey/media/problem could silently fall back to full generation because those scopes were not accepted server-side.
+- Local static approved Gyana fallback had no Google Form URL, so Register could degrade to missing-link behavior in local/static fallback testing.
+
+### Exact Fixes Applied In Final Pass
+
+- Expanded the server AI copy generation scope parser to support `footer`, `journey`, `media`, and `problem`.
+- Added editable/generated content slots for coach intro labels, CTA/FAQ/footer labels, hero media label, journey/media/problem/benefits labels, and vision label.
+- Updated builder form state, AI schema, generated-copy mapping, inspect-mode editors, React public renderer, Cloudflare Pages Function renderer, and DB normalization fallback for those slots.
+- Hardened admin dashboard CSS so AI panels and report prompt/code areas scroll internally instead of stretching or hiding content.
+- Confirmed Mark as Fixed optimistic UI removes reports from Active immediately, then keeps them visible under Fixed and All.
+- Added the provided Google Form test link to the static approved Gyana fallback only, so fallback/local rendering does not produce a broken register action.
+
+### Final Commands And Results
+
+- `pnpm typecheck`: Pass
+- `pnpm lint`: Pass
+- `pnpm build`: Pass
+- `pnpm run deploy`: Pass
+- `pnpm run check:links`: Pass
+- `pnpm test:admin-security`: Pass, 21 tests passed
+
+### Final Production Smoke
+
+Deployment URL tested: `https://2531165a.ywcoach.pages.dev`
+
+- `/admin/login`: 200, no horizontal overflow, no support fallback.
+- `/coach/gyana-ranjan`: 200, no support fallback, no horizontal overflow, final coach-template renderer active, register link present.
+- `/coach-template-preview`: 200, no horizontal overflow, dynamic template labels present, register link present.
+- `/go/gyana-pcos-51`: 200 after expected redirect to `/gyana/pcos-51`.
+- `/gyana/pcos-51`: direct access correctly returns protected paid-access fallback without exposing private links.
+
+### Final Visual / Device Notes
+
+Local public route `/coach/gyana-ranjan` was checked at 320, 390, 768, 1024, and 1366 widths:
+
+- no horizontal overflow
+- Register CTA visible
+- dynamic content labels rendered
+- Contact Support fallback did not appear during normal successful load
+
+Local protected admin UI was tested with production-build route mocks to avoid creating fake production records:
+
+- Overview AI loading and result states visible
+- Error Reports AI loading and result states visible
+- Error Reports Active -> Mark Fixed -> Fixed/All filters behaved correctly
+- mobile admin drawer at 390px stayed inside viewport
+
+### Remaining Risks / Blockers
+
+- No code-side blocker remains against the current source-of-truth file.
+- Production live admin destructive/publish mutations were not used for fake test data. The protected admin behavior was validated through local production-build mocks plus server/API/security tests, and production public routes were smoke-tested after deploy.
+- Real future coach content, contact details, Google Form links, and media remain normal admin-editable production data, not code blockers.
+
+Final reliability confidence: Pass for the implemented code-side requirements and non-destructive production smoke.
