@@ -131,8 +131,12 @@ function parseCopyScope(value: unknown): CoachCopyAiInput["scope"] {
   return value === "benefits" ||
     value === "cta" ||
     value === "faq" ||
+    value === "footer" ||
     value === "hero" ||
     value === "intro" ||
+    value === "journey" ||
+    value === "media" ||
+    value === "problem" ||
     value === "vision"
     ? value
     : "all";

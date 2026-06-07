@@ -111,19 +111,26 @@ type GeneratedCoachCopy = {
   brandBadge?: string;
   brandEyebrow?: string;
   coachIntro?: string;
+  coachIntroLabel?: string;
   ctaText?: string;
+  ctaSectionLabel?: string;
   faqHeading?: string;
+  faqSectionLabel?: string;
   faq?: Array<{
     answer: string;
     question: string;
   }>;
+  footerBrandLine?: string;
   footerHeadline?: string;
   footerText?: string;
+  heroMediaLabel?: string;
   heroMicroTrustText?: string;
   heroHeadline?: string;
   heroTrustLine?: string;
   introHeading?: string;
+  introSectionLabel?: string;
   journeyHeading?: string;
+  journeySectionLabel?: string;
   journeySteps?: Array<{
     description: string;
     label: string;
@@ -131,12 +138,16 @@ type GeneratedCoachCopy = {
   }>;
   mediaBody?: string;
   mediaHeading?: string;
+  mediaModuleLabel?: string;
   mediaSubheading?: string;
   problemHeading?: string;
+  problemSectionLabel?: string;
   problemPoints?: string[];
+  benefitsSectionLabel?: string;
   socialCopy?: string;
   subheadline?: string;
   trustText?: string;
+  visionLabel?: string;
   visionText?: string;
 };
 
@@ -404,6 +415,7 @@ function applyGeneratedCopyToForm(
       brandBadge: content.brandBadge || current.brandBadge,
       brandEyebrow: content.brandEyebrow || current.brandEyebrow,
       heroHeadline: content.heroHeadline || current.heroHeadline,
+      heroMediaLabel: content.heroMediaLabel || current.heroMediaLabel,
       heroMicroTrustText: content.heroMicroTrustText || current.heroMicroTrustText,
       heroTrustLine: content.heroTrustLine || current.heroTrustLine,
       subheadline: content.subheadline || current.subheadline
@@ -414,6 +426,7 @@ function applyGeneratedCopyToForm(
     return {
       ...current,
       benefitDescriptionsText,
+      benefitsSectionLabel: content.benefitsSectionLabel || current.benefitsSectionLabel,
       benefitsHeading: content.benefitsHeading || current.benefitsHeading,
       benefitsText
     };
@@ -423,6 +436,7 @@ function applyGeneratedCopyToForm(
     return {
       ...current,
       faqHeading: content.faqHeading || current.faqHeading,
+      faqSectionLabel: content.faqSectionLabel || current.faqSectionLabel,
       faqText
     };
   }
@@ -430,14 +444,17 @@ function applyGeneratedCopyToForm(
   if (scope === "intro") {
     return {
       ...current,
+      coachIntroLabel: content.coachIntroLabel || current.coachIntroLabel,
       coachIntro: content.coachIntro || current.coachIntro,
-      introHeading: content.introHeading || current.introHeading
+      introHeading: content.introHeading || current.introHeading,
+      introSectionLabel: content.introSectionLabel || current.introSectionLabel
     };
   }
 
   if (scope === "vision") {
     return {
       ...current,
+      visionLabel: content.visionLabel || current.visionLabel,
       visionText: content.visionText || current.visionText
     };
   }
@@ -445,6 +462,7 @@ function applyGeneratedCopyToForm(
   if (scope === "cta") {
     return {
       ...current,
+      ctaSectionLabel: content.ctaSectionLabel || current.ctaSectionLabel,
       ctaText: content.ctaText || current.ctaText,
       trustText: content.trustText || current.trustText
     };
@@ -454,6 +472,7 @@ function applyGeneratedCopyToForm(
     return {
       ...current,
       problemHeading: content.problemHeading || current.problemHeading,
+      problemSectionLabel: content.problemSectionLabel || current.problemSectionLabel,
       problemPointsText,
       trustText: content.trustText || current.trustText
     };
@@ -463,6 +482,7 @@ function applyGeneratedCopyToForm(
     return {
       ...current,
       journeyHeading: content.journeyHeading || current.journeyHeading,
+      journeySectionLabel: content.journeySectionLabel || current.journeySectionLabel,
       journeyStepsText
     };
   }
@@ -472,6 +492,7 @@ function applyGeneratedCopyToForm(
       ...current,
       mediaBody: content.mediaBody || current.mediaBody,
       mediaHeading: content.mediaHeading || current.mediaHeading,
+      mediaModuleLabel: content.mediaModuleLabel || current.mediaModuleLabel,
       mediaSubheading: content.mediaSubheading || current.mediaSubheading
     };
   }
@@ -479,6 +500,7 @@ function applyGeneratedCopyToForm(
   if (scope === "footer") {
     return {
       ...current,
+      footerBrandLine: content.footerBrandLine || current.footerBrandLine,
       footerHeadline: content.footerHeadline || current.footerHeadline,
       footerText: content.footerText || current.footerText
     };
@@ -491,27 +513,38 @@ function applyGeneratedCopyToForm(
     benefitsText,
     brandBadge: content.brandBadge || current.brandBadge,
     brandEyebrow: content.brandEyebrow || current.brandEyebrow,
+    coachIntroLabel: content.coachIntroLabel || current.coachIntroLabel,
     coachIntro: content.coachIntro || current.coachIntro,
+    ctaSectionLabel: content.ctaSectionLabel || current.ctaSectionLabel,
     ctaText: content.ctaText || current.ctaText,
     faqHeading: content.faqHeading || current.faqHeading,
+    faqSectionLabel: content.faqSectionLabel || current.faqSectionLabel,
     faqText,
+    footerBrandLine: content.footerBrandLine || current.footerBrandLine,
     footerHeadline: content.footerHeadline || current.footerHeadline,
     footerText: content.footerText || current.footerText,
     heroHeadline: content.heroHeadline || current.heroHeadline,
+    heroMediaLabel: content.heroMediaLabel || current.heroMediaLabel,
     heroMicroTrustText: content.heroMicroTrustText || current.heroMicroTrustText,
     heroTrustLine: content.heroTrustLine || current.heroTrustLine,
     introHeading: content.introHeading || current.introHeading,
+    introSectionLabel: content.introSectionLabel || current.introSectionLabel,
     journeyHeading: content.journeyHeading || current.journeyHeading,
+    journeySectionLabel: content.journeySectionLabel || current.journeySectionLabel,
     journeyStepsText,
     mediaBody: content.mediaBody || current.mediaBody,
     mediaHeading: content.mediaHeading || current.mediaHeading,
+    mediaModuleLabel: content.mediaModuleLabel || current.mediaModuleLabel,
     mediaSubheading: content.mediaSubheading || current.mediaSubheading,
     problemHeading: content.problemHeading || current.problemHeading,
+    problemSectionLabel: content.problemSectionLabel || current.problemSectionLabel,
     problemPointsText,
     registerButtonText: current.registerButtonText || content.ctaText || "Register Now",
+    benefitsSectionLabel: content.benefitsSectionLabel || current.benefitsSectionLabel,
     socialCopy: content.socialCopy || current.socialCopy,
     subheadline: content.subheadline || current.subheadline,
     trustText: content.trustText || current.trustText,
+    visionLabel: content.visionLabel || current.visionLabel,
     visionText: content.visionText || current.visionText
   };
 }
@@ -873,24 +906,35 @@ export function AdminCoachSitesManager({
       ...sourceForm,
       benefitDescriptionsText:
         sourceForm.benefitDescriptionsText || fallbackSite.content.benefitDescriptions.join("\n"),
+      benefitsSectionLabel:
+        sourceForm.benefitsSectionLabel || fallbackSite.content.benefitsSectionLabel,
       benefitsHeading: sourceForm.benefitsHeading || fallbackSite.content.benefitsHeading,
       benefitsText: sourceForm.benefitsText || fallbackSite.content.benefits.join("\n"),
       brandBadge: sourceForm.brandBadge || fallbackSite.content.brandBadge,
       brandEyebrow: sourceForm.brandEyebrow || fallbackSite.content.brandEyebrow,
+      coachIntroLabel: sourceForm.coachIntroLabel || fallbackSite.content.coachIntroLabel,
       coachIntro: sourceForm.coachIntro || fallbackSite.content.coachIntro,
+      ctaSectionLabel: sourceForm.ctaSectionLabel || fallbackSite.content.ctaSectionLabel,
       ctaText: sourceForm.ctaText || fallbackSite.content.ctaText,
       faqHeading: sourceForm.faqHeading || fallbackSite.content.faqHeading,
+      faqSectionLabel: sourceForm.faqSectionLabel || fallbackSite.content.faqSectionLabel,
       faqText:
         sourceForm.faqText ||
         fallbackSite.content.faq.map((item) => `${item.question}\n${item.answer}`).join("\n\n"),
+      footerBrandLine: sourceForm.footerBrandLine || fallbackSite.content.footerBrandLine,
       footerHeadline: sourceForm.footerHeadline || fallbackSite.content.footerHeadline,
       footerText: sourceForm.footerText || fallbackSite.content.footerText,
       heroHeadline: sourceForm.heroHeadline || fallbackSite.content.heroHeadline,
+      heroMediaLabel: sourceForm.heroMediaLabel || fallbackSite.content.heroMediaLabel,
       heroMicroTrustText:
         sourceForm.heroMicroTrustText || fallbackSite.content.heroMicroTrustText,
       heroTrustLine: sourceForm.heroTrustLine || fallbackSite.content.heroTrustLine,
       introHeading: sourceForm.introHeading || fallbackSite.content.introHeading,
+      introSectionLabel:
+        sourceForm.introSectionLabel || fallbackSite.content.introSectionLabel,
       journeyHeading: sourceForm.journeyHeading || fallbackSite.content.journeyHeading,
+      journeySectionLabel:
+        sourceForm.journeySectionLabel || fallbackSite.content.journeySectionLabel,
       journeyStepsText:
         sourceForm.journeyStepsText ||
         fallbackSite.content.journeySteps
@@ -898,13 +942,17 @@ export function AdminCoachSitesManager({
           .join("\n\n"),
       mediaBody: sourceForm.mediaBody || fallbackSite.content.mediaBody,
       mediaHeading: sourceForm.mediaHeading || fallbackSite.content.mediaHeading,
+      mediaModuleLabel: sourceForm.mediaModuleLabel || fallbackSite.content.mediaModuleLabel,
       mediaSubheading: sourceForm.mediaSubheading || fallbackSite.content.mediaSubheading,
       problemHeading: sourceForm.problemHeading || fallbackSite.content.problemHeading,
+      problemSectionLabel:
+        sourceForm.problemSectionLabel || fallbackSite.content.problemSectionLabel,
       problemPointsText:
         sourceForm.problemPointsText || fallbackSite.content.problemPoints.join("\n"),
       socialCopy: sourceForm.socialCopy || fallbackSite.content.socialCopy,
       subheadline: sourceForm.subheadline || fallbackSite.content.subheadline,
       trustText: sourceForm.trustText || fallbackSite.content.trustText,
+      visionLabel: sourceForm.visionLabel || fallbackSite.content.visionLabel,
       visionText: sourceForm.visionText || fallbackSite.content.visionText
     };
   }
@@ -3710,20 +3758,45 @@ function PreviewAndEditStep({
             onChange={(value) => onUpdateField("heroMicroTrustText", value)}
             value={form.heroMicroTrustText}
           />
+          <TextField
+            label="Hero media label"
+            onChange={(value) => onUpdateField("heroMediaLabel", value)}
+            value={form.heroMediaLabel}
+          />
+          <TextField
+            label="Intro section label"
+            onChange={(value) => onUpdateField("introSectionLabel", value)}
+            value={form.introSectionLabel}
+          />
           <TextAreaField
             label="Intro section heading"
             onChange={(value) => onUpdateField("introHeading", value)}
             value={form.introHeading}
+          />
+          <TextField
+            label="Coach intro card label"
+            onChange={(value) => onUpdateField("coachIntroLabel", value)}
+            value={form.coachIntroLabel}
           />
           <TextAreaField
             label="Coach introduction"
             onChange={(value) => onUpdateField("coachIntro", value)}
             value={form.coachIntro}
           />
+          <TextField
+            label="Mission card label"
+            onChange={(value) => onUpdateField("visionLabel", value)}
+            value={form.visionLabel}
+          />
           <TextAreaField
             label="Mission / vision copy"
             onChange={(value) => onUpdateField("visionText", value)}
             value={form.visionText}
+          />
+          <TextField
+            label="Problem section label"
+            onChange={(value) => onUpdateField("problemSectionLabel", value)}
+            value={form.problemSectionLabel}
           />
           <TextAreaField
             label="Problem section heading"
@@ -3741,6 +3814,11 @@ function PreviewAndEditStep({
             onChange={(value) => onUpdateField("journeyHeading", value)}
             value={form.journeyHeading}
           />
+          <TextField
+            label="Journey section label"
+            onChange={(value) => onUpdateField("journeySectionLabel", value)}
+            value={form.journeySectionLabel}
+          />
           <TextAreaField
             helper="Each step uses three lines: label, title, description. Separate steps with a blank line."
             label="Journey steps"
@@ -3752,6 +3830,11 @@ function PreviewAndEditStep({
             label="Benefits section heading"
             onChange={(value) => onUpdateField("benefitsHeading", value)}
             value={form.benefitsHeading}
+          />
+          <TextField
+            label="Benefits section label"
+            onChange={(value) => onUpdateField("benefitsSectionLabel", value)}
+            value={form.benefitsSectionLabel}
           />
           <TextAreaField
             label="Benefits"
@@ -3771,6 +3854,11 @@ function PreviewAndEditStep({
             onChange={(value) => onUpdateField("mediaSubheading", value)}
             value={form.mediaSubheading}
           />
+          <TextField
+            label="Media module label"
+            onChange={(value) => onUpdateField("mediaModuleLabel", value)}
+            value={form.mediaModuleLabel}
+          />
           <TextAreaField
             label="Media section heading"
             onChange={(value) => onUpdateField("mediaHeading", value)}
@@ -3786,10 +3874,20 @@ function PreviewAndEditStep({
             onChange={(value) => onUpdateField("ctaText", value)}
             value={form.ctaText}
           />
+          <TextField
+            label="CTA section label"
+            onChange={(value) => onUpdateField("ctaSectionLabel", value)}
+            value={form.ctaSectionLabel}
+          />
           <TextAreaField
             label="FAQ section heading"
             onChange={(value) => onUpdateField("faqHeading", value)}
             value={form.faqHeading}
+          />
+          <TextField
+            label="FAQ section label"
+            onChange={(value) => onUpdateField("faqSectionLabel", value)}
+            value={form.faqSectionLabel}
           />
           <TextAreaField
             label="FAQ"
@@ -3812,6 +3910,11 @@ function PreviewAndEditStep({
             label="Footer headline"
             onChange={(value) => onUpdateField("footerHeadline", value)}
             value={form.footerHeadline}
+          />
+          <TextField
+            label="Footer brand line"
+            onChange={(value) => onUpdateField("footerBrandLine", value)}
+            value={form.footerBrandLine}
           />
           <TextAreaField
             label="Footer legal/support text"
@@ -3915,15 +4018,30 @@ function InspectSectionEditor({
               onChange={(value) => onUpdateField("heroMicroTrustText", value)}
               value={form.heroMicroTrustText}
             />
+            <TextField
+              label="Hero media label"
+              onChange={(value) => onUpdateField("heroMediaLabel", value)}
+              value={form.heroMediaLabel}
+            />
           </>
         ) : null}
 
         {scope === "intro" ? (
           <>
+            <TextField
+              label="Intro section label"
+              onChange={(value) => onUpdateField("introSectionLabel", value)}
+              value={form.introSectionLabel}
+            />
             <TextAreaField
               label="Intro heading"
               onChange={(value) => onUpdateField("introHeading", value)}
               value={form.introHeading}
+            />
+            <TextField
+              label="Coach intro card label"
+              onChange={(value) => onUpdateField("coachIntroLabel", value)}
+              value={form.coachIntroLabel}
             />
             <TextAreaField
               label="Coach introduction"
@@ -3934,15 +4052,27 @@ function InspectSectionEditor({
         ) : null}
 
         {scope === "vision" ? (
-          <TextAreaField
-            label="Mission / vision copy"
-            onChange={(value) => onUpdateField("visionText", value)}
-            value={form.visionText}
-          />
+          <>
+            <TextField
+              label="Mission card label"
+              onChange={(value) => onUpdateField("visionLabel", value)}
+              value={form.visionLabel}
+            />
+            <TextAreaField
+              label="Mission / vision copy"
+              onChange={(value) => onUpdateField("visionText", value)}
+              value={form.visionText}
+            />
+          </>
         ) : null}
 
         {scope === "problem" ? (
           <>
+            <TextField
+              label="Problem section label"
+              onChange={(value) => onUpdateField("problemSectionLabel", value)}
+              value={form.problemSectionLabel}
+            />
             <TextAreaField
               label="Problem section heading"
               onChange={(value) => onUpdateField("problemHeading", value)}
@@ -3964,6 +4094,11 @@ function InspectSectionEditor({
 
         {scope === "journey" ? (
           <>
+            <TextField
+              label="Journey section label"
+              onChange={(value) => onUpdateField("journeySectionLabel", value)}
+              value={form.journeySectionLabel}
+            />
             <TextAreaField
               label="Journey heading"
               onChange={(value) => onUpdateField("journeyHeading", value)}
@@ -3983,6 +4118,11 @@ function InspectSectionEditor({
 
         {scope === "benefits" ? (
           <>
+            <TextField
+              label="Benefits section label"
+              onChange={(value) => onUpdateField("benefitsSectionLabel", value)}
+              value={form.benefitsSectionLabel}
+            />
             <TextAreaField
               label="Benefits heading"
               onChange={(value) => onUpdateField("benefitsHeading", value)}
@@ -4011,6 +4151,11 @@ function InspectSectionEditor({
               onChange={(value) => onUpdateField("mediaSubheading", value)}
               value={form.mediaSubheading}
             />
+            <TextField
+              label="Media module label"
+              onChange={(value) => onUpdateField("mediaModuleLabel", value)}
+              value={form.mediaModuleLabel}
+            />
             <TextAreaField
               label="Media heading"
               onChange={(value) => onUpdateField("mediaHeading", value)}
@@ -4026,6 +4171,11 @@ function InspectSectionEditor({
 
         {scope === "cta" ? (
           <>
+            <TextField
+              label="CTA section label"
+              onChange={(value) => onUpdateField("ctaSectionLabel", value)}
+              value={form.ctaSectionLabel}
+            />
             <TextAreaField
               label="CTA copy"
               onChange={(value) => onUpdateField("ctaText", value)}
@@ -4052,6 +4202,11 @@ function InspectSectionEditor({
 
         {scope === "faq" ? (
           <>
+            <TextField
+              label="FAQ section label"
+              onChange={(value) => onUpdateField("faqSectionLabel", value)}
+              value={form.faqSectionLabel}
+            />
             <TextAreaField
               label="FAQ heading"
               onChange={(value) => onUpdateField("faqHeading", value)}
@@ -4068,6 +4223,11 @@ function InspectSectionEditor({
 
         {scope === "footer" ? (
           <>
+            <TextField
+              label="Footer brand line"
+              onChange={(value) => onUpdateField("footerBrandLine", value)}
+              value={form.footerBrandLine}
+            />
             <TextAreaField
               label="Footer headline"
               onChange={(value) => onUpdateField("footerHeadline", value)}

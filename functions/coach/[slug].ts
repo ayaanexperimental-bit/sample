@@ -647,7 +647,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${escapeHtml(site.coachName)} | YW Nutritech Coach Referral</title>
+    <title>${escapeHtml(site.coachName)} | ${escapeHtml(site.content.footerBrandLine || "YW Nutritech Coach Referral")}</title>
     <meta name="description" content="${escapeAttribute(site.content.subheadline)}" />
     <style>
       :root {
@@ -1863,17 +1863,17 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
 
       <section class="section intro-section">
         <div class="section-head">
-          <span>Coach Introduction</span>
+          <span>${escapeHtml(site.content.introSectionLabel)}</span>
           <h2>${escapeHtml(site.content.introHeading)}</h2>
         </div>
         <div class="intro-grid">
           <article class="spot-card story-card">
-            <span>Who the coach is</span>
+            <span>${escapeHtml(site.content.coachIntroLabel)}</span>
             <h3>${escapeHtml(site.coachName)}</h3>
             <p>${escapeHtml(site.content.coachIntro)}</p>
           </article>
           <article class="spot-card story-card">
-            <span>Coach mission</span>
+            <span>${escapeHtml(site.content.visionLabel)}</span>
             <h3>${escapeHtml(site.location || "Yours Wellness Coach")}</h3>
             <p>${escapeHtml(site.content.visionText || site.vision)}</p>
           </article>
@@ -1882,7 +1882,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
 
       <section class="section problem-section">
         <div class="problem-copy">
-          <span>Problem to solution</span>
+          <span>${escapeHtml(site.content.problemSectionLabel)}</span>
           <h2>${escapeHtml(site.content.problemHeading)}</h2>
           <p>${escapeHtml(site.content.trustText)}</p>
         </div>
@@ -1891,7 +1891,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
 
       <section class="section journey-section" id="journey">
         <div class="section-head">
-          <span>YW Nutritech pathway</span>
+          <span>${escapeHtml(site.content.journeySectionLabel)}</span>
           <h2>${escapeHtml(site.content.journeyHeading)}</h2>
         </div>
         <div class="journey-grid">${journey}</div>
@@ -1899,7 +1899,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
 
       <section class="section benefits-section" id="benefits">
         <div class="section-head">
-          <span>Benefits</span>
+          <span>${escapeHtml(site.content.benefitsSectionLabel)}</span>
           <h2>${escapeHtml(site.content.benefitsHeading)}</h2>
         </div>
         <div class="benefit-grid">${benefits}</div>
@@ -1908,7 +1908,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       <section class="section media-section">
         <div class="video-frame" data-media="${escapeAttribute(site.heroMediaType || "none")}">
           ${renderMediaModule(site)}
-          <span>Coach media module</span>
+          <span>${escapeHtml(site.content.mediaModuleLabel)}</span>
           <strong>${escapeHtml(site.content.mediaHeading)}</strong>
           <p>${escapeHtml(site.content.mediaBody)}</p>
         </div>
@@ -1921,7 +1921,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
 
       <section class="section register-section" id="register">
         <div>
-          <span>Register</span>
+          <span>${escapeHtml(site.content.ctaSectionLabel)}</span>
           <h2>${escapeHtml(site.content.ctaText || "Ready to take the first step with this coach?")}</h2>
           <p>${escapeHtml(site.content.trustText)}</p>
         </div>
@@ -1930,7 +1930,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
 
       <section class="section faq-section">
         <div class="section-head">
-          <span>FAQ</span>
+          <span>${escapeHtml(site.content.faqSectionLabel)}</span>
           <h2>${escapeHtml(site.content.faqHeading)}</h2>
         </div>
         <div class="faq-list">${faq}</div>
@@ -2205,7 +2205,7 @@ function renderFooterHtml(site: PublicCoachSiteRecord) {
   return `
     <footer class="footer">
       <div>
-        <span>YW Nutritech Coach Referral</span>
+        <span>${escapeHtml(site.content.footerBrandLine)}</span>
         <h2>${escapeHtml(site.content.footerHeadline)}</h2>
         <p><strong>Copyright 2026 | Yours Wellness Center. All rights reserved.</strong></p>
         <p>${escapeHtml(site.content.footerText)}</p>
@@ -2247,7 +2247,7 @@ function renderHeroMedia(site: PublicCoachSiteRecord) {
     <div class="media-stage">
       <div class="hero-media" data-media="${escapeAttribute(site.heroMediaType)}">
         ${renderHeroMediaContent(site)}
-        <div class="media-caption"><span>Coach</span><strong>${escapeHtml(site.coachName)}</strong><small>${escapeHtml(site.niche)}</small></div>
+        <div class="media-caption"><span>${escapeHtml(site.content.heroMediaLabel)}</span><strong>${escapeHtml(site.coachName)}</strong><small>${escapeHtml(site.niche)}</small></div>
       </div>
       <div class="signal-panel">
         <span>${escapeHtml(site.content.mediaSubheading)}</span>

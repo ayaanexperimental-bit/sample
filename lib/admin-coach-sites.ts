@@ -14,19 +14,26 @@ export type CoachSiteContent = {
   brandBadge: string;
   brandEyebrow: string;
   coachIntro: string;
+  coachIntroLabel: string;
   ctaText: string;
+  ctaSectionLabel: string;
   faqHeading: string;
+  faqSectionLabel: string;
   faq: Array<{
     answer: string;
     question: string;
   }>;
+  footerBrandLine: string;
   footerHeadline: string;
   footerText: string;
+  heroMediaLabel: string;
   heroMicroTrustText: string;
   heroHeadline: string;
   heroTrustLine: string;
   introHeading: string;
+  introSectionLabel: string;
   journeyHeading: string;
+  journeySectionLabel: string;
   journeySteps: Array<{
     description: string;
     label: string;
@@ -34,12 +41,16 @@ export type CoachSiteContent = {
   }>;
   mediaBody: string;
   mediaHeading: string;
+  mediaModuleLabel: string;
   mediaSubheading: string;
   problemHeading: string;
+  problemSectionLabel: string;
   problemPoints: string[];
+  benefitsSectionLabel: string;
   socialCopy: string;
   subheadline: string;
   trustText: string;
+  visionLabel: string;
   visionText: string;
 };
 
@@ -119,37 +130,48 @@ export type CoachSiteFormState = {
   coachName: string;
   coachPhone: string;
   coachIntro: string;
+  coachIntroLabel: string;
   ctaText: string;
+  ctaSectionLabel: string;
   existingPaidFunnelUrl: string;
   faqHeading: string;
+  faqSectionLabel: string;
   faqText: string;
+  footerBrandLine: string;
   footerHeadline: string;
   footerText: string;
   googleFormUrl: string;
   heroMediaType: CoachHeroMediaType;
   heroHeadline: string;
+  heroMediaLabel: string;
   heroMicroTrustText: string;
   heroTrustLine: string;
   introHeading: string;
+  introSectionLabel: string;
   journeyHeading: string;
+  journeySectionLabel: string;
   journeyStepsText: string;
   location: string;
   logoUrl: string;
   mediaBody: string;
   mediaHeading: string;
+  mediaModuleLabel: string;
   mediaSubheading: string;
   niche: string;
   paidFunnelContext: string;
   photoUrl: string;
   problemHeading: string;
+  problemSectionLabel: string;
   problemPointsText: string;
   registerButtonText: string;
   selectedThemeId: CoachTemplateThemeId;
   slug: string;
+  benefitsSectionLabel: string;
   socialCopy: string;
   subheadline: string;
   supportText: string;
   trustText: string;
+  visionLabel: string;
   videoUrl: string;
   vision: string;
   visionText: string;
@@ -167,37 +189,48 @@ export const EMPTY_COACH_SITE_FORM: CoachSiteFormState = {
   coachName: "",
   coachPhone: "",
   coachIntro: "",
+  coachIntroLabel: "",
   ctaText: "Register Now",
+  ctaSectionLabel: "",
   existingPaidFunnelUrl: "",
   faqHeading: "",
+  faqSectionLabel: "",
   faqText: "",
+  footerBrandLine: "",
   footerHeadline: "",
   footerText: "",
   googleFormUrl: "",
   heroMediaType: "image",
   heroHeadline: "",
+  heroMediaLabel: "",
   heroMicroTrustText: "",
   heroTrustLine: "",
   introHeading: "",
+  introSectionLabel: "",
   journeyHeading: "",
+  journeySectionLabel: "",
   journeyStepsText: "",
   location: "",
   logoUrl: "",
   mediaBody: "",
   mediaHeading: "",
+  mediaModuleLabel: "",
   mediaSubheading: "",
   niche: "",
   paidFunnelContext: "",
   photoUrl: "",
   problemHeading: "",
+  problemSectionLabel: "",
   problemPointsText: "",
   registerButtonText: "Register Now",
   selectedThemeId: DEFAULT_COACH_TEMPLATE_THEME_ID,
   slug: "",
+  benefitsSectionLabel: "",
   socialCopy: "",
   subheadline: "",
   supportText: "",
   trustText: "",
+  visionLabel: "",
   videoUrl: "",
   vision: "",
   visionText: "",
@@ -224,7 +257,7 @@ export const approvedCoachSites: CoachSiteRecord[] = [
     logoUrl: "",
     videoUrl:
       "https://www.youtube.com/embed/gBQoms47fB8?playsinline=1&controls=1&rel=0&modestbranding=1",
-    googleFormUrl: "",
+    googleFormUrl: "https://forms.gle/nsY5F1mcjZnZBbVo9",
     heroMediaType: "image",
     slug: "gyana-ranjan",
     publicUrl: "/coach/gyana-ranjan",
@@ -247,14 +280,20 @@ export const approvedCoachSites: CoachSiteRecord[] = [
         "A fixed-template coach referral page introducing the coach, niche, vision, and next registration step.",
       coachIntro:
         "Gyana helps women slow down confusing hormone advice and rebuild simple routines around food, movement, sleep, stress, and tracking.",
+      coachIntroLabel: "Who Gyana is",
       faqHeading: "Clear answers before registration.",
+      faqSectionLabel: "FAQ",
+      footerBrandLine: "YW Nutritech Coach Referral",
       footerHeadline: "Yours Wellness Center",
       footerText:
         "This page is for wellness education and lifestyle coaching support. It is not a substitute for medical advice, diagnosis, or treatment. Results vary based on individual health history, lifestyle, and consistency.",
+      heroMediaLabel: "Coach",
       heroMicroTrustText: "Nutrition, habits, lifestyle, education",
       heroTrustLine: "YW care lens",
       introHeading: "Personal PMOS guidance inside a premium wellness-tech ecosystem.",
+      introSectionLabel: "Coach Introduction",
       journeyHeading: "One page that moves from trust to action.",
+      journeySectionLabel: "YW Nutritech pathway",
       journeySteps: [
         {
           label: "Profile",
@@ -275,8 +314,10 @@ export const approvedCoachSites: CoachSiteRecord[] = [
       mediaBody:
         "Gyana's image and video-ready area stay inside the fixed YW Nutritech template while keeping the coach visible.",
       mediaHeading: "Coach image and video-ready area",
+      mediaModuleLabel: "Coach media module",
       mediaSubheading: "YW Nutritech-ready coach media",
       problemHeading: "For women who need direction before committing to a bigger program.",
+      problemSectionLabel: "Problem to solution",
       problemPoints: [
         "Too much conflicting PMOS or hormone advice",
         "Unsure what daily routine changes matter first",
@@ -290,7 +331,9 @@ export const approvedCoachSites: CoachSiteRecord[] = [
         "Get a calmer view of food, movement, sleep, and routine consistency.",
         "Know the right next step before joining a deeper program."
       ],
+      benefitsSectionLabel: "Benefits",
       ctaText: "Register Now",
+      ctaSectionLabel: "Register",
       faq: [
         {
           question: "Is this medical treatment?",
@@ -303,6 +346,7 @@ export const approvedCoachSites: CoachSiteRecord[] = [
       ],
       trustText:
         "Education-first, doctor-friendly coaching support. This does not replace diagnosis or treatment.",
+      visionLabel: "Coach mission",
       socialCopy: "Join Gyana Ranjan's PMOS lifestyle guidance page for a clear first step."
     },
     analytics: {
@@ -399,46 +443,57 @@ export function createCoachContentFromForm(form: CoachSiteFormState): CoachSiteC
       form.benefitsHeading.trim() || `Practical ${niche} support without clutter.`,
     brandBadge: form.brandBadge.trim() || "YW Nutritech coach network",
     brandEyebrow: form.brandEyebrow.trim() || "Education-first wellness pathway",
+    coachIntroLabel: form.coachIntroLabel.trim() || `Who ${coachName} is`,
     heroHeadline: form.heroHeadline.trim() || `Meet ${coachName} for practical ${niche} guidance.`,
     subheadline:
       form.subheadline.trim() ||
       `A fixed-template coach referral page introducing ${coachName}, their niche, vision, and registration step.`,
     coachIntro: form.coachIntro.trim() || bio,
+    ctaSectionLabel: form.ctaSectionLabel.trim() || "Register",
     ctaText: form.ctaText.trim() || form.registerButtonText.trim() || "Register Now",
     faq: parseFaq(form.faqText),
     faqHeading: form.faqHeading.trim() || "Clean answers before registration.",
+    faqSectionLabel: form.faqSectionLabel.trim() || "FAQ",
+    footerBrandLine: form.footerBrandLine.trim() || "YW Nutritech Coach Referral",
     footerHeadline: form.footerHeadline.trim() || `${coachName} | Yours Wellness Center`,
     footerText:
       form.footerText.trim() ||
       "This page is for wellness education and lifestyle coaching support. It is not a substitute for medical advice, diagnosis, or treatment. Results vary based on individual health history, lifestyle, and consistency.",
+    heroMediaLabel: form.heroMediaLabel.trim() || "Coach",
     heroMicroTrustText:
       form.heroMicroTrustText.trim() || "Nutrition, habits, lifestyle, education",
     heroTrustLine: form.heroTrustLine.trim() || "YW care lens",
     introHeading:
       form.introHeading.trim() ||
       `Personal ${niche} guidance inside a premium wellness-tech ecosystem.`,
+    introSectionLabel: form.introSectionLabel.trim() || "Coach Introduction",
     journeyHeading:
       form.journeyHeading.trim() || "One page that moves from trust to action.",
+    journeySectionLabel: form.journeySectionLabel.trim() || "YW Nutritech pathway",
     journeySteps: parseJourneySteps(form.journeyStepsText, coachName, niche),
     mediaBody:
       form.mediaBody.trim() ||
       `${coachName}'s media stays inside the fixed YW Nutritech template while keeping the coach visible.`,
     mediaHeading: form.mediaHeading.trim() || "Coach image and video-ready area",
+    mediaModuleLabel: form.mediaModuleLabel.trim() || "Coach media module",
     mediaSubheading:
       form.mediaSubheading.trim() || "YW Nutritech-ready coach media",
     problemHeading:
       form.problemHeading.trim() ||
       `For guests who need direction before committing to a bigger ${niche} program.`,
+    problemSectionLabel: form.problemSectionLabel.trim() || "Problem to solution",
     problemPoints: parseLines(form.problemPointsText, [
       `Too much conflicting ${niche} advice`,
       "Unsure what daily routine changes matter first",
       "Need a coach-led starting point before a deeper program",
       "Want education-friendly guidance that can sit alongside medical care"
     ]),
+    benefitsSectionLabel: form.benefitsSectionLabel.trim() || "Benefits",
     visionText: form.visionText.trim() || vision,
     trustText:
       form.trustText.trim() ||
       "This page is for coach introduction and education. It does not replace medical advice.",
+    visionLabel: form.visionLabel.trim() || "Coach mission",
     socialCopy:
       form.socialCopy.trim() || `Join ${coachName}'s ${niche} referral page for a clear first step.`
   };
@@ -557,19 +612,26 @@ export function createFormFromCoachSite(site: CoachSiteRecord): CoachSiteFormSta
     coachName: site.coachName,
     coachPhone: site.coachPhone,
     coachIntro: site.content.coachIntro,
+    coachIntroLabel: site.content.coachIntroLabel,
     ctaText: site.content.ctaText,
+    ctaSectionLabel: site.content.ctaSectionLabel,
     existingPaidFunnelUrl: site.existingPaidFunnelUrl,
     faqHeading: site.content.faqHeading,
+    faqSectionLabel: site.content.faqSectionLabel,
     faqText: site.content.faq.map((item) => `${item.question}\n${item.answer}`).join("\n\n"),
+    footerBrandLine: site.content.footerBrandLine,
     footerHeadline: site.content.footerHeadline,
     footerText: site.content.footerText,
     googleFormUrl: site.googleFormUrl,
     heroMediaType: site.heroMediaType,
     heroHeadline: site.content.heroHeadline,
+    heroMediaLabel: site.content.heroMediaLabel,
     heroMicroTrustText: site.content.heroMicroTrustText,
     heroTrustLine: site.content.heroTrustLine,
     introHeading: site.content.introHeading,
+    introSectionLabel: site.content.introSectionLabel,
     journeyHeading: site.content.journeyHeading,
+    journeySectionLabel: site.content.journeySectionLabel,
     journeyStepsText: site.content.journeySteps
       .map((step) => `${step.label}\n${step.title}\n${step.description}`)
       .join("\n\n"),
@@ -577,19 +639,23 @@ export function createFormFromCoachSite(site: CoachSiteRecord): CoachSiteFormSta
     logoUrl: site.logoUrl,
     mediaBody: site.content.mediaBody,
     mediaHeading: site.content.mediaHeading,
+    mediaModuleLabel: site.content.mediaModuleLabel,
     mediaSubheading: site.content.mediaSubheading,
     niche: site.niche,
     paidFunnelContext: site.paidFunnelContext,
     photoUrl: site.photoUrl,
     problemHeading: site.content.problemHeading,
+    problemSectionLabel: site.content.problemSectionLabel,
     problemPointsText: site.content.problemPoints.join("\n"),
     registerButtonText: site.registerButtonText,
     selectedThemeId: normalizeCoachTemplateThemeId(site.selectedThemeId),
     slug: site.slug,
+    benefitsSectionLabel: site.content.benefitsSectionLabel,
     socialCopy: site.content.socialCopy,
     subheadline: site.content.subheadline,
     supportText: site.supportText,
     trustText: site.content.trustText,
+    visionLabel: site.content.visionLabel,
     videoUrl: site.videoUrl,
     vision: site.vision,
     visionText: site.content.visionText,

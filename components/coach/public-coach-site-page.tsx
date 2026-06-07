@@ -241,7 +241,7 @@ export function PublicCoachSitePage({
             <div className={styles.heroMedia} data-media={site.heroMediaType || "image"}>
               <HeroMediaContent heroMedia={heroMedia} site={site} />
               <div className={styles.mediaCaption}>
-                <span>Coach</span>
+                <span>{site.content.heroMediaLabel}</span>
                 <strong>{site.coachName}</strong>
                 <small>{site.niche}</small>
               </div>
@@ -276,7 +276,7 @@ export function PublicCoachSitePage({
 
       <section className={`${styles.section} ${styles.introSection}`}>
         <div className={styles.sectionHead}>
-          <span>Coach Introduction</span>
+          <span>{site.content.introSectionLabel}</span>
           <h2>{site.content.introHeading}</h2>
         </div>
         <div className={styles.introGrid}>
@@ -286,7 +286,7 @@ export function PublicCoachSitePage({
             {...getPreviewInspectProps("intro")}
           >
             {renderInspectHotspot("intro")}
-            <span>Who the coach is</span>
+            <span>{site.content.coachIntroLabel}</span>
             <h3>{site.coachName}</h3>
             <p>{site.content.coachIntro}</p>
           </TemplateCard>
@@ -296,7 +296,7 @@ export function PublicCoachSitePage({
             {...getPreviewInspectProps("vision")}
           >
             {renderInspectHotspot("vision")}
-            <span>Coach mission</span>
+            <span>{site.content.visionLabel}</span>
             <h3>{site.location || "Yours Wellness Coach"}</h3>
             <p>{site.content.visionText || site.vision}</p>
           </TemplateCard>
@@ -309,7 +309,7 @@ export function PublicCoachSitePage({
       >
         {renderInspectHotspot("problem")}
         <div className={styles.problemCopy}>
-          <span>Problem to solution</span>
+          <span>{site.content.problemSectionLabel}</span>
           <h2>{site.content.problemHeading}</h2>
           <p>{site.content.trustText}</p>
         </div>
@@ -330,7 +330,7 @@ export function PublicCoachSitePage({
       >
         {renderInspectHotspot("journey")}
         <div className={styles.sectionHead}>
-          <span>YW Nutritech pathway</span>
+          <span>{site.content.journeySectionLabel}</span>
           <h2>{site.content.journeyHeading}</h2>
         </div>
         <div className={styles.journeyGrid}>
@@ -352,7 +352,7 @@ export function PublicCoachSitePage({
       >
         {renderInspectHotspot("benefits")}
         <div className={styles.sectionHead}>
-          <span>Benefits</span>
+          <span>{site.content.benefitsSectionLabel}</span>
           <h2>{site.content.benefitsHeading}</h2>
         </div>
         <div className={styles.benefitGrid}>
@@ -373,7 +373,7 @@ export function PublicCoachSitePage({
         {renderInspectHotspot("media")}
         <div className={styles.videoFrame} data-media={site.heroMediaType || "none"}>
           <HeroMediaContent heroMedia={heroMedia} site={site} compact />
-          <span>Coach media module</span>
+          <span>{site.content.mediaModuleLabel}</span>
           <strong>{site.content.mediaHeading}</strong>
           <p>{site.content.mediaBody}</p>
         </div>
@@ -391,7 +391,7 @@ export function PublicCoachSitePage({
       >
         {renderInspectHotspot("cta")}
         <div>
-          <span>Register</span>
+          <span>{site.content.ctaSectionLabel}</span>
           <h2>{site.content.ctaText || "Ready to take the first step with this coach?"}</h2>
           <p>{site.content.trustText}</p>
         </div>
@@ -406,7 +406,7 @@ export function PublicCoachSitePage({
       >
         {renderInspectHotspot("faq")}
         <div className={styles.sectionHead}>
-          <span>FAQ</span>
+          <span>{site.content.faqSectionLabel}</span>
           <h2>{site.content.faqHeading}</h2>
         </div>
         <div className={styles.faqList}>
@@ -425,7 +425,7 @@ export function PublicCoachSitePage({
       >
         {renderInspectHotspot("footer")}
         <div>
-          <span>YW Nutritech Coach Referral</span>
+          <span>{site.content.footerBrandLine}</span>
           <h2>{site.content.footerHeadline}</h2>
           <p>{site.content.footerText}</p>
         </div>

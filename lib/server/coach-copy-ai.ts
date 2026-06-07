@@ -103,10 +103,19 @@ const AI_COPY_SCHEMA = {
       coachIntro: {
         type: "string"
       },
+      coachIntroLabel: {
+        type: "string"
+      },
       ctaText: {
         type: "string"
       },
+      ctaSectionLabel: {
+        type: "string"
+      },
       faqHeading: {
+        type: "string"
+      },
+      faqSectionLabel: {
         type: "string"
       },
       faq: {
@@ -130,10 +139,16 @@ const AI_COPY_SCHEMA = {
       footerHeadline: {
         type: "string"
       },
+      footerBrandLine: {
+        type: "string"
+      },
       footerText: {
         type: "string"
       },
       heroHeadline: {
+        type: "string"
+      },
+      heroMediaLabel: {
         type: "string"
       },
       heroMicroTrustText: {
@@ -145,7 +160,13 @@ const AI_COPY_SCHEMA = {
       introHeading: {
         type: "string"
       },
+      introSectionLabel: {
+        type: "string"
+      },
       journeyHeading: {
+        type: "string"
+      },
+      journeySectionLabel: {
         type: "string"
       },
       journeySteps: {
@@ -175,10 +196,16 @@ const AI_COPY_SCHEMA = {
       mediaHeading: {
         type: "string"
       },
+      mediaModuleLabel: {
+        type: "string"
+      },
       mediaSubheading: {
         type: "string"
       },
       problemHeading: {
+        type: "string"
+      },
+      problemSectionLabel: {
         type: "string"
       },
       problemPoints: {
@@ -192,10 +219,16 @@ const AI_COPY_SCHEMA = {
       socialCopy: {
         type: "string"
       },
+      benefitsSectionLabel: {
+        type: "string"
+      },
       subheadline: {
         type: "string"
       },
       trustText: {
+        type: "string"
+      },
+      visionLabel: {
         type: "string"
       },
       visionText: {
@@ -213,28 +246,29 @@ const AI_COPY_SCHEMA_PROPERTIES = AI_COPY_SCHEMA.schema.properties;
 
 const COPY_SCOPE_FIELDS: Record<CoachCopyScope, Array<keyof CoachSiteContent>> = {
   all: requiredCoachTemplateContentFields,
-  benefits: ["benefitsHeading", "benefits", "benefitDescriptions"],
-  cta: ["ctaText", "trustText", "socialCopy"],
-  faq: ["faqHeading", "faq"],
-  footer: ["footerHeadline", "footerText"],
+  benefits: ["benefitsSectionLabel", "benefitsHeading", "benefits", "benefitDescriptions"],
+  cta: ["ctaSectionLabel", "ctaText", "trustText", "socialCopy"],
+  faq: ["faqSectionLabel", "faqHeading", "faq"],
+  footer: ["footerBrandLine", "footerHeadline", "footerText"],
   hero: [
     "brandBadge",
     "brandEyebrow",
     "heroHeadline",
     "subheadline",
+    "heroMediaLabel",
     "heroTrustLine",
     "heroMicroTrustText",
     "socialCopy"
   ],
-  intro: ["introHeading", "coachIntro"],
-  journey: ["journeyHeading", "journeySteps"],
-  media: ["mediaSubheading", "mediaHeading", "mediaBody"],
-  problem: ["problemHeading", "problemPoints", "trustText"],
-  vision: ["visionText"]
+  intro: ["introSectionLabel", "introHeading", "coachIntroLabel", "coachIntro"],
+  journey: ["journeySectionLabel", "journeyHeading", "journeySteps"],
+  media: ["mediaSubheading", "mediaModuleLabel", "mediaHeading", "mediaBody"],
+  problem: ["problemSectionLabel", "problemHeading", "problemPoints", "trustText"],
+  vision: ["visionLabel", "visionText"]
 };
 
 const COPY_SCOPE_MAX_OUTPUT_TOKENS: Record<CoachCopyScope, number> = {
-  all: 2600,
+  all: 3200,
   benefits: 450,
   cta: 320,
   faq: 650,
