@@ -1,6 +1,12 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { adminControlCenterData, type AdminErrorReportStatus } from "../../../lib/admin-control-center";
-import { adminJson, readJsonBody, requireAdmin } from "../../../lib/server/admin-auth";
+import {
+  adminAuthorizationResponse,
+  adminJson,
+  canAuthenticatedAdminPerform,
+  readJsonBody,
+  requireAdmin
+} from "../../../lib/server/admin-auth";
 import { listWebsiteErrorReports, updateWebsiteErrorReportStatus } from "../../../lib/server/error-reports";
 import {
   clearOldErrorReports,
@@ -64,11 +70,9 @@ export async function onRequest({ request, env }: PagesContext) {
     const action = typeof body?.action === "string" ? body.action.trim() : "";
 
     if (action === "clear_old") {
-      const cleanupAdmin = await requireAdmin(request, env, {
-        requireCsrf: true,
-        requiredPermission: "error_reports.clear_stale"
-      });
-      if (!cleanupAdmin.ok) return cleanupAdmin.response;
+      if (!canAuthenticatedAdminPerform(admin.admin, "error_reports.clear_stale")) {
+        return adminAuthorizationResponse();
+      }
 
       const cleanupFilter =
         typeof body?.cleanupFilter === "string" ? body.cleanupFilter.trim() : "";
@@ -90,11 +94,9 @@ export async function onRequest({ request, env }: PagesContext) {
     const status = typeof body?.status === "string" ? body.status.trim() : "";
     const adminNotes = typeof body?.adminNotes === "string" ? body.adminNotes.trim() : "";
 
-    const statusAdmin = await requireAdmin(request, env, {
-      requireCsrf: true,
-      requiredPermission: "error_reports.mark_status"
-    });
-    if (!statusAdmin.ok) return statusAdmin.response;
+    if (!canAuthenticatedAdminPerform(admin.admin, "error_reports.mark_status")) {
+      return adminAuthorizationResponse();
+    }
 
     if (!referenceId || !ALLOWED_STATUSES.has(status as AdminErrorReportStatus)) {
       return adminJson({ ok: false, error: "Reference ID and valid status are required." }, 400);

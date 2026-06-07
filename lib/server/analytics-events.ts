@@ -15,6 +15,7 @@ import {
   normalizeCoachSlug
 } from "../admin-coach-sites";
 import { ensureCoachSiteTables } from "./coach-site-storage";
+import { runCachedD1SchemaSetup, type D1SchemaCacheEntry } from "./d1-schema-cache";
 
 export type AnalyticsEventStorageEnv = {
   ADMIN_DB?: D1Database;
@@ -95,6 +96,16 @@ const ANALYTICS_TABLE_SQL = [
   `CREATE INDEX IF NOT EXISTS idx_analytics_events_date_funnel
     ON analytics_events (created_date, funnel_type)`
 ];
+const analyticsEventSchemaCache = new WeakMap<D1Database, D1SchemaCacheEntry>();
+const ANALYTICS_READ_CACHE_TTL_MS = 15 * 1000;
+const analyticsSummaryCache = new WeakMap<
+  D1Database,
+  Map<string, { expiresAt: number; value: AnalyticsMetricSummary[] }>
+>();
+const recentEventsCache = new WeakMap<
+  D1Database,
+  Map<string, { expiresAt: number; value: AnalyticsRecentEvent[] }>
+>();
 
 const DEFAULT_ANALYTICS: CoachSiteAnalyticsSummary = {
   averageVisits: 0,
@@ -119,9 +130,16 @@ const DEFAULT_ANALYTICS: CoachSiteAnalyticsSummary = {
 export async function ensureAnalyticsEventTables(env: AnalyticsEventStorageEnv) {
   if (!env.ADMIN_DB) return false;
 
-  for (const statement of ANALYTICS_TABLE_SQL) {
-    await env.ADMIN_DB.prepare(statement).run();
-  }
+  const db = env.ADMIN_DB;
+  await runCachedD1SchemaSetup({
+    cache: analyticsEventSchemaCache,
+    db,
+    setup: async () => {
+      for (const statement of ANALYTICS_TABLE_SQL) {
+        await db.prepare(statement).run();
+      }
+    }
+  });
 
   return true;
 }
@@ -227,6 +245,8 @@ export async function recordAnalyticsEvent(input: AnalyticsEventInput, env: Anal
     )
     .run();
 
+  clearAnalyticsReadCache(env.ADMIN_DB);
+
   if (row && funnelType === "free_guest_link") {
     await updateCoachSiteAnalyticsFromEvents({
       env,
@@ -251,6 +271,9 @@ export async function getAnalyticsMetricSummaries(
   await ensureAnalyticsEventTables(env);
 
   const { limit = 20000, rangeEnd, rangeStart } = options;
+  const cacheKey = `summary:${rangeStart || 0}:${rangeEnd || 0}:${limit}`;
+  const cached = getAnalyticsCacheValue(analyticsSummaryCache, env.ADMIN_DB, cacheKey);
+  if (cached) return cached;
   const where: string[] = [];
   const params: number[] = [];
 
@@ -273,7 +296,10 @@ export async function getAnalyticsMetricSummaries(
     .bind(...params, limit)
     .all<AnalyticsEventRow>();
 
-  return summarizeEventRows(result.results || []);
+  const summaries = summarizeEventRows(result.results || []);
+  setAnalyticsCacheValue(analyticsSummaryCache, env.ADMIN_DB, cacheKey, summaries);
+
+  return summaries;
 }
 
 export async function getRecentAnalyticsEvents(
@@ -284,16 +310,21 @@ export async function getRecentAnalyticsEvents(
 
   await ensureAnalyticsEventTables(env);
 
+  const normalizedLimit = Math.max(1, Math.min(40, Math.floor(limit)));
+  const cacheKey = `recent:${normalizedLimit}`;
+  const cached = getAnalyticsCacheValue(recentEventsCache, env.ADMIN_DB, cacheKey);
+  if (cached) return cached;
+
   const result = await env.ADMIN_DB.prepare(
     `SELECT event_name, funnel_type, coach_slug, coach_id, funnel_id, page_path, device_type, region, source, created_at
      FROM analytics_events
      ORDER BY created_at DESC
      LIMIT ?1`
   )
-    .bind(Math.max(1, Math.min(40, Math.floor(limit))))
+    .bind(normalizedLimit)
     .all<AnalyticsEventRow>();
 
-  return (result.results || []).map((row) => ({
+  const recentEvents = (result.results || []).map((row) => ({
     coachId: row.coach_id || "",
     coachSlug: row.coach_slug || "",
     createdAt: row.created_at ? new Date(row.created_at * 1000).toISOString() : "",
@@ -305,6 +336,9 @@ export async function getRecentAnalyticsEvents(
     region: row.region || "Not available",
     source: row.source || "direct"
   }));
+  setAnalyticsCacheValue(recentEventsCache, env.ADMIN_DB, cacheKey, recentEvents);
+
+  return recentEvents;
 }
 
 export function getAnalyticsRangeWindow(
@@ -674,6 +708,36 @@ function getTopBreakdown(values: Record<string, number> | undefined, fallback: s
 function getConversionRate(clicks: number, visits: number) {
   if (!visits) return "0%";
   return `${((clicks / visits) * 100).toFixed(1)}%`;
+}
+
+function getAnalyticsCacheValue<T>(
+  cache: WeakMap<D1Database, Map<string, { expiresAt: number; value: T }>>,
+  db: D1Database,
+  key: string
+) {
+  const entry = cache.get(db)?.get(key);
+  if (!entry || entry.expiresAt <= Date.now()) return null;
+
+  return entry.value;
+}
+
+function setAnalyticsCacheValue<T>(
+  cache: WeakMap<D1Database, Map<string, { expiresAt: number; value: T }>>,
+  db: D1Database,
+  key: string,
+  value: T
+) {
+  const dbCache = cache.get(db) || new Map<string, { expiresAt: number; value: T }>();
+  dbCache.set(key, {
+    expiresAt: Date.now() + ANALYTICS_READ_CACHE_TTL_MS,
+    value
+  });
+  cache.set(db, dbCache);
+}
+
+function clearAnalyticsReadCache(db: D1Database) {
+  analyticsSummaryCache.delete(db);
+  recentEventsCache.delete(db);
 }
 
 function sanitizePath(value: unknown) {

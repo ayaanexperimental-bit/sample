@@ -7,6 +7,7 @@ import {
   type WebsiteErrorCategory
 } from "../error-codes";
 import { maskSensitiveText } from "../error-reporting";
+import { runCachedD1SchemaSetup, type D1SchemaCacheEntry } from "./d1-schema-cache";
 
 export type ErrorReportEnv = {
   ADMIN_DB?: D1Database;
@@ -84,8 +85,11 @@ const ERROR_REPORT_SCHEMA = [
   `CREATE INDEX IF NOT EXISTS idx_error_reports_category_created_at
    ON error_reports (category, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_error_reports_coach_slug_created_at
-   ON error_reports (coach_slug, created_at DESC)`
+   ON error_reports (coach_slug, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_error_reports_created_at
+   ON error_reports (created_at DESC)`
 ];
+const errorReportsSchemaCache = new WeakMap<D1Database, D1SchemaCacheEntry>();
 
 export async function insertWebsiteErrorReport(payload: PublicErrorReportPayload, env: ErrorReportEnv) {
   if (!env.ADMIN_DB) return { persisted: false as const, reason: "ADMIN_DB not configured" };
@@ -225,9 +229,15 @@ export async function updateWebsiteErrorReportStatus({
 }
 
 export async function ensureErrorReportsSchema(db: D1Database) {
-  for (const statement of ERROR_REPORT_SCHEMA) {
-    await db.prepare(statement).run();
-  }
+  await runCachedD1SchemaSetup({
+    cache: errorReportsSchemaCache,
+    db,
+    setup: async () => {
+      for (const statement of ERROR_REPORT_SCHEMA) {
+        await db.prepare(statement).run();
+      }
+    }
+  });
 }
 
 function mapRowToAdminErrorReport(row: ErrorReportRow): AdminErrorReport {

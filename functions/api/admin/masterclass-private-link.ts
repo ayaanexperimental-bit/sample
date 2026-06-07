@@ -1,7 +1,10 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { funnels, getFunnelByEntryCode, isPaidProgramFunnel } from "../../../lib/coach-platform";
 import {
+  adminAuthorizationResponse,
   adminJson,
+  canAuthenticatedAdminPerform,
+  canAuthenticatedAdminPerformAny,
   isAdminDemoAuthEnabled,
   isValidOtp,
   readJsonBody,
@@ -78,14 +81,14 @@ export async function onRequest({ request, env }: PagesContext) {
   }
 
   if (action === "send_otp") {
-    const otpAdmin = await requireAdmin(request, env, {
-      requireCsrf: true,
-      requiredAnyPermission: [
+    if (
+      !canAuthenticatedAdminPerformAny(admin.admin, [
         "paid_masterclass.reveal_private_links",
         "paid_masterclass.edit_settings"
-      ]
-    });
-    if (!otpAdmin.ok) return otpAdmin.response;
+      ])
+    ) {
+      return adminAuthorizationResponse();
+    }
 
     const result = await startAdminEmailOtp({
       email: admin.admin.email,
@@ -118,11 +121,9 @@ export async function onRequest({ request, env }: PagesContext) {
   }
 
   if (action === "reveal") {
-    const revealAdmin = await requireAdmin(request, env, {
-      requireCsrf: true,
-      requiredPermission: "paid_masterclass.reveal_private_links"
-    });
-    if (!revealAdmin.ok) return revealAdmin.response;
+    if (!canAuthenticatedAdminPerform(admin.admin, "paid_masterclass.reveal_private_links")) {
+      return adminAuthorizationResponse();
+    }
 
     const otp = typeof body?.otp === "string" ? body.otp.trim() : "";
     if (!isValidOtp(otp)) {
@@ -153,11 +154,9 @@ export async function onRequest({ request, env }: PagesContext) {
   }
 
   if (action === "update_whatsapp") {
-    const updateAdmin = await requireAdmin(request, env, {
-      requireCsrf: true,
-      requiredPermission: "paid_masterclass.edit_settings"
-    });
-    if (!updateAdmin.ok) return updateAdmin.response;
+    if (!canAuthenticatedAdminPerform(admin.admin, "paid_masterclass.edit_settings")) {
+      return adminAuthorizationResponse();
+    }
 
     const otp = typeof body?.otp === "string" ? body.otp.trim() : "";
     if (!isValidOtp(otp)) {
@@ -199,11 +198,9 @@ export async function onRequest({ request, env }: PagesContext) {
   }
 
   if (action === "update_payment") {
-    const updateAdmin = await requireAdmin(request, env, {
-      requireCsrf: true,
-      requiredPermission: "paid_masterclass.edit_settings"
-    });
-    if (!updateAdmin.ok) return updateAdmin.response;
+    if (!canAuthenticatedAdminPerform(admin.admin, "paid_masterclass.edit_settings")) {
+      return adminAuthorizationResponse();
+    }
 
     const otp = typeof body?.otp === "string" ? body.otp.trim() : "";
     if (!isValidOtp(otp)) {

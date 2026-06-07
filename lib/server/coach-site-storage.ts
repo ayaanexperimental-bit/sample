@@ -12,6 +12,7 @@ import {
   toPublicCoachSiteRecord
 } from "../admin-coach-sites";
 import { normalizeCoachTemplateThemeId } from "../coach-template-themes";
+import { runCachedD1SchemaSetup, type D1SchemaCacheEntry } from "./d1-schema-cache";
 
 export type CoachSiteStorageEnv = {
   ADMIN_DB?: D1Database;
@@ -103,6 +104,8 @@ const COACH_SITE_TABLES_SQL = [
   )`,
   `CREATE INDEX IF NOT EXISTS idx_coach_sites_status_updated_at
     ON coach_sites (status, updated_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_coach_sites_updated_at
+    ON coach_sites (updated_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_coach_sites_slug
     ON coach_sites (slug)`,
   `CREATE TABLE IF NOT EXISTS coach_site_media (
@@ -131,6 +134,7 @@ const COACH_SITE_MIGRATIONS_SQL = [
   `ALTER TABLE coach_sites ADD COLUMN existing_paid_funnel_url TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE coach_sites ADD COLUMN paid_funnel_context TEXT NOT NULL DEFAULT ''`
 ];
+const coachSiteSchemaCache = new WeakMap<D1Database, D1SchemaCacheEntry>();
 
 const DEFAULT_ANALYTICS: CoachSiteAnalyticsSummary = {
   averageVisits: 0,
@@ -155,17 +159,24 @@ const DEFAULT_ANALYTICS: CoachSiteAnalyticsSummary = {
 export async function ensureCoachSiteTables(env: CoachSiteStorageEnv) {
   if (!env.ADMIN_DB) return false;
 
-  for (const statement of COACH_SITE_TABLES_SQL) {
-    await env.ADMIN_DB.prepare(statement).run();
-  }
+  const db = env.ADMIN_DB;
+  await runCachedD1SchemaSetup({
+    cache: coachSiteSchemaCache,
+    db,
+    setup: async () => {
+      for (const statement of COACH_SITE_TABLES_SQL) {
+        await db.prepare(statement).run();
+      }
 
-  for (const statement of COACH_SITE_MIGRATIONS_SQL) {
-    try {
-      await env.ADMIN_DB.prepare(statement).run();
-    } catch {
-      // Existing databases already have this column.
+      for (const statement of COACH_SITE_MIGRATIONS_SQL) {
+        try {
+          await db.prepare(statement).run();
+        } catch {
+          // Existing databases already have this column.
+        }
+      }
     }
-  }
+  });
 
   return true;
 }

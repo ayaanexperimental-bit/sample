@@ -1,5 +1,11 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import { adminJson, readJsonBody, requireAdmin } from "../../../lib/server/admin-auth";
+import {
+  adminAuthorizationResponse,
+  adminJson,
+  canAuthenticatedAdminPerform,
+  readJsonBody,
+  requireAdmin
+} from "../../../lib/server/admin-auth";
 import {
   getAdminMaintenanceStatus,
   getBackupDownload,
@@ -114,11 +120,9 @@ export async function onRequest({ request, env }: PagesContext) {
 
     const actionPermission =
       action === "cleanup" ? "backup_cleanup.run_cleanup" : "backup_cleanup.run_backup";
-    const actionAdmin = await requireAdmin(request, env, {
-      requireCsrf: true,
-      requiredPermission: actionPermission
-    });
-    if (!actionAdmin.ok) return actionAdmin.response;
+    if (!canAuthenticatedAdminPerform(admin.admin, actionPermission)) {
+      return adminAuthorizationResponse();
+    }
 
     const result =
       action === "cleanup"

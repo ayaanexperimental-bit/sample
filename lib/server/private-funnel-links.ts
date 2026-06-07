@@ -1,5 +1,6 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { Funnel } from "../coach-platform";
+import { runCachedD1SchemaSetup, type D1SchemaCacheEntry } from "./d1-schema-cache";
 
 export type PrivateFunnelLinkEnv = {
   ADMIN_DB?: D1Database;
@@ -49,6 +50,7 @@ const PRIVATE_FUNNEL_LINK_SCHEMA = [
   `CREATE INDEX IF NOT EXISTS idx_private_funnel_links_status_updated_at
    ON private_funnel_links (status, updated_at DESC)`
 ];
+const privateFunnelLinksSchemaCache = new WeakMap<D1Database, D1SchemaCacheEntry>();
 
 export async function getPrivateWhatsappGroupUrl(funnel: Funnel, env: PrivateFunnelLinkEnv) {
   const record = await getPrivateWhatsappLinkRecord(funnel, env);
@@ -244,23 +246,29 @@ async function getPrivateWhatsappLinkFromDb(
 }
 
 async function ensurePrivateFunnelLinksSchema(db: D1Database) {
-  for (const statement of PRIVATE_FUNNEL_LINK_SCHEMA) {
-    await db.prepare(statement).run();
-  }
+  await runCachedD1SchemaSetup({
+    cache: privateFunnelLinksSchemaCache,
+    db,
+    setup: async () => {
+      for (const statement of PRIVATE_FUNNEL_LINK_SCHEMA) {
+        await db.prepare(statement).run();
+      }
 
-  const compatibilityColumns = [
-    "ALTER TABLE private_funnel_links ADD COLUMN payment_page_url TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE private_funnel_links ADD COLUMN payment_updated_at INTEGER NOT NULL DEFAULT 0",
-    "ALTER TABLE private_funnel_links ADD COLUMN payment_updated_by TEXT NOT NULL DEFAULT ''"
-  ];
+      const compatibilityColumns = [
+        "ALTER TABLE private_funnel_links ADD COLUMN payment_page_url TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE private_funnel_links ADD COLUMN payment_updated_at INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE private_funnel_links ADD COLUMN payment_updated_by TEXT NOT NULL DEFAULT ''"
+      ];
 
-  for (const statement of compatibilityColumns) {
-    try {
-      await db.prepare(statement).run();
-    } catch {
-      // Existing production tables already have this column.
+      for (const statement of compatibilityColumns) {
+        try {
+          await db.prepare(statement).run();
+        } catch {
+          // Existing production tables already have this column.
+        }
+      }
     }
-  }
+  });
 }
 
 function isAllowedWhatsappInviteUrl(value: string) {

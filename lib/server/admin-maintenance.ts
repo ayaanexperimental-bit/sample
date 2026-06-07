@@ -1,6 +1,7 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { ensureAnalyticsEventTables } from "./analytics-events";
 import { recordAdminAuditEvent } from "./admin-audit";
+import { runCachedD1SchemaSetup, type D1SchemaCacheEntry } from "./d1-schema-cache";
 import { ensureErrorReportsSchema } from "./error-reports";
 
 const textEncoder = new TextEncoder();
@@ -176,6 +177,7 @@ const MAINTENANCE_SCHEMA = [
     created_at INTEGER NOT NULL
   )`
 ];
+const maintenanceSchemaCache = new WeakMap<D1Database, D1SchemaCacheEntry>();
 
 export async function getAdminMaintenanceStatus({
   currentAdminEmail,
@@ -667,11 +669,17 @@ export async function clearOldErrorReports({
 }
 
 export async function ensureMaintenanceTables(db: D1Database) {
-  for (const statement of MAINTENANCE_SCHEMA) {
-    await db.prepare(statement).run();
-  }
+  await runCachedD1SchemaSetup({
+    cache: maintenanceSchemaCache,
+    db,
+    setup: async () => {
+      for (const statement of MAINTENANCE_SCHEMA) {
+        await db.prepare(statement).run();
+      }
 
-  await ensureTableColumn(db, "analytics_backups", "backup_xls", "TEXT NOT NULL DEFAULT ''");
+      await ensureTableColumn(db, "analytics_backups", "backup_xls", "TEXT NOT NULL DEFAULT ''");
+    }
+  });
 }
 
 async function ensureTableColumn(

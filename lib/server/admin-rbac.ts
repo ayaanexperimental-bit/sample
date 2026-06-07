@@ -1,4 +1,5 @@
 import type { D1Database } from "@cloudflare/workers-types";
+import { runCachedD1SchemaSetup, type D1SchemaCacheEntry } from "./d1-schema-cache";
 
 export type AdminRole = "admin" | "owner" | "super_admin";
 
@@ -90,6 +91,7 @@ export const ADMIN_PERMISSION_DEFINITIONS: AdminPermissionDefinition[] = [
 }));
 
 const ALL_PERMISSION_KEYS = ADMIN_PERMISSION_DEFINITIONS.map((permission) => permission.key);
+const adminRbacSchemaCache = new WeakMap<D1Database, D1SchemaCacheEntry>();
 
 export const ADMIN_ROLE_TEMPLATES: Array<{
   description: string;
@@ -166,35 +168,49 @@ export async function ensureAdminRbacSchema(env: AdminRbacEnv) {
   if (!db) return;
   if (!canUseD1SchemaMigrations(db)) return;
 
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS admin_users (
+  await runCachedD1SchemaSetup({
+    cache: adminRbacSchemaCache,
+    db,
+    setup: async () => {
+      await db
+        .prepare(
+          `CREATE TABLE IF NOT EXISTS admin_users (
         email TEXT PRIMARY KEY,
         role TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'super_admin')),
         status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'disabled')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       )`
-    )
-    .run();
+        )
+        .run();
 
-  await ensureColumn(db, "admin_users", "id", "TEXT");
-  await ensureColumn(db, "admin_users", "first_name", "TEXT NOT NULL DEFAULT ''");
-  await ensureColumn(db, "admin_users", "last_name", "TEXT NOT NULL DEFAULT ''");
-  await ensureColumn(db, "admin_users", "phone", "TEXT NOT NULL DEFAULT ''");
-  await ensureColumn(db, "admin_users", "note", "TEXT NOT NULL DEFAULT ''");
-  await ensureColumn(db, "admin_users", "role_key", "TEXT NOT NULL DEFAULT 'custom'");
-  await ensureColumn(db, "admin_users", "is_owner", "INTEGER NOT NULL DEFAULT 0");
-  await ensureColumn(db, "admin_users", "created_by", "TEXT NOT NULL DEFAULT ''");
-  await ensureColumn(db, "admin_users", "last_login_at", "INTEGER NOT NULL DEFAULT 0");
-  await ensureColumn(db, "admin_users", "last_verified_at", "INTEGER NOT NULL DEFAULT 0");
-  await ensureColumn(db, "admin_users", "backup_notifications_enabled", "INTEGER NOT NULL DEFAULT 1");
-  await ensureColumn(db, "admin_users", "receive_security_backup", "INTEGER NOT NULL DEFAULT 0");
-  await ensureAdminUsersRoleSchema(db);
+      await ensureColumn(db, "admin_users", "id", "TEXT");
+      await ensureColumn(db, "admin_users", "first_name", "TEXT NOT NULL DEFAULT ''");
+      await ensureColumn(db, "admin_users", "last_name", "TEXT NOT NULL DEFAULT ''");
+      await ensureColumn(db, "admin_users", "phone", "TEXT NOT NULL DEFAULT ''");
+      await ensureColumn(db, "admin_users", "note", "TEXT NOT NULL DEFAULT ''");
+      await ensureColumn(db, "admin_users", "role_key", "TEXT NOT NULL DEFAULT 'custom'");
+      await ensureColumn(db, "admin_users", "is_owner", "INTEGER NOT NULL DEFAULT 0");
+      await ensureColumn(db, "admin_users", "created_by", "TEXT NOT NULL DEFAULT ''");
+      await ensureColumn(db, "admin_users", "last_login_at", "INTEGER NOT NULL DEFAULT 0");
+      await ensureColumn(db, "admin_users", "last_verified_at", "INTEGER NOT NULL DEFAULT 0");
+      await ensureColumn(
+        db,
+        "admin_users",
+        "backup_notifications_enabled",
+        "INTEGER NOT NULL DEFAULT 1"
+      );
+      await ensureColumn(
+        db,
+        "admin_users",
+        "receive_security_backup",
+        "INTEGER NOT NULL DEFAULT 0"
+      );
+      await ensureAdminUsersRoleSchema(db);
 
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS admin_roles (
+      await db
+        .prepare(
+          `CREATE TABLE IF NOT EXISTS admin_roles (
         id TEXT PRIMARY KEY,
         key TEXT NOT NULL UNIQUE,
         label TEXT NOT NULL,
@@ -204,11 +220,11 @@ export async function ensureAdminRbacSchema(env: AdminRbacEnv) {
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       )`
-    )
-    .run();
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS admin_permissions (
+        )
+        .run();
+      await db
+        .prepare(
+          `CREATE TABLE IF NOT EXISTS admin_permissions (
         id TEXT PRIMARY KEY,
         key TEXT NOT NULL UNIQUE,
         label TEXT NOT NULL,
@@ -216,11 +232,11 @@ export async function ensureAdminRbacSchema(env: AdminRbacEnv) {
         description TEXT NOT NULL DEFAULT '',
         created_at INTEGER NOT NULL
       )`
-    )
-    .run();
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS admin_user_permissions (
+        )
+        .run();
+      await db
+        .prepare(
+          `CREATE TABLE IF NOT EXISTS admin_user_permissions (
         id TEXT PRIMARY KEY,
         admin_user_email TEXT NOT NULL,
         permission_key TEXT NOT NULL,
@@ -229,11 +245,11 @@ export async function ensureAdminRbacSchema(env: AdminRbacEnv) {
         assigned_at INTEGER NOT NULL,
         UNIQUE(admin_user_email, permission_key)
       )`
-    )
-    .run();
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS admin_invites (
+        )
+        .run();
+      await db
+        .prepare(
+          `CREATE TABLE IF NOT EXISTS admin_invites (
         id TEXT PRIMARY KEY,
         email TEXT NOT NULL,
         first_name TEXT NOT NULL DEFAULT '',
@@ -253,14 +269,22 @@ export async function ensureAdminRbacSchema(env: AdminRbacEnv) {
         updated_at INTEGER NOT NULL,
         resend_count INTEGER NOT NULL DEFAULT 0
       )`
-    )
-    .run();
-  await db
-    .prepare("CREATE INDEX IF NOT EXISTS idx_admin_invites_email_status ON admin_invites(email, status)")
-    .run();
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS admin_security_audit_logs (
+        )
+        .run();
+      await db
+        .prepare(
+          "CREATE INDEX IF NOT EXISTS idx_admin_invites_email_status ON admin_invites(email, status)"
+        )
+        .run();
+      await db
+        .prepare(
+          `CREATE INDEX IF NOT EXISTS idx_admin_invites_email_status_created_at
+           ON admin_invites(email, status, created_at DESC)`
+        )
+        .run();
+      await db
+        .prepare(
+          `CREATE TABLE IF NOT EXISTS admin_security_audit_logs (
         id TEXT PRIMARY KEY,
         actor_email TEXT NOT NULL DEFAULT '',
         target_email TEXT NOT NULL DEFAULT '',
@@ -270,11 +294,11 @@ export async function ensureAdminRbacSchema(env: AdminRbacEnv) {
         user_agent_hash TEXT NOT NULL DEFAULT '',
         created_at INTEGER NOT NULL
       )`
-    )
-    .run();
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS admin_login_audit_logs (
+        )
+        .run();
+      await db
+        .prepare(
+          `CREATE TABLE IF NOT EXISTS admin_login_audit_logs (
         id TEXT PRIMARY KEY,
         email TEXT NOT NULL DEFAULT '',
         login_status TEXT NOT NULL,
@@ -284,30 +308,30 @@ export async function ensureAdminRbacSchema(env: AdminRbacEnv) {
         user_agent_hash TEXT NOT NULL DEFAULT '',
         created_at INTEGER NOT NULL
       )`
-    )
-    .run();
+        )
+        .run();
 
-  const now = nowSeconds();
-  for (const permission of ADMIN_PERMISSION_DEFINITIONS) {
-    await db
-      .prepare(
-        `INSERT OR IGNORE INTO admin_permissions (id, key, label, module, description, created_at)
+      const now = nowSeconds();
+      for (const permission of ADMIN_PERMISSION_DEFINITIONS) {
+        await db
+          .prepare(
+            `INSERT OR IGNORE INTO admin_permissions (id, key, label, module, description, created_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)`
-      )
-      .bind(
-        `perm-${permission.key}`,
-        permission.key,
-        permission.label,
-        permission.module,
-        permission.description,
-        now
-      )
-      .run();
-  }
-  for (const roleTemplate of ADMIN_ROLE_TEMPLATES) {
-    await db
-      .prepare(
-        `INSERT INTO admin_roles
+          )
+          .bind(
+            `perm-${permission.key}`,
+            permission.key,
+            permission.label,
+            permission.module,
+            permission.description,
+            now
+          )
+          .run();
+      }
+      for (const roleTemplate of ADMIN_ROLE_TEMPLATES) {
+        await db
+          .prepare(
+            `INSERT INTO admin_roles
          (id, key, label, description, permission_payload, owner_only, created_at, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)
          ON CONFLICT(key) DO UPDATE SET
@@ -316,23 +340,23 @@ export async function ensureAdminRbacSchema(env: AdminRbacEnv) {
            permission_payload = excluded.permission_payload,
            owner_only = excluded.owner_only,
            updated_at = excluded.updated_at`
-      )
-      .bind(
-        `role-${roleTemplate.key}`,
-        roleTemplate.key,
-        roleTemplate.label,
-        roleTemplate.description,
-        JSON.stringify(roleTemplate.permissions),
-        roleTemplate.key === "owner" ? 1 : 0,
-        now
-      )
-      .run();
-  }
+          )
+          .bind(
+            `role-${roleTemplate.key}`,
+            roleTemplate.key,
+            roleTemplate.label,
+            roleTemplate.description,
+            JSON.stringify(roleTemplate.permissions),
+            roleTemplate.key === "owner" ? 1 : 0,
+            now
+          )
+          .run();
+      }
 
-  await bootstrapOwner(env);
-  await db
-    .prepare(
-      `UPDATE admin_users
+      await bootstrapOwner(env);
+      await db
+        .prepare(
+          `UPDATE admin_users
        SET is_owner = 1,
            role = 'owner',
            role_key = 'owner',
@@ -342,9 +366,11 @@ export async function ensureAdminRbacSchema(env: AdminRbacEnv) {
            id = COALESCE(NULLIF(id, ''), email),
            updated_at = ?1
        WHERE role = 'owner' OR is_owner = 1`
-    )
-    .bind(now)
-    .run();
+        )
+        .bind(now)
+        .run();
+    }
+  });
 }
 
 export async function getAdminAccessProfile(

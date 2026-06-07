@@ -1,6 +1,13 @@
 "use client";
 
-import { type CSSProperties, type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type MouseEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import { createPortal } from "react-dom";
 import { AdminCoachSitesManager } from "./admin-coach-sites-manager";
 import { AdminUserManagement } from "./admin-user-management";
@@ -264,6 +271,18 @@ function getErrorReportCounts(reports: AdminErrorReport[]) {
   } satisfies Record<ErrorReportFilterId, number>;
 }
 
+function formatAdminDataUpdatedAt(value: string) {
+  if (!value) return "";
+
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return "";
+
+  return new Date(timestamp).toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
 const navSections: AdminNavSection[] = [
   {
     id: "admin-workflow",
@@ -350,8 +369,11 @@ export function AdminDashboardShell({
   const [recentAnalyticsEvents, setRecentAnalyticsEvents] = useState<AnalyticsRecentEvent[]>([]);
   const [liveCoachSites, setLiveCoachSites] = useState<CoachSiteRecord[]>([]);
   const [coachSiteSource, setCoachSiteSource] = useState("loading");
+  const [dashboardDataUpdatedAt, setDashboardDataUpdatedAt] = useState("");
   const [activityCenterOpen, setActivityCenterOpen] = useState(false);
   const [adminActionActivity, setAdminActionActivity] = useState<AdminActionActivity[]>([]);
+  const dashboardDataLoading =
+    analyticsSource === "loading" || coachSiteSource === "loading" || errorReportSource === "loading";
   const visibleNavSections = useMemo(
     () =>
       navSections
@@ -396,6 +418,7 @@ export function AdminDashboardShell({
         if (response.ok && Array.isArray(payload.errorReports)) {
           setErrorReports(payload.errorReports);
           setErrorReportSource(payload.persistence || "unknown");
+          setDashboardDataUpdatedAt(new Date().toISOString());
         } else {
           setErrorReportSource("unavailable");
         }
@@ -447,6 +470,7 @@ export function AdminDashboardShell({
           setAnalyticsSource(
             payload.source || (payload.configured ? "d1_analytics_events" : "not-configured")
           );
+          setDashboardDataUpdatedAt(new Date().toISOString());
         } else {
           setAnalyticsSummaries([]);
           setPreviousAnalyticsSummaries([]);
@@ -495,6 +519,7 @@ export function AdminDashboardShell({
         if (response.ok && payload.ok && Array.isArray(payload.coachSites)) {
           setLiveCoachSites(payload.coachSites);
           setCoachSiteSource(payload.configured ? "live-database" : "not-configured");
+          setDashboardDataUpdatedAt(new Date().toISOString());
         } else {
           setLiveCoachSites([]);
           setCoachSiteSource("unavailable");
@@ -568,7 +593,10 @@ export function AdminDashboardShell({
             analyticsSummaries={analyticsSummaries}
             coachSites={liveCoachSites}
             csrfToken={csrfToken}
+            dataLoading={dashboardDataLoading}
+            dataUpdatedAt={dashboardDataUpdatedAt}
             errorReports={errorReports}
+            errorReportSource={errorReportSource}
             onSelect={setActiveView}
             onAnalyticsRangeChange={setAnalyticsRange}
             onAnalyticsCustomEndChange={setAnalyticsCustomEnd}
@@ -598,8 +626,11 @@ export function AdminDashboardShell({
           >
             <AdminCoachSitesManager
               csrfToken={csrfToken}
+              initialSites={liveCoachSites}
+              initialSource={coachSiteSource}
               mode="list"
               onAdminActivity={recordAdminActionActivity}
+              onSitesChange={setLiveCoachSites}
             />
           </AdminPageShell>
         ) : null}
@@ -608,8 +639,11 @@ export function AdminDashboardShell({
           <AdminPageShell eyebrow="Coach Sites" title="Create Coach Site">
             <AdminCoachSitesManager
               csrfToken={csrfToken}
+              initialSites={liveCoachSites}
+              initialSource={coachSiteSource}
               mode="create"
               onAdminActivity={recordAdminActionActivity}
+              onSitesChange={setLiveCoachSites}
             />
           </AdminPageShell>
         ) : null}
@@ -619,6 +653,7 @@ export function AdminDashboardShell({
             analyticsSource={analyticsSource}
             analyticsSummaries={analyticsSummaries}
             coachSites={liveCoachSites}
+            dataLoading={analyticsSource === "loading" || coachSiteSource === "loading"}
           />
         ) : null}
         {activeView === "coach-analytics" ? (
@@ -630,6 +665,8 @@ export function AdminDashboardShell({
             analyticsSummaries={analyticsSummaries}
             coachSites={liveCoachSites}
             csrfToken={csrfToken}
+            dataLoading={analyticsSource === "loading" || coachSiteSource === "loading"}
+            dataUpdatedAt={dashboardDataUpdatedAt}
             onAnalyticsCustomEndChange={setAnalyticsCustomEnd}
             onAnalyticsCustomStartChange={setAnalyticsCustomStart}
             onAnalyticsRangeChange={setAnalyticsRange}
@@ -704,7 +741,10 @@ function OverviewView({
   analyticsSummaries,
   coachSites,
   csrfToken,
+  dataLoading,
+  dataUpdatedAt,
   errorReports,
+  errorReportSource,
   onSelect,
   onAdminActivity,
   onAnalyticsRangeChange,
@@ -722,7 +762,10 @@ function OverviewView({
   analyticsSummaries: AnalyticsMetricSummary[];
   coachSites: CoachSiteRecord[];
   csrfToken: string;
+  dataLoading: boolean;
+  dataUpdatedAt: string;
   errorReports: AdminErrorReport[];
+  errorReportSource: string;
   onAdminActivity: (activity: AdminActionActivityInput) => void;
   onAnalyticsCustomEndChange: (value: string) => void;
   onAnalyticsCustomStartChange: (value: string) => void;
@@ -778,6 +821,12 @@ function OverviewView({
     () => buildOverviewTrendPoints(overview, overviewChartRange),
     [overview, overviewChartRange]
   );
+  const loadingSources = [
+    source === "loading" ? "coach sites" : "",
+    analyticsSource === "loading" ? "analytics" : "",
+    errorReportSource === "loading" ? "error reports" : ""
+  ].filter(Boolean);
+  const updatedAtLabel = formatAdminDataUpdatedAt(dataUpdatedAt);
 
   async function generateOverviewAiInsights(forceRefresh = false) {
     if (!csrfToken) {
@@ -923,6 +972,14 @@ function OverviewView({
       eyebrow="Verified Admin Session"
       title="Admin Overview"
     >
+      {dataLoading ? (
+        <p className={styles.inlineStatus} role="status">
+          Loading live admin data: {loadingSources.join(", ") || "admin data"}.
+        </p>
+      ) : updatedAtLabel ? (
+        <p className={styles.inlineStatus}>Last updated {updatedAtLabel}.</p>
+      ) : null}
+
       <section className={styles.analyticsHeroPanel} aria-label="Executive analytics summary">
         <div>
           <p className={styles.kicker}>Business command center</p>
@@ -979,7 +1036,9 @@ function OverviewView({
           <InteractiveTrendChart
             compareEnabled={overviewCompareEnabled}
             compareLabel="Click / previous signal"
-            emptyLabel="No stored performance data yet."
+            emptyLabel={
+              dataLoading ? "Loading stored performance data..." : "No stored performance data yet."
+            }
             onCompareToggle={setOverviewCompareEnabled}
             onRangeChange={setOverviewChartRange}
             points={overviewTrendPoints}
@@ -1099,7 +1158,9 @@ function OverviewView({
               </button>
             ))
           ) : (
-            <p>No top performer data available yet.</p>
+            <p>
+              {dataLoading ? "Loading top performer data..." : "No top performer data available yet."}
+            </p>
           )}
         </div>
       </section>
@@ -1134,11 +1195,13 @@ function OverviewView({
 function TopCoachesView({
   analyticsSource,
   analyticsSummaries,
-  coachSites
+  coachSites,
+  dataLoading
 }: {
   analyticsSource: string;
   analyticsSummaries: AnalyticsMetricSummary[];
   coachSites: CoachSiteRecord[];
+  dataLoading: boolean;
 }) {
   const preferEventSummaries = analyticsSource === "d1_analytics_events";
   const rows = useMemo(
@@ -1190,7 +1253,11 @@ function TopCoachesView({
               ))
             ) : (
               <tr>
-                <td colSpan={8}>No top performer data available yet.</td>
+                <td colSpan={8}>
+                  {dataLoading
+                    ? "Loading top performer data..."
+                    : "No top performer data available yet."}
+                </td>
               </tr>
             )}
           </tbody>
@@ -1820,6 +1887,8 @@ function CoachAnalyticsView({
   analyticsSummaries,
   coachSites,
   csrfToken,
+  dataLoading,
+  dataUpdatedAt,
   onAnalyticsCustomEndChange,
   onAnalyticsCustomStartChange,
   onAnalyticsRangeChange,
@@ -1834,6 +1903,8 @@ function CoachAnalyticsView({
   analyticsSummaries: AnalyticsMetricSummary[];
   coachSites: CoachSiteRecord[];
   csrfToken: string;
+  dataLoading: boolean;
+  dataUpdatedAt: string;
   onAdminActivity: (activity: AdminActionActivityInput) => void;
   onAnalyticsCustomEndChange: (value: string) => void;
   onAnalyticsCustomStartChange: (value: string) => void;
@@ -1913,6 +1984,7 @@ function CoachAnalyticsView({
     () => buildCoachListTrendPoints(filteredRows, coachChartRange),
     [coachChartRange, filteredRows]
   );
+  const updatedAtLabel = formatAdminDataUpdatedAt(dataUpdatedAt);
 
   function openCoachAnalytics(row: CoachAnalyticsRow) {
     setSelectedCoachId(row.coachId);
@@ -2015,6 +2087,14 @@ function CoachAnalyticsView({
       eyebrow="Coach Sites"
       title="Coach Analytics"
     >
+      {dataLoading ? (
+        <p className={styles.inlineStatus} role="status">
+          Loading live coach analytics data...
+        </p>
+      ) : updatedAtLabel ? (
+        <p className={styles.inlineStatus}>Last updated {updatedAtLabel}.</p>
+      ) : null}
+
       <p className={styles.inlineNote}>
         Source:{" "}
         {source === "live-database" ? "Live coach-site database + paid funnel config" : source}.
@@ -2072,7 +2152,11 @@ function CoachAnalyticsView({
       <InteractiveTrendChart
         compareEnabled={coachChartCompareEnabled}
         compareLabel="Clicks"
-        emptyLabel="No coach performance data available for the current filters yet."
+        emptyLabel={
+          dataLoading
+            ? "Loading coach performance data..."
+            : "No coach performance data available for the current filters yet."
+        }
         onCompareToggle={setCoachChartCompareEnabled}
         onRangeChange={setCoachChartRange}
         points={coachListTrendPoints}
@@ -2314,7 +2398,9 @@ function CoachAnalyticsView({
             </div>
           </>
         ) : (
-          <div className={styles.emptyState}>No coaches found yet.</div>
+          <div className={styles.emptyState}>
+            {dataLoading ? "Loading coach records..." : "No coaches found yet."}
+          </div>
         )}
       </section>
 
@@ -2344,7 +2430,9 @@ function CoachAnalyticsView({
                 </button>
               ))
             ) : (
-              <p>No top performer data available yet.</p>
+              <p>
+                {dataLoading ? "Loading top performer data..." : "No top performer data available yet."}
+              </p>
             )}
           </div>
         </article>
@@ -2370,7 +2458,11 @@ function CoachAnalyticsView({
                 </button>
               ))
             ) : (
-              <p>No coach-level issues detected from current records.</p>
+              <p>
+                {dataLoading
+                  ? "Loading coach attention signals..."
+                  : "No coach-level issues detected from current records."}
+              </p>
             )}
           </div>
         </article>
@@ -4547,6 +4639,7 @@ function MasterclassLinksView({
   const [privateLinkMetadata, setPrivateLinkMetadata] = useState<
     Record<string, PrivateLinkMetadata>
   >({});
+  const [privateLinkMetadataSource, setPrivateLinkMetadataSource] = useState("loading");
   const highlightTimerRef = useRef<number | null>(null);
   const privateRevealBusy = Boolean(paidAction);
 
@@ -4568,9 +4661,13 @@ function MasterclassLinksView({
           setPrivateLinkMetadata(
             Object.fromEntries(payload.links.map((item) => [item.funnelId, item]))
           );
+          setPrivateLinkMetadataSource("d1_table");
+        } else if (!cancelled) {
+          setPrivateLinkMetadataSource("unavailable");
         }
       } catch {
         // Keep static metadata visible if the protected metadata API is unavailable.
+        if (!cancelled) setPrivateLinkMetadataSource("unavailable");
       }
     }
 
@@ -5066,6 +5163,13 @@ function MasterclassLinksView({
         <p className={styles.inlineNote}>
           Public entry links can be shared. Private WhatsApp invite values are intentionally hidden
           and resolved only by the server after paid access verification.
+        </p>
+        <p className={styles.inlineStatus}>
+          {privateLinkMetadataSource === "loading"
+            ? "Loading protected paid-link metadata..."
+            : privateLinkMetadataSource === "d1_table"
+              ? "Protected paid-link metadata loaded."
+              : "Protected paid-link metadata is unavailable; static public settings remain visible."}
         </p>
       </section>
 

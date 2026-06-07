@@ -72,6 +72,8 @@ export type RequireAdminResult =
       response: Response;
     };
 
+export type AuthenticatedAdmin = Extract<RequireAdminResult, { ok: true }>["admin"];
+
 export function adminJson(payload: unknown, status = 200, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(payload), {
     status,
@@ -186,6 +188,24 @@ export function requirePermission(
   options: Omit<RequireAdminOptions, "requiredPermission"> = {}
 ) {
   return requireAdmin(request, env, { ...options, requiredPermission: permission });
+}
+
+export function canAuthenticatedAdminPerform(
+  admin: AuthenticatedAdmin,
+  permission: string
+) {
+  return admin.isOwner || admin.permissions.includes(permission);
+}
+
+export function canAuthenticatedAdminPerformAny(
+  admin: AuthenticatedAdmin,
+  permissions: string[]
+) {
+  return admin.isOwner || permissions.some((permission) => admin.permissions.includes(permission));
+}
+
+export function adminAuthorizationResponse() {
+  return adminJson({ authenticated: false, error: "Admin authorization required." }, 403);
 }
 
 export async function createAdminSessionCookie({
@@ -316,9 +336,6 @@ export async function verifyAdminSessionFromRequest(request: Request, env: Admin
 
   const now = Math.floor(Date.now() / 1000);
   if (payload.expiresAt <= now) return null;
-
-  const profile = await getAdminAccessProfile(payload.email, env);
-  if (!profile) return null;
 
   return payload;
 }

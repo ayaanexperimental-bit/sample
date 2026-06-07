@@ -43,8 +43,11 @@ import styles from "./admin-dashboard-shell.module.css";
 
 type AdminCoachSitesManagerProps = {
   csrfToken: string;
+  initialSites?: CoachSiteRecord[];
+  initialSource?: string;
   mode?: "create" | "list";
   onAdminActivity?: (activity: AdminActionActivityInput) => void;
+  onSitesChange?: (sites: CoachSiteRecord[]) => void;
 };
 
 type AdminActionActivityInput = {
@@ -565,10 +568,17 @@ function getCopyScopeLabel(scope: CopyRegenerationScope) {
 
 export function AdminCoachSitesManager({
   csrfToken,
+  initialSites,
+  initialSource,
   mode = "list",
-  onAdminActivity
+  onAdminActivity,
+  onSitesChange
 }: AdminCoachSitesManagerProps) {
-  const [sites, setSites] = useState<CoachSiteRecord[]>([]);
+  const externalSites = useMemo(
+    () => dedupeCoachSiteRecords(initialSites || []),
+    [initialSites]
+  );
+  const [localSites, setLocalSites] = useState<CoachSiteRecord[] | null>(null);
   const [form, setForm] = useState<CoachSiteFormState>(EMPTY_COACH_SITE_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [previewSite, setPreviewSite] = useState<CoachSiteRecord | null>(null);
@@ -607,6 +617,23 @@ export function AdminCoachSitesManager({
   const [storageErrorCode, setStorageErrorCode] = useState("");
   const [storageMessage, setStorageMessage] = useState("");
   const [storageReady, setStorageReady] = useState(false);
+  const sites = localSites || externalSites;
+  const sourceStorageMessage =
+    initialSource === "loading"
+      ? "Loading coach-site records..."
+      : initialSource === "live-database"
+        ? "Coach-site database connected."
+        : initialSource === "not-configured"
+          ? "Coach-site database is not configured. No production records are shown."
+          : initialSource
+            ? "Coach-site records are unavailable right now."
+            : "";
+  const displayStorageMessage = storageMessage || sourceStorageMessage;
+  const displayStorageReady = storageMessage
+    ? storageReady
+    : initialSource
+      ? initialSource === "live-database"
+      : storageReady;
   const publishProgressTimerRef = useRef<number | null>(null);
   const previewSyncTimeoutRef = useRef<number | null>(null);
   const previewSyncFormRef = useRef<CoachSiteFormState | null>(null);
@@ -616,6 +643,23 @@ export function AdminCoachSitesManager({
   function recordActivity(activity: AdminActionActivityInput) {
     onAdminActivity?.(activity);
   }
+
+  const commitSites = useCallback((nextSites: CoachSiteRecord[]) => {
+    const dedupedSites = dedupeCoachSiteRecords(nextSites);
+    setLocalSites(dedupedSites);
+    onSitesChange?.(dedupedSites);
+
+    return dedupedSites;
+  }, [onSitesChange]);
+
+  const updateCommittedSites = useCallback((updater: (current: CoachSiteRecord[]) => CoachSiteRecord[]) => {
+    setLocalSites((current) => {
+      const dedupedSites = dedupeCoachSiteRecords(updater(current || externalSites));
+      onSitesChange?.(dedupedSites);
+
+      return dedupedSites;
+    });
+  }, [externalSites, onSitesChange]);
 
   useEffect(() => {
     if (mode === "create") {
@@ -627,6 +671,8 @@ export function AdminCoachSitesManager({
   }, [mode]);
 
   useEffect(() => {
+    if (initialSource) return;
+
     let cancelled = false;
 
     async function loadPersistedCoachSites() {
@@ -639,7 +685,7 @@ export function AdminCoachSitesManager({
 
         if (cancelled || !response.ok || !payload.ok || !payload.coachSites) return;
 
-        setSites(dedupeCoachSiteRecords(payload.coachSites));
+        commitSites(payload.coachSites);
         setStorageErrorCode("");
         setStorageReady(Boolean(payload.configured));
         setStorageMessage(
@@ -661,7 +707,7 @@ export function AdminCoachSitesManager({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [commitSites, initialSource]);
 
   useEffect(() => {
     return () => {
@@ -982,7 +1028,7 @@ export function AdminCoachSitesManager({
         : [site, ...sites];
 
     setForm(validatedForm);
-    setSites(dedupeCoachSiteRecords(nextSites));
+    commitSites(nextSites);
     setPreviewSite(site);
     setEditingId(site.id);
     setPublishedSite(null);
@@ -1021,7 +1067,7 @@ export function AdminCoachSitesManager({
       const payload = (await response.json().catch(() => ({}))) as CoachSitesApiPayload;
 
       if (!response.ok || !payload.ok || !payload.coachSite) {
-        setSites(dedupeCoachSiteRecords(previousSites));
+        commitSites(previousSites);
         setStorageReady(Boolean(payload.configured));
         reportAdminStorageIssue({
           category: payload.configured === false ? "database_failure" : "admin_action_issue",
@@ -1059,14 +1105,12 @@ export function AdminCoachSitesManager({
       setStorageErrorCode("");
       setStorageMessage("Saved in coach-site database.");
       const savedSite = payload.coachSite;
-      setSites((current) =>
-        dedupeCoachSiteRecords(
+      updateCommittedSites((current) =>
           current.some((item) => item.id === site.id || item.slug === site.slug)
             ? current.map((item) =>
                 item.id === site.id || item.slug === site.slug ? savedSite! : item
               )
             : [savedSite!, ...current]
-        )
       );
       setPreviewSite(savedSite);
       setEditingId(savedSite.id);
@@ -1122,7 +1166,7 @@ export function AdminCoachSitesManager({
       });
       return savedSite;
     } catch {
-      setSites(dedupeCoachSiteRecords(previousSites));
+      commitSites(previousSites);
       setStorageReady(false);
       reportAdminStorageIssue({
         category: "network_or_server_failure",
@@ -1706,7 +1750,7 @@ export function AdminCoachSitesManager({
       setStorageReady(true);
       setStorageErrorCode("");
       setStorageMessage("Coach site reactivated successfully.");
-      setSites((current) =>
+      updateCommittedSites((current) =>
         current.map((item) => (item.id === site.id ? payload.coachSite! : item))
       );
       setPreviewSite((current) => (current?.id === site.id ? payload.coachSite! : current));
@@ -1790,7 +1834,7 @@ export function AdminCoachSitesManager({
 
       setStorageReady(true);
       setStorageErrorCode("");
-      setSites((current) => current.filter((item) => item.id !== site.id));
+      updateCommittedSites((current) => current.filter((item) => item.id !== site.id));
       setPreviewSite((current) => (current?.id === site.id ? null : current));
       setPublishedSite((current) => (current?.id === site.id ? null : current));
       setStorageMessage("Draft deleted.");
@@ -1936,7 +1980,7 @@ export function AdminCoachSitesManager({
           ? `${payload.coachSite.coachName} archived. It moved behind Archived Coaches and can be reactivated later.`
           : `${payload.coachSite.coachName} removed. Removed records are hidden from Admin lists and analytics.`
       );
-      setSites((current) =>
+      updateCommittedSites((current) =>
         current.map((item) => (item.id === site.id ? payload.coachSite! : item))
       );
       setPreviewSite((current) => (current?.id === site.id ? payload.coachSite! : current));
@@ -2009,7 +2053,7 @@ export function AdminCoachSitesManager({
       setStorageReady(true);
       setStorageErrorCode("");
       setStorageMessage("Coach-site status saved in database.");
-      setSites((current) =>
+      updateCommittedSites((current) =>
         current.map((item) => (item.id === site.id ? payload.coachSite! : item))
       );
       return payload.coachSite;
@@ -2538,8 +2582,8 @@ export function AdminCoachSitesManager({
       )}
 
       {message ? <p className={styles.inlineStatus}>{message}</p> : null}
-      {storageMessage ? (
-        <p className={storageReady ? styles.inlineStatus : styles.linkWarning}>
+      {displayStorageMessage ? (
+        <p className={displayStorageReady ? styles.inlineStatus : styles.linkWarning}>
           {storageErrorCode ? (
             <>
               <button
@@ -2554,7 +2598,7 @@ export function AdminCoachSitesManager({
               </a>
             </>
           ) : null}
-          {storageMessage}
+          {displayStorageMessage}
         </p>
       ) : null}
 

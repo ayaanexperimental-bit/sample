@@ -6,7 +6,9 @@ import {
 } from "../../../../lib/admin-coach-sites";
 import { COACH_TEMPLATE_THEME_IDS } from "../../../../lib/coach-template-themes";
 import {
+  adminAuthorizationResponse,
   adminJson,
+  canAuthenticatedAdminPerform,
   isAdminDemoAuthEnabled,
   isValidOtp,
   readJsonBody,
@@ -83,11 +85,10 @@ export async function onRequest({ request, env }: PagesContext) {
     const body = await readJsonBody<CoachSitesBody>(request);
     const site = parseCoachSiteBody(body?.site);
     const mode = body?.mode === "edit" ? "edit" : "create";
-    const writeAdmin = await requireAdmin(request, env, {
-      requireCsrf: true,
-      requiredPermission: mode === "edit" ? "website_creator.edit" : "website_creator.create"
-    });
-    if (!writeAdmin.ok) return writeAdmin.response;
+    const writePermission = mode === "edit" ? "website_creator.edit" : "website_creator.create";
+    if (!canAuthenticatedAdminPerform(admin.admin, writePermission)) {
+      return adminAuthorizationResponse();
+    }
     if (!site) {
       return adminJson({ ok: false, error: "Coach site payload is required." }, 400);
     }
@@ -163,11 +164,9 @@ export async function onRequest({ request, env }: PagesContext) {
     }
 
     if (action === "reactivate") {
-      const reactivateAdmin = await requireAdmin(request, env, {
-        requireCsrf: true,
-        requiredPermission: "coach_sites.archive"
-      });
-      if (!reactivateAdmin.ok) return reactivateAdmin.response;
+      if (!canAuthenticatedAdminPerform(admin.admin, "coach_sites.archive")) {
+        return adminAuthorizationResponse();
+      }
 
       if (!env.ADMIN_DB) {
         return adminJson(
@@ -225,11 +224,9 @@ export async function onRequest({ request, env }: PagesContext) {
     }
 
     if (action === "delete_draft") {
-      const draftAdmin = await requireAdmin(request, env, {
-        requireCsrf: true,
-        requiredPermission: "website_creator.save_draft"
-      });
-      if (!draftAdmin.ok) return draftAdmin.response;
+      if (!canAuthenticatedAdminPerform(admin.admin, "website_creator.save_draft")) {
+        return adminAuthorizationResponse();
+      }
 
       if (!status) {
         return adminJson({ ok: false, error: "Coach site id and status are required." }, 400);
@@ -298,11 +295,9 @@ export async function onRequest({ request, env }: PagesContext) {
     }
 
     if (status === "published") {
-      const publishAdmin = await requireAdmin(request, env, {
-        requireCsrf: true,
-        requiredPermission: "website_creator.publish"
-      });
-      if (!publishAdmin.ok) return publishAdmin.response;
+      if (!canAuthenticatedAdminPerform(admin.admin, "website_creator.publish")) {
+        return adminAuthorizationResponse();
+      }
 
       if (!env.ADMIN_DB) {
         return adminJson(
@@ -331,11 +326,10 @@ export async function onRequest({ request, env }: PagesContext) {
     }
 
     if (isDangerousStatus(status)) {
-      const dangerAdmin = await requireAdmin(request, env, {
-        requireCsrf: true,
-        requiredPermission: status === "removed" ? "coach_sites.remove" : "coach_sites.archive"
-      });
-      if (!dangerAdmin.ok) return dangerAdmin.response;
+      const dangerPermission = status === "removed" ? "coach_sites.remove" : "coach_sites.archive";
+      if (!canAuthenticatedAdminPerform(admin.admin, dangerPermission)) {
+        return adminAuthorizationResponse();
+      }
 
       if (!env.ADMIN_DB) {
         return adminJson(
@@ -401,11 +395,9 @@ export async function onRequest({ request, env }: PagesContext) {
         return adminJson({ ok: false, error: "OTP is invalid, expired, or not configured." }, 401);
       }
     } else if (status !== "published") {
-      const editAdmin = await requireAdmin(request, env, {
-        requireCsrf: true,
-        requiredPermission: "coach_sites.edit"
-      });
-      if (!editAdmin.ok) return editAdmin.response;
+      if (!canAuthenticatedAdminPerform(admin.admin, "coach_sites.edit")) {
+        return adminAuthorizationResponse();
+      }
     }
 
     let updatedSite: CoachSiteRecord | null;
