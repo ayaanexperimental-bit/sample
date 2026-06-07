@@ -143,13 +143,23 @@ test.describe("admin user management RBAC", () => {
         error: "The root owner account cannot be suspended or revoked."
       });
 
-      const verifyInvite = await verifyInviteRequest({
+      const openInvite = await verifyInviteRequest({
         env,
         request: new Request(
           `https://ywcoach.com/api/admin/users/invite/verify?token=${encodeURIComponent(
             dbHarness.lastInviteToken
           )}`
         )
+      });
+      expect(openInvite.status).toBe(200);
+      expect(await openInvite.text()).toContain("Accept admin invite");
+      expect(dbHarness.adminUsers.get(CREATOR_EMAIL)?.status).toBeUndefined();
+
+      const verifyInvite = await verifyInviteRequest({
+        env,
+        request: formRequest("https://ywcoach.com/api/admin/users/invite/verify", {
+          token: dbHarness.lastInviteToken
+        })
       });
       expect(verifyInvite.status).toBe(200);
       expect(dbHarness.adminUsers.get(CREATOR_EMAIL)?.status).toBe("active");
@@ -433,7 +443,7 @@ function handleRun(
     harness.adminPermissions.set(String(values[0]), []);
     return;
   }
-  if (statement.includes("INSERT INTO admin_user_permissions")) {
+  if (statement.includes("admin_user_permissions") && statement.includes("VALUES")) {
     const email = String(values[1]);
     const permission = String(values[2]);
     harness.adminPermissions.set(email, [...(harness.adminPermissions.get(email) || []), permission]);
@@ -487,5 +497,16 @@ function jsonRequest(
       ...headers
     },
     method
+  });
+}
+
+function formRequest(url: string, body: Record<string, string>) {
+  return new Request(url, {
+    body: new URLSearchParams(body),
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+      host: new URL(url).host
+    },
+    method: "POST"
   });
 }

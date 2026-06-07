@@ -543,28 +543,18 @@ export async function verifyAdminInviteToken({
   token: string;
 }) {
   const db = await getConfiguredDb(env);
-  const tokenHash = await createTokenHash(token, env);
   const now = nowSeconds();
-  const row = await db
-    .prepare(
-      `SELECT id, email, first_name, last_name, phone, note, role_payload, permission_payload,
-              status, expires_at, resend_count, created_by, created_at, updated_at
-       FROM admin_invites
-       WHERE invite_token_hash = ?1
-       LIMIT 1`
-    )
-    .bind(tokenHash)
-    .first<AdminInviteRow>();
-  if (!row) return { ok: false, error: "Admin invite is invalid or expired." };
+  const row = await getInviteByToken({ db, env, token });
+  if (!row) return { ok: false as const, error: "Admin invite is invalid or expired." };
   if (!pendingInviteStatuses.has(row.status) && row.status !== "failed") {
-    return { ok: false, error: "Admin invite is no longer active." };
+    return { ok: false as const, error: "Admin invite is no longer active." };
   }
   if (Number(row.expires_at || 0) <= now) {
     await db
       .prepare("UPDATE admin_invites SET status = 'expired', updated_at = ?1 WHERE id = ?2")
       .bind(now, row.id)
       .run();
-    return { ok: false, error: "Admin invite is expired." };
+    return { ok: false as const, error: "Admin invite is expired." };
   }
 
   const existingAdmin = await db
@@ -628,21 +618,117 @@ export async function verifyAdminInviteToken({
     .bind(now, row.id)
     .run();
 
-  await recordAdminSecurityAudit({
-    action: "admin_invite_verified",
-    actorEmail: row.created_by || "",
-    env,
-    request,
-    targetEmail: row.email
-  });
+  try {
+    await recordAdminSecurityAudit({
+      action: "admin_invite_verified",
+      actorEmail: row.created_by || "",
+      env,
+      request,
+      targetEmail: row.email
+    });
+  } catch {
+    // Account activation must not fail just because the secondary audit write failed.
+  }
 
   return { ok: true, email: row.email };
+}
+
+export async function getAdminInviteTokenStatus({
+  env,
+  token
+}: {
+  env: AdminUserManagementEnv;
+  request?: Request;
+  token: string;
+}) {
+  const db = await getConfiguredDb(env);
+  const now = nowSeconds();
+  const row = await getInviteByToken({ db, env, token });
+  if (!row) return { ok: false, error: "Admin invite is invalid or expired." };
+  if (!pendingInviteStatuses.has(row.status) && row.status !== "failed") {
+    return { ok: false, error: "Admin invite is no longer active." };
+  }
+  if (Number(row.expires_at || 0) <= now) {
+    await db
+      .prepare("UPDATE admin_invites SET status = 'expired', updated_at = ?1 WHERE id = ?2")
+      .bind(now, row.id)
+      .run();
+    return { ok: false, error: "Admin invite is expired." };
+  }
+
+  const existingAdmin = await db
+    .prepare("SELECT role, is_owner, status FROM admin_users WHERE email = ?1 LIMIT 1")
+    .bind(row.email)
+    .first<{ is_owner?: number | string | null; role: string; status: string }>();
+  if (existingAdmin?.status === "active") {
+    return { ok: false as const, error: "This admin account is already active." };
+  }
+  if (existingAdmin?.role === "owner" || isTruthy(existingAdmin?.is_owner)) {
+    return { ok: false as const, error: "The root owner account cannot be modified by invite." };
+  }
+
+  return {
+    email: row.email,
+    expiresAt: toIso(row.expires_at),
+    firstName: row.first_name || "",
+    lastName: row.last_name || "",
+    ok: true as const
+  };
+}
+
+export async function recordAdminInviteVerificationFailure({
+  env,
+  error,
+  request,
+  tokenPresent
+}: {
+  env: AdminUserManagementEnv;
+  error: unknown;
+  request?: Request;
+  tokenPresent: boolean;
+}) {
+  try {
+    await recordAdminSecurityAudit({
+      action: "admin_invite_verification_failed",
+      actorEmail: "",
+      env,
+      metadata: {
+        errorName: error instanceof Error ? error.name : "unknown",
+        tokenPresent
+      },
+      request
+    });
+  } catch {
+    // Failure logging should never make the public invite page fail harder.
+  }
 }
 
 async function getConfiguredDb(env: AdminUserManagementEnv) {
   if (!env.ADMIN_DB) throw new Error("admin_db_not_configured");
   await ensureAdminRbacSchema(env);
   return env.ADMIN_DB;
+}
+
+async function getInviteByToken({
+  db,
+  env,
+  token
+}: {
+  db: D1Database;
+  env: AdminUserManagementEnv;
+  token: string;
+}) {
+  const tokenHash = await createTokenHash(token, env);
+  return db
+    .prepare(
+      `SELECT id, email, first_name, last_name, phone, note, role_payload, permission_payload,
+              status, expires_at, resend_count, created_by, created_at, updated_at
+       FROM admin_invites
+       WHERE invite_token_hash = ?1
+       LIMIT 1`
+    )
+    .bind(tokenHash)
+    .first<AdminInviteRow>();
 }
 
 async function getInviteById(db: D1Database, inviteId: string) {
@@ -764,7 +850,7 @@ async function replaceAdminPermissions({
   for (const permission of sanitizePermissions(permissions)) {
     await db
       .prepare(
-        `INSERT INTO admin_user_permissions
+        `INSERT OR REPLACE INTO admin_user_permissions
          (id, admin_user_email, permission_key, allowed, assigned_by, assigned_at)
          VALUES (?1, ?2, ?3, 1, ?4, ?5)`
       )
