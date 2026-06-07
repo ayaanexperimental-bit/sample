@@ -2,6 +2,7 @@ import type { D1Database } from "@cloudflare/workers-types";
 import { adminJson, readJsonBody, requireOwner } from "../../../../lib/server/admin-auth";
 import {
   createAdminInvite,
+  deleteRevokedManagedAdmin,
   listAdminUserManagement,
   resendAdminInvite,
   revokeAdminInvite,
@@ -113,6 +114,17 @@ export async function onRequest({ request, env }: PagesContext) {
       const result = await setManagedAdminStatus({
         action:
           action === "reactivate_admin" ? "reactivate" : action === "suspend_admin" ? "suspend" : "revoke",
+        actorEmail: admin.admin.email,
+        email,
+        env,
+        request
+      });
+      return adminJson(result, getAdminUserActionStatus(result));
+    }
+
+    if (request.method === "PATCH" && action === "delete_admin") {
+      const email = typeof body?.email === "string" ? body.email : "";
+      const result = await deleteRevokedManagedAdmin({
         actorEmail: admin.admin.email,
         email,
         env,

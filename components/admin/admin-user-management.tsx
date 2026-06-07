@@ -128,7 +128,7 @@ export function AdminUserManagement({
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editAdmin, setEditAdmin] = useState<ManagedAdmin | null>(null);
   const [confirmAction, setConfirmAction] = useState<{
-    action: "reactivate_admin" | "revoke_admin" | "revoke_invite" | "suspend_admin";
+    action: "delete_admin" | "reactivate_admin" | "revoke_admin" | "revoke_invite" | "suspend_admin";
     email?: string;
     inviteId?: string;
     label: string;
@@ -318,9 +318,23 @@ export function AdminUserManagement({
           : { action: confirmAction.action, email: confirmAction.email };
       const result = await postAdminUsers(payload, csrfToken, "PATCH");
       if (!result.ok) throw new Error(result.error || "Admin action failed.");
+      const updatedAdmin = result.admin;
+      const deletedAdmin = result.deletedAdmin;
+      if (updatedAdmin) {
+        setAdmins((current) =>
+          current.map((admin) => (admin.email === updatedAdmin.email ? updatedAdmin : admin))
+        );
+      }
+      if (deletedAdmin) {
+        setAdmins((current) => current.filter((admin) => admin.email !== deletedAdmin.email));
+        setInvites((current) => current.filter((invite) => invite.email !== deletedAdmin.email));
+      }
+      let activityDetail = result.message || "Admin action completed.";
+      if (updatedAdmin) activityDetail = `${updatedAdmin.email} is now ${updatedAdmin.statusLabel}.`;
+      if (deletedAdmin) activityDetail = `${deletedAdmin.email} was permanently deleted.`;
       setMessage(result.message || "Admin action completed.");
       onAdminActivity({
-        detail: result.message || "Admin action completed.",
+        detail: activityDetail,
         label: "Admin Users",
         status: "success"
       });
@@ -462,7 +476,7 @@ export function AdminUserManagement({
                           </button>
                         )}
                         <button
-                          disabled={admin.isOwner}
+                          disabled={admin.isOwner || admin.status === "inactive"}
                           onClick={() =>
                             setConfirmAction({
                               action: "revoke_admin",
@@ -473,8 +487,25 @@ export function AdminUserManagement({
                           }
                           type="button"
                         >
-                          Revoke
+                          {admin.status === "inactive" ? "Revoked" : "Revoke"}
                         </button>
+                        {admin.status === "inactive" ? (
+                          <button
+                            data-tone="danger"
+                            disabled={admin.isOwner}
+                            onClick={() =>
+                              setConfirmAction({
+                                action: "delete_admin",
+                                email: admin.email,
+                                label: "Deleting admin",
+                                title: "Delete Admin"
+                              })
+                            }
+                            type="button"
+                          >
+                            Delete
+                          </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -613,8 +644,9 @@ export function AdminUserManagement({
         tone="danger"
       >
         <p className={styles.dialogCopy}>
-          This updates admin access immediately. The root owner account is protected and cannot be
-          changed by this action.
+          {confirmAction?.action === "delete_admin"
+            ? "This permanently removes the revoked admin account, permissions, and invite records from the management system. Security audit history is retained."
+            : "This updates admin access immediately. The root owner account is protected and cannot be changed by this action."}
         </p>
         {actionProgress ? <p className={styles.inlineStatus}>{actionProgress}</p> : null}
       </AdminActionDialog>
@@ -800,6 +832,8 @@ async function postAdminUsers(
     method
   });
   const data = (await response.json().catch(() => ({}))) as {
+    admin?: ManagedAdmin;
+    deletedAdmin?: { email: string };
     error?: string;
     message?: string;
     ok?: boolean;

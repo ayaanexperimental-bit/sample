@@ -513,6 +513,7 @@ export async function setManagedAdminStatus({
     .prepare("UPDATE admin_users SET status = ?1, updated_at = ?2 WHERE email = ?3")
     .bind(nextStatus, nowSeconds(), normalizedEmail)
     .run();
+  const updatedAdmin = await getManagedAdminByEmail(db, normalizedEmail);
 
   await recordAdminSecurityAudit({
     action: `admin_user_${action}`,
@@ -529,7 +530,64 @@ export async function setManagedAdminStatus({
         ? "Admin user reactivated."
         : action === "suspend"
           ? "Admin user suspended."
-          : "Admin user revoked."
+          : "Admin user revoked.",
+    admin: updatedAdmin
+  };
+}
+
+export async function deleteRevokedManagedAdmin({
+  actorEmail,
+  email,
+  env,
+  request
+}: {
+  actorEmail: string;
+  email: string;
+  env: AdminUserManagementEnv;
+  request: Request;
+}) {
+  const db = await getConfiguredDb(env);
+  const normalizedEmail = normalizeEmail(email);
+  const row = await db
+    .prepare("SELECT email, role, is_owner, status FROM admin_users WHERE email = ?1 LIMIT 1")
+    .bind(normalizedEmail)
+    .first<{ email: string; is_owner?: number | string | null; role: string; status: string }>();
+  if (!row) return { ok: false, error: "Admin user not found." };
+  if (row.role === "owner" || isTruthy(row.is_owner)) {
+    await recordAdminSecurityAudit({
+      action: "owner_modification_blocked",
+      actorEmail,
+      env,
+      metadata: { attemptedAction: "admin_user_delete" },
+      request,
+      targetEmail: normalizedEmail
+    });
+    return {
+      ok: false,
+      error: "The root owner account cannot be deleted.",
+      forbidden: true
+    };
+  }
+  if (row.status !== "inactive") {
+    return { ok: false, error: "Only revoked admin users can be deleted." };
+  }
+
+  await db.prepare("DELETE FROM admin_user_permissions WHERE admin_user_email = ?1").bind(normalizedEmail).run();
+  await db.prepare("DELETE FROM admin_invites WHERE email = ?1").bind(normalizedEmail).run();
+  await db.prepare("DELETE FROM admin_users WHERE email = ?1").bind(normalizedEmail).run();
+
+  await recordAdminSecurityAudit({
+    action: "admin_user_delete",
+    actorEmail,
+    env,
+    request,
+    targetEmail: normalizedEmail
+  });
+
+  return {
+    deletedAdmin: { email: normalizedEmail },
+    ok: true,
+    message: "Revoked admin permanently deleted."
   };
 }
 
@@ -870,6 +928,35 @@ function mapInviteRow(row: AdminInviteRow) {
     updatedAt: toIso(row.updated_at),
     verifiedAt: toIso(row.verified_at)
   };
+}
+
+async function getManagedAdminByEmail(db: D1Database, email: string) {
+  const row = await db
+    .prepare(
+      `SELECT email, id, first_name, last_name, phone, note, role, role_key, status, is_owner,
+              created_by, created_at, updated_at, last_login_at, last_verified_at,
+              backup_notifications_enabled, receive_security_backup
+       FROM admin_users
+       WHERE email = ?1
+       LIMIT 1`
+    )
+    .bind(email)
+    .first<AdminUserRow>();
+  if (!row) return null;
+
+  const permissionRows = await db
+    .prepare(
+      `SELECT permission_key
+       FROM admin_user_permissions
+       WHERE admin_user_email = ?1 AND allowed = 1`
+    )
+    .bind(normalizeEmail(row.email))
+    .all<{ permission_key: string }>();
+  const assignedPermissions = (permissionRows.results || [])
+    .map((permissionRow) => sanitizeText(permissionRow.permission_key, 120))
+    .filter((permission) => allPermissionKeys.has(permission));
+
+  return mapAdminUserRow(row, assignedPermissions);
 }
 
 async function replaceAdminPermissions({

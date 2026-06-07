@@ -200,6 +200,89 @@ test.describe("admin user management RBAC", () => {
         ok: false,
         error: "This admin is already active."
       });
+
+      const suspendAdmin = await adminUsersRequest({
+        env,
+        request: jsonRequest(
+          "https://ywcoach.com/api/admin/users",
+          { action: "suspend_admin", email: CREATOR_EMAIL },
+          { cookie, "x-yw-admin-csrf": csrfToken },
+          "PATCH"
+        )
+      });
+      expect(suspendAdmin.status).toBe(200);
+      expect(await suspendAdmin.json()).toMatchObject({
+        admin: { email: CREATOR_EMAIL, status: "disabled", statusLabel: "Suspended" },
+        ok: true
+      });
+      expect(dbHarness.adminUsers.get(CREATOR_EMAIL)?.status).toBe("disabled");
+
+      const reactivateAdmin = await adminUsersRequest({
+        env,
+        request: jsonRequest(
+          "https://ywcoach.com/api/admin/users",
+          { action: "reactivate_admin", email: CREATOR_EMAIL },
+          { cookie, "x-yw-admin-csrf": csrfToken },
+          "PATCH"
+        )
+      });
+      expect(reactivateAdmin.status).toBe(200);
+      expect(await reactivateAdmin.json()).toMatchObject({
+        admin: { email: CREATOR_EMAIL, status: "active", statusLabel: "Active" },
+        ok: true
+      });
+      expect(dbHarness.adminUsers.get(CREATOR_EMAIL)?.status).toBe("active");
+
+      const deleteActiveAdmin = await adminUsersRequest({
+        env,
+        request: jsonRequest(
+          "https://ywcoach.com/api/admin/users",
+          { action: "delete_admin", email: CREATOR_EMAIL },
+          { cookie, "x-yw-admin-csrf": csrfToken },
+          "PATCH"
+        )
+      });
+      expect(deleteActiveAdmin.status).toBe(400);
+      expect(await deleteActiveAdmin.json()).toMatchObject({
+        error: "Only revoked admin users can be deleted.",
+        ok: false
+      });
+      expect(dbHarness.adminUsers.has(CREATOR_EMAIL)).toBe(true);
+
+      const revokeAdmin = await adminUsersRequest({
+        env,
+        request: jsonRequest(
+          "https://ywcoach.com/api/admin/users",
+          { action: "revoke_admin", email: CREATOR_EMAIL },
+          { cookie, "x-yw-admin-csrf": csrfToken },
+          "PATCH"
+        )
+      });
+      expect(revokeAdmin.status).toBe(200);
+      expect(await revokeAdmin.json()).toMatchObject({
+        admin: { email: CREATOR_EMAIL, status: "inactive", statusLabel: "Revoked" },
+        ok: true
+      });
+      expect(dbHarness.adminUsers.get(CREATOR_EMAIL)?.status).toBe("inactive");
+
+      const deleteRevokedAdmin = await adminUsersRequest({
+        env,
+        request: jsonRequest(
+          "https://ywcoach.com/api/admin/users",
+          { action: "delete_admin", email: CREATOR_EMAIL },
+          { cookie, "x-yw-admin-csrf": csrfToken },
+          "PATCH"
+        )
+      });
+      expect(deleteRevokedAdmin.status).toBe(200);
+      expect(await deleteRevokedAdmin.json()).toMatchObject({
+        deletedAdmin: { email: CREATOR_EMAIL },
+        ok: true,
+        message: "Revoked admin permanently deleted."
+      });
+      expect(dbHarness.adminUsers.has(CREATOR_EMAIL)).toBe(false);
+      expect(dbHarness.adminPermissions.get(CREATOR_EMAIL)).toEqual([]);
+      expect(Array.from(dbHarness.invites.values()).some((invite) => invite.email === CREATOR_EMAIL)).toBe(false);
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -274,11 +357,7 @@ function createStatement(
   };
 }
 
-function handleAll(
-  statement: string,
-  _values: unknown[],
-  harness: ReturnType<typeof createAdminUsersDb>
-) {
+function handleAll(statement: string, values: unknown[], harness: ReturnType<typeof createAdminUsersDb>) {
   if (statement.startsWith("PRAGMA table_info")) {
     return [
       "email",
@@ -307,13 +386,18 @@ function handleAll(
     return Array.from(harness.invites.values());
   }
   if (statement.includes("FROM admin_user_permissions")) {
-    return Array.from(harness.adminPermissions.entries()).flatMap(([email, permissions]) =>
+    const rows = Array.from(harness.adminPermissions.entries()).flatMap(([email, permissions]) =>
       permissions.map((permission) => ({
         admin_user_email: email,
         allowed: 1,
         permission_key: permission
       }))
     );
+    if (statement.includes("WHERE admin_user_email")) {
+      const email = String(values[0] || "");
+      return rows.filter((row) => row.admin_user_email === email);
+    }
+    return rows;
   }
   return [];
 }
@@ -439,8 +523,27 @@ function handleRun(
     });
     return;
   }
+  if (statement.includes("UPDATE admin_users SET status")) {
+    const admin = harness.adminUsers.get(String(values[2] || "").toLowerCase());
+    if (admin) {
+      admin.status = String(values[0]);
+      admin.updated_at = Number(values[1]);
+    }
+    return;
+  }
   if (statement.includes("DELETE FROM admin_user_permissions")) {
     harness.adminPermissions.set(String(values[0]), []);
+    return;
+  }
+  if (statement.includes("DELETE FROM admin_invites")) {
+    const email = String(values[0] || "").toLowerCase();
+    for (const [id, invite] of harness.invites.entries()) {
+      if (String(invite.email || "").toLowerCase() === email) harness.invites.delete(id);
+    }
+    return;
+  }
+  if (statement.includes("DELETE FROM admin_users")) {
+    harness.adminUsers.delete(String(values[0] || "").toLowerCase());
     return;
   }
   if (statement.includes("admin_user_permissions") && statement.includes("VALUES")) {

@@ -482,6 +482,42 @@ test.describe("admin auth security protections", () => {
     await expectUnauthenticatedSession(blockedSession);
   });
 
+  test("suspended and revoked admins cannot keep using existing sessions", async () => {
+    for (const status of ["disabled", "inactive"]) {
+      const email = `${status}-admin@example.com`;
+      const dbRoleEnv = {
+        ...env,
+        ADMIN_ALLOWED_EMAILS: "break-glass@example.com",
+        ADMIN_DB: createAdminRoleDb("admin", status, email) as never,
+        ADMIN_REQUIRE_DB_ADMIN_ROLES: "true"
+      };
+      const staleCookie = await createAdminSessionCookie({
+        email,
+        env: dbRoleEnv,
+        rememberDevice: false,
+        secure: true
+      });
+      expect(staleCookie).toBeTruthy();
+
+      const session = await sessionRequest({
+        env: dbRoleEnv,
+        request: new Request("https://ywcoach.com/api/admin/auth/session", {
+          headers: { cookie: staleCookie?.split(";")[0] || "" }
+        })
+      });
+      expect(session.status).toBe(200);
+      await expectUnauthenticatedSession(session);
+
+      const dashboard = await dashboardOverviewRequest({
+        env: dbRoleEnv,
+        request: new Request("https://ywcoach.com/api/admin/dashboard/overview", {
+          headers: { cookie: staleCookie?.split(";")[0] || "" }
+        })
+      });
+      expect(dashboard.status).toBe(401);
+    }
+  });
+
   test("recognizes owner, admin, and super_admin DB rows as protected admin roles", async () => {
     for (const role of ["owner", "admin", "super_admin"]) {
       await expect(
@@ -556,20 +592,20 @@ function createEmptyErrorReportsDb() {
   };
 }
 
-function createAdminRoleDb(role: string) {
+function createAdminRoleDb(role: string, status = "active", email = role === "viewer" ? "viewer@example.com" : `${role}@example.com`) {
   return {
     prepare: () => {
       const stmt = {
         bind: () => stmt,
         first: async <T>() => {
           return {
-            email: role === "viewer" ? "viewer@example.com" : `${role}@example.com`,
+            email,
             first_name: "",
             is_owner: role === "owner" ? 1 : 0,
             last_name: "",
             role,
             role_key: role === "owner" ? "owner" : "custom",
-            status: "active"
+            status
           } as T;
         }
       };
