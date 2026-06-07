@@ -11,6 +11,7 @@
     "NEXT_PUBLIC_SUPPORT_EMAIL": "support@ywcoach.com",
     "NEXT_PUBLIC_SUPPORT_MESSAGE": "We could not complete this step. Please contact support for help.",
     "NEXT_PUBLIC_SUPPORT_NAME": "Yours Wellness Support",
+    "ADMIN_REQUIRE_DB_ADMIN_ROLES": "true",
     "AI_ANALYTICS_MODEL": "gpt-5-nano",
     "AI_EXTRACT_MODEL": "gpt-5-nano",
     "AI_COPY_MODEL": "gpt-5-mini",
