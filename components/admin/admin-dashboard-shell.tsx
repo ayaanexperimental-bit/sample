@@ -6611,9 +6611,9 @@ function BackupCleanupView({
         <div className={styles.noticeCard} data-tone="warning">
           <strong>Do not enable strict DB roles blindly.</strong>
           <p>
-            Needed before enabling: final admin email, verified active role row, confirmed login and
-            OTP, plus rollback readiness. Current production schema may use owner as the existing
-            super-admin equivalent until a safe role migration is approved.
+            Needed before enabling: final admin email, verified active DB role row, confirmed login
+            and OTP, plus rollback readiness. In strict mode, active admin_users rows become the
+            admin source of truth; owner remains the super-admin equivalent.
           </p>
           <ul className={styles.maintenanceList}>
             {activeStatus.roleChecklist.rollbackInstructions.map((item) => (

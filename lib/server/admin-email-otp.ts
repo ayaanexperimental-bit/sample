@@ -2,7 +2,7 @@ import type { D1Database } from "@cloudflare/workers-types";
 import {
   type AdminSessionPayload,
   createAdminSessionCookie,
-  isAdminEmailAllowed,
+  getAdminRoleForEmail,
   isRequestSecure,
   isValidAdminEmail,
   normalizeAdminEmail
@@ -21,6 +21,7 @@ type AdminEmailOtpEnv = {
   ADMIN_EMAIL_OTP_FROM?: string;
   ADMIN_EMAIL_OTP_FROM_NAME?: string;
   ADMIN_EMAIL_OTP_SECRET?: string;
+  ADMIN_REQUIRE_DB_ADMIN_ROLES?: string;
   ADMIN_OTP_MAX_ATTEMPTS?: string;
   ADMIN_OTP_TTL_SECONDS?: string;
   ADMIN_SESSION_SECRET?: string;
@@ -75,7 +76,7 @@ export async function startAdminEmailOtp({
 
   await cleanupExpiredOtps(env.ADMIN_DB);
 
-  if (!isAdminEmailAllowed(normalizedEmail, env)) {
+  if (!(await isAdminEmailAuthorized(normalizedEmail, env))) {
     await insertAdminAuditEvent(env.ADMIN_DB, {
       email: normalizedEmail,
       reason: "email_not_allowlisted",
@@ -154,7 +155,7 @@ export async function verifyAdminEmailOtp({
     return { ok: false, reason: "not_configured" as const };
   }
 
-  if (!isAdminEmailAllowed(normalizedEmail, env)) {
+  if (!(await isAdminEmailAuthorized(normalizedEmail, env))) {
     await insertAdminAuditEvent(env.ADMIN_DB, {
       email: normalizedEmail,
       reason: "email_not_allowlisted",
@@ -245,6 +246,10 @@ export async function verifyAdminEmailOtp({
     } satisfies AdminSessionPayload,
     sessionCookie
   };
+}
+
+async function isAdminEmailAuthorized(email: string, env: AdminEmailOtpEnv & { ADMIN_DB?: D1Database }) {
+  return Boolean(await getAdminRoleForEmail(email, env));
 }
 
 async function sendAdminOtpEmail({

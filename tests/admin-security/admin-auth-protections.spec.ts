@@ -12,7 +12,7 @@ import { onRequest as resetPasswordRequest } from "../../functions/api/admin/aut
 import { onRequest as sessionRequest } from "../../functions/api/admin/auth/session";
 import { onRequest as verifyOtpRequest } from "../../functions/api/admin/auth/verify-otp";
 import { onRequest as publicErrorReportRequest } from "../../functions/api/error-report";
-import { getAdminRoleForEmail } from "../../lib/server/admin-auth";
+import { createAdminSessionCookie, getAdminRoleForEmail } from "../../lib/server/admin-auth";
 
 const ADMIN_EMAIL = "admin@example.com";
 const ADMIN_DEV_OTP = "123456";
@@ -338,7 +338,7 @@ test.describe("admin auth security protections", () => {
         headers: { cookie }
       })
     });
-    expect(dashboardWithRequiredDbRoles.status).toBe(403);
+    expect(dashboardWithRequiredDbRoles.status).toBe(401);
 
     const logoutWithoutCsrf = await logoutRequest({
       env,
@@ -427,6 +427,59 @@ test.describe("admin auth security protections", () => {
       persistence: "d1_table"
     });
     expect(JSON.stringify(body)).not.toContain("YW-ERR-5001-SMPL");
+  });
+
+  test("strict DB roles use active admin_users rows as the admin source of truth", async () => {
+    const dbOnlyAdminEmail = "db-admin@example.com";
+    const strictDbRoleEnv = {
+      ...env,
+      ADMIN_ALLOWED_EMAILS: "break-glass@example.com",
+      ADMIN_DB: createAdminRoleDb("admin") as never,
+      ADMIN_REQUIRE_DB_ADMIN_ROLES: "true"
+    };
+    const strictCookie = await createAdminSessionCookie({
+      email: dbOnlyAdminEmail,
+      env: strictDbRoleEnv,
+      rememberDevice: false,
+      secure: true
+    });
+
+    expect(strictCookie).toBeTruthy();
+    const cookie = strictCookie?.split(";")[0] || "";
+    const strictSession = await sessionRequest({
+      env: strictDbRoleEnv,
+      request: new Request("https://ywcoach.com/api/admin/auth/session", {
+        headers: { cookie }
+      })
+    });
+
+    expect(strictSession.status).toBe(200);
+    const strictSessionBody = await strictSession.json();
+    expect(strictSessionBody).toMatchObject({
+      admin: { email: dbOnlyAdminEmail, role: "owner" },
+      authenticated: true
+    });
+
+    const viewerCookie = await createAdminSessionCookie({
+      email: "viewer@example.com",
+      env: {
+        ...strictDbRoleEnv,
+        ADMIN_DB: createAdminRoleDb("viewer") as never
+      },
+      rememberDevice: false,
+      secure: true
+    });
+    const blockedSession = await sessionRequest({
+      env: {
+        ...strictDbRoleEnv,
+        ADMIN_DB: createAdminRoleDb("viewer") as never
+      },
+      request: new Request("https://ywcoach.com/api/admin/auth/session", {
+        headers: { cookie: viewerCookie?.split(";")[0] || "" }
+      })
+    });
+    expect(blockedSession.status).toBe(200);
+    await expectUnauthenticatedSession(blockedSession);
   });
 
   test("recognizes owner, admin, and super_admin DB rows as protected admin roles", async () => {

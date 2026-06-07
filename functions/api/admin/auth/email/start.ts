@@ -16,6 +16,7 @@ type Env = {
   ADMIN_EMAIL_OTP_FROM?: string;
   ADMIN_EMAIL_OTP_FROM_NAME?: string;
   ADMIN_EMAIL_OTP_SECRET?: string;
+  ADMIN_REQUIRE_DB_ADMIN_ROLES?: string;
   ADMIN_OTP_MAX_ATTEMPTS?: string;
   ADMIN_OTP_TTL_SECONDS?: string;
   ADMIN_SESSION_SECRET?: string;

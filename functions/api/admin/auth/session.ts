@@ -1,9 +1,12 @@
+import type { D1Database } from "@cloudflare/workers-types";
 import { adminJson, createAdminCsrfToken, requireAdmin } from "../../../../lib/server/admin-auth";
 
 type Env = {
   ADMIN_ALLOWED_EMAILS?: string;
   ADMIN_AUTH_DEMO_ENABLED?: string;
+  ADMIN_DB?: D1Database;
   ADMIN_DEV_OTP?: string;
+  ADMIN_REQUIRE_DB_ADMIN_ROLES?: string;
   ADMIN_SESSION_SECRET?: string;
 };
 

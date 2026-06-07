@@ -740,7 +740,7 @@ async function getAdminRoleChecklist({
     rollbackInstructions: [
       "Set ADMIN_REQUIRE_DB_ADMIN_ROLES=false in Cloudflare Pages variables.",
       "Redeploy or wait for the variable update to take effect.",
-      "Keep ADMIN_ALLOWED_EMAILS configured until DB-role login is verified."
+      "Keep at least one active owner/admin row in admin_users; ADMIN_ALLOWED_EMAILS is only a non-strict fallback."
     ],
     roleRequirementMet,
     strictDbRolesEnabled
@@ -1468,7 +1468,7 @@ function createUnavailableRoleChecklist(
     rollbackInstructions: [
       "Set ADMIN_REQUIRE_DB_ADMIN_ROLES=false in Cloudflare Pages variables.",
       "Redeploy or wait for the variable update to take effect.",
-      "Keep ADMIN_ALLOWED_EMAILS configured until DB-role login is verified."
+      "Keep at least one active owner/admin row in admin_users; ADMIN_ALLOWED_EMAILS is only a non-strict fallback."
     ],
     roleRequirementMet: false,
     strictDbRolesEnabled: env.ADMIN_REQUIRE_DB_ADMIN_ROLES === "true"

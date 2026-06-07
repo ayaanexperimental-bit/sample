@@ -3,7 +3,7 @@ import {
   clearAdminGoogleStateCookie,
   createAdminSessionCookie,
   GENERIC_ADMIN_AUTH_ERROR,
-  isAdminEmailAllowed,
+  getAdminRoleForEmail,
   isRequestSecure,
   normalizeAdminEmail,
   verifyAdminGoogleStateFromRequest
@@ -18,6 +18,7 @@ type Env = {
   ADMIN_GOOGLE_CLIENT_SECRET?: string;
   ADMIN_GOOGLE_REDIRECT_URI?: string;
   ADMIN_OAUTH_STATE_SECRET?: string;
+  ADMIN_REQUIRE_DB_ADMIN_ROLES?: string;
   ADMIN_SESSION_SECRET?: string;
 };
 
@@ -133,7 +134,7 @@ export async function onRequest({ request, env }: PagesContext) {
       !emailVerified ||
       !issuerValid ||
       !audienceValid ||
-      !isAdminEmailAllowed(email, env)
+      !(await getAdminRoleForEmail(email, env))
     ) {
       await recordAdminAuditEvent({
         email,

@@ -4,8 +4,8 @@ import {
   createAdminCsrfToken,
   createAdminSessionCookie,
   GENERIC_ADMIN_AUTH_ERROR,
+  getAdminRoleForEmail,
   isAdminDemoAuthEnabled,
-  isAdminEmailAllowed,
   isRequestSecure,
   isValidAdminEmail,
   isValidOtp,
@@ -20,6 +20,7 @@ type Env = {
   ADMIN_AUTH_DEMO_ENABLED?: string;
   ADMIN_DB?: D1Database;
   ADMIN_DEV_OTP?: string;
+  ADMIN_REQUIRE_DB_ADMIN_ROLES?: string;
   ADMIN_SESSION_SECRET?: string;
 };
 
@@ -81,7 +82,7 @@ export async function onRequest({ request, env }: PagesContext) {
     isLocalDemoRequest(request) &&
     typeof localDevOtp === "string" &&
     isValidOtp(localDevOtp) &&
-    isAdminEmailAllowed(email, env) &&
+    Boolean(await getAdminRoleForEmail(email, env)) &&
     otp === localDevOtp;
 
   if (!localDevAllowsSession) {

@@ -257,7 +257,8 @@ export async function verifyAdminSessionFromRequest(request: Request, env: Admin
   const now = Math.floor(Date.now() / 1000);
   if (payload.expiresAt <= now) return null;
 
-  if (!isAdminEmailAllowed(payload.email, env)) return null;
+  const role = await getAdminRoleForEmail(payload.email, env);
+  if (!role) return null;
 
   return payload;
 }
