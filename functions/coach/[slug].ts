@@ -679,16 +679,20 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       a { color: inherit; }
       h1, h2, h3, p, strong, dd { overflow-wrap: anywhere; }
       button, a { -webkit-tap-highlight-color: transparent; }
+      html:has([data-coach-site-page="public"]),
+      body:has([data-coach-site-page="public"]) {
+        overflow-x: visible;
+      }
       ${renderInlineYWLoaderCss()}
       .page {
         min-height: 100svh;
         position: relative;
         isolation: isolate;
-        overflow-x: clip;
         background: var(--template-bg);
         color: var(--template-ink);
         font-family: var(--template-body-font);
-        padding: 0 0 6rem;
+        padding: 0 0 calc(8.75rem + env(safe-area-inset-bottom));
+        scroll-padding-top: 6rem;
       }
       .page::before {
         content: "";
@@ -767,6 +771,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         background: var(--template-nav);
         box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), var(--template-shadow);
         color: var(--template-inverted-ink);
+        margin-top: clamp(0.6rem, 2vw, 1.1rem);
         padding: 0.7rem 1rem;
         backdrop-filter: blur(14px) saturate(1.18);
         animation: fade-down 620ms ease both;
@@ -825,6 +830,8 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       }
       .nav-links a,
       .button,
+      .sticky-coach-register,
+      .sticky-coach-contact,
       .footer-links a,
       .support-actions a {
         min-height: 2.6rem;
@@ -848,6 +855,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       }
       .button.primary,
       .sticky-register,
+      .sticky-coach-register,
       .register-section a {
         border: 1px solid rgb(216 181 111 / 0.44);
         background: var(--template-cta);
@@ -856,6 +864,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         padding: 0 1rem;
       }
       .button.secondary,
+      .sticky-coach-contact,
       .support-actions a:last-child {
         border: 1px solid var(--template-card-border);
         background: var(--template-card);
@@ -884,6 +893,66 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         bottom: clamp(0.8rem, 4vw, 2rem);
         z-index: 30;
         min-width: 10rem;
+      }
+      .sticky-coach-cta {
+        position: fixed;
+        right: max(0.85rem, env(safe-area-inset-right));
+        bottom: max(0.85rem, env(safe-area-inset-bottom));
+        left: max(0.85rem, env(safe-area-inset-left));
+        z-index: 32;
+        width: min(48rem, calc(100vw - 1.7rem));
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0.9rem;
+        align-items: center;
+        margin-inline: auto;
+        border: 1px solid var(--template-card-border);
+        border-radius: calc(var(--template-radius) + 8px);
+        background:
+          linear-gradient(135deg, rgb(255 255 255 / 0.78), rgb(255 255 255 / 0.48)),
+          var(--template-card-strong);
+        box-shadow:
+          0 1.2rem 4rem rgb(16 23 41 / 0.18),
+          inset 0 1px 0 rgb(255 255 255 / 0.62);
+        color: var(--template-ink);
+        padding: 0.72rem;
+        backdrop-filter: blur(18px) saturate(1.2);
+      }
+      .sticky-coach-context {
+        min-width: 0;
+        display: grid;
+        gap: 0.12rem;
+      }
+      .sticky-coach-context span {
+        color: var(--template-accent);
+        font-size: 0.68rem;
+        font-weight: 950;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .sticky-coach-context strong {
+        color: var(--template-ink);
+        font-family: var(--template-heading-font);
+        font-size: clamp(0.98rem, 2.2vw, 1.2rem);
+        line-height: 1.1;
+        overflow-wrap: anywhere;
+      }
+      .sticky-coach-context small {
+        color: var(--template-muted);
+        font-size: 0.78rem;
+        font-weight: 760;
+        line-height: 1.25;
+      }
+      .sticky-coach-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+      }
+      .sticky-coach-register,
+      .sticky-coach-contact {
+        min-height: 2.75rem;
+        white-space: nowrap;
+        padding: 0 1.05rem;
       }
       .hero {
         min-height: min(780px, calc(100svh - 4.5rem));
@@ -1412,6 +1481,12 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       .page[data-theme="premium-feminine-wellness"] .nav {
         color: var(--template-ink);
       }
+      .page[data-theme="premium-feminine-wellness"] .sticky-coach-cta {
+        background:
+          linear-gradient(135deg, rgb(255 253 249 / 0.86), rgb(255 240 247 / 0.68)),
+          var(--template-card-strong);
+        color: var(--template-ink);
+      }
       .page[data-theme="premium-feminine-wellness"] .hero,
       .page[data-theme="premium-feminine-wellness"] .register-section {
         color: var(--template-ink);
@@ -1424,7 +1499,8 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       }
       .page[data-theme="apple-liquid-glass"] .spot-card,
       .page[data-theme="apple-liquid-glass"] .section,
-      .page[data-theme="apple-liquid-glass"] .support-card {
+      .page[data-theme="apple-liquid-glass"] .support-card,
+      .page[data-theme="apple-liquid-glass"] .sticky-coach-cta {
         backdrop-filter: blur(14px) saturate(1.16);
       }
       .section,
@@ -1443,6 +1519,15 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       .page[data-theme="dark-luxury-wellness"] .footer h2,
       .page[data-theme="dark-luxury-wellness"] .footer p {
         color: var(--template-inverted-ink);
+      }
+      .page[data-theme="dark-luxury-wellness"] .sticky-coach-cta {
+        background:
+          linear-gradient(135deg, rgb(8 11 23 / 0.9), rgb(31 23 45 / 0.74)),
+          var(--template-card-strong);
+        color: var(--template-ink);
+        box-shadow:
+          0 1.2rem 4rem rgb(0 0 0 / 0.34),
+          inset 0 1px 0 rgb(255 255 255 / 0.12);
       }
       @supports (animation-timeline: view()) {
         .section,
@@ -1504,6 +1589,9 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         }
       }
       @media (max-width: 760px) {
+        .page {
+          padding-bottom: calc(10.5rem + env(safe-area-inset-bottom));
+        }
         .nav,
         .hero,
         .hero-metrics,
@@ -1527,6 +1615,10 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           min-height: 2.25rem;
           padding-inline: 0.65rem;
           font-size: 0.8rem;
+        }
+        .brand small {
+          font-size: 0.58rem;
+          letter-spacing: 0.06em;
         }
         .hero {
           margin-top: 0.55rem;
@@ -1552,7 +1644,8 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         .faq-card,
         .page[data-theme="apple-liquid-glass"] .spot-card,
         .page[data-theme="apple-liquid-glass"] .section,
-        .page[data-theme="apple-liquid-glass"] .support-card {
+        .page[data-theme="apple-liquid-glass"] .support-card,
+        .page[data-theme="apple-liquid-glass"] .sticky-coach-cta {
           backdrop-filter: none;
         }
         .trust-row {
@@ -1643,10 +1736,40 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           font-size: clamp(1.45rem, 7vw, 2rem);
           line-height: 1.05;
         }
+        .sticky-coach-cta {
+          grid-template-columns: 1fr;
+          gap: 0.62rem;
+          border-radius: calc(var(--template-radius) + 6px);
+          padding: 0.65rem;
+        }
+        .sticky-coach-context {
+          gap: 0.08rem;
+        }
+        .sticky-coach-context span {
+          font-size: 0.6rem;
+        }
+        .sticky-coach-context strong {
+          font-size: 0.94rem;
+        }
+        .sticky-coach-context small {
+          display: none;
+        }
+        .sticky-coach-actions {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 0.5rem;
+        }
+        .sticky-coach-register,
+        .sticky-coach-contact {
+          min-height: 2.55rem;
+          border-radius: var(--template-radius);
+          font-size: 0.84rem;
+          padding-inline: 0.8rem;
+        }
       }
       @media (max-width: 430px) {
-        .brand small {
-          display: none;
+        .page {
+          padding-bottom: calc(11rem + env(safe-area-inset-bottom));
         }
         .support-actions {
           display: grid;
@@ -1670,6 +1793,18 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           font-size: 0.84rem;
           padding-inline: 0.85rem;
         }
+        .sticky-coach-cta {
+          right: max(0.55rem, env(safe-area-inset-right));
+          bottom: max(0.55rem, env(safe-area-inset-bottom));
+          left: max(0.55rem, env(safe-area-inset-left));
+          width: min(100% - 1.1rem, 48rem);
+        }
+        .sticky-coach-actions {
+          grid-template-columns: 1fr;
+        }
+        .sticky-coach-contact {
+          min-height: 2.35rem;
+        }
         .support-identity {
           grid-template-columns: 1fr;
         }
@@ -1688,7 +1823,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           font-size: 0.82rem;
         }
         .brand small {
-          display: none;
+          font-size: 0.54rem;
         }
         .button.nav-cta {
           min-width: 4.4rem;
@@ -1709,9 +1844,13 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         }
       }
       @media (max-height: 520px) and (orientation: landscape) {
+        .page {
+          padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+        }
         .nav {
-          position: relative;
-          top: auto;
+          top: 0.35rem;
+          min-height: 3rem;
+          padding-block: 0.4rem;
         }
         .hero {
           grid-template-columns: minmax(0, 1fr) minmax(13rem, 0.72fr);
@@ -1729,6 +1868,26 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         }
         .sticky-register {
           display: none;
+        }
+        .sticky-coach-cta {
+          bottom: max(0.45rem, env(safe-area-inset-bottom));
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 0.55rem;
+          padding: 0.52rem;
+        }
+        .sticky-coach-context small {
+          display: none;
+        }
+        .sticky-coach-context strong {
+          font-size: 0.9rem;
+        }
+        .sticky-coach-actions {
+          display: inline-flex;
+        }
+        .sticky-coach-register,
+        .sticky-coach-contact {
+          min-height: 2.35rem;
+          font-size: 0.82rem;
         }
       }
       @media (hover: none), (pointer: coarse) {
@@ -1808,6 +1967,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
     ${renderInlineYWLoader()}
     <main
       class="page"
+      data-coach-site-page="public"
       data-coach-slug="${escapeAttribute(site.slug)}"
       data-theme="${escapeAttribute(theme.id)}"
       style="${escapeAttribute(themeStyle)}"
@@ -1818,7 +1978,6 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         isPaused
           ? renderPausedHtml(site, support)
           : `
-      ${renderStickyRegisterAction(site)}
       <nav class="nav" aria-label="Coach page navigation">
         <a class="brand" href="#top">
           <img alt="YW Nutritech" src="/images/yw-nutritech-logo.png" />
@@ -1936,7 +2095,9 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         <div class="faq-list">${faq}</div>
       </section>
 
-      ${renderFooterHtml(site)}`
+      ${renderSupportHtml(site, support)}
+      ${renderFooterHtml(site)}
+      ${renderStickyRegisterAction(site)}`
       }
     </main>
     <script>
@@ -2221,11 +2382,31 @@ function renderFooterHtml(site: PublicCoachSiteRecord) {
 }
 
 function renderStickyRegisterAction(site: PublicCoachSiteRecord) {
-  return renderRegisterAction(
-    site,
-    "button primary sticky-register",
-    site.registerButtonText || "Register Now"
-  );
+  const support = getSupportDetails(site);
+  const hasCoachContact = support.name !== DEFAULT_SUPPORT_NAME;
+
+  return `
+    <aside class="sticky-coach-cta" aria-label="Coach registration">
+      <div class="sticky-coach-context">
+        <span>Free guest registration</span>
+        <strong>Ready to connect with Coach ${escapeHtml(site.coachName)}?</strong>
+        <small>${escapeHtml(site.niche || "Coach referral")} through YW Nutritech</small>
+      </div>
+      <div class="sticky-coach-actions">
+        ${renderRegisterAction(site, "button primary sticky-coach-register", site.registerButtonText || "Register Now")}
+        ${hasCoachContact ? renderStickyCoachContactAction(support) : ""}
+      </div>
+    </aside>`;
+}
+
+function renderStickyCoachContactAction(support: SupportDetails) {
+  const trackAttribute = support.whatsappLink ? ` data-track="coach_whatsapp_click"` : "";
+  const targetAttribute =
+    support.primaryHref.startsWith("mailto:") || support.primaryHref.startsWith("tel:")
+      ? ""
+      : ` target="_blank" rel="noreferrer"`;
+
+  return `<a class="button secondary sticky-coach-contact"${trackAttribute} href="${escapeAttribute(support.primaryHref)}"${targetAttribute}>Contact Coach</a>`;
 }
 
 function renderRegisterAction(

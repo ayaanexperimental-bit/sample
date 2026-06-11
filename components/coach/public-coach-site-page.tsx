@@ -175,15 +175,13 @@ export function PublicCoachSitePage({
   return (
     <main
       className={styles.page}
+      data-coach-site-page={previewMode ? "preview" : "public"}
       data-preview={previewMode ? "true" : "false"}
       data-theme={theme.id}
       id="top"
       style={themeStyle}
     >
       <div className={styles.auroraLayer} aria-hidden="true" />
-      {previewMode ? null : (
-        <StickyRegisterAction onMissingRegisterLink={showMissingRegisterFallback} site={site} />
-      )}
 
       {previewMode && showThemeSwitcher ? (
         <ThemePreviewSwitcher activeThemeId={theme.id} onThemeChange={onPreviewThemeChange} />
@@ -419,6 +417,8 @@ export function PublicCoachSitePage({
         </div>
       </section>
 
+      <CoachContactSupport referenceId={referenceId} site={site} />
+
       <footer
         className={getPreviewInspectClassName(styles.footer)}
         {...getPreviewInspectProps("footer")}
@@ -436,6 +436,8 @@ export function PublicCoachSitePage({
           <Link href="/disclaimer">Disclaimer</Link>
         </div>
       </footer>
+
+      <StickyRegisterAction onMissingRegisterLink={showMissingRegisterFallback} site={site} />
     </main>
   );
 }
@@ -619,14 +621,45 @@ function StickyRegisterAction({
   onMissingRegisterLink?: () => void;
   site: PublicCoachSiteRecord;
 }) {
+  const support = getSupportDetails(site);
+  const hasCoachContact = support.name !== DEFAULT_SUPPORT_NAME;
+
   return (
-    <RegisterAction
-      className={styles.stickyRegister}
-      onMissingRegisterLink={onMissingRegisterLink}
-      site={site}
-    >
-      {site.registerButtonText || "Register Now"}
-    </RegisterAction>
+    <aside className={styles.stickyCoachCta} aria-label="Coach registration">
+      <div className={styles.stickyCoachContext}>
+        <span>Free guest registration</span>
+        <strong>Ready to connect with Coach {site.coachName}?</strong>
+        <small>{site.niche || "Coach referral"} through YW Nutritech</small>
+      </div>
+      <div className={styles.stickyCoachActions}>
+        <RegisterAction
+          className={styles.stickyCoachRegister}
+          onMissingRegisterLink={onMissingRegisterLink}
+          site={site}
+        >
+          {site.registerButtonText || "Register Now"}
+        </RegisterAction>
+        {hasCoachContact ? (
+          <a
+            className={styles.stickyCoachContact}
+            href={support.primaryHref}
+            onClick={
+              support.whatsappLink
+                ? () => void recordCoachEvent("coach_whatsapp_click", site.slug)
+                : undefined
+            }
+            rel="noreferrer"
+            target={
+              support.primaryHref.startsWith("mailto:") || support.primaryHref.startsWith("tel:")
+                ? undefined
+                : "_blank"
+            }
+          >
+            Contact Coach
+          </a>
+        ) : null}
+      </div>
+    </aside>
   );
 }
 

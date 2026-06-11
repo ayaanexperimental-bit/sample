@@ -1605,7 +1605,17 @@
 
 .productionPreviewFrame :global(main[data-preview="true"]) {
   min-height: auto;
-  padding-bottom: 1.5rem;
+  padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
+}
+
+.productionPreviewFrame :global(main[data-preview="true"] aside[aria-label="Coach registration"]) {
+  position: sticky;
+  right: auto;
+  bottom: 0.75rem;
+  left: auto;
+  width: min(calc(100% - 1rem), 48rem);
+  margin-block: 1rem 0;
+  margin-inline: auto;
 }
 
 .previewInspectable {

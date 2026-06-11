@@ -261,8 +261,8 @@ export const adminControlCenterData: AdminControlCenterData = {
     },
     {
       label: "Strict DB admin roles",
-      status: "Do not enable until real admin row is verified",
-      tone: "warning"
+      status: "Enabled: active admin_users rows are the source of truth",
+      tone: "success"
     },
     {
       label: "AI API key",
