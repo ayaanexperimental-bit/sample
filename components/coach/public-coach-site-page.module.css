@@ -2,6 +2,7 @@
   min-height: 100svh;
   position: relative;
   isolation: isolate;
+  overflow-x: clip;
   background: var(--template-bg);
   color: var(--template-ink);
   font-family: var(--template-body-font);
@@ -10,10 +11,13 @@
 }
 
 :global(html:has([data-coach-site-page="public"])),
+:global(html:has(body > main[data-coach-site-page="preview"])) {
+  overflow-x: clip;
+}
+
 :global(body:has([data-coach-site-page="public"])),
-:global(html:has(body > main[data-coach-site-page="preview"])),
 :global(body:has(> main[data-coach-site-page="preview"])) {
-  overflow-x: visible;
+  overflow-x: hidden;
 }
 
 .page::before {
@@ -36,9 +40,14 @@
 
 .auroraLayer {
   position: fixed;
-  inset: -18vh -18vw;
+  top: -18vh;
+  bottom: -18vh;
+  left: 50%;
+  width: 100vw;
   z-index: 0;
   pointer-events: none;
+  transform: translate3d(-50%, 0, 0) scaleX(1.36);
+  transform-origin: center;
   background-image:
     repeating-linear-gradient(
       100deg,
@@ -278,7 +287,9 @@
   bottom: max(0.85rem, env(safe-area-inset-bottom));
   left: max(0.85rem, env(safe-area-inset-left));
   z-index: 32;
-  width: min(48rem, calc(100vw - 1.7rem));
+  box-sizing: border-box;
+  width: auto;
+  max-width: 48rem;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.9rem;
@@ -295,6 +306,11 @@
   color: var(--template-ink);
   padding: 0.72rem;
   backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  contain: layout paint;
+  will-change: transform;
 }
 
 .stickyCoachContext {
@@ -1515,10 +1531,11 @@
   }
 
   .stickyCoachCta {
-    grid-template-columns: 1fr;
-    gap: 0.62rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.6rem;
     border-radius: calc(var(--template-radius) + 6px);
-    padding: 0.65rem;
+    min-height: 4.35rem;
+    padding: 0.56rem;
   }
 
   .stickyCoachContext {
@@ -1530,7 +1547,12 @@
   }
 
   .stickyCoachContext strong {
-    font-size: 0.94rem;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    font-size: 0.9rem;
+    line-height: 1.08;
+    overflow: hidden;
   }
 
   .stickyCoachContext small {
@@ -1538,17 +1560,17 @@
   }
 
   .stickyCoachActions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.5rem;
+    display: inline-flex;
+    gap: 0.45rem;
+    justify-content: flex-end;
   }
 
   .stickyCoachRegister,
   .stickyCoachContact {
-    min-height: 2.55rem;
+    min-height: 2.65rem;
     border-radius: var(--template-radius);
     font-size: 0.84rem;
-    padding-inline: 0.8rem;
+    padding-inline: 0.85rem;
   }
 }
 
@@ -1570,15 +1592,24 @@
     right: max(0.55rem, env(safe-area-inset-right));
     bottom: max(0.55rem, env(safe-area-inset-bottom));
     left: max(0.55rem, env(safe-area-inset-left));
-    width: min(100% - 1.1rem, 48rem);
+    width: auto;
+    min-height: 4.1rem;
+    padding: 0.52rem;
   }
 
   .stickyCoachActions {
-    grid-template-columns: 1fr;
+    display: inline-flex;
+    min-width: max-content;
   }
 
   .stickyCoachContact {
-    min-height: 2.35rem;
+    display: none;
+  }
+
+  .stickyCoachRegister {
+    min-width: 7.35rem;
+    min-height: 2.45rem;
+    white-space: nowrap;
   }
 }
 
@@ -1689,6 +1720,7 @@
     bottom: max(0.45rem, env(safe-area-inset-bottom));
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 0.55rem;
+    min-height: 3.7rem;
     padding: 0.52rem;
   }
 
