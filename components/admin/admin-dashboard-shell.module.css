@@ -215,6 +215,7 @@
   min-height: 0;
   display: grid;
   align-content: start;
+  grid-auto-rows: max-content;
   gap: 1rem;
   overflow: auto;
   overscroll-behavior: contain;
@@ -523,14 +524,20 @@
 }
 
 .metricCard {
+  position: relative;
+  isolation: isolate;
   min-height: 8.5rem;
   display: grid;
-  align-content: space-between;
+  grid-template-rows: auto minmax(2.4rem, auto) auto;
+  align-content: start;
   gap: 0.8rem;
+  overflow: hidden;
   padding: 1rem;
 }
 
 .metricCard > div {
+  position: relative;
+  z-index: 2;
   display: grid;
   gap: 0.35rem;
   min-width: 0;
@@ -550,6 +557,8 @@
 }
 
 .metricCard em {
+  position: relative;
+  z-index: 2;
   width: 100%;
   border-radius: 999px;
   background: rgb(117 96 108 / 0.08);
@@ -2766,7 +2775,7 @@
 }
 
 .analyticsHeroPanel + .analyticsKpiGrid {
-  margin-top: 0.25rem;
+  margin-top: 0.75rem;
 }
 
 .analyticsHeroPanel > div {
@@ -3998,11 +4007,13 @@
 }
 
 .miniSparkline {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 8.4rem;
   height: 2.4rem;
   justify-self: end;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .miniSparklineArea {
@@ -4019,6 +4030,8 @@
 }
 
 .miniSparklineEmpty {
+  position: relative;
+  z-index: 1;
   display: block;
   width: min(100%, 8.4rem);
   height: 2.4rem;
@@ -5182,7 +5195,7 @@
   }
 
   .metricCard {
-    min-height: 7rem;
+    min-height: 8.5rem;
   }
 
   .funnelStep {
