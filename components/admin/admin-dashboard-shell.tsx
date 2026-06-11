@@ -384,6 +384,7 @@ export function AdminDashboardShell({
         .filter((section) => section.items.length > 0),
     [adminAccess]
   );
+  const hasVisibleAdminViews = visibleNavSections.length > 0;
 
   useEffect(() => {
     if (canAccessAdminView(adminAccess, activeView)) return;
@@ -583,136 +584,144 @@ export function AdminDashboardShell({
 
         <p className={styles.dataNotice}>{data.dataNotice}</p>
 
-        {activeView === "overview" ? (
-          <OverviewView
-            analyticsCustomEnd={analyticsCustomEnd}
-            analyticsCustomStart={analyticsCustomStart}
-            analyticsRange={analyticsRange}
-            analyticsRangeMeta={analyticsRangeMeta}
-            analyticsSource={analyticsSource}
-            analyticsSummaries={analyticsSummaries}
-            coachSites={liveCoachSites}
-            csrfToken={csrfToken}
-            dataLoading={dashboardDataLoading}
-            dataUpdatedAt={dashboardDataUpdatedAt}
-            errorReports={errorReports}
-            errorReportSource={errorReportSource}
-            onSelect={setActiveView}
-            onAnalyticsRangeChange={setAnalyticsRange}
-            onAnalyticsCustomEndChange={setAnalyticsCustomEnd}
-            onAnalyticsCustomStartChange={setAnalyticsCustomStart}
-            onAdminActivity={recordAdminActionActivity}
-            previousAnalyticsSummaries={previousAnalyticsSummaries}
-            recentEvents={recentAnalyticsEvents}
-            source={coachSiteSource}
-          />
-        ) : null}
+        {!hasVisibleAdminViews ? (
+          <AdminPageShell eyebrow="Admin Access" title="No Permissions Assigned">
+            <div className={styles.emptyState}>
+              This admin account is active, but no dashboard sections are assigned. Ask the owner
+              to add at least one permission.
+            </div>
+          </AdminPageShell>
+        ) : (
+          <>
+            {activeView === "overview" ? (
+              <OverviewView
+                analyticsCustomEnd={analyticsCustomEnd}
+                analyticsCustomStart={analyticsCustomStart}
+                analyticsRange={analyticsRange}
+                analyticsRangeMeta={analyticsRangeMeta}
+                analyticsSource={analyticsSource}
+                analyticsSummaries={analyticsSummaries}
+                coachSites={liveCoachSites}
+                csrfToken={csrfToken}
+                dataLoading={dashboardDataLoading}
+                dataUpdatedAt={dashboardDataUpdatedAt}
+                errorReports={errorReports}
+                errorReportSource={errorReportSource}
+                onSelect={setActiveView}
+                onAnalyticsRangeChange={setAnalyticsRange}
+                onAnalyticsCustomEndChange={setAnalyticsCustomEnd}
+                onAnalyticsCustomStartChange={setAnalyticsCustomStart}
+                onAdminActivity={recordAdminActionActivity}
+                previousAnalyticsSummaries={previousAnalyticsSummaries}
+                recentEvents={recentAnalyticsEvents}
+                source={coachSiteSource}
+              />
+            ) : null}
 
-        {activeView === "coach-sites" ? (
-          <AdminPageShell
-            actions={
-              hasAdminPermission(adminAccess, "website_creator.create") ? (
-              <button
-                className={styles.primaryAction}
-                onClick={() => setActiveView("create-coach-site")}
-                type="button"
+            {activeView === "coach-sites" ? (
+              <AdminPageShell
+                actions={
+                  hasAdminPermission(adminAccess, "website_creator.create") ? (
+                    <button
+                      className={styles.primaryAction}
+                      onClick={() => setActiveView("create-coach-site")}
+                      type="button"
+                    >
+                      Create Coach Site
+                    </button>
+                  ) : null
+                }
+                eyebrow="Coach Sites"
+                title="All Coach Sites"
               >
-                Create Coach Site
-              </button>
-              ) : null
-            }
-            eyebrow="Coach Sites"
-            title="All Coach Sites"
-          >
-            <AdminCoachSitesManager
-              csrfToken={csrfToken}
-              initialSites={liveCoachSites}
-              initialSource={coachSiteSource}
-              mode="list"
-              onAdminActivity={recordAdminActionActivity}
-              onSitesChange={setLiveCoachSites}
-            />
-          </AdminPageShell>
-        ) : null}
+                <AdminCoachSitesManager
+                  csrfToken={csrfToken}
+                  initialSites={liveCoachSites}
+                  initialSource={coachSiteSource}
+                  mode="list"
+                  onAdminActivity={recordAdminActionActivity}
+                  onSitesChange={setLiveCoachSites}
+                />
+              </AdminPageShell>
+            ) : null}
 
-        {activeView === "create-coach-site" ? (
-          <AdminPageShell eyebrow="Coach Sites" title="Create Coach Site">
-            <AdminCoachSitesManager
-              csrfToken={csrfToken}
-              initialSites={liveCoachSites}
-              initialSource={coachSiteSource}
-              mode="create"
-              onAdminActivity={recordAdminActionActivity}
-              onSitesChange={setLiveCoachSites}
-            />
-          </AdminPageShell>
-        ) : null}
+            {activeView === "create-coach-site" ? (
+              <AdminPageShell eyebrow="Coach Sites" title="Create Coach Site">
+                <AdminCoachSitesManager
+                  csrfToken={csrfToken}
+                  initialSites={liveCoachSites}
+                  initialSource={coachSiteSource}
+                  mode="create"
+                  onAdminActivity={recordAdminActionActivity}
+                  onSitesChange={setLiveCoachSites}
+                />
+              </AdminPageShell>
+            ) : null}
 
-        {activeView === "top-coaches" ? (
-          <TopCoachesView
-            analyticsSource={analyticsSource}
-            analyticsSummaries={analyticsSummaries}
-            coachSites={liveCoachSites}
-            dataLoading={analyticsSource === "loading" || coachSiteSource === "loading"}
-          />
-        ) : null}
-        {activeView === "coach-analytics" ? (
-          <CoachAnalyticsView
-            analyticsCustomEnd={analyticsCustomEnd}
-            analyticsCustomStart={analyticsCustomStart}
-            analyticsRange={analyticsRange}
-            analyticsSource={analyticsSource}
-            analyticsSummaries={analyticsSummaries}
-            coachSites={liveCoachSites}
-            csrfToken={csrfToken}
-            dataLoading={analyticsSource === "loading" || coachSiteSource === "loading"}
-            dataUpdatedAt={dashboardDataUpdatedAt}
-            onAnalyticsCustomEndChange={setAnalyticsCustomEnd}
-            onAnalyticsCustomStartChange={setAnalyticsCustomStart}
-            onAnalyticsRangeChange={setAnalyticsRange}
-            onAdminActivity={recordAdminActionActivity}
-            onSelect={setActiveView}
-            source={coachSiteSource}
-          />
-        ) : null}
-        {activeView === "paid-masterclass-settings" ? (
-          <MasterclassLinksView
-            control={control}
-            csrfToken={csrfToken}
-            onAdminActivity={recordAdminActionActivity}
-          />
-        ) : null}
-        {activeView === "error-reports" ? (
-          <ErrorReportsView
-            csrfToken={csrfToken}
-            errorReports={errorReports}
-            onAdminActivity={recordAdminActionActivity}
-            onReportsChange={setErrorReports}
-            source={errorReportSource}
-          />
-        ) : null}
-        {activeView === "backup-cleanup" ? (
-          <BackupCleanupView
-            control={control}
-            csrfToken={csrfToken}
-            onAdminActivity={recordAdminActionActivity}
-          />
-        ) : null}
-        {activeView === "settings" ? (
-          <SettingsView
-            adminAccess={adminAccess}
-            control={control}
-            onAction={openAction}
-            onAdminActivity={recordAdminActionActivity}
-            onOpenAdminUsers={() => setActiveView("admin-users")}
-          />
-        ) : null}
-        {activeView === "admin-users" ? (
-          <AdminUserManagement
-            csrfToken={csrfToken}
-            onAdminActivity={recordAdminActionActivity}
-          />
-        ) : null}
+            {activeView === "top-coaches" ? (
+              <TopCoachesView
+                analyticsSource={analyticsSource}
+                analyticsSummaries={analyticsSummaries}
+                coachSites={liveCoachSites}
+                dataLoading={analyticsSource === "loading" || coachSiteSource === "loading"}
+              />
+            ) : null}
+            {activeView === "coach-analytics" ? (
+              <CoachAnalyticsView
+                analyticsCustomEnd={analyticsCustomEnd}
+                analyticsCustomStart={analyticsCustomStart}
+                analyticsRange={analyticsRange}
+                analyticsSource={analyticsSource}
+                analyticsSummaries={analyticsSummaries}
+                coachSites={liveCoachSites}
+                csrfToken={csrfToken}
+                dataLoading={analyticsSource === "loading" || coachSiteSource === "loading"}
+                dataUpdatedAt={dashboardDataUpdatedAt}
+                onAnalyticsCustomEndChange={setAnalyticsCustomEnd}
+                onAnalyticsCustomStartChange={setAnalyticsCustomStart}
+                onAnalyticsRangeChange={setAnalyticsRange}
+                onAdminActivity={recordAdminActionActivity}
+                onSelect={setActiveView}
+                source={coachSiteSource}
+              />
+            ) : null}
+            {activeView === "paid-masterclass-settings" ? (
+              <MasterclassLinksView
+                control={control}
+                csrfToken={csrfToken}
+                onAdminActivity={recordAdminActionActivity}
+              />
+            ) : null}
+            {activeView === "error-reports" ? (
+              <ErrorReportsView
+                csrfToken={csrfToken}
+                errorReports={errorReports}
+                onAdminActivity={recordAdminActionActivity}
+                onReportsChange={setErrorReports}
+                source={errorReportSource}
+              />
+            ) : null}
+            {activeView === "backup-cleanup" ? (
+              <BackupCleanupView
+                control={control}
+                csrfToken={csrfToken}
+                onAdminActivity={recordAdminActionActivity}
+              />
+            ) : null}
+            {activeView === "settings" ? (
+              <SettingsView
+                adminAccess={adminAccess}
+                control={control}
+                onAction={openAction}
+                onAdminActivity={recordAdminActionActivity}
+                onOpenAdminUsers={() => setActiveView("admin-users")}
+              />
+            ) : null}
+            {activeView === "admin-users" ? (
+              <AdminUserManagement csrfToken={csrfToken} onAdminActivity={recordAdminActionActivity} />
+            ) : null}
+          </>
+        )}
       </div>
 
       <AdminActionDialog

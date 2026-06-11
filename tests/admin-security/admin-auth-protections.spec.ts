@@ -434,7 +434,7 @@ test.describe("admin auth security protections", () => {
     const strictDbRoleEnv = {
       ...env,
       ADMIN_ALLOWED_EMAILS: "break-glass@example.com",
-      ADMIN_DB: createAdminRoleDb("admin") as never,
+      ADMIN_DB: createAdminRoleDb("admin", "active", dbOnlyAdminEmail) as never,
       ADMIN_REQUIRE_DB_ADMIN_ROLES: "true"
     };
     const strictCookie = await createAdminSessionCookie({
@@ -459,6 +459,20 @@ test.describe("admin auth security protections", () => {
       admin: { email: dbOnlyAdminEmail, role: "admin" },
       authenticated: true
     });
+
+    let invitedAdminNextCalled = false;
+    const invitedAdminDashboard = await middlewareRequest({
+      env: strictDbRoleEnv,
+      next: async () => {
+        invitedAdminNextCalled = true;
+        return new Response("invited admin dashboard");
+      },
+      request: new Request("https://ywcoach.com/admin/dashboard", {
+        headers: { cookie }
+      })
+    });
+    expect(invitedAdminNextCalled).toBe(true);
+    expect(invitedAdminDashboard.status).toBe(200);
 
     const viewerCookie = await createAdminSessionCookie({
       email: "viewer@example.com",

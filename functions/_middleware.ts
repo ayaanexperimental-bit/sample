@@ -12,7 +12,8 @@ import {
   createFunnelAccessCookie,
   verifyFunnelAccessFromCookie
 } from "../lib/server/funnel-access";
-import { getAdminRoleForEmail, verifyAdminSessionFromRequest } from "../lib/server/admin-auth";
+import { verifyAdminSessionFromRequest } from "../lib/server/admin-auth";
+import { getAdminAccessProfile } from "../lib/server/admin-rbac";
 import {
   paidFunnelSupportResponse,
   type PaidFunnelSupportEnv
@@ -175,9 +176,9 @@ export async function onRequest(context: PagesContext) {
 
 async function handleProtectedAdminPage(context: PagesContext, pathname: string) {
   const session = await verifyAdminSessionFromRequest(context.request, context.env);
-  const role = session ? await getAdminRoleForEmail(session.email, context.env) : null;
+  const profile = session ? await getAdminAccessProfile(session.email, context.env) : null;
 
-  if (session && role === "owner") {
+  if (session && profile) {
     if (!PROTECTED_ADMIN_PAGE_PATHS.has(pathname)) {
       return new Response(null, {
         status: 302,

@@ -38,8 +38,18 @@ type MessageState = {
   tone: "error" | "success";
 } | null;
 
+type AccessIssueState = {
+  actionHref: string;
+  actionLabel: string;
+  message: string;
+  title: string;
+} | null;
+
 const GENERIC_AUTH_ERROR = "Invalid credentials or unauthorized admin access.";
 const FORGOT_PASSWORD_SUCCESS = "If this email is authorized, reset instructions will be sent.";
+const ADMIN_REDIRECT_LOOP_KEY = "yw-admin-access-redirect-loop";
+const ADMIN_REDIRECT_LOOP_LIMIT = 2;
+const ADMIN_REDIRECT_LOOP_WINDOW_MS = 15_000;
 
 export function AdminAuthShell({
   initialStep = "login",
@@ -50,6 +60,7 @@ export function AdminAuthShell({
   const [adminAccess, setAdminAccess] = useState<AdminAccessProfileClient | null>(null);
   const [csrfToken, setCsrfToken] = useState("");
   const [sessionEmail, setSessionEmail] = useState("");
+  const [accessIssue, setAccessIssue] = useState<AccessIssueState>(null);
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginMessage, setLoginMessage] = useState<MessageState>(null);
@@ -91,21 +102,47 @@ export function AdminAuthShell({
           setCsrfToken(typeof data.csrfToken === "string" ? data.csrfToken : "");
 
           if (initialStep !== "dashboard" && window.location.pathname !== "/admin/dashboard") {
-            window.location.replace(getSafeAdminNextPath() || "/admin/dashboard");
+            const dashboardPath = getSafeAdminNextPath() || "/admin/dashboard";
+            if (shouldStopAdminRedirectLoop(dashboardPath)) {
+              setAccessIssue({
+                actionHref: "/admin/login",
+                actionLabel: "Return to login",
+                message: "Unable to complete admin access. Please contact the owner/support.",
+                title: "Unable to Complete Admin Access"
+              });
+              setStep("login");
+              return;
+            }
+            window.location.replace(dashboardPath);
             return;
           }
 
+          clearAdminRedirectLoopState();
+          setAccessIssue(null);
           setStep("dashboard");
         } else {
           setSessionEmail("");
           setAdminAccess(null);
           setCsrfToken("");
+          clearAdminRedirectLoopState();
 
           if (requireSession) {
-            window.location.replace("/admin/login");
+            const loginPath = getAdminLoginPath();
+            if (shouldStopAdminRedirectLoop(loginPath)) {
+              setAccessIssue({
+                actionHref: "/admin/login",
+                actionLabel: "Go to login",
+                message: "Login is required before opening the admin dashboard.",
+                title: "Login Required"
+              });
+              setStep("login");
+              return;
+            }
+            window.location.replace(loginPath);
             return;
           }
 
+          setAccessIssue(null);
           setStep(initialStep === "dashboard" ? "login" : initialStep);
         }
       } catch {
@@ -115,11 +152,17 @@ export function AdminAuthShell({
           setCsrfToken("");
 
           if (requireSession) {
-            window.location.replace("/admin/login");
-            return;
+            setAccessIssue({
+              actionHref: "/admin/dashboard",
+              actionLabel: "Retry",
+              message: "We could not verify the admin session. Retry, or sign in again if the session expired.",
+              title: "Unable to Check Session"
+            });
+            setStep("login");
+          } else {
+            setAccessIssue(null);
+            setStep(initialStep === "dashboard" ? "login" : initialStep);
           }
-
-          setStep(initialStep === "dashboard" ? "login" : initialStep);
         }
       } finally {
         if (!cancelled) {
@@ -141,10 +184,11 @@ export function AdminAuthShell({
 
     const messageByStatus: Record<string, string> = {
       cancelled: "Google sign-in was cancelled.",
+      access_denied: "Access denied. Use the invited admin email or ask the owner to enable your account.",
       failed: GENERIC_AUTH_ERROR,
       not_configured: GENERIC_AUTH_ERROR,
       rate_limited: "Too many admin sign-in attempts. Please try again shortly.",
-      unauthorized: GENERIC_AUTH_ERROR
+      unauthorized: "Access denied. Use the invited admin email or ask the owner to enable your account."
     };
 
     const frame = window.requestAnimationFrame(() => {
@@ -357,6 +401,10 @@ export function AdminAuthShell({
           </div>
         </section>
       );
+    }
+
+    if (accessIssue) {
+      return renderAccessIssue(accessIssue);
     }
 
     if (step === "dashboard") {
@@ -646,6 +694,21 @@ export function AdminAuthShell({
     );
   }
 
+  function renderAccessIssue(issue: Exclude<AccessIssueState, null>) {
+    return (
+      <section className={styles.authPanel} aria-labelledby="admin-access-state-title">
+        <p className={styles.eyebrow}>Admin Access</p>
+        <h1 className={styles.title} id="admin-access-state-title">
+          {issue.title}
+        </h1>
+        <p className={styles.subtitle}>{issue.message}</p>
+        <Link className={styles.primaryButton} href={issue.actionHref} prefetch={false}>
+          {issue.actionLabel}
+        </Link>
+      </section>
+    );
+  }
+
   return (
     <main className={`${styles.adminPage} ${step === "dashboard" ? styles.adminDashboardPage : ""}`}>
       <div className={styles.backdrop} aria-hidden="true" />
@@ -756,4 +819,78 @@ function getSafeAdminNextPath() {
   } catch {
     return "";
   }
+}
+
+function getAdminLoginPath() {
+  if (typeof window === "undefined") return "/admin/login";
+
+  const nextPath =
+    window.location.pathname === "/admin/dashboard"
+      ? "/admin/dashboard"
+      : getSafeAdminNextPath();
+  const params = new URLSearchParams();
+  if (nextPath) params.set("next", nextPath);
+
+  const query = params.toString();
+  return query ? `/admin/login?${query}` : "/admin/login";
+}
+
+function shouldStopAdminRedirectLoop(targetPath: string) {
+  if (typeof window === "undefined") return false;
+
+  try {
+    const now = Date.now();
+    const previous = parseAdminRedirectLoopState(window.sessionStorage.getItem(ADMIN_REDIRECT_LOOP_KEY));
+    const nextCount =
+      previous &&
+      previous.targetPath === targetPath &&
+      now - previous.updatedAt <= ADMIN_REDIRECT_LOOP_WINDOW_MS
+        ? previous.count + 1
+        : 1;
+
+    window.sessionStorage.setItem(
+      ADMIN_REDIRECT_LOOP_KEY,
+      JSON.stringify({ count: nextCount, targetPath, updatedAt: now })
+    );
+
+    return nextCount >= ADMIN_REDIRECT_LOOP_LIMIT;
+  } catch {
+    return false;
+  }
+}
+
+function clearAdminRedirectLoopState() {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.sessionStorage.removeItem(ADMIN_REDIRECT_LOOP_KEY);
+  } catch {
+    // Some privacy modes disable sessionStorage; auth must still proceed.
+  }
+}
+
+function parseAdminRedirectLoopState(value: string | null) {
+  if (!value) return null;
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "count" in parsed &&
+      "targetPath" in parsed &&
+      "updatedAt" in parsed
+    ) {
+      const count = Number((parsed as { count?: unknown }).count);
+      const targetPath = String((parsed as { targetPath?: unknown }).targetPath || "");
+      const updatedAt = Number((parsed as { updatedAt?: unknown }).updatedAt);
+      if (Number.isFinite(count) && targetPath && Number.isFinite(updatedAt)) {
+        return { count, targetPath, updatedAt };
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }

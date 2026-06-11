@@ -126,14 +126,14 @@ export async function requireAdmin(
   if (options.requiredRole && profile.role !== options.requiredRole) {
     return {
       ok: false,
-      response: adminJson({ authenticated: false, error: "Admin authorization required." }, 403)
+      response: adminAuthorizationResponse()
     };
   }
 
   if (options.requiredPermission && !canPerformAdminAction(profile, options.requiredPermission)) {
     return {
       ok: false,
-      response: adminJson({ authenticated: false, error: "Admin authorization required." }, 403)
+      response: adminAuthorizationResponse()
     };
   }
 
@@ -144,7 +144,7 @@ export async function requireAdmin(
   ) {
     return {
       ok: false,
-      response: adminJson({ authenticated: false, error: "Admin authorization required." }, 403)
+      response: adminAuthorizationResponse()
     };
   }
 
@@ -152,7 +152,7 @@ export async function requireAdmin(
     return {
       ok: false,
       response: adminJson(
-        { authenticated: false, error: "Admin request verification failed." },
+        { authenticated: true, authorized: false, error: "Admin request verification failed." },
         403
       )
     };
@@ -205,7 +205,7 @@ export function canAuthenticatedAdminPerformAny(
 }
 
 export function adminAuthorizationResponse() {
-  return adminJson({ authenticated: false, error: "Admin authorization required." }, 403);
+  return adminJson({ authenticated: true, authorized: false, error: "Access denied." }, 403);
 }
 
 export async function createAdminSessionCookie({

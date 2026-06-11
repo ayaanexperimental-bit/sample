@@ -178,6 +178,11 @@ test.describe("admin user management RBAC", () => {
         })
       });
       expect(creatorList.status).toBe(403);
+      expect(await creatorList.json()).toMatchObject({
+        authenticated: true,
+        authorized: false,
+        error: "Access denied."
+      });
 
       const duplicateActive = await adminUsersRequest({
         env,

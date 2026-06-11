@@ -57,7 +57,7 @@ export async function onRequest({ request, env }: PagesContext) {
 
   const state = await createAdminGoogleStateCookie({
     env,
-    redirectPath: "/admin",
+    redirectPath: "/admin/dashboard",
     secure: isRequestSecure(request)
   });
   if (!state) {

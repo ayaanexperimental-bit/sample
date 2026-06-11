@@ -174,7 +174,7 @@ export async function onRequest({ request, env }: PagesContext) {
       request
     });
 
-    return redirectWithCookies(verifiedState.redirectPath || "/admin", request, [
+    return redirectWithCookies(verifiedState.redirectPath || "/admin/dashboard", request, [
       sessionCookie,
       clearAdminGoogleStateCookie({ secure: isRequestSecure(request) })
     ]);
