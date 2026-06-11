@@ -1590,23 +1590,27 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       }
       @media (max-width: 760px), (max-height: 520px) and (orientation: landscape) {
         .nav {
-          position: sticky;
-          top: max(0.85rem, env(safe-area-inset-top));
+          position: fixed;
+          top: calc(1rem + env(safe-area-inset-top));
+          left: 1rem;
+          right: 1rem;
           z-index: 40;
-          max-width: none;
+          width: auto;
+          max-width: 84rem;
           isolation: isolate;
           border-color: var(--template-card-border);
-          background: var(--template-nav);
-          background-color: var(--template-nav);
-          box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.24), var(--template-shadow);
+          background: var(--template-nav-mobile, var(--template-nav));
+          background-color: transparent;
+          box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.42), 0 0 0 1px var(--template-card-border), var(--template-shadow);
           color: var(--template-inverted-ink);
-          margin-top: max(0.85rem, env(safe-area-inset-top));
+          margin-top: 0;
           opacity: 1;
-          transform: none;
+          transform: translate3d(0, 0, 0);
+          backface-visibility: hidden;
           animation: none;
-          -webkit-backdrop-filter: blur(14px) saturate(1.18);
-          backdrop-filter: blur(14px) saturate(1.18);
-          will-change: auto;
+          -webkit-backdrop-filter: blur(22px) saturate(1.24);
+          backdrop-filter: blur(22px) saturate(1.24);
+          will-change: transform;
         }
         .nav::before {
           content: none;
@@ -1621,6 +1625,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       }
       @media (max-width: 760px) {
         .page {
+          padding-top: calc(5.35rem + env(safe-area-inset-top));
           padding-bottom: calc(10.5rem + env(safe-area-inset-bottom));
           scroll-padding-top: calc(5.4rem + env(safe-area-inset-top));
         }
@@ -1637,6 +1642,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           min-height: 3.25rem;
           grid-template-columns: minmax(0, 1fr) auto;
           padding: 0.45rem 0.55rem;
+          width: auto;
         }
         .nav-links {
           display: none;
@@ -1856,7 +1862,9 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           font-size: 0.54rem;
         }
         .nav {
-          width: min(calc(100% - 0.7rem), 84rem);
+          left: 0.85rem;
+          right: 0.85rem;
+          width: auto;
         }
         .button.nav-cta {
           min-width: 4.4rem;
@@ -1878,11 +1886,13 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       }
       @media (max-height: 520px) and (orientation: landscape) {
         .page {
+          padding-top: calc(4.2rem + env(safe-area-inset-top));
           padding-bottom: calc(6rem + env(safe-area-inset-bottom));
         }
         .nav {
-          top: max(0.48rem, env(safe-area-inset-top));
-          margin-top: max(0.48rem, env(safe-area-inset-top));
+          top: calc(0.7rem + env(safe-area-inset-top));
+          left: 1rem;
+          right: 1rem;
           min-height: 3rem;
           padding-block: 0.4rem;
         }

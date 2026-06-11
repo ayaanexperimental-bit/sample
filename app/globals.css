@@ -190,7 +190,7 @@ svg {
 }
 
 main[data-coach-site-page][data-theme="default-current"] {
-  --coach-nav-mobile-solid-base: rgb(12 16 35 / 0.68);
+  --coach-nav-mobile-solid-base: linear-gradient(135deg, rgb(12 16 35 / 0.62), rgb(43 31 62 / 0.46));
   --coach-nav-mobile-solid-border: rgb(216 181 111 / 0.36);
   --coach-nav-mobile-solid-ink: #fffaf1;
   --coach-nav-mobile-solid-polish:
@@ -199,7 +199,7 @@ main[data-coach-site-page][data-theme="default-current"] {
 }
 
 main[data-coach-site-page][data-theme="premium-feminine-wellness"] {
-  --coach-nav-mobile-solid-base: rgb(255 253 249 / 0.72);
+  --coach-nav-mobile-solid-base: linear-gradient(135deg, rgb(255 253 249 / 0.66), rgb(255 245 250 / 0.48));
   --coach-nav-mobile-solid-border: rgb(217 145 171 / 0.32);
   --coach-nav-mobile-solid-ink: #2a1724;
   --coach-nav-mobile-solid-polish:
@@ -208,7 +208,7 @@ main[data-coach-site-page][data-theme="premium-feminine-wellness"] {
 }
 
 main[data-coach-site-page][data-theme="apple-liquid-glass"] {
-  --coach-nav-mobile-solid-base: rgb(255 255 255 / 0.42);
+  --coach-nav-mobile-solid-base: linear-gradient(135deg, rgb(255 255 255 / 0.46), rgb(238 249 255 / 0.28));
   --coach-nav-mobile-solid-border: rgb(70 191 192 / 0.24);
   --coach-nav-mobile-solid-ink: #101729;
   --coach-nav-mobile-solid-polish:
@@ -217,7 +217,7 @@ main[data-coach-site-page][data-theme="apple-liquid-glass"] {
 }
 
 main[data-coach-site-page][data-theme="dark-luxury-wellness"] {
-  --coach-nav-mobile-solid-base: rgb(8 11 23 / 0.72);
+  --coach-nav-mobile-solid-base: linear-gradient(135deg, rgb(8 11 23 / 0.64), rgb(29 20 38 / 0.48));
   --coach-nav-mobile-solid-border: rgb(216 181 111 / 0.3);
   --coach-nav-mobile-solid-ink: #fffaf1;
   --coach-nav-mobile-solid-polish:
@@ -227,25 +227,26 @@ main[data-coach-site-page][data-theme="dark-luxury-wellness"] {
 
 @media (max-width: 760px), (max-height: 520px) and (orientation: landscape) {
   main[data-coach-site-page] > nav[aria-label="Coach page navigation"] {
-    position: sticky !important;
-    top: max(0.85rem, env(safe-area-inset-top)) !important;
-    left: auto !important;
-    right: auto !important;
+    position: fixed !important;
+    top: calc(1rem + env(safe-area-inset-top)) !important;
+    left: 1rem !important;
+    right: 1rem !important;
     z-index: 40 !important;
-    width: min(calc(100% - 1rem), 84rem) !important;
-    max-width: none !important;
+    width: auto !important;
+    max-width: 84rem !important;
     isolation: isolate !important;
-    background: var(--template-nav, var(--coach-nav-mobile-solid-base, #fffdf9)) !important;
-    background-color: var(--template-nav, var(--coach-nav-mobile-solid-base, #fffdf9)) !important;
+    background: var(--template-nav-mobile, var(--template-nav, var(--coach-nav-mobile-solid-base, #fffdf9))) !important;
+    background-color: transparent !important;
     border-color: var(--template-card-border, var(--coach-nav-mobile-solid-border, rgb(217 145 171 / 0.32))) !important;
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.24), var(--template-shadow) !important;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.42), 0 0 0 1px var(--template-card-border), var(--template-shadow) !important;
     color: var(--template-inverted-ink, var(--coach-nav-mobile-solid-ink, #2a1724)) !important;
-    margin-top: max(0.85rem, env(safe-area-inset-top)) !important;
+    margin-top: 0 !important;
     opacity: 1 !important;
-    transform: none !important;
-    -webkit-backdrop-filter: blur(14px) saturate(1.18) !important;
-    backdrop-filter: blur(14px) saturate(1.18) !important;
-    will-change: auto;
+    transform: translate3d(0, 0, 0) !important;
+    backface-visibility: hidden !important;
+    -webkit-backdrop-filter: blur(22px) saturate(1.24) !important;
+    backdrop-filter: blur(22px) saturate(1.24) !important;
+    will-change: transform;
   }
 
   main[data-coach-site-page] > nav[aria-label="Coach page navigation"]::before {
@@ -264,14 +265,17 @@ main[data-coach-site-page][data-theme="dark-luxury-wellness"] {
 
 @media (max-width: 360px) {
   main[data-coach-site-page] > nav[aria-label="Coach page navigation"] {
-    width: min(calc(100% - 0.7rem), 84rem) !important;
+    left: 0.85rem !important;
+    right: 0.85rem !important;
+    width: auto !important;
   }
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
   main[data-coach-site-page] > nav[aria-label="Coach page navigation"] {
-    top: max(0.48rem, env(safe-area-inset-top)) !important;
-    margin-top: max(0.48rem, env(safe-area-inset-top)) !important;
+    top: calc(0.7rem + env(safe-area-inset-top)) !important;
+    left: 1rem !important;
+    right: 1rem !important;
   }
 }
 
