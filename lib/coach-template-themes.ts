@@ -91,8 +91,8 @@ export const coachTemplateThemes: CoachTemplateTheme[] = [
       "--template-shadow": "0 1.25rem 3.2rem rgb(23 27 45 / 0.11)",
       "--template-glow": "rgb(200 184 255 / 0.28)",
       "--template-nav": "rgb(12 16 35 / 0.68)",
-      "--template-nav-mobile-base": "rgb(12 16 35 / 0.84)",
-      "--template-nav-mobile": "linear-gradient(135deg, rgb(12 16 35 / 0.86), rgb(43 31 62 / 0.78))",
+      "--template-nav-mobile-base": "rgb(12 16 35 / 0.68)",
+      "--template-nav-mobile": "rgb(12 16 35 / 0.68)",
       "--template-nav-mobile-border": "rgb(216 181 111 / 0.36)",
       "--template-nav-mobile-ink": "#fffaf1",
       "--template-nav-mobile-polish":
@@ -153,8 +153,8 @@ export const coachTemplateThemes: CoachTemplateTheme[] = [
       "--template-shadow": "0 1.3rem 3.4rem rgb(155 47 95 / 0.11)",
       "--template-glow": "rgb(245 181 201 / 0.34)",
       "--template-nav": "rgb(255 253 249 / 0.72)",
-      "--template-nav-mobile-base": "rgb(255 253 249 / 0.88)",
-      "--template-nav-mobile": "linear-gradient(135deg, rgb(255 253 249 / 0.9), rgb(255 243 248 / 0.82))",
+      "--template-nav-mobile-base": "rgb(255 253 249 / 0.72)",
+      "--template-nav-mobile": "rgb(255 253 249 / 0.72)",
       "--template-nav-mobile-border": "rgb(217 145 171 / 0.32)",
       "--template-nav-mobile-ink": "#2a1724",
       "--template-nav-mobile-polish":
@@ -214,8 +214,8 @@ export const coachTemplateThemes: CoachTemplateTheme[] = [
       "--template-shadow": "0 1.4rem 3.8rem rgb(16 23 41 / 0.13)",
       "--template-glow": "rgb(70 191 192 / 0.28)",
       "--template-nav": "rgb(255 255 255 / 0.42)",
-      "--template-nav-mobile-base": "rgb(255 255 255 / 0.86)",
-      "--template-nav-mobile": "linear-gradient(135deg, rgb(255 255 255 / 0.88), rgb(238 249 255 / 0.76))",
+      "--template-nav-mobile-base": "rgb(255 255 255 / 0.42)",
+      "--template-nav-mobile": "rgb(255 255 255 / 0.42)",
       "--template-nav-mobile-border": "rgb(70 191 192 / 0.24)",
       "--template-nav-mobile-ink": "#101729",
       "--template-nav-mobile-polish":
@@ -276,8 +276,8 @@ export const coachTemplateThemes: CoachTemplateTheme[] = [
       "--template-shadow": "0 1.5rem 4rem rgb(0 0 0 / 0.28)",
       "--template-glow": "rgb(216 181 111 / 0.3)",
       "--template-nav": "rgb(8 11 23 / 0.72)",
-      "--template-nav-mobile-base": "rgb(8 11 23 / 0.86)",
-      "--template-nav-mobile": "linear-gradient(135deg, rgb(8 11 23 / 0.88), rgb(29 20 38 / 0.78))",
+      "--template-nav-mobile-base": "rgb(8 11 23 / 0.72)",
+      "--template-nav-mobile": "rgb(8 11 23 / 0.72)",
       "--template-nav-mobile-border": "rgb(216 181 111 / 0.3)",
       "--template-nav-mobile-ink": "#fffaf1",
       "--template-nav-mobile-polish":

@@ -1590,48 +1590,29 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       }
       @media (max-width: 760px), (max-height: 520px) and (orientation: landscape) {
         .nav {
-          position: fixed;
-          top: calc(0.85rem + env(safe-area-inset-top));
-          left: 0.675rem;
-          right: 0.675rem;
+          position: sticky;
+          top: max(0.85rem, env(safe-area-inset-top));
           z-index: 40;
-          width: auto;
-          max-width: 84rem;
+          max-width: none;
           isolation: isolate;
-          border-color: var(--template-nav-mobile-border, var(--template-card-border));
-          background: var(--template-nav-mobile, var(--template-nav));
-          background-color: transparent;
-          box-shadow:
-            inset 0 1px 0 rgb(255 255 255 / 0.6),
-            0 0 0 0.14rem var(--template-nav-mobile-rim, rgb(255 255 255 / 0.42)),
-            0 0 0 1px var(--template-nav-mobile-border, var(--template-card-border)),
-            0 1rem 2.45rem rgb(12 16 35 / 0.24);
-          color: var(--template-nav-mobile-ink, var(--template-inverted-ink));
-          margin-top: 0;
+          border-color: var(--template-card-border);
+          background: var(--template-nav);
+          background-color: var(--template-nav);
+          box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.24), var(--template-shadow);
+          color: var(--template-inverted-ink);
+          margin-top: max(0.85rem, env(safe-area-inset-top));
           opacity: 1;
-          transform: translateZ(0);
+          transform: none;
           animation: none;
-          -webkit-backdrop-filter: blur(18px) saturate(1.16);
-          backdrop-filter: blur(18px) saturate(1.16);
-          will-change: transform;
+          -webkit-backdrop-filter: blur(14px) saturate(1.18);
+          backdrop-filter: blur(14px) saturate(1.18);
+          will-change: auto;
         }
         .nav::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          z-index: 0;
-          background: var(--template-nav-mobile, var(--template-nav));
-          opacity: 0.54;
-          pointer-events: none;
+          content: none;
         }
         .nav::after {
-          content: "";
-          position: absolute;
-          inset: 0;
-          z-index: 0;
-          background: var(--template-nav-mobile-polish, linear-gradient(135deg, rgb(255 255 255 / 0.52), transparent));
-          opacity: 0.72;
-          pointer-events: none;
+          content: none;
         }
         .nav > * {
           position: relative;
@@ -1640,7 +1621,6 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       }
       @media (max-width: 760px) {
         .page {
-          padding-top: calc(4.9rem + env(safe-area-inset-top));
           padding-bottom: calc(10.5rem + env(safe-area-inset-bottom));
           scroll-padding-top: calc(5.4rem + env(safe-area-inset-top));
         }
@@ -1876,9 +1856,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           font-size: 0.54rem;
         }
         .nav {
-          left: 0.5rem;
-          right: 0.5rem;
-          width: auto;
+          width: min(calc(100% - 0.7rem), 84rem);
         }
         .button.nav-cta {
           min-width: 4.4rem;
@@ -1900,13 +1878,11 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       }
       @media (max-height: 520px) and (orientation: landscape) {
         .page {
-          padding-top: calc(3.9rem + env(safe-area-inset-top));
           padding-bottom: calc(6rem + env(safe-area-inset-bottom));
         }
         .nav {
-          top: calc(0.48rem + env(safe-area-inset-top));
-          left: 0.85rem;
-          right: 0.85rem;
+          top: max(0.48rem, env(safe-area-inset-top));
+          margin-top: max(0.48rem, env(safe-area-inset-top));
           min-height: 3rem;
           padding-block: 0.4rem;
         }
