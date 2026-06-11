@@ -95,6 +95,9 @@ export const coachTemplateThemes: CoachTemplateTheme[] = [
       "--template-nav-mobile": "linear-gradient(135deg, #0c1023, #2b1f3e)",
       "--template-nav-mobile-border": "rgb(216 181 111 / 0.36)",
       "--template-nav-mobile-ink": "#fffaf1",
+      "--template-nav-mobile-polish":
+        "linear-gradient(135deg, rgb(255 255 255 / 0.08), transparent 48%, rgb(216 181 111 / 0.1))",
+      "--template-nav-mobile-rim": "rgb(255 250 241 / 0.08)",
       "--template-radius": "8px",
       "--template-heading-font":
         "var(--font-tech-display), var(--font-conversion), ui-sans-serif, system-ui, sans-serif",
@@ -154,6 +157,9 @@ export const coachTemplateThemes: CoachTemplateTheme[] = [
       "--template-nav-mobile": "linear-gradient(135deg, #fffdf9, #fff3f8)",
       "--template-nav-mobile-border": "rgb(217 145 171 / 0.32)",
       "--template-nav-mobile-ink": "#2a1724",
+      "--template-nav-mobile-polish":
+        "linear-gradient(135deg, rgb(255 255 255 / 0.72), rgb(255 238 247 / 0.5) 52%, rgb(216 181 111 / 0.12))",
+      "--template-nav-mobile-rim": "rgb(255 255 255 / 0.66)",
       "--template-radius": "18px",
       "--template-heading-font": "var(--font-display), var(--font-accent), Georgia, serif",
       "--template-body-font": "var(--font-body), ui-sans-serif, system-ui, sans-serif"
@@ -212,6 +218,9 @@ export const coachTemplateThemes: CoachTemplateTheme[] = [
       "--template-nav-mobile": "linear-gradient(135deg, #ffffff, #eef9ff)",
       "--template-nav-mobile-border": "rgb(70 191 192 / 0.24)",
       "--template-nav-mobile-ink": "#101729",
+      "--template-nav-mobile-polish":
+        "linear-gradient(135deg, rgb(255 255 255 / 0.76), rgb(238 249 255 / 0.56) 54%, rgb(70 191 192 / 0.08))",
+      "--template-nav-mobile-rim": "rgb(255 255 255 / 0.74)",
       "--template-radius": "14px",
       "--template-heading-font":
         "var(--font-tech-display), var(--font-body), ui-sans-serif, system-ui, sans-serif",
@@ -271,6 +280,9 @@ export const coachTemplateThemes: CoachTemplateTheme[] = [
       "--template-nav-mobile": "linear-gradient(135deg, #080b17, #1d1426)",
       "--template-nav-mobile-border": "rgb(216 181 111 / 0.3)",
       "--template-nav-mobile-ink": "#fffaf1",
+      "--template-nav-mobile-polish":
+        "linear-gradient(135deg, rgb(255 255 255 / 0.07), transparent 52%, rgb(216 181 111 / 0.1))",
+      "--template-nav-mobile-rim": "rgb(255 250 241 / 0.08)",
       "--template-radius": "10px",
       "--template-heading-font":
         "var(--font-tech-display), var(--font-conversion), ui-sans-serif, system-ui, sans-serif",

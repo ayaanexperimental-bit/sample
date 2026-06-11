@@ -1592,13 +1592,13 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         .nav {
           isolation: isolate;
           border-color: var(--template-nav-mobile-border, var(--template-card-border));
-          background: var(--template-nav-mobile-base, var(--template-card-strong));
+          background: var(--template-nav-mobile, var(--template-nav-mobile-base, var(--template-card-strong)));
           background-color: var(--template-nav-mobile-base, var(--template-card-strong));
           box-shadow:
-            inset 0 1px 0 rgb(255 255 255 / 0.44),
-            0 0 0 0.42rem var(--template-nav-mobile-base, var(--template-card-strong)),
+            inset 0 1px 0 rgb(255 255 255 / 0.54),
+            0 0 0 0.18rem var(--template-nav-mobile-rim, rgb(255 255 255 / 0.58)),
             0 0 0 1px var(--template-nav-mobile-border, var(--template-card-border)),
-            0 0.9rem 2.4rem rgb(12 16 35 / 0.24);
+            0 0.85rem 2rem rgb(12 16 35 / 0.2);
           color: var(--template-nav-mobile-ink, var(--template-inverted-ink));
           opacity: 1;
           transform: translateZ(0);
@@ -1610,7 +1610,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           position: absolute;
           inset: 0;
           z-index: 0;
-          background: var(--template-nav-mobile-base, var(--template-card-strong));
+          background: var(--template-nav-mobile, var(--template-nav-mobile-base, var(--template-card-strong)));
           opacity: 1;
           pointer-events: none;
         }
@@ -1619,8 +1619,8 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           position: absolute;
           inset: 0;
           z-index: 0;
-          background: transparent;
-          opacity: 0;
+          background: var(--template-nav-mobile-polish, linear-gradient(135deg, rgb(255 255 255 / 0.52), transparent));
+          opacity: 0.92;
           pointer-events: none;
         }
         .nav > * {
@@ -1642,7 +1642,8 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           width: min(calc(100% - 1rem), 84rem);
         }
         .nav {
-          top: 0.45rem;
+          top: max(0.85rem, env(safe-area-inset-top));
+          width: min(calc(100% - 1.35rem), 84rem);
           min-height: 3.25rem;
           grid-template-columns: minmax(0, 1fr) auto;
           padding: 0.45rem 0.55rem;
@@ -1865,6 +1866,9 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         .brand small {
           font-size: 0.54rem;
         }
+        .nav {
+          width: min(calc(100% - 1rem), 84rem);
+        }
         .button.nav-cta {
           min-width: 4.4rem;
           padding-inline: 0.52rem;
@@ -1888,7 +1892,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           padding-bottom: calc(6rem + env(safe-area-inset-bottom));
         }
         .nav {
-          top: 0.35rem;
+          top: 0.6rem;
           min-height: 3rem;
           padding-block: 0.4rem;
         }
