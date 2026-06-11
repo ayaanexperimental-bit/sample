@@ -1590,28 +1590,38 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       }
       @media (max-width: 760px), (max-height: 520px) and (orientation: landscape) {
         .nav {
+          position: fixed;
+          top: calc(0.85rem + env(safe-area-inset-top));
+          left: 0.675rem;
+          right: 0.675rem;
+          z-index: 40;
+          width: auto;
+          max-width: 84rem;
           isolation: isolate;
           border-color: var(--template-nav-mobile-border, var(--template-card-border));
-          background: var(--template-nav-mobile, var(--template-nav-mobile-base, var(--template-card-strong)));
-          background-color: var(--template-nav-mobile-base, var(--template-card-strong));
+          background: var(--template-nav-mobile, var(--template-nav));
+          background-color: transparent;
           box-shadow:
-            inset 0 1px 0 rgb(255 255 255 / 0.54),
-            0 0 0 0.18rem var(--template-nav-mobile-rim, rgb(255 255 255 / 0.58)),
+            inset 0 1px 0 rgb(255 255 255 / 0.6),
+            0 0 0 0.14rem var(--template-nav-mobile-rim, rgb(255 255 255 / 0.42)),
             0 0 0 1px var(--template-nav-mobile-border, var(--template-card-border)),
-            0 0.85rem 2rem rgb(12 16 35 / 0.2);
+            0 1rem 2.45rem rgb(12 16 35 / 0.24);
           color: var(--template-nav-mobile-ink, var(--template-inverted-ink));
+          margin-top: 0;
           opacity: 1;
           transform: translateZ(0);
-          -webkit-backdrop-filter: none;
-          backdrop-filter: none;
+          animation: none;
+          -webkit-backdrop-filter: blur(18px) saturate(1.16);
+          backdrop-filter: blur(18px) saturate(1.16);
+          will-change: transform;
         }
         .nav::before {
           content: "";
           position: absolute;
           inset: 0;
           z-index: 0;
-          background: var(--template-nav-mobile, var(--template-nav-mobile-base, var(--template-card-strong)));
-          opacity: 1;
+          background: var(--template-nav-mobile, var(--template-nav));
+          opacity: 0.54;
           pointer-events: none;
         }
         .nav::after {
@@ -1620,7 +1630,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           inset: 0;
           z-index: 0;
           background: var(--template-nav-mobile-polish, linear-gradient(135deg, rgb(255 255 255 / 0.52), transparent));
-          opacity: 0.92;
+          opacity: 0.72;
           pointer-events: none;
         }
         .nav > * {
@@ -1630,7 +1640,9 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       }
       @media (max-width: 760px) {
         .page {
+          padding-top: calc(4.9rem + env(safe-area-inset-top));
           padding-bottom: calc(10.5rem + env(safe-area-inset-bottom));
+          scroll-padding-top: calc(5.4rem + env(safe-area-inset-top));
         }
         .nav,
         .hero,
@@ -1642,8 +1654,6 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           width: min(calc(100% - 1rem), 84rem);
         }
         .nav {
-          top: max(0.85rem, env(safe-area-inset-top));
-          width: min(calc(100% - 1.35rem), 84rem);
           min-height: 3.25rem;
           grid-template-columns: minmax(0, 1fr) auto;
           padding: 0.45rem 0.55rem;
@@ -1674,7 +1684,6 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         .page::before {
           display: none;
         }
-        .nav,
         .trust-row span,
         .brand-assurance,
         .signal-panel,
@@ -1867,7 +1876,9 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           font-size: 0.54rem;
         }
         .nav {
-          width: min(calc(100% - 1rem), 84rem);
+          left: 0.5rem;
+          right: 0.5rem;
+          width: auto;
         }
         .button.nav-cta {
           min-width: 4.4rem;
@@ -1889,10 +1900,13 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
       }
       @media (max-height: 520px) and (orientation: landscape) {
         .page {
+          padding-top: calc(3.9rem + env(safe-area-inset-top));
           padding-bottom: calc(6rem + env(safe-area-inset-bottom));
         }
         .nav {
-          top: 0.6rem;
+          top: calc(0.48rem + env(safe-area-inset-top));
+          left: 0.85rem;
+          right: 0.85rem;
           min-height: 3rem;
           padding-block: 0.4rem;
         }
