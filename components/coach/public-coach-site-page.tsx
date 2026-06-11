@@ -244,11 +244,6 @@ export function PublicCoachSitePage({
                 <small>{site.niche}</small>
               </div>
             </div>
-            <div className={styles.signalPanel}>
-              <span>{site.content.mediaSubheading}</span>
-              <strong>{site.content.mediaHeading}</strong>
-              <small>{site.content.mediaBody}</small>
-            </div>
           </div>
         ) : null}
       </section>
@@ -361,24 +356,6 @@ export function PublicCoachSitePage({
               <p>{benefitDescriptions[index] || benefitDescriptions[0]}</p>
             </TemplateCard>
           ))}
-        </div>
-      </section>
-
-      <section
-        className={getPreviewInspectClassName(`${styles.section} ${styles.mediaSection}`)}
-        {...getPreviewInspectProps("media")}
-      >
-        {renderInspectHotspot("media")}
-        <div className={styles.videoFrame} data-media={site.heroMediaType || "none"}>
-          <HeroMediaContent heroMedia={heroMedia} site={site} compact />
-          <span>{site.content.mediaModuleLabel}</span>
-          <strong>{site.content.mediaHeading}</strong>
-          <p>{site.content.mediaBody}</p>
-        </div>
-        <div className={styles.mediaNotes}>
-          <span>{site.content.mediaSubheading}</span>
-          <h2>{site.content.mediaHeading}</h2>
-          <p>{site.content.mediaBody}</p>
         </div>
       </section>
 

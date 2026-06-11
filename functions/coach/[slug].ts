@@ -2108,20 +2108,6 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         <div class="benefit-grid">${benefits}</div>
       </section>
 
-      <section class="section media-section">
-        <div class="video-frame" data-media="${escapeAttribute(site.heroMediaType || "none")}">
-          ${renderMediaModule(site)}
-          <span>${escapeHtml(site.content.mediaModuleLabel)}</span>
-          <strong>${escapeHtml(site.content.mediaHeading)}</strong>
-          <p>${escapeHtml(site.content.mediaBody)}</p>
-        </div>
-        <div class="media-notes">
-          <span>${escapeHtml(site.content.mediaSubheading)}</span>
-          <h2>${escapeHtml(site.content.mediaHeading)}</h2>
-          <p>${escapeHtml(site.content.mediaBody)}</p>
-        </div>
-      </section>
-
       <section class="section register-section" id="register">
         <div>
           <span>${escapeHtml(site.content.ctaSectionLabel)}</span>
@@ -2474,20 +2460,7 @@ function renderHeroMedia(site: PublicCoachSiteRecord) {
         ${renderHeroMediaContent(site)}
         <div class="media-caption"><span>${escapeHtml(site.content.heroMediaLabel)}</span><strong>${escapeHtml(site.coachName)}</strong><small>${escapeHtml(site.niche)}</small></div>
       </div>
-      <div class="signal-panel">
-        <span>${escapeHtml(site.content.mediaSubheading)}</span>
-        <strong>${escapeHtml(site.content.mediaHeading)}</strong>
-        <small>${escapeHtml(site.content.mediaBody)}</small>
-      </div>
     </div>`;
-}
-
-function renderMediaModule(site: PublicCoachSiteRecord) {
-  if (site.heroMediaType === "none") {
-    return `<em>${escapeHtml(site.coachName.slice(0, 2).toUpperCase())}</em>`;
-  }
-
-  return renderHeroMediaContent(site);
 }
 
 function renderHeroMediaContent(site: PublicCoachSiteRecord) {
