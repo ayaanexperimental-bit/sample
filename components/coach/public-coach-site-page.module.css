@@ -1289,16 +1289,20 @@
   .nav {
     top: 0.5rem;
     min-height: 3.25rem;
+    isolation: isolate;
     grid-template-columns: minmax(0, 1fr) auto;
     border-color: var(--template-nav-mobile-border, var(--template-card-border));
-    background: var(--template-nav-mobile, var(--template-nav));
+    background: var(--template-nav-mobile-base, var(--template-card-strong));
     background-color: var(--template-nav-mobile-base, var(--template-card-strong));
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.2),
-      0 0.8rem 2.2rem rgb(12 16 35 / 0.16),
-      var(--template-shadow);
+      inset 0 1px 0 rgb(255 255 255 / 0.44),
+      0 0 0 0.42rem var(--template-nav-mobile-base, var(--template-card-strong)),
+      0 0 0 1px var(--template-nav-mobile-border, var(--template-card-border)),
+      0 0.9rem 2.4rem rgb(12 16 35 / 0.24);
     color: var(--template-nav-mobile-ink, var(--template-inverted-ink));
+    opacity: 1;
     padding: 0.45rem 0.55rem;
+    transform: translateZ(0);
   }
 
   .nav::before {
@@ -1306,7 +1310,17 @@
     position: absolute;
     inset: 0;
     z-index: 0;
-    background: var(--template-nav-mobile, var(--template-nav));
+    background: var(--template-nav-mobile-base, var(--template-card-strong));
+    opacity: 1;
+    pointer-events: none;
+  }
+
+  .nav::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: var(--template-nav-mobile-polish, transparent);
     opacity: 1;
     pointer-events: none;
   }
@@ -1620,7 +1634,19 @@
   .nav {
     top: 0.35rem;
     min-height: 3rem;
+    isolation: isolate;
+    border-color: var(--template-nav-mobile-border, var(--template-card-border));
+    background: var(--template-nav-mobile-base, var(--template-card-strong));
+    background-color: var(--template-nav-mobile-base, var(--template-card-strong));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.44),
+      0 0 0 0.42rem var(--template-nav-mobile-base, var(--template-card-strong)),
+      0 0 0 1px var(--template-nav-mobile-border, var(--template-card-border)),
+      0 0.9rem 2.4rem rgb(12 16 35 / 0.24);
+    color: var(--template-nav-mobile-ink, var(--template-inverted-ink));
+    opacity: 1;
     padding-block: 0.4rem;
+    transform: translateZ(0);
   }
 
   .hero {

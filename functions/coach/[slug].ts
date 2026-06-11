@@ -1588,6 +1588,46 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           margin-top: 0.75rem;
         }
       }
+      @media (max-width: 760px), (max-height: 520px) and (orientation: landscape) {
+        .nav {
+          isolation: isolate;
+          border-color: var(--template-nav-mobile-border, var(--template-card-border));
+          background: var(--template-nav-mobile-base, var(--template-card-strong));
+          background-color: var(--template-nav-mobile-base, var(--template-card-strong));
+          box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 0.44),
+            0 0 0 0.42rem var(--template-nav-mobile-base, var(--template-card-strong)),
+            0 0 0 1px var(--template-nav-mobile-border, var(--template-card-border)),
+            0 0.9rem 2.4rem rgb(12 16 35 / 0.24);
+          color: var(--template-nav-mobile-ink, var(--template-inverted-ink));
+          opacity: 1;
+          transform: translateZ(0);
+          -webkit-backdrop-filter: none;
+          backdrop-filter: none;
+        }
+        .nav::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          background: var(--template-nav-mobile-base, var(--template-card-strong));
+          opacity: 1;
+          pointer-events: none;
+        }
+        .nav::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          background: transparent;
+          opacity: 0;
+          pointer-events: none;
+        }
+        .nav > * {
+          position: relative;
+          z-index: 1;
+        }
+      }
       @media (max-width: 760px) {
         .page {
           padding-bottom: calc(10.5rem + env(safe-area-inset-bottom));
