@@ -638,7 +638,7 @@ function renderCanonicalCoachSiteHtml(site: PublicCoachSiteRecord) {
     <title>${escapeHtml(title)}</title>
     <meta name="description" content="${escapeAttribute(heroPackage.subheadline)}" />
     <link rel="preload" href="/assets/allia-yw-hero-background.avif" as="image" />
-    <link rel="stylesheet" href="/coach-circle-template.css" />
+    <link rel="stylesheet" href="/coach-circle-template.css?v=coach-footer-legal-local-style-20260618" />
     <style>
       :root {
         --font-display: Georgia, Cambria, "Times New Roman", serif;
@@ -931,26 +931,30 @@ function renderCanonicalSupportSection(
 function renderCanonicalFooter(site: PublicCoachSiteRecord) {
   return `
     <footer class="yw-brand-footer" data-preview-section="footer">
+      <div class="yw-footer-watermark" aria-hidden="true"><span>Y</span><span>W</span><span>N</span></div>
       <div class="yw-footer-content">
-        <h2>${escapeHtml(site.content.footerHeadline || "About YW Nutritech")}</h2>
-        <p>${escapeHtml(getCanonicalLegalDisclaimer(site))}</p>
+        <section class="yw-footer-about" aria-labelledby="yw-footer-title">
+          <h2 id="yw-footer-title">About <span>YW Nutritech</span></h2>
+          <p>YW Nutritech builds practical wellness education, coach-led support, and nutrition-first guidance for people who want healthier everyday routines.</p>
+          <p>Through community learning, simple health-tech tools, and coach referral experiences, YW Nutritech helps coaches connect with people in a clearer, more trusted way.</p>
+          <p>We aim to make wellness support more accessible, consistent, and human while keeping every coach visible at the center of the journey.</p>
+        </section>
         <div class="yw-footer-stats" aria-label="YW Nutritech community proof">
-          <div><strong>50K+</strong><span>Community Members</span></div>
-          <div><strong>1Cr+</strong><span>People Mission</span></div>
-          <div><strong>YW</strong><span>Coach Network</span></div>
+          <div class="yw-footer-stat"><strong>50K+</strong><span>Community Members</span></div>
+          <div class="yw-footer-stat"><strong>1Cr+</strong><span>People Mission</span></div>
+          <div class="yw-footer-stat"><strong>YW</strong><span>Coach Network</span></div>
         </div>
-        <div class="yw-footer-links">
+        <p class="yw-footer-legal">${escapeHtml(getCanonicalLegalDisclaimer(site))}</p>
+        <nav class="yw-footer-legal-links" aria-label="Coach site legal links">
           <a href="/privacy">Privacy Policy</a>
-          <a href="/terms">Terms and Conditions</a>
-          <a href="/refund">Refund Policy</a>
+          <a href="/terms">Terms &amp; Conditions</a>
           <a href="/disclaimer">Disclaimer</a>
-        </div>
+        </nav>
         <div class="yw-footer-brand">
           <span class="yw-footer-mark" aria-hidden="true"><img alt="" decoding="async" loading="lazy" src="/assets/yw-logo-transparent.png" /></span>
-          <span><strong>YW Nutritech</strong><small>Coach Circle</small></span>
+          <span class="yw-footer-brand-text"><strong>YW Nutritech</strong><small>Coach Circle</small></span>
         </div>
       </div>
-      <div class="yw-footer-watermark" aria-hidden="true">YWN</div>
     </footer>`;
 }
 
@@ -1070,6 +1074,7 @@ function renderCanonicalScript(slug: string) {
             '.yw-circle-faq',
             '.yw-brand-footer',
             '.yw-footer-content',
+            '.yw-footer-about',
             '.yw-footer-stats',
             '.yw-footer-brand'
           ].join(',')));
@@ -1091,7 +1096,9 @@ function renderCanonicalScript(slug: string) {
             '.yw-bonus-grid article',
             '.yw-fit-col',
             '.yw-circle-faq details',
-            '.yw-footer-links a'
+            '.yw-footer-stat',
+            '.yw-footer-legal',
+            '.yw-footer-legal-links a'
           ].join(',')));
           revealTargets.forEach(function (target) { target.classList.add('yw-reveal'); });
           effectTargets.forEach(function (target, index) {
@@ -2969,8 +2976,7 @@ function renderFooterHtml(site: PublicCoachSiteRecord) {
       </div>
       <div class="footer-links">
         <a href="/privacy">Privacy Policy</a>
-        <a href="/terms">Terms</a>
-        <a href="/refund">Refund Policy</a>
+        <a href="/terms">Terms &amp; Conditions</a>
         <a href="/disclaimer">Disclaimer</a>
       </div>
     </footer>`;

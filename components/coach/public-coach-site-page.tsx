@@ -224,6 +224,7 @@ export function PublicCoachSitePage({
             ".yw-circle-faq",
             ".yw-brand-footer",
             ".yw-footer-content",
+            ".yw-footer-about",
             ".yw-footer-stats",
             ".yw-footer-brand"
           ].join(",")
@@ -249,7 +250,9 @@ export function PublicCoachSitePage({
             ".yw-bonus-grid article",
             ".yw-fit-col",
             ".yw-circle-faq details",
-            ".yw-footer-links a"
+            ".yw-footer-stat",
+            ".yw-footer-legal",
+            ".yw-footer-legal-links a"
           ].join(",")
         )
       );
@@ -427,7 +430,7 @@ export function PublicCoachSitePage({
   return (
     <>
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link href="/coach-circle-template.css" rel="stylesheet" />
+      <link href="/coach-circle-template.css?v=coach-footer-legal-local-style-20260618" rel="stylesheet" />
       <main
         className="yw-circle-site"
         data-coach-site-page={previewMode ? "preview" : "public"}
@@ -829,46 +832,66 @@ export function PublicCoachSitePage({
             {...getPreviewInspectProps("footer")}
           >
             {renderInspectHotspot("footer")}
+            <div className="yw-footer-watermark" aria-hidden="true">
+              <span>Y</span>
+              <span>W</span>
+              <span>N</span>
+            </div>
             <div className="yw-footer-content">
-              <h2>{renderInspectableText("footer.headline", site.content.footerHeadline || "About YW Nutritech")}</h2>
-              <p>
+              <section className="yw-footer-about" aria-labelledby="yw-footer-title">
+                <h2 id="yw-footer-title">
+                  About <span>YW Nutritech</span>
+                </h2>
+                <p>
+                  YW Nutritech builds practical wellness education, coach-led support, and
+                  nutrition-first guidance for people who want healthier everyday routines.
+                </p>
+                <p>
+                  Through community learning, simple health-tech tools, and coach referral
+                  experiences, YW Nutritech helps coaches connect with people in a clearer,
+                  more trusted way.
+                </p>
+                <p>
+                  We aim to make wellness support more accessible, consistent, and human while
+                  keeping every coach visible at the center of the journey.
+                </p>
+              </section>
+              <div className="yw-footer-stats" aria-label="YW Nutritech community proof">
+                <div className="yw-footer-stat">
+                  <strong>50K+</strong>
+                  <span>Community Members</span>
+                </div>
+                <div className="yw-footer-stat">
+                  <strong>1Cr+</strong>
+                  <span>People Mission</span>
+                </div>
+                <div className="yw-footer-stat">
+                  <strong>YW</strong>
+                  <span>Coach Network</span>
+                </div>
+              </div>
+              <p className="yw-footer-legal">
                 {renderInspectableText(
                   "footer.text",
                   getCanonicalLegalDisclaimer(site)
                 )}
               </p>
-              <div className="yw-footer-stats" aria-label="YW Nutritech community proof">
-                <div>
-                  <strong>50K+</strong>
-                  <span>Community Members</span>
-                </div>
-                <div>
-                  <strong>1Cr+</strong>
-                  <span>People Mission</span>
-                </div>
-                <div>
-                  <strong>YW</strong>
-                  <span>Coach Network</span>
-                </div>
-              </div>
-              <div className="yw-footer-links">
+              <nav className="yw-footer-legal-links" aria-label="Coach site legal links">
                 <Link href="/privacy">Privacy Policy</Link>
-                <Link href="/terms">Terms and Conditions</Link>
-                <Link href="/refund">Refund Policy</Link>
+                <Link href="/terms">Terms &amp; Conditions</Link>
                 <Link href="/disclaimer">Disclaimer</Link>
-              </div>
+              </nav>
               <div className="yw-footer-brand">
                 <span className="yw-footer-mark" aria-hidden="true">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img alt="" decoding="async" loading="lazy" src="/assets/yw-logo-transparent.png" />
                 </span>
-                <span>
+                <span className="yw-footer-brand-text">
                   <strong>YW Nutritech</strong>
                   <small>Coach Circle</small>
                 </span>
               </div>
             </div>
-            <div className="yw-footer-watermark" aria-hidden="true">YWN</div>
           </footer>
         </div>
 

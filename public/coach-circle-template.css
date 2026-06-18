@@ -2120,6 +2120,73 @@ body:has(.yw-circle-site) {
   font-family: Georgia, "Times New Roman", serif;
 }
 
+.yw-footer-about h2 {
+  margin: 0 0 1.25rem;
+  color: #ffffff;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.15rem, 4vw, 3.15rem);
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.yw-footer-about h2 span {
+  color: #d0f5f0;
+  font-style: italic;
+}
+
+.yw-footer-about p {
+  max-width: 42rem;
+  margin: 0 auto 1rem;
+  color: rgb(255 255 255 / 0.92);
+  font-size: clamp(0.9rem, 1.2vw, 1rem);
+  font-weight: 400;
+  line-height: 1.65;
+}
+
+.yw-footer-stat {
+  padding: 0.2rem 1.25rem;
+}
+
+.yw-footer-legal {
+  width: min(100%, 42rem);
+  margin: 0 auto 0.9rem;
+  color: rgb(255 255 255 / 0.86);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.yw-footer-legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.55rem;
+  margin: 0 auto 1.35rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.yw-footer-legal-links a {
+  min-height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.52rem 0.82rem;
+  border: 1px solid rgb(208 245 240 / 0.34);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.055);
+  color: rgb(255 255 255 / 0.9);
+  text-decoration: none;
+  transition: border-color 180ms ease, background 180ms ease, color 180ms ease;
+}
+
+.yw-footer-legal-links a:hover,
+.yw-footer-legal-links a:focus-visible {
+  border-color: rgb(33 230 193 / 0.72);
+  background: rgb(33 230 193 / 0.13);
+  color: #ffffff;
+}
+
 .yw-footer-links {
   gap: 0.55rem;
   margin: 0 auto 1.35rem;
@@ -2139,6 +2206,7 @@ body:has(.yw-circle-site) {
 
 .yw-footer-brand {
   display: inline-flex;
+  align-items: center;
   justify-self: center;
   gap: 0.8rem;
   margin-top: 0.2rem;
@@ -2155,6 +2223,13 @@ body:has(.yw-circle-site) {
   font-family: Montserrat, Arial, sans-serif;
   font-size: clamp(1.35rem, 2.2vw, 1.85rem);
   letter-spacing: 0.02em;
+}
+
+.yw-footer-brand-text {
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+  text-align: left;
 }
 
 .yw-footer-brand small {
@@ -2177,6 +2252,11 @@ body:has(.yw-circle-site) {
   line-height: 0.55;
   text-align: center;
   transform: translateX(-50%);
+}
+
+.yw-footer-watermark span {
+  display: inline-block;
+  min-width: 0;
 }
 
 @media (prefers-reduced-motion: no-preference) {
