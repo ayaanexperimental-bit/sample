@@ -41,7 +41,12 @@ export function isSupportedVideoSource(value: string) {
 
 export function isUploadedVideoSource(value: string) {
   const trimmed = value.trim();
-  return trimmed.startsWith("data:video/") || trimmed.startsWith("blob:");
+  return (
+    trimmed.startsWith("data:video/") ||
+    trimmed.startsWith("blob:") ||
+    /^\/api\/coach-media\?key=coach-sites%2F[a-z0-9-]+%2Fvideo%2F[a-z0-9.-]+$/i.test(trimmed) ||
+    /^\/api\/coach-media\?key=coach-sites\/[a-z0-9-]+\/video\/[a-z0-9.-]+$/i.test(trimmed)
+  );
 }
 
 function createYoutubeEmbedUrl(videoId: string) {

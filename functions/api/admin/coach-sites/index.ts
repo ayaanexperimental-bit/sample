@@ -4,7 +4,6 @@ import {
   type CoachSiteStatus,
   normalizeCoachSlug
 } from "../../../../lib/admin-coach-sites";
-import { COACH_TEMPLATE_THEME_IDS } from "../../../../lib/coach-template-themes";
 import {
   adminAuthorizationResponse,
   adminJson,
@@ -22,6 +21,7 @@ import {
   updateCoachSiteStatusInDb,
   upsertCoachSiteToDb
 } from "../../../../lib/server/coach-site-storage";
+import { syncShopOrderStatusForCoachSite } from "../../../../lib/server/shop";
 
 type Env = {
   ADMIN_ALLOWED_EMAILS?: string;
@@ -216,6 +216,8 @@ export async function onRequest({ request, env }: PagesContext) {
         return adminJson({ configured: true, error: "Coach site not found.", ok: false }, 404);
       }
 
+      await syncLinkedShopOrderStatus({ env, site: updatedSite });
+
       return adminJson({
         coachSite: updatedSite,
         configured: true,
@@ -282,6 +284,8 @@ export async function onRequest({ request, env }: PagesContext) {
       if (!updatedSite) {
         return adminJson({ configured: true, error: "Coach draft not found.", ok: false }, 404);
       }
+
+      await syncLinkedShopOrderStatus({ env, site: updatedSite });
 
       return adminJson({
         coachSite: updatedSite,
@@ -426,6 +430,8 @@ export async function onRequest({ request, env }: PagesContext) {
       );
     }
 
+    await syncLinkedShopOrderStatus({ env, site: updatedSite });
+
     return adminJson({
       coachSite: updatedSite,
       configured: true,
@@ -449,8 +455,6 @@ function getPublishValidationError(site: Partial<CoachSiteRecord>) {
     typeof site.slug === "string" && site.slug.trim() ? site.slug : coachName
   );
   const googleFormUrl = typeof site.googleFormUrl === "string" ? site.googleFormUrl.trim() : "";
-  const selectedThemeId =
-    typeof site.selectedThemeId === "string" ? site.selectedThemeId.trim() : "";
   const heroMediaType =
     site.heroMediaType === "image" ||
     site.heroMediaType === "video" ||
@@ -460,12 +464,6 @@ function getPublishValidationError(site: Partial<CoachSiteRecord>) {
 
   if (!coachName || !niche || !slug) {
     return "Coach name, niche, and slug are required before publishing.";
-  }
-
-  if (
-    !COACH_TEMPLATE_THEME_IDS.includes(selectedThemeId as (typeof COACH_TEMPLATE_THEME_IDS)[number])
-  ) {
-    return "Select a valid coach-site template/theme before publishing.";
   }
 
   if (!googleFormUrl) {
@@ -506,6 +504,20 @@ function parseCoachStatus(value: unknown): CoachSiteStatus | null {
 
 function isDangerousStatus(status: CoachSiteStatus) {
   return status === "archived" || status === "removed";
+}
+
+async function syncLinkedShopOrderStatus({
+  env,
+  site
+}: {
+  env: Env;
+  site: CoachSiteRecord;
+}) {
+  try {
+    await syncShopOrderStatusForCoachSite({ env, site });
+  } catch (error) {
+    console.warn("Shop order status sync failed after coach-site status update.", error);
+  }
 }
 
 async function verifyCoachSiteActionOtp({

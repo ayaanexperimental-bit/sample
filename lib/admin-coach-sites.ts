@@ -48,7 +48,18 @@ export type CoachSiteContent = {
   problemPoints: string[];
   benefitsSectionLabel: string;
   socialCopy: string;
+  stickyCtaContactButton?: string;
+  stickyCtaContext?: string;
+  stickyCtaHeading?: string;
+  stickyCtaLabel?: string;
   subheadline: string;
+  supportEmailLabel?: string;
+  supportHeading?: string;
+  supportPhoneLabel?: string;
+  supportPrimaryButton?: string;
+  supportPrivacyNote?: string;
+  supportWhatsappButton?: string;
+  supportWhatsappLabel?: string;
   trustText: string;
   visionLabel: string;
   visionText: string;
@@ -168,7 +179,18 @@ export type CoachSiteFormState = {
   slug: string;
   benefitsSectionLabel: string;
   socialCopy: string;
+  stickyCtaContactButton: string;
+  stickyCtaContext: string;
+  stickyCtaHeading: string;
+  stickyCtaLabel: string;
   subheadline: string;
+  supportEmailLabel: string;
+  supportHeading: string;
+  supportPhoneLabel: string;
+  supportPrimaryButton: string;
+  supportPrivacyNote: string;
+  supportWhatsappButton: string;
+  supportWhatsappLabel: string;
   supportText: string;
   trustText: string;
   visionLabel: string;
@@ -227,7 +249,18 @@ export const EMPTY_COACH_SITE_FORM: CoachSiteFormState = {
   slug: "",
   benefitsSectionLabel: "",
   socialCopy: "",
+  stickyCtaContactButton: "",
+  stickyCtaContext: "",
+  stickyCtaHeading: "",
+  stickyCtaLabel: "",
   subheadline: "",
+  supportEmailLabel: "",
+  supportHeading: "",
+  supportPhoneLabel: "",
+  supportPrimaryButton: "",
+  supportPrivacyNote: "",
+  supportWhatsappButton: "",
+  supportWhatsappLabel: "",
   supportText: "",
   trustText: "",
   visionLabel: "",
@@ -347,6 +380,18 @@ export const approvedCoachSites: CoachSiteRecord[] = [
       trustText:
         "Education-first, doctor-friendly coaching support. This does not replace diagnosis or treatment.",
       visionLabel: "Coach mission",
+      supportEmailLabel: "Email",
+      supportHeading: "Contact Support",
+      supportPhoneLabel: "Phone",
+      supportPrimaryButton: "Contact Support",
+      supportPrivacyNote:
+        "Contact details shown here are public coach-site support details, not admin-only data.",
+      supportWhatsappButton: "Message coach",
+      supportWhatsappLabel: "WhatsApp",
+      stickyCtaContactButton: "Contact Coach",
+      stickyCtaContext: "PMOS / Women Wellness through YW Nutritech",
+      stickyCtaHeading: "Ready to connect with Coach Gyana Ranjan?",
+      stickyCtaLabel: "Free guest registration",
       socialCopy: "Join Gyana Ranjan's PMOS lifestyle guidance page for a clear first step."
     },
     analytics: {
@@ -495,7 +540,22 @@ export function createCoachContentFromForm(form: CoachSiteFormState): CoachSiteC
       "This page is for coach introduction and education. It does not replace medical advice.",
     visionLabel: form.visionLabel.trim() || "Coach mission",
     socialCopy:
-      form.socialCopy.trim() || `Join ${coachName}'s ${niche} referral page for a clear first step.`
+      form.socialCopy.trim() || `Join ${coachName}'s ${niche} referral page for a clear first step.`,
+    stickyCtaContactButton: form.stickyCtaContactButton.trim() || "Contact Coach",
+    stickyCtaContext:
+      form.stickyCtaContext.trim() || `${niche || "Coach referral"} through YW Nutritech`,
+    stickyCtaHeading:
+      form.stickyCtaHeading.trim() || `Ready to connect with Coach ${coachName}?`,
+    stickyCtaLabel: form.stickyCtaLabel.trim() || "Free guest registration",
+    supportEmailLabel: form.supportEmailLabel.trim() || "Email",
+    supportHeading: form.supportHeading.trim() || "Contact Support",
+    supportPhoneLabel: form.supportPhoneLabel.trim() || "Phone",
+    supportPrimaryButton: form.supportPrimaryButton.trim() || "Contact Support",
+    supportPrivacyNote:
+      form.supportPrivacyNote.trim() ||
+      "Contact details shown here are public coach-site support details, not admin-only data.",
+    supportWhatsappButton: form.supportWhatsappButton.trim() || "Message coach",
+    supportWhatsappLabel: form.supportWhatsappLabel.trim() || "WhatsApp"
   };
 }
 
@@ -652,7 +712,21 @@ export function createFormFromCoachSite(site: CoachSiteRecord): CoachSiteFormSta
     slug: site.slug,
     benefitsSectionLabel: site.content.benefitsSectionLabel,
     socialCopy: site.content.socialCopy,
+    stickyCtaContactButton: site.content.stickyCtaContactButton || "Contact Coach",
+    stickyCtaContext: site.content.stickyCtaContext || `${site.niche || "Coach referral"} through YW Nutritech`,
+    stickyCtaHeading:
+      site.content.stickyCtaHeading || `Ready to connect with Coach ${site.coachName}?`,
+    stickyCtaLabel: site.content.stickyCtaLabel || "Free guest registration",
     subheadline: site.content.subheadline,
+    supportEmailLabel: site.content.supportEmailLabel || "Email",
+    supportHeading: site.content.supportHeading || "Contact Support",
+    supportPhoneLabel: site.content.supportPhoneLabel || "Phone",
+    supportPrimaryButton: site.content.supportPrimaryButton || "Contact Support",
+    supportPrivacyNote:
+      site.content.supportPrivacyNote ||
+      "Contact details shown here are public coach-site support details, not admin-only data.",
+    supportWhatsappButton: site.content.supportWhatsappButton || "Message coach",
+    supportWhatsappLabel: site.content.supportWhatsappLabel || "WhatsApp",
     supportText: site.supportText,
     trustText: site.content.trustText,
     visionLabel: site.content.visionLabel,

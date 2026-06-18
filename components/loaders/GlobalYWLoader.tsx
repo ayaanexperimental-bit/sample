@@ -6,15 +6,15 @@ import styles from "./GlobalYWLoader.module.css";
 
 type LoaderPhase = "show" | "hide" | "gone";
 
-const DEFAULT_MIN_SHOW_MS = 420;
-const DEFAULT_EXIT_MS = 180;
-const DEFAULT_MAX_SHOW_MS = 1450;
+const DEFAULT_MIN_SHOW_MS = 260;
+const DEFAULT_EXIT_MS = 140;
+const DEFAULT_MAX_SHOW_MS = 900;
 const REDUCED_MIN_SHOW_MS = 120;
 const REDUCED_EXIT_MS = 80;
 const REDUCED_MAX_SHOW_MS = 520;
 
 export function GlobalYWLoader({ label, variant }: { label?: string; variant?: LoaderVariant }) {
-  const [phase, setPhase] = useState<LoaderPhase>("show");
+  const [phase, setPhase] = useState<LoaderPhase>("hide");
   const [routeLoader, setRouteLoader] = useState<{ label: string; variant: LoaderVariant }>(() =>
     getRouteLoaderDefaults("", { label, variant })
   );
@@ -23,14 +23,6 @@ export function GlobalYWLoader({ label, variant }: { label?: string; variant?: L
     const routeFrame = window.requestAnimationFrame(() => {
       setRouteLoader(getRouteLoaderDefaults(window.location.pathname, { label, variant }));
     });
-
-    if (document.documentElement.dataset.ywGlobalLoaderDismissed === "true") {
-      const frame = window.requestAnimationFrame(() => setPhase("gone"));
-      return () => {
-        window.cancelAnimationFrame(routeFrame);
-        window.cancelAnimationFrame(frame);
-      };
-    }
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const minShowMs = reducedMotion ? REDUCED_MIN_SHOW_MS : DEFAULT_MIN_SHOW_MS;
@@ -49,7 +41,6 @@ export function GlobalYWLoader({ label, variant }: { label?: string; variant?: L
       const remainingMinShow = Math.max(0, minShowMs - elapsed);
 
       hideTimer = window.setTimeout(() => {
-        document.documentElement.dataset.ywGlobalLoaderDismissed = "true";
         setPhase("hide");
         goneTimer = window.setTimeout(() => setPhase("gone"), exitMs);
       }, remainingMinShow);

@@ -25,6 +25,7 @@ type Env = {
   ADMIN_SESSION_SECRET?: string;
   RESEND_API_KEY?: string;
   ADMIN_EMAIL_OTP_FROM?: string;
+  SHOP_PAYMENT_PAGE_URL?: string;
 };
 
 type PagesContext = {
@@ -34,6 +35,7 @@ type PagesContext = {
 
 type BackupCleanupActionBody = {
   action?: unknown;
+  includeShopData?: unknown;
 };
 
 export async function onRequest({ request, env }: PagesContext) {
@@ -140,6 +142,7 @@ export async function onRequest({ request, env }: PagesContext) {
           : await runAnalyticsBackup({
               adminEmail: admin.admin.email,
               env,
+              includeShopData: body?.includeShopData !== false,
               request
             });
 

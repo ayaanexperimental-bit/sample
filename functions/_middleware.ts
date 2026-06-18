@@ -79,6 +79,8 @@ const PUBLIC_PAGE_PATHS = new Set([
   "/disclaimer",
   "/privacy",
   "/refund",
+  "/shop",
+  "/shop/success",
   "/support/error",
   "/terms"
 ]);

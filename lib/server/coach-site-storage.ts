@@ -90,7 +90,7 @@ const COACH_SITE_TABLES_SQL = [
     hero_media_type TEXT NOT NULL DEFAULT 'image' CHECK (hero_media_type IN ('image', 'none', 'video')),
     public_url TEXT NOT NULL,
     register_button_text TEXT NOT NULL DEFAULT 'Register Now',
-    selected_theme_id TEXT NOT NULL DEFAULT 'default-current',
+    selected_theme_id TEXT NOT NULL DEFAULT 'canonical-coach-site-template',
     paid_funnel_context TEXT NOT NULL DEFAULT '',
     support_text TEXT NOT NULL DEFAULT '',
     content_json TEXT NOT NULL,
@@ -130,7 +130,7 @@ const COACH_SITE_TABLES_SQL = [
 ];
 
 const COACH_SITE_MIGRATIONS_SQL = [
-  `ALTER TABLE coach_sites ADD COLUMN selected_theme_id TEXT NOT NULL DEFAULT 'default-current'`,
+  `ALTER TABLE coach_sites ADD COLUMN selected_theme_id TEXT NOT NULL DEFAULT 'canonical-coach-site-template'`,
   `ALTER TABLE coach_sites ADD COLUMN existing_paid_funnel_url TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE coach_sites ADD COLUMN paid_funnel_context TEXT NOT NULL DEFAULT ''`
 ];

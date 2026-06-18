@@ -189,39 +189,12 @@ svg {
   max-width: 100%;
 }
 
-main[data-coach-site-page][data-theme="default-current"] {
+main[data-coach-site-page][data-theme="canonical-coach-site-template"] {
   --coach-nav-mobile-solid-base: linear-gradient(135deg, rgb(12 16 35 / 0.62), rgb(43 31 62 / 0.46));
   --coach-nav-mobile-solid-border: rgb(216 181 111 / 0.36);
   --coach-nav-mobile-solid-ink: #fffaf1;
   --coach-nav-mobile-solid-polish:
     linear-gradient(135deg, rgb(255 255 255 / 0.16), transparent 48%, rgb(216 181 111 / 0.12));
-  --coach-nav-mobile-solid-rim: rgb(255 250 241 / 0.12);
-}
-
-main[data-coach-site-page][data-theme="premium-feminine-wellness"] {
-  --coach-nav-mobile-solid-base: linear-gradient(135deg, rgb(255 253 249 / 0.66), rgb(255 245 250 / 0.48));
-  --coach-nav-mobile-solid-border: rgb(217 145 171 / 0.32);
-  --coach-nav-mobile-solid-ink: #2a1724;
-  --coach-nav-mobile-solid-polish:
-    linear-gradient(135deg, rgb(255 255 255 / 0.72), rgb(255 238 247 / 0.5) 52%, rgb(216 181 111 / 0.12));
-  --coach-nav-mobile-solid-rim: rgb(255 255 255 / 0.5);
-}
-
-main[data-coach-site-page][data-theme="apple-liquid-glass"] {
-  --coach-nav-mobile-solid-base: linear-gradient(135deg, rgb(255 255 255 / 0.46), rgb(238 249 255 / 0.28));
-  --coach-nav-mobile-solid-border: rgb(70 191 192 / 0.24);
-  --coach-nav-mobile-solid-ink: #101729;
-  --coach-nav-mobile-solid-polish:
-    linear-gradient(135deg, rgb(255 255 255 / 0.76), rgb(238 249 255 / 0.56) 54%, rgb(70 191 192 / 0.08));
-  --coach-nav-mobile-solid-rim: rgb(255 255 255 / 0.52);
-}
-
-main[data-coach-site-page][data-theme="dark-luxury-wellness"] {
-  --coach-nav-mobile-solid-base: linear-gradient(135deg, rgb(8 11 23 / 0.64), rgb(29 20 38 / 0.48));
-  --coach-nav-mobile-solid-border: rgb(216 181 111 / 0.3);
-  --coach-nav-mobile-solid-ink: #fffaf1;
-  --coach-nav-mobile-solid-polish:
-    linear-gradient(135deg, rgb(255 255 255 / 0.14), transparent 52%, rgb(216 181 111 / 0.12));
   --coach-nav-mobile-solid-rim: rgb(255 250 241 / 0.12);
 }
 
@@ -276,6 +249,20 @@ main[data-coach-site-page][data-theme="dark-luxury-wellness"] {
     top: calc(0.7rem + env(safe-area-inset-top)) !important;
     left: 1rem !important;
     right: 1rem !important;
+  }
+}
+
+@media (max-width: 760px), (max-height: 520px) and (orientation: landscape) {
+  main[data-coach-site-page][data-sticky-scope="contained"] > nav[aria-label="Coach page navigation"] {
+    position: sticky !important;
+    top: 0.75rem !important;
+    left: auto !important;
+    right: auto !important;
+    width: min(calc(100% - 1rem), 84rem) !important;
+    max-width: 84rem !important;
+    margin-block: 0.75rem 0 !important;
+    margin-inline: auto !important;
+    transform: none !important;
   }
 }
 

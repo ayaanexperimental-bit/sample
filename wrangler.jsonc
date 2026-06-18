@@ -19,7 +19,8 @@
     "AI_MAX_OUTPUT_TOKENS": "1200",
     "AI_ENABLE_CACHING": "true",
     "OPENAI_MODEL": "gpt-5-mini",
-    "RAZORPAY_PAYMENT_PAGE_URL": "https://pages.razorpay.com/pl_SkURMJD4JJjdxO/view"
+    "RAZORPAY_PAYMENT_PAGE_URL": "https://pages.razorpay.com/pl_SkURMJD4JJjdxO/view",
+    "SHOP_PAYMENT_PAGE_URL": "https://rzp.io/rzp/webb"
   },
   "d1_databases": [
     {

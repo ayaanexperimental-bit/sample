@@ -35,7 +35,7 @@ test.describe("admin maintenance backup safeguards", () => {
     expect(backup).toMatchObject({
       notificationStatus: "email_not_configured",
       ok: true,
-      recordCount: 2,
+      recordCount: 3,
       status: "completed"
     });
     if (!backup.ok) {
@@ -49,6 +49,7 @@ test.describe("admin maintenance backup safeguards", () => {
     const savedBackup = db.backups.get(backup.backupId);
     expect(savedBackup?.backup_csv).toContain("coach_site_view");
     expect(savedBackup?.backup_csv).toContain("paid_landing_view");
+    expect(savedBackup?.backup_csv).toContain("Shop Payment Settings");
     expect(savedBackup?.backup_xls).toContain("<?mso-application progid=\"Excel.Sheet\"?>");
     expect(savedBackup?.recipient_count).toBe(3);
 
@@ -122,7 +123,7 @@ test.describe("admin maintenance backup safeguards", () => {
     });
     expect(after.activeAdminRecipientCount).toBe(3);
     expect(after.backupXlsDownloadUrl).toContain("format=xls");
-    expect(after.lastBackupRecordCount).toBe(2);
+    expect(after.lastBackupRecordCount).toBe(3);
     expect(after.lastBackupStatus).toBe("completed");
     expect(after.cleanupStatus).toBe("Blocked: backup email provider is not configured.");
 

@@ -3,7 +3,7 @@
   inset: 0;
   z-index: 2147483000;
   contain: layout paint style;
-  animation: global-loader-failsafe-hide 180ms ease 1800ms forwards;
+  animation: global-loader-failsafe-hide 140ms ease 420ms forwards;
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
@@ -27,7 +27,7 @@
 @media (prefers-reduced-motion: reduce) {
   .globalLoader {
     animation-duration: 80ms;
-    animation-delay: 650ms;
+    animation-delay: 360ms;
     transition-duration: 80ms;
   }
 }

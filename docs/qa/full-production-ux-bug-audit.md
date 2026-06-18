@@ -40,7 +40,7 @@ Remote D1 `coach_sites` currently has one active production record:
 - Status: `published`
 - Niche: `PMOS / Women Wellness`
 - Location: Odisha
-- Selected theme: `premium-feminine-wellness`
+- Selected theme: legacy theme removed; active rendering now normalizes to the canonical coach-site template.
 - Google Form link: configured
 - Photo: configured
 - Video: configured

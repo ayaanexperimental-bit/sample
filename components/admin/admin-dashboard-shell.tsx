@@ -71,6 +71,7 @@ type AdminViewId =
   | "overview"
   | "paid-masterclass-settings"
   | "settings"
+  | "shop"
   | "top-coaches";
 
 type ActionDialogState = {
@@ -118,6 +119,74 @@ type AnalyticsEventsApiPayload = {
   range?: AnalyticsEventRange;
   recentEvents?: AnalyticsRecentEvent[];
   source?: string;
+};
+
+type ShopPaymentSettingsClient = {
+  active: boolean;
+  lastUpdatedAt: string | null;
+  lastUpdatedBy: string;
+  packageLabel: string;
+  paymentPageUrl: string;
+  providerLabel: string;
+  storageSource: string;
+};
+
+type ShopSiteClient = {
+  coachEmail: string;
+  coachName: string;
+  coachPhone: string;
+  createdAt: string;
+  issueStatus: string;
+  niche: string;
+  orderId: string;
+  paymentDate: string | null;
+  paymentStatus: string;
+  publicUrl: string;
+  publishedAt: string | null;
+  selectedThemeId: string;
+  siteStatus: string;
+  slug: string;
+  source: "shop_purchased";
+  workflowStage: string;
+};
+
+type ShopFailureClient = {
+  coachEmail: string;
+  coachName: string;
+  createdAt: string;
+  message: string;
+  orderId: string;
+  recoveryStatus: string;
+  severity: string;
+  stage: string;
+};
+
+type ShopAuditClient = {
+  action: string;
+  adminEmail: string;
+  createdAt: string;
+  newUrlSummary: string;
+  oldUrlSummary: string;
+};
+
+type ShopSnapshotClient = {
+  audits: ShopAuditClient[];
+  failures: ShopFailureClient[];
+  paymentSettings: ShopPaymentSettingsClient;
+  reports: {
+    analyticsSummaryCount: number;
+    failureCount: number;
+    paymentSettingsAuditCount: number;
+    purchaseCount: number;
+    siteCount: number;
+  };
+  sites: ShopSiteClient[];
+};
+
+type ShopAdminApiPayload = {
+  error?: string;
+  ok?: boolean;
+  shop?: ShopSnapshotClient;
 };
 
 type AdminAiAnalyticsInsight = {
@@ -173,6 +242,7 @@ type AdminMaintenanceStatus = {
   cleanupEligibleAnalyticsEvents: number;
   cleanupStatus: string;
   failedRecipients: string[];
+  includeShopDataByDefault: boolean;
   lastBackupAt: string;
   lastBackupRecordCount: number;
   lastBackupStatus: string;
@@ -180,6 +250,8 @@ type AdminMaintenanceStatus = {
   lastCleanupDeletedCount: number;
   lastErrorReportCleanupAt: string;
   lastErrorReportCleanupDeletedCount: number;
+  lastShopBackupAt: string;
+  lastShopBackupRecordCount: number;
   maskedRecipients: string[];
   rawRecipientRoles: Array<{
     maskedEmail: string;
@@ -230,6 +302,7 @@ const analyticsChartRangeOptions: Array<{ label: string; value: AnalyticsChartRa
 
 const ADMIN_CSRF_HEADER_NAME = "x-yw-admin-csrf";
 const ERROR_REPORT_CLEANUP_CONFIRMATION = "CLEAR OLD REPORTS";
+const PUBLIC_SHOP_SITE_PATH = "/shop";
 
 type ErrorReportFilterId = "active" | "all" | "fixed" | "ignored" | "new" | "reviewing";
 
@@ -298,6 +371,7 @@ const navSections: AdminNavSection[] = [
         label: "Paid Masterclass Links/Settings",
         description: "Links and settings"
       },
+      { id: "shop", label: "Shop", description: "Website purchases" },
       { id: "error-reports", label: "Error Reports", description: "Recent issues" },
       { id: "backup-cleanup", label: "Backup/Cleanup", description: "Retention controls" },
       { id: "settings", label: "Settings", description: "Admin and support basics" },
@@ -316,6 +390,7 @@ const viewTitles: Record<AdminViewId, string> = {
   overview: "Overview",
   "paid-masterclass-settings": "Paid Masterclass Links/Settings",
   settings: "Settings",
+  shop: "Shop",
   "top-coaches": "Top Performing Coaches"
 };
 
@@ -329,6 +404,7 @@ const viewPermissionById: Record<AdminViewId, string> = {
   overview: "overview.view",
   "paid-masterclass-settings": "paid_masterclass.view_settings",
   settings: "settings.view",
+  shop: "shop.view",
   "top-coaches": "coach_analytics.top_performers"
 };
 
@@ -691,6 +767,9 @@ export function AdminDashboardShell({
                 csrfToken={csrfToken}
                 onAdminActivity={recordAdminActionActivity}
               />
+            ) : null}
+            {activeView === "shop" ? (
+              <ShopView csrfToken={csrfToken} onAdminActivity={recordAdminActionActivity} />
             ) : null}
             {activeView === "error-reports" ? (
               <ErrorReportsView
@@ -4615,6 +4694,482 @@ function formatDeviceBreakdown(deviceBreakdown: CoachSiteRecord["analytics"]["de
   return `Mobile ${deviceBreakdown.mobile} / Desktop ${deviceBreakdown.desktop} / Tablet ${deviceBreakdown.tablet}`;
 }
 
+function ShopView({
+  csrfToken,
+  onAdminActivity
+}: {
+  csrfToken: string;
+  onAdminActivity: (activity: AdminActionActivityInput) => void;
+}) {
+  const [shop, setShop] = useState<ShopSnapshotClient | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [recoveringOrderId, setRecoveringOrderId] = useState("");
+  const [message, setMessage] = useState("");
+  const [paymentPageUrl, setPaymentPageUrl] = useState("");
+  const [providerLabel, setProviderLabel] = useState("Razorpay");
+  const [packageLabel, setPackageLabel] = useState("Coach Website Builder");
+  const [paymentActive, setPaymentActive] = useState(true);
+
+  const paymentSettings = shop?.paymentSettings;
+  const reportLinks = [
+    ["Purchases", "purchases"],
+    ["Published sites", "published"],
+    ["Failures", "failures"],
+    ["Payment settings audit", "settings"],
+    ["Analytics summary", "analytics"]
+  ];
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadShop() {
+      setLoading(true);
+      try {
+        const response = await fetch("/api/admin/shop", {
+          cache: "no-store",
+          credentials: "include"
+        });
+        const payload = (await response.json().catch(() => ({}))) as ShopAdminApiPayload;
+        if (!active) return;
+
+        if (!response.ok || !payload.shop) {
+          setMessage(payload.error || "Shop data could not be loaded.");
+          return;
+        }
+
+        setShop(payload.shop);
+        setPaymentPageUrl(payload.shop.paymentSettings.paymentPageUrl);
+        setProviderLabel(payload.shop.paymentSettings.providerLabel);
+        setPackageLabel(payload.shop.paymentSettings.packageLabel);
+        setPaymentActive(payload.shop.paymentSettings.active);
+        setMessage("");
+      } catch {
+        if (active) setMessage("Shop data could not be loaded.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void loadShop();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  function formatShopDate(value: string | null) {
+    if (!value) return "Not available";
+
+    const timestamp = Date.parse(value);
+    if (!Number.isFinite(timestamp)) return value;
+
+    return new Date(timestamp).toLocaleString("en-IN", {
+      dateStyle: "medium",
+      timeStyle: "short"
+    });
+  }
+
+  async function savePaymentSettings() {
+    if (!csrfToken) {
+      setMessage("Admin verification token missing. Refresh the admin panel and try again.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("Saving Shop payment settings...");
+    onAdminActivity({
+      detail: "Shop payment settings update started.",
+      label: "Shop",
+      status: "working"
+    });
+
+    try {
+      const response = await fetch("/api/admin/shop", {
+        body: JSON.stringify({
+          action: "update_payment_settings",
+          active: paymentActive,
+          packageLabel,
+          paymentPageUrl,
+          providerLabel
+        }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          [ADMIN_CSRF_HEADER_NAME]: csrfToken
+        },
+        method: "POST"
+      });
+      const payload = (await response.json().catch(() => ({}))) as ShopAdminApiPayload;
+
+      if (!response.ok || !payload.ok || !payload.shop) {
+        setMessage(payload.error || "Shop payment settings could not be saved.");
+        onAdminActivity({
+          detail: payload.error || "Shop payment settings update failed.",
+          label: "Shop",
+          status: "error"
+        });
+        return;
+      }
+
+      setShop(payload.shop);
+      setPaymentPageUrl(payload.shop.paymentSettings.paymentPageUrl);
+      setProviderLabel(payload.shop.paymentSettings.providerLabel);
+      setPackageLabel(payload.shop.paymentSettings.packageLabel);
+      setPaymentActive(payload.shop.paymentSettings.active);
+      setMessage("Shop payment settings saved.");
+      onAdminActivity({
+        detail: "Shop payment settings saved.",
+        label: "Shop",
+        status: "success"
+      });
+    } catch {
+      setMessage("Shop payment settings could not be saved.");
+      onAdminActivity({
+        detail: "Shop payment settings update failed safely.",
+        label: "Shop",
+        status: "error"
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function retryPublish(orderId: string) {
+    if (!csrfToken || recoveringOrderId) return;
+
+    setRecoveringOrderId(orderId);
+    setMessage(`Retrying publish for ${orderId}...`);
+    onAdminActivity({
+      detail: `${orderId} publish retry started.`,
+      label: "Shop",
+      status: "working"
+    });
+
+    try {
+      const response = await fetch("/api/admin/shop", {
+        body: JSON.stringify({
+          action: "retry_publish",
+          orderId
+        }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          [ADMIN_CSRF_HEADER_NAME]: csrfToken
+        },
+        method: "POST"
+      });
+      const payload = (await response.json().catch(() => ({}))) as ShopAdminApiPayload;
+
+      if (!response.ok || !payload.ok || !payload.shop) {
+        setMessage(payload.error || "Shop publish retry could not complete.");
+        onAdminActivity({
+          detail: payload.error || `${orderId} publish retry failed.`,
+          label: "Shop",
+          status: "error"
+        });
+        return;
+      }
+
+      setShop(payload.shop);
+      setMessage(`${orderId} publish retry completed.`);
+      onAdminActivity({
+        detail: `${orderId} publish retry completed.`,
+        label: "Shop",
+        status: "success"
+      });
+    } catch {
+      setMessage("Shop publish retry failed safely.");
+      onAdminActivity({
+        detail: `${orderId} publish retry failed safely.`,
+        label: "Shop",
+        status: "error"
+      });
+    } finally {
+      setRecoveringOrderId("");
+    }
+  }
+
+  return (
+    <AdminPageShell
+      actions={
+        <a
+          aria-label="Go to public Shop site"
+          className={styles.primaryAction}
+          href={PUBLIC_SHOP_SITE_PATH}
+          rel="noreferrer"
+          target="_blank"
+        >
+          <AdminActionIcon name="open" />
+          Go to Shop Site
+        </a>
+      }
+      eyebrow="Shop"
+      title="Shop Website Builder"
+    >
+      <div className={styles.noticeCard} data-tone="success">
+        <strong>Public Shop site</strong>
+        <p>
+          Coaches can buy and publish their Website Builder site at {PUBLIC_SHOP_SITE_PATH}. Open
+          the live Shop route in a new tab from here.
+        </p>
+        <div className={styles.noticeActions}>
+          <a
+            aria-label="Open public Shop site"
+            className={styles.primaryAction}
+            href={PUBLIC_SHOP_SITE_PATH}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <AdminActionIcon name="open" />
+            Go to Shop Site
+          </a>
+        </div>
+      </div>
+
+      {message ? (
+        <p className={styles.inlineStatus} role="status">
+          {message}
+        </p>
+      ) : null}
+
+      <section className={styles.analyticsKpiGrid} aria-label="Shop summary">
+        <AnalyticsKpiCard
+          detail={loading ? "Loading..." : "All Shop Website Builder orders"}
+          label="Purchases"
+          value={(shop?.reports.purchaseCount || 0).toLocaleString()}
+        />
+        <AnalyticsKpiCard
+          detail="Published from paid Shop orders"
+          label="Published sites"
+          tone="success"
+          value={(shop?.reports.siteCount || 0).toLocaleString()}
+        />
+        <AnalyticsKpiCard
+          detail="Needs admin recovery if above zero"
+          label="Failures"
+          tone={shop?.reports.failureCount ? "attention" : "neutral"}
+          value={(shop?.reports.failureCount || 0).toLocaleString()}
+        />
+        <AnalyticsKpiCard
+          detail={paymentSettings?.storageSource || "loading"}
+          label="Payment source"
+          value={paymentSettings?.active ? "Active" : "Paused"}
+        />
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.kicker}>Payment Settings</p>
+            <h2>Shop payment page</h2>
+          </div>
+          <a
+            aria-label="Go to public Shop site"
+            className={styles.secondaryAction}
+            href={PUBLIC_SHOP_SITE_PATH}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <AdminActionIcon name="open" />
+            Go to Shop Site
+          </a>
+        </div>
+        <div className={styles.adminFormGrid}>
+          <label>
+            <span>Payment page URL</span>
+            <input
+              onChange={(event) => setPaymentPageUrl(event.target.value)}
+              placeholder="https://rzp.io/rzp/..."
+              type="url"
+              value={paymentPageUrl}
+            />
+          </label>
+          <label>
+            <span>Provider label</span>
+            <input
+              onChange={(event) => setProviderLabel(event.target.value)}
+              placeholder="Razorpay"
+              value={providerLabel}
+            />
+          </label>
+          <label>
+            <span>Package label</span>
+            <input
+              onChange={(event) => setPackageLabel(event.target.value)}
+              placeholder="Coach Website Builder"
+              value={packageLabel}
+            />
+          </label>
+          <label>
+            <span>Payment active</span>
+            <select
+              onChange={(event) => setPaymentActive(event.target.value === "active")}
+              value={paymentActive ? "active" : "paused"}
+            >
+              <option value="active">Active</option>
+              <option value="paused">Paused</option>
+            </select>
+          </label>
+        </div>
+        <div className={styles.formActions}>
+          <button
+            className={styles.primaryAction}
+            data-loading={saving ? "true" : undefined}
+            disabled={saving}
+            onClick={savePaymentSettings}
+            type="button"
+          >
+            {saving ? "Saving..." : "Save Shop Settings"}
+          </button>
+          <a
+            aria-label="Go to public Shop site"
+            className={styles.secondaryAction}
+            href={PUBLIC_SHOP_SITE_PATH}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <AdminActionIcon name="open" />
+            Go to Shop Site
+          </a>
+        </div>
+        <dl className={styles.definitionGrid}>
+          <div>
+            <dt>Current URL</dt>
+            <dd>{paymentSettings?.paymentPageUrl || "Not configured"}</dd>
+          </div>
+          <div>
+            <dt>Last updated</dt>
+            <dd>{formatShopDate(paymentSettings?.lastUpdatedAt || null)}</dd>
+          </div>
+          <div>
+            <dt>Updated by</dt>
+            <dd>{paymentSettings?.lastUpdatedBy || "System"}</dd>
+          </div>
+          <div>
+            <dt>Storage</dt>
+            <dd>{paymentSettings?.storageSource || "loading"}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.kicker}>Reports</p>
+            <h2>Shop backups and exports</h2>
+          </div>
+        </div>
+        <div className={styles.quickActions}>
+          {reportLinks.map(([label, report]) => (
+            <a
+              className={styles.secondaryAction}
+              href={`/api/admin/shop?report=${report}`}
+              key={report}
+            >
+              Download {label}
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.kicker}>Purchases</p>
+            <h2>Shop Website Builder orders</h2>
+          </div>
+        </div>
+        <div className={styles.tableWrap}>
+          <table className={styles.table} data-density="compact">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Coach</th>
+                <th>Status</th>
+                <th>Public site</th>
+                <th>Created</th>
+                <th>Recovery</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shop?.sites.length ? (
+                shop.sites.map((site) => (
+                  <tr key={site.orderId}>
+                    <td>{site.orderId}</td>
+                    <td>
+                      <strong>{site.coachName || "Unnamed coach"}</strong>
+                      <span>{site.coachEmail || site.niche || "No email"}</span>
+                    </td>
+                    <td>
+                      <strong>{site.paymentStatus}</strong>
+                      <span>{site.siteStatus}</span>
+                    </td>
+                    <td>
+                      {site.siteStatus === "published" && site.publicUrl ? (
+                        <a href={site.publicUrl} rel="noreferrer" target="_blank">
+                          Open site
+                        </a>
+                      ) : (
+                        "Not published"
+                      )}
+                    </td>
+                    <td>{formatShopDate(site.createdAt)}</td>
+                    <td>
+                      {site.siteStatus === "publish_failed" ||
+                      site.workflowStage === "publish_failed" ? (
+                        <button
+                          className={styles.secondaryAction}
+                          data-loading={recoveringOrderId === site.orderId ? "true" : undefined}
+                          disabled={Boolean(recoveringOrderId)}
+                          onClick={() => void retryPublish(site.orderId)}
+                          type="button"
+                        >
+                          {recoveringOrderId === site.orderId ? "Retrying..." : "Retry Publish"}
+                        </button>
+                      ) : (
+                        "No action"
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6}>
+                    {loading ? "Loading Shop orders..." : "No Shop orders recorded yet."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className={styles.statusGrid} aria-label="Shop recovery status">
+        <article className={styles.statusCard} data-tone={shop?.failures.length ? "attention" : "success"}>
+          <span>Recovery</span>
+          <h3>{shop?.failures.length ? "Failures need review" : "No open failures"}</h3>
+          <p>
+            {shop?.failures[0]?.message ||
+              "Shop creation, payment handoff, and publish snapshots are ready."}
+          </p>
+        </article>
+        <article className={styles.statusCard}>
+          <span>Audit</span>
+          <h3>{(shop?.audits.length || 0).toLocaleString()} payment setting changes</h3>
+          <p>
+            {shop?.audits[0]
+              ? `${shop.audits[0].adminEmail} updated settings ${formatShopDate(shop.audits[0].createdAt)}.`
+              : "No payment setting changes recorded yet."}
+          </p>
+        </article>
+      </section>
+    </AdminPageShell>
+  );
+}
+
 function MasterclassLinksView({
   control,
   csrfToken,
@@ -6302,6 +6857,7 @@ function BackupCleanupView({
   const [message, setMessage] = useState("");
   const [maintenanceStep, setMaintenanceStep] = useState("");
   const [errorCleanupStep, setErrorCleanupStep] = useState("");
+  const [includeShopData, setIncludeShopData] = useState(true);
   const [highlightedMaintenance, setHighlightedMaintenance] = useState<
     "" | "backup" | "cleanup" | "error-report-cleanup" | "test_backup_email"
   >("");
@@ -6486,7 +7042,7 @@ function BackupCleanupView({
             : "Sending test email to active admins"
       );
       const response = await fetch("/api/admin/backup-cleanup", {
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, includeShopData }),
         cache: "no-store",
         credentials: "include",
         headers: {
@@ -6512,13 +7068,13 @@ function BackupCleanupView({
       if (action === "backup") {
         setMaintenanceStep("Backup delivered to active admins");
         setMessage(
-          `Backup completed for ${payload.recordCount || 0} analytics records. Notification status: ${
+          `Backup completed for ${payload.recordCount || 0} total records. Notification status: ${
             payload.notificationStatus || "not recorded"
           }.`
         );
         highlightMaintenanceResult("backup");
         onAdminActivity({
-          detail: `Backup completed for ${payload.recordCount || 0} analytics records.`,
+          detail: `Backup completed for ${payload.recordCount || 0} total records.`,
           label: "Backup/Cleanup",
           status: "success"
         });
@@ -6571,6 +7127,7 @@ function BackupCleanupView({
       cleanupEligibleAnalyticsEvents: 0,
       cleanupStatus: control.backupCleanup.cleanupStatus,
       failedRecipients: [],
+      includeShopDataByDefault: true,
       lastBackupAt: control.backupCleanup.lastBackupAt,
       lastBackupRecordCount: 0,
       lastBackupStatus: "Not loaded",
@@ -6578,6 +7135,8 @@ function BackupCleanupView({
       lastCleanupDeletedCount: 0,
       lastErrorReportCleanupAt: "No error report cleanup run yet",
       lastErrorReportCleanupDeletedCount: 0,
+      lastShopBackupAt: "No Shop backup created yet",
+      lastShopBackupRecordCount: 0,
       maskedRecipients: [],
       rawRecipientRoles: [],
       retentionDays: control.backupCleanup.retentionDays,
@@ -6683,12 +7242,24 @@ function BackupCleanupView({
             <dd>{activeStatus.lastBackupAt}</dd>
           </div>
           <div>
+            <dt>Include Shop data</dt>
+            <dd>{includeShopData ? "Yes - default" : "No - analytics only"}</dd>
+          </div>
+          <div>
             <dt>Backup status</dt>
             <dd>{activeStatus.lastBackupStatus}</dd>
           </div>
           <div>
             <dt>Backed up records</dt>
             <dd>{activeStatus.lastBackupRecordCount}</dd>
+          </div>
+          <div>
+            <dt>Last Shop backup</dt>
+            <dd>{activeStatus.lastShopBackupAt}</dd>
+          </div>
+          <div>
+            <dt>Shop records included</dt>
+            <dd>{activeStatus.lastShopBackupRecordCount}</dd>
           </div>
           <div>
             <dt>Last cleanup</dt>
@@ -6703,6 +7274,19 @@ function BackupCleanupView({
             <dd>{activeStatus.scheduledCleanup}</dd>
           </div>
         </dl>
+        <label className={styles.compactField}>
+          <span>Include Shop data in backup</span>
+          <select
+            onChange={(event) => setIncludeShopData(event.target.value === "yes")}
+            value={includeShopData ? "yes" : "no"}
+          >
+            <option value="yes">Yes - include Shop purchases, sites, settings audit, failures, analytics summary</option>
+            <option value="no">No - analytics backup only</option>
+          </select>
+          <small>
+            Default is Yes. Shop purchase records are preserved and never deleted by analytics cleanup.
+          </small>
+        </label>
         <div className={styles.formActions}>
           <button
             className={styles.secondaryAction}
@@ -6736,6 +7320,11 @@ function BackupCleanupView({
           {activeStatus.backupXlsDownloadUrl ? (
             <a className={styles.secondaryAction} href={activeStatus.backupXlsDownloadUrl}>
               Download Latest XLS
+            </a>
+          ) : null}
+          {activeStatus.backupDownloadUrl ? (
+            <a className={styles.secondaryAction} href={activeStatus.backupDownloadUrl}>
+              Download Shop Backup
             </a>
           ) : null}
         </div>

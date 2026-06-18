@@ -48,7 +48,7 @@ INSERT INTO coach_sites (
   'image',
   '/coach/gyana-ranjan',
   'Register Now',
-  'premium-feminine-wellness',
+  'canonical-coach-site-template',
   '',
   '{"heroHeadline":"Meet Gyana Ranjan for practical PMOS lifestyle guidance.","subheadline":"A fixed-template coach referral page introducing the coach, niche, vision, and next registration step.","coachIntro":"Gyana helps women slow down confusing hormone advice and rebuild simple routines around food, movement, sleep, stress, and tracking.","visionText":"Support women with education-first guidance that fits real life and works alongside medical advice when needed.","benefits":["Understand common lifestyle patterns connected to PMOS symptoms.","Get a calmer view of food, movement, sleep, and routine consistency.","Know the right next step before joining a deeper program."],"ctaText":"Register Now","faq":[{"question":"Is this medical treatment?","answer":"No. This coach page is for education and lifestyle guidance only."},{"question":"What happens after registration?","answer":"The register button opens the admin-provided Google Form when configured."}],"trustText":"Education-first, doctor-friendly coaching support. This does not replace diagnosis or treatment.","socialCopy":"Join Gyana Ranjan''s PMOS lifestyle guidance page for a clear first step."}',
   '{"averageVisits":0,"conversionRate":"0%","dailyVisits":0,"deviceBreakdown":{"desktop":0,"mobile":0,"tablet":0},"lastUpdated":"Not connected","monthlyVisits":0,"region":"Not available","source":"Not available","totalRegisterClicks":0,"totalVisits":0,"totalWhatsappClicks":0,"videoPlays":0,"weeklyVisits":0}',

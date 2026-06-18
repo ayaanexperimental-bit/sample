@@ -3,6 +3,7 @@ import { ensureAnalyticsEventTables } from "./analytics-events";
 import { recordAdminAuditEvent } from "./admin-audit";
 import { runCachedD1SchemaSetup, type D1SchemaCacheEntry } from "./d1-schema-cache";
 import { ensureErrorReportsSchema } from "./error-reports";
+import { getShopBackupSections, type ShopBackupSections } from "./shop";
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -13,6 +14,7 @@ export type AdminMaintenanceEnv = {
   ADMIN_REQUIRE_DB_ADMIN_ROLES?: string;
   ADMIN_SESSION_SECRET?: string;
   RESEND_API_KEY?: string;
+  SHOP_PAYMENT_PAGE_URL?: string;
 };
 
 export type ErrorReportCleanupFilter =
@@ -38,6 +40,7 @@ export type MaintenanceStatus = {
   cleanupEligibleAnalyticsEvents: number;
   cleanupStatus: string;
   failedRecipients: string[];
+  includeShopDataByDefault: boolean;
   lastBackupAt: string;
   lastBackupRecordCount: number;
   lastBackupStatus: string;
@@ -45,6 +48,8 @@ export type MaintenanceStatus = {
   lastCleanupDeletedCount: number;
   lastErrorReportCleanupAt: string;
   lastErrorReportCleanupDeletedCount: number;
+  lastShopBackupAt: string;
+  lastShopBackupRecordCount: number;
   maskedRecipients: string[];
   rawRecipientRoles: Array<Pick<BackupRecipient, "maskedEmail" | "role" | "status">>;
   retentionDays: number;
@@ -199,6 +204,7 @@ export async function getAdminMaintenanceStatus({
       cleanupEligibleAnalyticsEvents: 0,
       cleanupStatus: "Database missing. No cleanup can run.",
       failedRecipients: [],
+      includeShopDataByDefault: true,
       lastBackupAt: "No backup created yet",
       lastBackupRecordCount: 0,
       lastBackupStatus: "Not configured",
@@ -206,6 +212,8 @@ export async function getAdminMaintenanceStatus({
       lastCleanupDeletedCount: 0,
       lastErrorReportCleanupAt: "No error report cleanup run yet",
       lastErrorReportCleanupDeletedCount: 0,
+      lastShopBackupAt: "No Shop backup created yet",
+      lastShopBackupRecordCount: 0,
       maskedRecipients: [],
       rawRecipientRoles: [],
       retentionDays: RETENTION_DAYS,
@@ -225,6 +233,7 @@ export async function getAdminMaintenanceStatus({
   const cutoff = getRetentionCutoffSeconds();
   const cleanupEligibleAnalyticsEvents = await countOldAnalyticsEvents(db, cutoff);
   const roleChecklist = await getAdminRoleChecklist({ currentAdminEmail, db, env });
+  const latestBackupIncludesShop = Boolean(latestBackup?.backup_csv?.includes("Shop Purchases"));
 
   return {
     activeAdminRecipientCount: recipients.length,
@@ -242,6 +251,7 @@ export async function getAdminMaintenanceStatus({
       recipients
     }),
     failedRecipients: parseList(latestBackup?.failed_recipients).map(maskEmail),
+    includeShopDataByDefault: true,
     lastBackupAt: secondsToDisplay(latestBackup?.created_at) || "No backup created yet",
     lastBackupRecordCount: normalizeNumber(latestBackup?.record_count),
     lastBackupStatus: latestBackup?.status || "No backup created yet",
@@ -252,6 +262,13 @@ export async function getAdminMaintenanceStatus({
     lastErrorReportCleanupDeletedCount: normalizeNumber(
       latestErrorCleanup?.deleted_report_count
     ),
+    lastShopBackupAt:
+      latestBackupIncludesShop && latestBackup
+        ? secondsToDisplay(latestBackup.created_at) || "No Shop backup created yet"
+        : "No Shop backup created yet",
+    lastShopBackupRecordCount: latestBackupIncludesShop
+      ? countShopBackupCsvRows(latestBackup?.backup_csv || "")
+      : 0,
     maskedRecipients: recipients.map((recipient) => recipient.maskedEmail),
     rawRecipientRoles: recipients.map((recipient) => ({
       maskedEmail: recipient.maskedEmail,
@@ -268,10 +285,12 @@ export async function getAdminMaintenanceStatus({
 export async function runAnalyticsBackup({
   adminEmail,
   env,
+  includeShopData = true,
   request
 }: {
   adminEmail: string;
   env: AdminMaintenanceEnv;
+  includeShopData?: boolean;
   request: Request;
 }) {
   const db = env.ADMIN_DB;
@@ -284,6 +303,8 @@ export async function runAnalyticsBackup({
   const recipients = await getActiveBackupRecipients(db);
   const rows = await listOldAnalyticsRows(db, cutoff);
   const loginAuditRows = await listMaskedLoginAuditRows(db);
+  const shopBackup = includeShopData ? await getShopBackupSections(env) : null;
+  const totalRecordCount = rows.length + countShopBackupRecords(shopBackup);
   const backupId = `analytics-backup-${crypto.randomUUID()}`;
   const createdAt = getNowSeconds();
   const baseFileName = `ywcoach-analytics-backup-${new Date(createdAt * 1000)
@@ -291,8 +312,15 @@ export async function runAnalyticsBackup({
     .slice(0, 10)}`;
   const csvFileName = `${baseFileName}.csv`;
   const xlsFileName = `${baseFileName}.xls`;
-  const csv = createAnalyticsBackupCsv(rows, loginAuditRows);
-  const xls = createAnalyticsBackupXls({ backupId, createdAt, cutoff, loginAuditRows, rows });
+  const csv = createAnalyticsBackupCsv(rows, loginAuditRows, shopBackup);
+  const xls = createAnalyticsBackupXls({
+    backupId,
+    createdAt,
+    cutoff,
+    loginAuditRows,
+    rows,
+    shopBackup
+  });
   const destination = "email_csv_xls_attachments";
   const fileUrl = await createSignedBackupDownloadPath({
     backupId,
@@ -306,7 +334,7 @@ export async function runAnalyticsBackup({
     env,
     format: "xls"
   });
-  const status = rows.length === 0 ? "completed_empty" : "completed";
+  const status = totalRecordCount === 0 ? "completed_empty" : "completed";
 
   let notificationStatus = "not_sent";
   let failedRecipients: string[] = [];
@@ -324,7 +352,7 @@ export async function runAnalyticsBackup({
       env,
       fileUrl: `${new URL(request.url).origin}${fileUrl}`,
       fileName: csvFileName,
-      recordCount: rows.length,
+      recordCount: totalRecordCount,
       recipients,
       xlsContent: xls,
       xlsFileName,
@@ -349,7 +377,7 @@ export async function runAnalyticsBackup({
       csvFileName,
       fileUrl,
       status,
-      rows.length,
+      totalRecordCount,
       recipients.length,
       failedRecipients.join(","),
       notificationStatus,
@@ -363,7 +391,7 @@ export async function runAnalyticsBackup({
   await recordAdminAuditEvent({
     email: adminEmail,
     env,
-    reason: `analytics_backup:${backupId}:${rows.length}:${notificationStatus}`,
+    reason: `analytics_shop_backup:${backupId}:${totalRecordCount}:${notificationStatus}`,
     request,
     type: "backup_created"
   });
@@ -375,7 +403,7 @@ export async function runAnalyticsBackup({
     failedRecipients: failedRecipients.map(maskEmail),
     notificationStatus,
     ok: true as const,
-    recordCount: rows.length,
+    recordCount: totalRecordCount,
     status
   };
 }
@@ -787,7 +815,7 @@ async function getLatestBackup(db: D1Database) {
   return db
     .prepare(
       `SELECT id, created_at, failed_recipients, file_name, file_url, notification_status,
-              record_count, status
+              record_count, status, backup_csv
        FROM analytics_backups
        ORDER BY created_at DESC
        LIMIT 1`
@@ -1071,7 +1099,8 @@ function createBackupEmailHtml(input: Parameters<typeof createBackupEmailText>[0
 
 function createAnalyticsBackupCsv(
   rows: Array<Record<string, unknown>>,
-  loginAuditRows: AdminLoginAuditBackupRow[] = []
+  loginAuditRows: AdminLoginAuditBackupRow[] = [],
+  shopBackup: ShopBackupSections | null = null
 ) {
   const headers = [
     "id",
@@ -1124,6 +1153,8 @@ function createAnalyticsBackupCsv(
     );
   }
 
+  appendShopBackupCsvSections(lines, shopBackup);
+
   return lines.join("\n");
 }
 
@@ -1132,13 +1163,15 @@ function createAnalyticsBackupXls({
   createdAt,
   cutoff,
   loginAuditRows = [],
-  rows
+  rows,
+  shopBackup = null
 }: {
   backupId: string;
   createdAt: number;
   cutoff: number;
   loginAuditRows?: AdminLoginAuditBackupRow[];
   rows: Array<Record<string, unknown>>;
+  shopBackup?: ShopBackupSections | null;
 }) {
   const headers = [
     "backup_id",
@@ -1188,10 +1221,12 @@ function createAnalyticsBackupXls({
     ])
   ];
 
+  const sheets: SpreadsheetSheet[] = [{ name: "Analytics Backup", rows: tableRows }];
+
   if (loginAuditRows.length > 0) {
-    tableRows.push(
-      [],
-      ["masked_admin_login_audit"],
+    sheets.push({
+      name: "Admin Login Audit",
+      rows: [
       [
         "record_type",
         "email_masked",
@@ -1208,10 +1243,230 @@ function createAnalyticsBackupXls({
         sanitizeText(row.device_info_safe, 120),
         row.created_at
       ])
-    );
+      ]
+    });
   }
 
-  return createSpreadsheetXml(tableRows, "Analytics Backup");
+  sheets.push(...createShopBackupSheets(shopBackup));
+
+  return createSpreadsheetWorkbookXml(sheets);
+}
+
+type SpreadsheetSheet = {
+  name: string;
+  rows: unknown[][];
+};
+
+function appendShopBackupCsvSections(lines: string[], shopBackup: ShopBackupSections | null) {
+  if (!shopBackup) return;
+
+  createShopBackupSheets(shopBackup).forEach((sheet) => {
+    lines.push("", sheet.name, ...sheet.rows.map((row) => row.map((cell) => csvEscape(String(cell ?? ""))).join(",")));
+  });
+}
+
+function createShopBackupSheets(shopBackup: ShopBackupSections | null): SpreadsheetSheet[] {
+  if (!shopBackup) return [];
+
+  return [
+    {
+      name: "Shop Purchases",
+      rows: [
+        [
+          "order_id",
+          "coach_name",
+          "coach_email",
+          "niche",
+          "payment_status",
+          "site_status",
+          "public_url",
+          "workflow_stage",
+          "created_at",
+          "payment_date",
+          "published_at"
+        ],
+        ...shopBackup.sites
+          .filter((site) => site.paymentStatus !== "draft")
+          .map((site) => [
+            site.orderId,
+            site.coachName,
+            maskEmail(site.coachEmail),
+            site.niche,
+            site.paymentStatus,
+            site.siteStatus,
+            site.publicUrl,
+            site.workflowStage,
+            site.createdAt,
+            site.paymentDate || "",
+            site.publishedAt || ""
+          ])
+      ]
+    },
+    {
+      name: "Shop Sites",
+      rows: [
+        [
+          "order_id",
+          "coach_name",
+          "coach_email_masked",
+          "coach_phone_masked",
+          "niche",
+          "slug",
+          "public_url",
+          "selected_theme",
+          "source",
+          "issue_status",
+          "created_at",
+          "updated_at"
+        ],
+        ...shopBackup.sites.map((site) => [
+          site.orderId,
+          site.coachName,
+          maskEmail(site.coachEmail),
+          maskPhone(site.coachPhone),
+          site.niche,
+          site.slug,
+          site.publicUrl,
+          site.selectedThemeId,
+          site.source,
+          site.issueStatus,
+          site.createdAt,
+          site.updatedAt
+        ])
+      ]
+    },
+    {
+      name: "Shop Payment Settings Audit",
+      rows: [
+        [
+          "id",
+          "action",
+          "old_url_summary",
+          "new_url_summary",
+          "provider",
+          "package",
+          "active",
+          "admin_email_masked",
+          "created_at"
+        ],
+        ...shopBackup.audits.map((audit) => [
+          audit.id,
+          audit.action,
+          audit.oldUrlSummary,
+          audit.newUrlSummary,
+          audit.providerLabel,
+          audit.packageLabel,
+          audit.active ? "active" : "inactive",
+          maskEmail(audit.adminEmail),
+          audit.createdAt
+        ])
+      ]
+    },
+    {
+      name: "Shop Failures",
+      rows: [
+        [
+          "id",
+          "order_id",
+          "coach_name",
+          "coach_email_masked",
+          "severity",
+          "stage",
+          "message",
+          "recovery_status",
+          "created_at"
+        ],
+        ...shopBackup.failures.map((failure) => [
+          failure.id,
+          failure.orderId,
+          failure.coachName,
+          maskEmail(failure.coachEmail),
+          failure.severity,
+          failure.stage,
+          failure.message,
+          failure.recoveryStatus,
+          failure.createdAt
+        ])
+      ]
+    },
+    {
+      name: "Shop Analytics Summary",
+      rows: [
+        [
+          "coach_name",
+          "public_url",
+          "source",
+          "page_views",
+          "cta_clicks",
+          "whatsapp_clicks",
+          "video_plays"
+        ],
+        ...shopBackup.analyticsSummary.map((summary) => [
+          summary.coach_name,
+          summary.public_url,
+          summary.source,
+          summary.page_views,
+          summary.cta_clicks,
+          summary.whatsapp_clicks,
+          summary.video_plays
+        ])
+      ]
+    },
+    {
+      name: "Shop Payment Settings",
+      rows: [
+        ["provider", "package", "active", "storage_source", "last_updated_at", "last_updated_by_masked"],
+        [
+          shopBackup.paymentSettings.providerLabel,
+          shopBackup.paymentSettings.packageLabel,
+          shopBackup.paymentSettings.active ? "active" : "inactive",
+          shopBackup.paymentSettings.storageSource,
+          shopBackup.paymentSettings.lastUpdatedAt || "",
+          maskEmail(shopBackup.paymentSettings.lastUpdatedBy)
+        ]
+      ]
+    }
+  ];
+}
+
+function countShopBackupRecords(shopBackup: ShopBackupSections | null) {
+  if (!shopBackup) return 0;
+
+  return (
+    shopBackup.sites.length +
+    shopBackup.audits.length +
+    shopBackup.failures.length +
+    shopBackup.analyticsSummary.length +
+    1
+  );
+}
+
+function countShopBackupCsvRows(csv: string) {
+  return createShopBackupSectionNames().reduce((total, sectionName) => {
+    const sectionIndex = csv.indexOf(sectionName);
+    if (sectionIndex < 0) return total;
+
+    const nextSectionIndex = createShopBackupSectionNames()
+      .filter((name) => name !== sectionName)
+      .map((name) => csv.indexOf(name, sectionIndex + sectionName.length))
+      .filter((index) => index > sectionIndex)
+      .sort((left, right) => left - right)[0];
+    const section = csv.slice(sectionIndex, nextSectionIndex || undefined);
+    const rows = parseCsvRows(section).filter((row) => row.length > 1);
+
+    return total + Math.max(0, rows.length - 1);
+  }, 0);
+}
+
+function createShopBackupSectionNames() {
+  return [
+    "Shop Purchases",
+    "Shop Sites",
+    "Shop Payment Settings Audit",
+    "Shop Failures",
+    "Shop Analytics Summary",
+    "Shop Payment Settings"
+  ];
 }
 
 function createSpreadsheetXmlFromCsv(csv: string) {
@@ -1335,14 +1590,26 @@ function constantTimeEqual(left: string, right: string) {
 }
 
 function createSpreadsheetXml(rows: unknown[][], sheetName: string) {
-  const tableRows = rows
-    .map(
-      (row) =>
-        `<Row>${row
-          .map((cell) => `<Cell><Data ss:Type="String">${escapeXml(String(cell ?? ""))}</Data></Cell>`)
-          .join("")}</Row>`
-    )
-    .join("");
+  return createSpreadsheetWorkbookXml([{ name: sheetName, rows }]);
+}
+
+function createSpreadsheetWorkbookXml(sheets: SpreadsheetSheet[]) {
+  const worksheetXml = sheets.map((sheet) => {
+    const tableRows = sheet.rows
+      .map(
+        (row) =>
+          `<Row>${row
+            .map((cell) => `<Cell><Data ss:Type="String">${escapeXml(String(cell ?? ""))}</Data></Cell>`)
+            .join("")}</Row>`
+      )
+      .join("");
+
+    return [
+      `<Worksheet ss:Name="${escapeXml(sheet.name).slice(0, 31)}">`,
+      `<Table>${tableRows}</Table>`,
+      "</Worksheet>"
+    ].join("");
+  });
 
   return [
     '<?xml version="1.0"?>',
@@ -1352,9 +1619,7 @@ function createSpreadsheetXml(rows: unknown[][], sheetName: string) {
     ' xmlns:x="urn:schemas-microsoft-com:office:excel"',
     ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"',
     ' xmlns:html="http://www.w3.org/TR/REC-html40">',
-    `<Worksheet ss:Name="${escapeXml(sheetName).slice(0, 31)}">`,
-    `<Table>${tableRows}</Table>`,
-    "</Worksheet>",
+    ...worksheetXml,
     "</Workbook>"
   ].join("");
 }
@@ -1503,6 +1768,14 @@ function maskEmail(value: unknown) {
   const [name, domain] = email.split("@");
   const visible = name.slice(0, 2);
   return `${visible}${"*".repeat(Math.max(2, Math.min(6, name.length - visible.length)))}@${domain}`;
+}
+
+function maskPhone(value: unknown) {
+  const digits = String(value || "").replace(/\D+/g, "");
+  if (!digits) return "";
+  if (digits.length <= 4) return "*".repeat(digits.length);
+
+  return `${"*".repeat(Math.max(4, digits.length - 4))}${digits.slice(-4)}`;
 }
 
 function sanitizeEmail(value: unknown) {

@@ -85,7 +85,7 @@ Critical production bugs fixed in this pass: 6
 - Admin route recovery tested: `/Admin/Dashboard`, `/admin-panel`, `/dashboard`, `/admin/home`, `/admin/dashboard/index`, `/admil/dashboard`, `/admim/dashboard`, `/admn/dashboard`, `/adminn/dashboard`, and `/admindashboard/overview` now redirect to the canonical admin dashboard/login flow without `YW-ERR-404`.
 - Admin mobile/tablet/desktop nav was tested through the authenticated production dashboard matrix for Overview, Coach Sites, Create Coach Site, Coach Analytics, Top Performers, Paid Masterclass Links/Settings, Error Reports, Backup/Cleanup, and Settings at 320/390/768/1024/1440px.
 - No horizontal overflow was detected in the tested mobile-width admin viewport.
-- Current production D1 `coach_sites` has Gyana Ranjan as a real published record with slug `gyana-ranjan`, theme `premium-feminine-wellness`, configured Google Form, photo, and video.
+- Current production D1 `coach_sites` has Gyana Ranjan as a real published record with slug `gyana-ranjan`, a legacy theme value that now normalizes to the canonical coach-site template, configured Google Form, photo, and video.
 - Coach Sites shows Gyana image/avatar.
 - Public `/coach/gyana-ranjan` opens without Contact Support fallback; Register CTAs point to `https://forms.gle/nsY5F1mcjZnZBbVo9`.
 - Production analytics now has all 184 Gyana rows under canonical `coach_slug=gyana-ranjan`.

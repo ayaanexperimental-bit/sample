@@ -2,6 +2,7 @@
 
 import {
   memo,
+  type CSSProperties,
   useCallback,
   useEffect,
   useMemo,
@@ -11,7 +12,8 @@ import {
 import { AdminActionDialog, AdminActionIcon } from "./admin-dashboard-layout";
 import {
   PublicCoachSitePage,
-  type CoachTemplatePreviewInspectSection
+  type CoachTemplatePreviewInspectSection,
+  type CoachTemplatePreviewInspectTarget
 } from "../coach/public-coach-site-page";
 import {
   EMPTY_COACH_SITE_FORM,
@@ -23,11 +25,7 @@ import {
   createFormFromCoachSite,
   normalizeCoachSlug
 } from "../../lib/admin-coach-sites";
-import {
-  coachTemplateThemes,
-  type CoachTemplateThemeId,
-  getCoachTemplateTheme
-} from "../../lib/coach-template-themes";
+import { getCoachTemplateTheme } from "../../lib/coach-template-themes";
 import {
   isSupportedVideoSource,
   isUploadedVideoSource,
@@ -39,6 +37,7 @@ import {
   logWebsiteError,
   type PublicWebsiteErrorCategory
 } from "../../lib/error-reporting";
+import { prepareCoachHeroPhotoForUpload } from "../../lib/client/coach-photo-background-removal";
 import styles from "./admin-dashboard-shell.module.css";
 
 type AdminCoachSitesManagerProps = {
@@ -148,7 +147,18 @@ type GeneratedCoachCopy = {
   problemPoints?: string[];
   benefitsSectionLabel?: string;
   socialCopy?: string;
+  stickyCtaContactButton?: string;
+  stickyCtaContext?: string;
+  stickyCtaHeading?: string;
+  stickyCtaLabel?: string;
   subheadline?: string;
+  supportEmailLabel?: string;
+  supportHeading?: string;
+  supportPhoneLabel?: string;
+  supportPrimaryButton?: string;
+  supportPrivacyNote?: string;
+  supportWhatsappButton?: string;
+  supportWhatsappLabel?: string;
   trustText?: string;
   visionLabel?: string;
   visionText?: string;
@@ -186,6 +196,25 @@ type CopyRegenerationScope =
   | "problem"
   | "vision";
 type PreviewInspectSection = CoachTemplatePreviewInspectSection;
+type PreviewInspectTarget = CoachTemplatePreviewInspectTarget;
+type PreviewInspectSlotConfig = {
+  aiRegenerationScope: CopyRegenerationScope;
+  apply: (
+    value: string,
+    onUpdateField: <Key extends keyof CoachSiteFormState>(
+      key: Key,
+      fieldValue: CoachSiteFormState[Key]
+    ) => void
+  ) => void;
+  fallbackRule: string;
+  fieldType: "text" | "textarea";
+  label: string;
+  required: boolean;
+  section: PreviewInspectSection;
+  slotKey: string;
+  validationRule: string;
+  value: string;
+};
 type CoachSiteDangerStatus = "archived" | "removed";
 type CurrentCoachSiteStatus = Exclude<CoachSiteStatus, "archived" | "removed">;
 
@@ -343,11 +372,360 @@ const previewInspectSections: PreviewInspectSection[] = [
   "problem",
   "journey",
   "benefits",
+  "bonus",
   "media",
   "faq",
   "footer",
   "cta"
 ];
+
+function getPreviewInspectSectionFromTarget(target: PreviewInspectTarget): PreviewInspectSection {
+  const section = String(target).split(".")[0];
+  if (previewInspectSections.includes(section as PreviewInspectSection)) {
+    return section as PreviewInspectSection;
+  }
+  if (section === "coach" || section === "brand" || section === "stickyCta") return "hero";
+  if (section === "support") return "footer";
+  return "hero";
+}
+
+function getPreviewInspectSlotConfig(
+  target: PreviewInspectTarget,
+  form: CoachSiteFormState
+): PreviewInspectSlotConfig {
+  const slotKey = String(target);
+  const section = getPreviewInspectSectionFromTarget(target);
+  const scalar = getScalarPreviewInspectSlot(slotKey, form);
+  if (scalar) return scalar;
+
+  const benefitMatch = slotKey.match(/^(benefits|bonus)\.items\.(\d+)\.(title|description)$/);
+  if (benefitMatch) {
+    const sectionName = benefitMatch[1] === "bonus" ? "bonus" : "benefits";
+    const index = Number(benefitMatch[2]);
+    const isDescription = benefitMatch[3] === "description";
+    const field = isDescription ? "benefitDescriptionsText" : "benefitsText";
+    const lines = getEditableLines(form[field]);
+    return createSlotConfig({
+      aiRegenerationScope: "benefits",
+      apply: (value, onUpdateField) => onUpdateField(field, replaceEditableLine(form[field], index, value)),
+      fieldType: "textarea",
+      label: `${sectionName === "bonus" ? "Bonus" : "Benefit"} ${index + 1} ${isDescription ? "Description" : "Title"}`,
+      section: sectionName,
+      slotKey,
+      validationRule:
+        sectionName === "bonus"
+          ? "Editable bonus presentation only. Actual bonus asset, value, and CTA destination stay locked."
+          : undefined,
+      value: lines[index] || ""
+    });
+  }
+
+  const problemMatch = slotKey.match(/^problem\.points\.(\d+)$/);
+  if (problemMatch) {
+    const index = Number(problemMatch[1]);
+    const lines = getEditableLines(form.problemPointsText);
+    return createSlotConfig({
+      aiRegenerationScope: "problem",
+      apply: (value, onUpdateField) =>
+        onUpdateField("problemPointsText", replaceEditableLine(form.problemPointsText, index, value)),
+      fieldType: "textarea",
+      label: `Pain Point ${index + 1}`,
+      section: "problem",
+      slotKey,
+      value: lines[index] || ""
+    });
+  }
+
+  const journeyMatch = slotKey.match(/^journey\.steps\.(\d+)\.(label|title|description)$/);
+  if (journeyMatch) {
+    const index = Number(journeyMatch[1]);
+    const part = journeyMatch[2] as "description" | "label" | "title";
+    const step = getJourneyStepSlot(form.journeyStepsText, index);
+    return createSlotConfig({
+      aiRegenerationScope: "journey",
+      apply: (value, onUpdateField) =>
+        onUpdateField("journeyStepsText", replaceJourneyStepSlot(form.journeyStepsText, index, part, value)),
+      fieldType: part === "description" ? "textarea" : "text",
+      label: `Journey Step ${index + 1} ${part}`,
+      section: "journey",
+      slotKey,
+      value: step[part] || ""
+    });
+  }
+
+  const faqMatch = slotKey.match(/^faq\.items\.(\d+)\.(question|answer)$/);
+  if (faqMatch) {
+    const index = Number(faqMatch[1]);
+    const part = faqMatch[2] as "answer" | "question";
+    const item = getFaqSlot(form.faqText, index);
+    return createSlotConfig({
+      aiRegenerationScope: "faq",
+      apply: (value, onUpdateField) =>
+        onUpdateField("faqText", replaceFaqSlot(form.faqText, index, part, value)),
+      fieldType: "textarea",
+      label: `FAQ ${index + 1} ${part}`,
+      section: "faq",
+      slotKey,
+      value: item[part] || ""
+    });
+  }
+
+  return createSlotConfig({
+    aiRegenerationScope: getCopyRegenerationScopeForInspectSection(section),
+    apply: () => undefined,
+    fallbackRule: "Static platform-controlled content is not changed from Inspect mode.",
+    fieldType: "textarea",
+    label: formatInspectSlotLabel(slotKey),
+    required: false,
+    section,
+    slotKey,
+    validationRule: "Locked platform-controlled slot.",
+    value: ""
+  });
+}
+
+function getCopyRegenerationScopeForInspectSection(
+  section: PreviewInspectSection
+): CopyRegenerationScope {
+  return section === "bonus" ? "benefits" : section;
+}
+
+function getScalarPreviewInspectSlot(
+  slotKey: string,
+  form: CoachSiteFormState
+): PreviewInspectSlotConfig | null {
+  const scalarSlots: Record<
+    string,
+    {
+      aiRegenerationScope: CopyRegenerationScope;
+      field: keyof CoachSiteFormState;
+      fieldType?: "text" | "textarea";
+      label: string;
+      required?: boolean;
+      section: PreviewInspectSection;
+    }
+  > = {
+    "brand.referralLabel": {
+      aiRegenerationScope: "hero",
+      field: "brandEyebrow",
+      label: "Coach Referral Label",
+      section: "hero"
+    },
+    "coach.location": { aiRegenerationScope: "hero", field: "location", label: "Coach Location", section: "hero" },
+    "coach.name": { aiRegenerationScope: "hero", field: "coachName", label: "Coach Name", section: "hero" },
+    "coach.niche": { aiRegenerationScope: "hero", field: "niche", label: "Niche Label", section: "hero" },
+    "cta.heading": { aiRegenerationScope: "cta", field: "ctaText", fieldType: "textarea", label: "CTA Heading", section: "cta" },
+    "cta.registerButtonText": {
+      aiRegenerationScope: "cta",
+      field: "registerButtonText",
+      label: "Register Button Text",
+      section: "cta"
+    },
+    "cta.sectionLabel": { aiRegenerationScope: "cta", field: "ctaSectionLabel", label: "CTA Section Label", section: "cta" },
+    "cta.trustText": { aiRegenerationScope: "cta", field: "trustText", fieldType: "textarea", label: "CTA Support Text", section: "cta" },
+    "benefits.heading": {
+      aiRegenerationScope: "benefits",
+      field: "benefitsHeading",
+      fieldType: "textarea",
+      label: "Benefits Heading",
+      section: "benefits"
+    },
+    "benefits.sectionLabel": {
+      aiRegenerationScope: "benefits",
+      field: "benefitsSectionLabel",
+      label: "Benefits Section Label",
+      section: "benefits"
+    },
+    "bonus.ctaText": {
+      aiRegenerationScope: "benefits",
+      field: "registerButtonText",
+      label: "Bonus CTA Text",
+      section: "bonus"
+    },
+    "bonus.heading": {
+      aiRegenerationScope: "benefits",
+      field: "benefitsHeading",
+      fieldType: "textarea",
+      label: "Bonus Section Heading",
+      section: "bonus"
+    },
+    "bonus.sectionLabel": {
+      aiRegenerationScope: "benefits",
+      field: "benefitsSectionLabel",
+      label: "Bonus Section Label",
+      section: "bonus"
+    },
+    "bonus.subheading": {
+      aiRegenerationScope: "benefits",
+      field: "benefitDescriptionsText",
+      fieldType: "textarea",
+      label: "Bonus Section Subheading",
+      section: "bonus"
+    },
+    "faq.heading": { aiRegenerationScope: "faq", field: "faqHeading", fieldType: "textarea", label: "FAQ Heading", section: "faq" },
+    "faq.sectionLabel": { aiRegenerationScope: "faq", field: "faqSectionLabel", label: "FAQ Section Label", section: "faq" },
+    "footer.brandLine": {
+      aiRegenerationScope: "footer",
+      field: "footerBrandLine",
+      label: "Footer Brand Line",
+      section: "footer"
+    },
+    "footer.headline": { aiRegenerationScope: "footer", field: "footerHeadline", fieldType: "textarea", label: "Footer Headline", section: "footer" },
+    "footer.text": { aiRegenerationScope: "footer", field: "footerText", fieldType: "textarea", label: "Footer Legal Copy", section: "footer" },
+    "hero.brandBadge": { aiRegenerationScope: "hero", field: "brandBadge", label: "Hero Badge", section: "hero" },
+    "hero.brandEyebrow": { aiRegenerationScope: "hero", field: "brandEyebrow", label: "Hero Support Line", section: "hero" },
+    "hero.headline": { aiRegenerationScope: "hero", field: "heroHeadline", fieldType: "textarea", label: "Hero Headline", section: "hero" },
+    "hero.mediaLabel": { aiRegenerationScope: "media", field: "heroMediaLabel", label: "Media Caption Label", section: "media" },
+    "hero.subheadline": { aiRegenerationScope: "hero", field: "subheadline", fieldType: "textarea", label: "Hero Subheadline", section: "hero" },
+    "hero.trustCopy": { aiRegenerationScope: "hero", field: "heroMicroTrustText", fieldType: "textarea", label: "Hero Trust Copy", section: "hero" },
+    "hero.trustLabel": { aiRegenerationScope: "hero", field: "heroTrustLine", label: "Hero Trust Label", section: "hero" },
+    "intro.body": { aiRegenerationScope: "intro", field: "coachIntro", fieldType: "textarea", label: "Coach Introduction", section: "intro" },
+    "intro.cardLabel": { aiRegenerationScope: "intro", field: "coachIntroLabel", label: "Intro Card Label", section: "intro" },
+    "intro.heading": { aiRegenerationScope: "intro", field: "introHeading", fieldType: "textarea", label: "Intro Heading", section: "intro" },
+    "intro.sectionLabel": { aiRegenerationScope: "intro", field: "introSectionLabel", label: "Intro Section Label", section: "intro" },
+    "journey.heading": { aiRegenerationScope: "journey", field: "journeyHeading", fieldType: "textarea", label: "Journey Heading", section: "journey" },
+    "journey.sectionLabel": { aiRegenerationScope: "journey", field: "journeySectionLabel", label: "Journey Section Label", section: "journey" },
+    "media.body": { aiRegenerationScope: "media", field: "mediaBody", fieldType: "textarea", label: "Media Body", section: "media" },
+    "media.heading": { aiRegenerationScope: "media", field: "mediaHeading", fieldType: "textarea", label: "Media Heading", section: "media" },
+    "media.moduleLabel": { aiRegenerationScope: "media", field: "mediaModuleLabel", label: "Media Module Label", section: "media" },
+    "media.sectionLabel": { aiRegenerationScope: "media", field: "mediaSubheading", label: "Media Section Label", section: "media" },
+    "problem.heading": { aiRegenerationScope: "problem", field: "problemHeading", fieldType: "textarea", label: "Problem Heading", section: "problem" },
+    "problem.sectionLabel": { aiRegenerationScope: "problem", field: "problemSectionLabel", label: "Problem Section Label", section: "problem" },
+    "problem.trustText": { aiRegenerationScope: "problem", field: "trustText", fieldType: "textarea", label: "Problem Support Text", section: "problem" },
+    "stickyCta.contactButton": { aiRegenerationScope: "cta", field: "stickyCtaContactButton", label: "Sticky Contact Button Text", section: "cta" },
+    "stickyCta.context": { aiRegenerationScope: "hero", field: "stickyCtaContext", label: "Sticky CTA Context", section: "hero" },
+    "stickyCta.heading": { aiRegenerationScope: "cta", field: "stickyCtaHeading", fieldType: "textarea", label: "Sticky CTA Heading", section: "cta" },
+    "stickyCta.label": { aiRegenerationScope: "cta", field: "stickyCtaLabel", label: "Sticky CTA Label", section: "cta" },
+    "stickyCta.registerButton": { aiRegenerationScope: "cta", field: "registerButtonText", label: "Sticky Register Text", section: "cta" },
+    "support.email": { aiRegenerationScope: "cta", field: "coachEmail", label: "Support Email", section: "cta" },
+    "support.emailLabel": { aiRegenerationScope: "cta", field: "supportEmailLabel", label: "Support Email Label", section: "cta" },
+    "support.heading": { aiRegenerationScope: "cta", field: "supportHeading", label: "Support Heading", section: "cta" },
+    "support.name": { aiRegenerationScope: "intro", field: "coachName", label: "Support Name", section: "intro" },
+    "support.phone": { aiRegenerationScope: "cta", field: "coachPhone", label: "Support Phone", section: "cta" },
+    "support.phoneLabel": { aiRegenerationScope: "cta", field: "supportPhoneLabel", label: "Support Phone Label", section: "cta" },
+    "support.primaryButton": { aiRegenerationScope: "cta", field: "supportPrimaryButton", label: "Support Button Label", section: "cta" },
+    "support.privacyNote": { aiRegenerationScope: "footer", field: "supportPrivacyNote", fieldType: "textarea", label: "Support Privacy Note", section: "footer" },
+    "support.text": { aiRegenerationScope: "cta", field: "supportText", fieldType: "textarea", label: "Support Text", section: "cta" },
+    "support.whatsappButton": { aiRegenerationScope: "cta", field: "supportWhatsappButton", label: "WhatsApp Button Label", section: "cta" },
+    "support.whatsappLabel": { aiRegenerationScope: "cta", field: "supportWhatsappLabel", label: "WhatsApp Helper Label", section: "cta" },
+    "vision.body": { aiRegenerationScope: "vision", field: "visionText", fieldType: "textarea", label: "Mission Copy", section: "vision" },
+    "vision.label": { aiRegenerationScope: "vision", field: "visionLabel", label: "Mission Label", section: "vision" }
+  };
+  const meta = scalarSlots[slotKey];
+  if (!meta) return null;
+  return createSlotConfig({
+    aiRegenerationScope: meta.aiRegenerationScope,
+    apply: (value, onUpdateField) => onUpdateField(meta.field, value as never),
+    fieldType: meta.fieldType || "text",
+    label: meta.label,
+    required: meta.required !== false,
+    section: meta.section,
+    slotKey,
+    value: String(form[meta.field] || "")
+  });
+}
+
+function createSlotConfig(input: {
+  aiRegenerationScope: CopyRegenerationScope;
+  apply: PreviewInspectSlotConfig["apply"];
+  fallbackRule?: string;
+  fieldType: "text" | "textarea";
+  label: string;
+  required?: boolean;
+  section: PreviewInspectSection;
+  slotKey: string;
+  validationRule?: string;
+  value: string;
+}): PreviewInspectSlotConfig {
+  return {
+    aiRegenerationScope: input.aiRegenerationScope,
+    apply: input.apply,
+    fallbackRule: input.fallbackRule || "Falls back to generated coach-template copy if empty.",
+    fieldType: input.fieldType,
+    label: input.label,
+    required: input.required !== false,
+    section: input.section,
+    slotKey: input.slotKey,
+    validationRule: input.validationRule || "Required content must not be empty.",
+    value: input.value
+  };
+}
+
+function getEditableLines(value: string) {
+  return value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+}
+
+function replaceEditableLine(value: string, index: number, nextValue: string) {
+  const lines = getEditableLines(value);
+  lines[index] = nextValue.trim();
+  return lines.filter(Boolean).join("\n");
+}
+
+function getJourneyBlocks(value: string) {
+  const blocks = value.split(/\n\s*\n/).map((block) => block.trim()).filter(Boolean);
+  return blocks.map((block) => {
+    const [label = "", title = "", ...descriptionLines] = block.split(/\r?\n/);
+    return {
+      description: descriptionLines.join(" ").trim(),
+      label: label.trim(),
+      title: title.trim()
+    };
+  });
+}
+
+function getJourneyStepSlot(value: string, index: number) {
+  return getJourneyBlocks(value)[index] || { description: "", label: "", title: "" };
+}
+
+function replaceJourneyStepSlot(
+  value: string,
+  index: number,
+  part: "description" | "label" | "title",
+  nextValue: string
+) {
+  const blocks = getJourneyBlocks(value);
+  blocks[index] = {
+    ...(blocks[index] || { description: "", label: "", title: "" }),
+    [part]: nextValue.trim()
+  };
+  return blocks.map((step) => [step.label, step.title, step.description].filter(Boolean).join("\n")).join("\n\n");
+}
+
+function getFaqBlocks(value: string) {
+  return value.split(/\n\s*\n/).map((block) => {
+    const [question = "", ...answerLines] = block.trim().split(/\r?\n/);
+    return {
+      answer: answerLines.join(" ").trim(),
+      question: question.trim()
+    };
+  });
+}
+
+function getFaqSlot(value: string, index: number) {
+  return getFaqBlocks(value)[index] || { answer: "", question: "" };
+}
+
+function replaceFaqSlot(value: string, index: number, part: "answer" | "question", nextValue: string) {
+  const blocks = getFaqBlocks(value);
+  blocks[index] = {
+    ...(blocks[index] || { answer: "", question: "" }),
+    [part]: nextValue.trim()
+  };
+  return blocks
+    .filter((item) => item.question || item.answer)
+    .map((item) => `${item.question}\n${item.answer}`.trim())
+    .join("\n\n");
+}
+
+function formatInspectSlotLabel(slotKey: string) {
+  return slotKey
+    .split(".")
+    .filter((part) => !/^\d+$/.test(part))
+    .slice(-2)
+    .join(" ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
 
 const removalReasons = [
   "inactive coach",
@@ -363,8 +741,6 @@ const PHOTO_ORIGINAL_MAX_BYTES = 20 * 1024 * 1024;
 const PHOTO_STORED_MAX_BYTES = 12 * 1024 * 1024;
 const VIDEO_MAX_BYTES = 24 * 1024 * 1024;
 const IMAGE_OPTIMIZE_MAX_EDGE = 2200;
-const IMAGE_OPTIMIZE_QUALITY = 0.92;
-const IMAGE_MIN_SAVINGS_RATIO = 0.92;
 const PREVIEW_SYNC_DELAY_MS = 180;
 const ALLOWED_PHOTO_EXTENSIONS = new Set([
   ".avif",
@@ -395,8 +771,6 @@ const ALLOWED_PHOTO_MIME_TYPES = new Set([
   "image/x-ms-bmp",
   "image/x-png"
 ]);
-const PASSTHROUGH_PHOTO_EXTENSIONS = new Set([".gif", ".heic", ".heif"]);
-
 function applyGeneratedCopyToForm(
   current: CoachSiteFormState,
   content: GeneratedCoachCopy,
@@ -467,6 +841,17 @@ function applyGeneratedCopyToForm(
       ...current,
       ctaSectionLabel: content.ctaSectionLabel || current.ctaSectionLabel,
       ctaText: content.ctaText || current.ctaText,
+      socialCopy: content.socialCopy || current.socialCopy,
+      stickyCtaContactButton: content.stickyCtaContactButton || current.stickyCtaContactButton,
+      stickyCtaContext: content.stickyCtaContext || current.stickyCtaContext,
+      stickyCtaHeading: content.stickyCtaHeading || current.stickyCtaHeading,
+      stickyCtaLabel: content.stickyCtaLabel || current.stickyCtaLabel,
+      supportEmailLabel: content.supportEmailLabel || current.supportEmailLabel,
+      supportHeading: content.supportHeading || current.supportHeading,
+      supportPhoneLabel: content.supportPhoneLabel || current.supportPhoneLabel,
+      supportPrimaryButton: content.supportPrimaryButton || current.supportPrimaryButton,
+      supportWhatsappButton: content.supportWhatsappButton || current.supportWhatsappButton,
+      supportWhatsappLabel: content.supportWhatsappLabel || current.supportWhatsappLabel,
       trustText: content.trustText || current.trustText
     };
   }
@@ -505,7 +890,8 @@ function applyGeneratedCopyToForm(
       ...current,
       footerBrandLine: content.footerBrandLine || current.footerBrandLine,
       footerHeadline: content.footerHeadline || current.footerHeadline,
-      footerText: content.footerText || current.footerText
+      footerText: content.footerText || current.footerText,
+      supportPrivacyNote: content.supportPrivacyNote || current.supportPrivacyNote
     };
   }
 
@@ -545,7 +931,18 @@ function applyGeneratedCopyToForm(
     registerButtonText: current.registerButtonText || content.ctaText || "Register Now",
     benefitsSectionLabel: content.benefitsSectionLabel || current.benefitsSectionLabel,
     socialCopy: content.socialCopy || current.socialCopy,
+    stickyCtaContactButton: content.stickyCtaContactButton || current.stickyCtaContactButton,
+    stickyCtaContext: content.stickyCtaContext || current.stickyCtaContext,
+    stickyCtaHeading: content.stickyCtaHeading || current.stickyCtaHeading,
+    stickyCtaLabel: content.stickyCtaLabel || current.stickyCtaLabel,
     subheadline: content.subheadline || current.subheadline,
+    supportEmailLabel: content.supportEmailLabel || current.supportEmailLabel,
+    supportHeading: content.supportHeading || current.supportHeading,
+    supportPhoneLabel: content.supportPhoneLabel || current.supportPhoneLabel,
+    supportPrimaryButton: content.supportPrimaryButton || current.supportPrimaryButton,
+    supportPrivacyNote: content.supportPrivacyNote || current.supportPrivacyNote,
+    supportWhatsappButton: content.supportWhatsappButton || current.supportWhatsappButton,
+    supportWhatsappLabel: content.supportWhatsappLabel || current.supportWhatsappLabel,
     trustText: content.trustText || current.trustText,
     visionLabel: content.visionLabel || current.visionLabel,
     visionText: content.visionText || current.visionText
@@ -592,6 +989,7 @@ export function AdminCoachSitesManager({
   const [aiMessage, setAiMessage] = useState("");
   const [aiSubmitting, setAiSubmitting] = useState(false);
   const [draftSubmitting, setDraftSubmitting] = useState(false);
+  const [previewPersistenceRevision, setPreviewPersistenceRevision] = useState(0);
   const [publishProgress, setPublishProgress] = useState<PublishProgressState>({
     message: "",
     phase: "idle",
@@ -910,11 +1308,6 @@ export function AdminCoachSitesManager({
     }
 
     if (status === "published") {
-      if (!sourceForm.selectedThemeId.trim()) {
-        setMessage("Select the coach-site template/theme before publishing.");
-        return null;
-      }
-
       if (!sourceForm.googleFormUrl.trim()) {
         setMessage("Google Form registration link is required before publishing.");
         setStorageMessage("Save as draft until the coach-specific Google Form link is added.");
@@ -996,7 +1389,32 @@ export function AdminCoachSitesManager({
       problemPointsText:
         sourceForm.problemPointsText || fallbackSite.content.problemPoints.join("\n"),
       socialCopy: sourceForm.socialCopy || fallbackSite.content.socialCopy,
+      stickyCtaContactButton:
+        sourceForm.stickyCtaContactButton || fallbackSite.content.stickyCtaContactButton || "Contact Coach",
+      stickyCtaContext:
+        sourceForm.stickyCtaContext ||
+        fallbackSite.content.stickyCtaContext ||
+        `${fallbackSite.niche || "Coach referral"} through YW Nutritech`,
+      stickyCtaHeading:
+        sourceForm.stickyCtaHeading ||
+        fallbackSite.content.stickyCtaHeading ||
+        `Ready to connect with Coach ${fallbackSite.coachName}?`,
+      stickyCtaLabel:
+        sourceForm.stickyCtaLabel || fallbackSite.content.stickyCtaLabel || "Free guest registration",
       subheadline: sourceForm.subheadline || fallbackSite.content.subheadline,
+      supportEmailLabel: sourceForm.supportEmailLabel || fallbackSite.content.supportEmailLabel || "Email",
+      supportHeading: sourceForm.supportHeading || fallbackSite.content.supportHeading || "Contact Support",
+      supportPhoneLabel: sourceForm.supportPhoneLabel || fallbackSite.content.supportPhoneLabel || "Phone",
+      supportPrimaryButton:
+        sourceForm.supportPrimaryButton || fallbackSite.content.supportPrimaryButton || "Contact Support",
+      supportPrivacyNote:
+        sourceForm.supportPrivacyNote ||
+        fallbackSite.content.supportPrivacyNote ||
+        "Contact details shown here are public coach-site support details, not admin-only data.",
+      supportWhatsappButton:
+        sourceForm.supportWhatsappButton || fallbackSite.content.supportWhatsappButton || "Message coach",
+      supportWhatsappLabel:
+        sourceForm.supportWhatsappLabel || fallbackSite.content.supportWhatsappLabel || "WhatsApp",
       trustText: sourceForm.trustText || fallbackSite.content.trustText,
       visionLabel: sourceForm.visionLabel || fallbackSite.content.visionLabel,
       visionText: sourceForm.visionText || fallbackSite.content.visionText
@@ -1156,6 +1574,7 @@ export function AdminCoachSitesManager({
           ? `Successfully Published. Stable public link: ${savedSite.publicUrl}`
           : "Draft saved successfully."
       );
+      setPreviewPersistenceRevision((revision) => revision + 1);
       recordActivity({
         detail:
           status === "published"
@@ -2130,10 +2549,6 @@ export function AdminCoachSitesManager({
       return "Coach name, niche, and slug are required before publishing.";
     }
 
-    if (!site.selectedThemeId.trim()) {
-      return "Select the coach-site template/theme before publishing.";
-    }
-
     if (!site.googleFormUrl.trim()) {
       return "Google Form registration link is required before publishing this draft.";
     }
@@ -2616,7 +3031,6 @@ export function AdminCoachSitesManager({
         onEditSite={openCreatorDialog}
         onGeneratePreview={generatePreviewFromDetails}
         onOpenDialog={setDialog}
-        onPreviewSiteChange={setPreviewSite}
         onPublish={() => upsertSite("published")}
         onPublishDraft={publishDraftSite}
         onRegenerateCopy={handleRegenerateCopy}
@@ -2639,6 +3053,7 @@ export function AdminCoachSitesManager({
         paidFunnelAnalysisBusy={paidFunnelAnalysisBusy}
         paidFunnelAnalysisMessage={paidFunnelAnalysisMessage}
         previewSite={previewSite}
+        previewPersistenceRevision={previewPersistenceRevision}
         publishProgress={publishProgress}
         publishedSite={publishedSite}
         deletingDraftId={deletingDraftId}
@@ -2682,7 +3097,6 @@ function CoachDialogRenderer({
   onEditSite,
   onGeneratePreview,
   onOpenDialog,
-  onPreviewSiteChange,
   onPublish,
   onPublishDraft,
   onReactivateSite,
@@ -2698,6 +3112,7 @@ function CoachDialogRenderer({
   paidFunnelAnalysisBusy,
   paidFunnelAnalysisMessage,
   previewSite,
+  previewPersistenceRevision,
   publishProgress,
   publishedSite,
   reactivatingSiteId,
@@ -2733,7 +3148,6 @@ function CoachDialogRenderer({
   onEditSite: (site?: CoachSiteRecord, step?: number) => void;
   onGeneratePreview: () => Promise<boolean>;
   onOpenDialog: (dialog: CoachDialog) => void;
-  onPreviewSiteChange: (site: CoachSiteRecord) => void;
   onPublish: () => Promise<CoachSiteRecord | null>;
   onPublishDraft: (site: CoachSiteRecord) => Promise<void>;
   onReactivateSite: (site: CoachSiteRecord) => void;
@@ -2752,6 +3166,7 @@ function CoachDialogRenderer({
   paidFunnelAnalysisBusy: boolean;
   paidFunnelAnalysisMessage: string;
   previewSite: CoachSiteRecord | null;
+  previewPersistenceRevision: number;
   publishProgress: PublishProgressState;
   publishedSite: CoachSiteRecord | null;
   reactivatingSiteId: string;
@@ -2831,10 +3246,6 @@ function CoachDialogRenderer({
                   The public link slug is generated from the coach name and stays stable after
                   future edits.
                 </p>
-                <ThemeChoiceField
-                  onChange={(value) => onUpdateField("selectedThemeId", value)}
-                  selectedThemeId={form.selectedThemeId}
-                />
               </>
             ) : null}
 
@@ -2938,13 +3349,13 @@ function CoachDialogRenderer({
             ) : null}
 
             {wizardStep === 4 ? (
-              <PreviewAndEditStep
-                aiMessage={aiMessage}
-                aiSubmitting={aiSubmitting}
-                form={form}
-                onPreviewSiteChange={onPreviewSiteChange}
-                onRegenerateCopy={onRegenerateCopy}
-                onUpdateField={onUpdateField}
+            <PreviewAndEditStep
+              aiMessage={aiMessage}
+              aiSubmitting={aiSubmitting}
+              form={form}
+              onRegenerateCopy={onRegenerateCopy}
+              onUpdateField={onUpdateField}
+              persistedRevision={previewPersistenceRevision}
                 previewSite={previewSite}
               />
             ) : null}
@@ -3639,35 +4050,56 @@ function PreviewAndEditStep({
   aiMessage,
   aiSubmitting,
   form,
-  onPreviewSiteChange,
   onRegenerateCopy,
   onUpdateField,
+  persistedRevision,
   previewSite
 }: {
   aiMessage: string;
   aiSubmitting: boolean;
   form: CoachSiteFormState;
-  onPreviewSiteChange: (site: CoachSiteRecord) => void;
   onRegenerateCopy: (scope: CopyRegenerationScope) => Promise<void>;
   onUpdateField: <Key extends keyof CoachSiteFormState>(
     key: Key,
     value: CoachSiteFormState[Key]
   ) => void;
+  persistedRevision: number;
   previewSite: CoachSiteRecord | null;
 }) {
   const [inspectMode, setInspectMode] = useState(false);
-  const [selectedInspectScope, setSelectedInspectScope] = useState<PreviewInspectSection | null>(
+  const [selectedInspectTarget, setSelectedInspectTarget] = useState<PreviewInspectTarget | null>(
     null
   );
-  const selectedInspectLabel = selectedInspectScope ? getCopyScopeLabel(selectedInspectScope) : "";
-  const handlePreviewThemeChange = useStableCallback((selectedThemeId: CoachTemplateThemeId) => {
-    if (!previewSite) return;
+  const [inspectDirtyRevision, setInspectDirtyRevision] = useState(0);
+  const inspectDirty = inspectDirtyRevision > persistedRevision;
+  const selectedInspectSlot = selectedInspectTarget
+    ? getPreviewInspectSlotConfig(selectedInspectTarget, form)
+    : null;
 
-    onUpdateField("selectedThemeId", selectedThemeId);
-    onPreviewSiteChange({
-      ...previewSite,
-      selectedThemeId
-    });
+  useEffect(() => {
+    if (!inspectMode) return;
+
+    function handleEscape(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setSelectedInspectTarget(null);
+      setInspectMode(false);
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [inspectMode]);
+
+  const handleSelectInspectScope = useStableCallback((target: PreviewInspectTarget) => {
+    setSelectedInspectTarget(target);
+  });
+  const handleRegenerateCopy = useStableCallback(async (scope: CopyRegenerationScope) => {
+    await onRegenerateCopy(scope);
+    setInspectDirtyRevision(persistedRevision + 1);
+  });
+  const handleInspectApply = useStableCallback((value: string) => {
+    if (!selectedInspectSlot) return;
+    selectedInspectSlot.apply(value, onUpdateField);
+    setInspectDirtyRevision(persistedRevision + 1);
   });
 
   return (
@@ -3681,26 +4113,10 @@ function PreviewAndEditStep({
           <button
             className={styles.secondaryAction}
             disabled={aiSubmitting}
-            onClick={() => void onRegenerateCopy("all")}
+            onClick={() => void handleRegenerateCopy("all")}
             type="button"
           >
             Regenerate All Copy
-          </button>
-          <button
-            aria-pressed={inspectMode}
-            className={styles.inspectToggleButton}
-            disabled={aiSubmitting}
-            onClick={() => {
-              if (inspectMode) {
-                setSelectedInspectScope(null);
-              }
-              setInspectMode(!inspectMode);
-            }}
-            title="Select a preview section to regenerate"
-            type="button"
-          >
-            <CursorInspectIcon />
-            <span>{inspectMode ? "Selecting" : "Inspect"}</span>
           </button>
         </div>
       </div>
@@ -3717,49 +4133,11 @@ function PreviewAndEditStep({
       ) : null}
 
       {!aiSubmitting && aiMessage ? <p className={styles.inlineStatus}>{aiMessage}</p> : null}
-
-      {inspectMode ? (
-        <div className={styles.previewInspectTray}>
-          <div>
-            {previewInspectSections.map((scope) => (
-              <button
-                data-active={selectedInspectScope === scope ? "true" : "false"}
-                key={scope}
-                onClick={() => setSelectedInspectScope(scope)}
-                type="button"
-              >
-                {getCopyScopeLabel(scope)}
-              </button>
-            ))}
-          </div>
-          <button
-            className={styles.primaryAction}
-            disabled={!selectedInspectScope || aiSubmitting}
-            onClick={() => selectedInspectScope && void onRegenerateCopy(selectedInspectScope)}
-            type="button"
-          >
-            {selectedInspectLabel ? `Regenerate ${selectedInspectLabel}` : "Select Section"}
-          </button>
-        </div>
-      ) : null}
-
-      {inspectMode && selectedInspectScope ? (
-        <InspectSectionEditor
-          aiSubmitting={aiSubmitting}
-          form={form}
-          onRegenerateCopy={onRegenerateCopy}
-          onUpdateField={onUpdateField}
-          scope={selectedInspectScope}
-        />
-      ) : inspectMode ? (
-        <div className={styles.inspectSectionEmpty}>
-          <p className={styles.kicker}>Inspect Mode</p>
-          <h3>Select a highlighted preview section</h3>
-          <p>
-            Click a preview section to edit only that section&apos;s content or regenerate that
-            section with AI. Layout, routes, security, and template design remain locked.
-          </p>
-        </div>
+      {inspectDirty ? (
+        <p className={styles.inlineStatus} role="status">
+          Unsaved inspect edits are visible in the preview. Use Save Draft or Publish to persist
+          them.
+        </p>
       ) : null}
 
       <div className={styles.copyEditorPanel}>
@@ -3975,10 +4353,18 @@ function PreviewAndEditStep({
 
       {previewSite ? (
         <CoachSitePreview
-          onThemeChange={handlePreviewThemeChange}
+          aiSubmitting={aiSubmitting}
           inspectMode={inspectMode}
-          onSelectInspectScope={setSelectedInspectScope}
-          selectedInspectScope={selectedInspectScope}
+          onApplyInspectEdit={handleInspectApply}
+          onClearInspectSelection={() => setSelectedInspectTarget(null)}
+          onRegenerateCopy={handleRegenerateCopy}
+          onSelectInspectScope={handleSelectInspectScope}
+          onToggleInspect={() => {
+            if (inspectMode) setSelectedInspectTarget(null);
+            setInspectMode(!inspectMode);
+          }}
+          selectedInspectSlot={selectedInspectSlot}
+          selectedInspectScope={selectedInspectTarget}
           site={previewSite}
         />
       ) : (
@@ -3991,6 +4377,8 @@ function PreviewAndEditStep({
   );
 }
 
+// Kept as a fallback section editor while the preview inspector migrates to slot-level editing.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function InspectSectionEditor({
   aiSubmitting,
   form,
@@ -4007,7 +4395,8 @@ function InspectSectionEditor({
   ) => void;
   scope: PreviewInspectSection;
 }) {
-  const scopeLabel = getCopyScopeLabel(scope);
+  const regenerationScope = getCopyRegenerationScopeForInspectSection(scope);
+  const scopeLabel = getCopyScopeLabel(regenerationScope);
 
   return (
     <section className={styles.inspectSectionEditor} aria-live="polite">
@@ -4023,7 +4412,7 @@ function InspectSectionEditor({
         <button
           className={styles.primaryAction}
           disabled={aiSubmitting}
-          onClick={() => void onRegenerateCopy(scope)}
+          onClick={() => void onRegenerateCopy(regenerationScope)}
           type="button"
         >
           {aiSubmitting ? "Regenerating..." : `Regenerate ${scopeLabel}`}
@@ -4294,7 +4683,7 @@ function InspectSectionEditor({
   );
 }
 
-function useStableCallback<Args extends unknown[]>(callback: (...args: Args) => void) {
+function useStableCallback<Args extends unknown[], Return>(callback: (...args: Args) => Return) {
   const callbackRef = useRef(callback);
 
   useEffect(() => {
@@ -4302,7 +4691,7 @@ function useStableCallback<Args extends unknown[]>(callback: (...args: Args) => 
   }, [callback]);
 
   return useCallback((...args: Args) => {
-    callbackRef.current(...args);
+    return callbackRef.current(...args);
   }, []);
 }
 
@@ -4370,13 +4759,13 @@ function HeroMediaStep({
     }
 
     setUploadMessage(
-      mediaType === "image" ? `Optimizing ${file.name}...` : `Uploading ${file.name}...`
+      mediaType === "image" ? `Removing background from ${file.name}...` : `Uploading ${file.name}...`
     );
     setUploadingMediaType(mediaType);
     onAdminActivity?.({
       detail:
         mediaType === "image"
-          ? `${file.name} photo optimization/upload started.`
+          ? `${file.name} photo background removal/upload started.`
           : `${file.name} video upload started.`,
       label: "Coach Sites",
       status: "working"
@@ -4386,7 +4775,7 @@ function HeroMediaStep({
       mediaType === "image"
         ? await preparePhotoForUpload(file).catch(() => ({
             file,
-            message: "Could not optimize this photo safely. Saving the original file.",
+            message: "Could not remove this photo background safely. Saving the original file.",
             optimized: false
           }))
         : { file, message: "", optimized: false };
@@ -4444,13 +4833,13 @@ function HeroMediaStep({
       onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", payload.media.publicUrl);
       setUploadMessage(
         mediaType === "image"
-          ? `${uploadFile.name} uploaded to R2 (${formatBytes(uploadFile.size)}). ${preparedMedia.message}`
+          ? `${uploadFile.name} uploaded to R2 as transparent hero PNG (${formatBytes(uploadFile.size)}). ${preparedMedia.message}`
           : `${uploadFile.name} uploaded and saved for this coach site.`
       );
       onAdminActivity?.({
         detail:
           mediaType === "image"
-            ? `${uploadFile.name} photo uploaded and saved.`
+            ? `${uploadFile.name} transparent hero photo uploaded and saved.`
             : `${uploadFile.name} video uploaded and saved.`,
         label: "Coach Sites",
         status: "success"
@@ -4803,76 +5192,240 @@ function PublishPanel({
   );
 }
 
-function ThemeChoiceField({
-  onChange,
-  selectedThemeId
-}: {
-  onChange: (value: CoachTemplateThemeId) => void;
-  selectedThemeId: CoachTemplateThemeId;
-}) {
-  return (
-    <div className={styles.themeChoicePanel}>
-      <div>
-        <p className={styles.kicker}>Choose Template Theme</p>
-        <h3>{getCoachTemplateTheme(selectedThemeId).name}</h3>
-        <p>Same coach content, different premium YW Nutritech visual skin.</p>
-      </div>
-      <div className={styles.themeChoiceGrid}>
-        {coachTemplateThemes.map((theme) => (
-          <button
-            data-active={theme.id === selectedThemeId ? "true" : "false"}
-            key={theme.id}
-            onClick={() => onChange(theme.id)}
-            type="button"
-          >
-            <span>{theme.previewLabel}</span>
-            <strong>{theme.mood}</strong>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 const CoachSitePreview = memo(function CoachSitePreview({
+  aiSubmitting = false,
   inspectMode = false,
-  onThemeChange,
+  onApplyInspectEdit,
+  onClearInspectSelection,
+  onRegenerateCopy,
   onSelectInspectScope,
+  onToggleInspect,
+  selectedInspectSlot,
   selectedInspectScope,
   site
 }: {
+  aiSubmitting?: boolean;
   inspectMode?: boolean;
-  onThemeChange?: (value: CoachTemplateThemeId) => void;
-  onSelectInspectScope?: (value: PreviewInspectSection) => void;
-  selectedInspectScope?: PreviewInspectSection | null;
+  onApplyInspectEdit?: (value: string) => void;
+  onClearInspectSelection?: () => void;
+  onRegenerateCopy?: (scope: CopyRegenerationScope) => Promise<void>;
+  onSelectInspectScope?: (value: PreviewInspectTarget) => void;
+  onToggleInspect?: () => void;
+  selectedInspectSlot?: PreviewInspectSlotConfig | null;
+  selectedInspectScope?: PreviewInspectTarget | null;
   site: CoachSiteRecord;
 }) {
   const selectedTheme = getCoachTemplateTheme(site.selectedThemeId);
+  const previewFrameRef = useRef<HTMLDivElement | null>(null);
+  const [inspectEditorPosition, setInspectEditorPosition] = useState<{
+    left: number;
+    target: PreviewInspectTarget;
+    top: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!inspectMode || !selectedInspectScope) {
+      return;
+    }
+
+    const frame = previewFrameRef.current;
+    if (!frame) return;
+
+    const activeInspectScope = selectedInspectScope;
+    let animationFrame = 0;
+
+    function measureSelectedTarget() {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(() => {
+        const activeFrame = previewFrameRef.current;
+        if (!activeFrame) return;
+
+        const selectedTargets = Array.from(
+          activeFrame.querySelectorAll<HTMLElement>("[data-selected='true'][data-inspect-target]")
+        );
+        const frameRect = activeFrame.getBoundingClientRect();
+        const selectedTarget =
+          selectedTargets.find((target) => {
+            const rect = target.getBoundingClientRect();
+            return (
+              rect.bottom > frameRect.top &&
+              rect.top < frameRect.bottom &&
+              rect.right > frameRect.left &&
+              rect.left < frameRect.right
+            );
+          }) || selectedTargets[0];
+
+        if (!selectedTarget) {
+          setInspectEditorPosition(null);
+          return;
+        }
+
+        const targetRect = selectedTarget.getBoundingClientRect();
+        const editorWidth = Math.min(448, Math.max(280, activeFrame.clientWidth - 24));
+        const gap = 12;
+        const minLeft = activeFrame.scrollLeft + gap;
+        const maxLeft = activeFrame.scrollLeft + Math.max(gap, activeFrame.clientWidth - editorWidth - gap);
+        const preferredLeft = activeFrame.scrollLeft + targetRect.right - frameRect.left + gap;
+        const fallbackLeft = activeFrame.scrollLeft + targetRect.left - frameRect.left;
+        const left = Math.min(Math.max(minLeft, preferredLeft), maxLeft);
+        const top = Math.max(
+          activeFrame.scrollTop + gap,
+          activeFrame.scrollTop + targetRect.bottom - frameRect.top + gap,
+          activeFrame.scrollTop + targetRect.top - frameRect.top + gap
+        );
+
+        setInspectEditorPosition({
+          left: Math.round(Number.isFinite(left) ? left : fallbackLeft),
+          target: activeInspectScope,
+          top: Math.round(top)
+        });
+      });
+    }
+
+    measureSelectedTarget();
+    frame.addEventListener("scroll", measureSelectedTarget, { passive: true });
+    window.addEventListener("resize", measureSelectedTarget);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      frame.removeEventListener("scroll", measureSelectedTarget);
+      window.removeEventListener("resize", measureSelectedTarget);
+    };
+  }, [inspectMode, selectedInspectScope, site]);
+
+  const inspectEditorStyle =
+    inspectEditorPosition && inspectEditorPosition.target === selectedInspectScope
+    ? ({
+        "--inspect-editor-left": `${inspectEditorPosition.left}px`,
+        "--inspect-editor-top": `${inspectEditorPosition.top}px`
+      } as CSSProperties)
+    : undefined;
 
   return (
     <article className={styles.productionPreview} data-theme={selectedTheme.id}>
       <div className={styles.productionPreviewHeader}>
         <div>
-          <p className={styles.kicker}>Production Template Preview</p>
-          <h3>{selectedTheme.previewLabel}</h3>
+          <p className={styles.kicker}>Public Website Preview</p>
+          <h3>{site.coachName}</h3>
         </div>
         <span>{site.publicUrl}</span>
       </div>
-      <div className={styles.productionPreviewFrame}>
+      <div className={styles.productionPreviewFrame} ref={previewFrameRef}>
+        <div className={styles.previewFloatingInspectWidget} data-active={inspectMode ? "true" : "false"}>
+          <button
+            aria-pressed={inspectMode}
+            className={styles.inspectToggleButton}
+            onClick={onToggleInspect}
+            title="Select visible website copy to edit"
+            type="button"
+          >
+            <CursorInspectIcon />
+            <span>{inspectMode ? "Inspect On" : "Inspect"}</span>
+          </button>
+          {inspectMode ? <small>Click any highlighted text to edit the mapped content slot.</small> : null}
+        </div>
         <PublicCoachSitePage
           enableTracking={false}
-          forcedThemeId={selectedTheme.id}
           inspectMode={inspectMode}
-          onPreviewThemeChange={onThemeChange}
           onSelectInspectScope={onSelectInspectScope}
           previewMode
           selectedInspectScope={selectedInspectScope}
           site={site}
+          stickyMode="contained"
         />
+        {inspectMode && selectedInspectSlot ? (
+          <FloatingInspectEditor
+            aiSubmitting={aiSubmitting}
+            key={`${selectedInspectSlot.slotKey}:${selectedInspectSlot.value}`}
+            onApply={onApplyInspectEdit}
+            onCancel={() => onClearInspectSelection?.()}
+            onRegenerateCopy={onRegenerateCopy}
+            positionStyle={inspectEditorStyle}
+            slot={selectedInspectSlot}
+          />
+        ) : inspectMode ? (
+          <div className={styles.floatingInspectHint}>
+            <span>01</span>
+            <strong>Select website text</strong>
+            <small>Hero, benefits, FAQ, CTA, support, and footer copy are editable content slots.</small>
+          </div>
+        ) : null}
       </div>
     </article>
   );
 });
+
+function FloatingInspectEditor({
+  aiSubmitting,
+  onApply,
+  onCancel,
+  onRegenerateCopy,
+  positionStyle,
+  slot
+}: {
+  aiSubmitting: boolean;
+  onApply?: (value: string) => void;
+  onCancel: () => void;
+  onRegenerateCopy?: (scope: CopyRegenerationScope) => Promise<void>;
+  positionStyle?: CSSProperties;
+  slot: PreviewInspectSlotConfig;
+}) {
+  const [draftValue, setDraftValue] = useState(() => slot.value);
+  const [error, setError] = useState("");
+
+  function apply() {
+    const trimmed = draftValue.trim();
+    if (slot.required && !trimmed) {
+      setError(`${slot.label} cannot be empty.`);
+      return;
+    }
+    onApply?.(trimmed);
+    setError("");
+  }
+
+  return (
+    <section
+      aria-live="polite"
+      className={styles.floatingInspectEditor}
+      data-positioned={positionStyle ? "true" : "false"}
+      style={positionStyle}
+    >
+      <div className={styles.floatingInspectHeader}>
+        <span>{slot.section}</span>
+        <strong>{slot.label}</strong>
+        <code>{slot.slotKey}</code>
+      </div>
+      <label>
+        <span>{slot.fieldType === "textarea" ? "Content" : "Text"}</span>
+        {slot.fieldType === "textarea" ? (
+          <textarea value={draftValue} onChange={(event) => setDraftValue(event.target.value)} />
+        ) : (
+          <input value={draftValue} onChange={(event) => setDraftValue(event.target.value)} />
+        )}
+      </label>
+      {error ? <p className={styles.inlineError}>{error}</p> : null}
+      <div className={styles.inspectSlotMeta}>
+        <small>Validation: {slot.validationRule}</small>
+        <small>Fallback: {slot.fallbackRule}</small>
+      </div>
+      <div className={styles.floatingInspectActions}>
+        <button className={styles.primaryAction} onClick={apply} type="button">
+          Apply
+        </button>
+        <button onClick={onCancel} type="button">
+          Cancel
+        </button>
+        <button
+          disabled={aiSubmitting}
+          onClick={() => void onRegenerateCopy?.(slot.aiRegenerationScope)}
+          type="button"
+        >
+          {aiSubmitting ? "Regenerating..." : `Regenerate ${getCopyScopeLabel(slot.aiRegenerationScope)}`}
+        </button>
+      </div>
+    </section>
+  );
+}
 
 function TextField({
   helper,
@@ -4944,144 +5497,15 @@ function isAllowedPhotoFile(file: File) {
 }
 
 async function preparePhotoForUpload(file: File) {
-  const extension = getClientFileExtension(file.name);
-
-  if (PASSTHROUGH_PHOTO_EXTENSIONS.has(extension) || file.type === "image/gif") {
-    return {
-      file,
-      message: "Saved original format to preserve HEIC/HEIF/GIF quality.",
-      optimized: false
-    };
-  }
-
-  const decoded = await decodeImageForCanvas(file).catch(() => null);
-  if (!decoded) {
-    return {
-      file,
-      message: "Saved original because this browser cannot safely optimize that format.",
-      optimized: false
-    };
-  }
-
-  try {
-    const largestEdge = Math.max(decoded.width, decoded.height);
-    const scale = largestEdge > IMAGE_OPTIMIZE_MAX_EDGE ? IMAGE_OPTIMIZE_MAX_EDGE / largestEdge : 1;
-    const targetWidth = Math.max(1, Math.round(decoded.width * scale));
-    const targetHeight = Math.max(1, Math.round(decoded.height * scale));
-    const canvas = document.createElement("canvas");
-    canvas.width = targetWidth;
-    canvas.height = targetHeight;
-
-    const context = canvas.getContext("2d", { alpha: true });
-    if (!context) {
-      return {
-        file,
-        message: "Saved original because browser image optimization was unavailable.",
-        optimized: false
-      };
-    }
-
-    context.imageSmoothingEnabled = true;
-    context.imageSmoothingQuality = "high";
-    context.drawImage(decoded.source, 0, 0, targetWidth, targetHeight);
-
-    const blob = await canvasToBlob(canvas, "image/webp", IMAGE_OPTIMIZE_QUALITY);
-    if (!blob || blob.type !== "image/webp") {
-      return {
-        file,
-        message: "Saved original because WebP optimization was unavailable.",
-        optimized: false
-      };
-    }
-
-    const compressionRequired = file.size > PHOTO_STORED_MAX_BYTES;
-    const hasMeaningfulSavings = blob.size <= file.size * IMAGE_MIN_SAVINGS_RATIO;
-    if ((!compressionRequired && !hasMeaningfulSavings) || blob.size >= file.size) {
-      return {
-        file,
-        message: "Saved original because it was already efficiently compressed.",
-        optimized: false
-      };
-    }
-
-    const optimizedFile = new File([blob], replaceFileExtension(file.name, ".webp"), {
-      lastModified: file.lastModified,
-      type: "image/webp"
-    });
-
-    return {
-      file: optimizedFile,
-      message: `Optimized from ${formatBytes(file.size)} to ${formatBytes(blob.size)} with high-quality WebP.`,
-      optimized: true
-    };
-  } finally {
-    decoded.cleanup();
-  }
-}
-
-async function decodeImageForCanvas(file: File): Promise<{
-  cleanup: () => void;
-  height: number;
-  source: CanvasImageSource;
-  width: number;
-}> {
-  if (typeof createImageBitmap === "function") {
-    try {
-      const bitmap = await createImageBitmap(file);
-      return {
-        cleanup: () => bitmap.close(),
-        height: bitmap.height,
-        source: bitmap,
-        width: bitmap.width
-      };
-    } catch {
-      return loadImageElement(file);
-    }
-  }
-
-  return loadImageElement(file);
-}
-
-function loadImageElement(file: File) {
-  return new Promise<{
-    cleanup: () => void;
-    height: number;
-    source: CanvasImageSource;
-    width: number;
-  }>((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const image = new Image();
-    image.decoding = "async";
-    image.addEventListener("load", () => {
-      resolve({
-        cleanup: () => URL.revokeObjectURL(objectUrl),
-        height: image.naturalHeight || image.height,
-        source: image,
-        width: image.naturalWidth || image.width
-      });
-    });
-    image.addEventListener("error", () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error("Image could not be decoded."));
-    });
-    image.src = objectUrl;
-  });
-}
-
-function canvasToBlob(canvas: HTMLCanvasElement, contentType: string, quality: number) {
-  return new Promise<Blob | null>((resolve) => {
-    canvas.toBlob(resolve, contentType, quality);
+  return prepareCoachHeroPhotoForUpload(file, {
+    maxBytes: PHOTO_STORED_MAX_BYTES,
+    maxEdge: IMAGE_OPTIMIZE_MAX_EDGE
   });
 }
 
 function getClientFileExtension(fileName: string) {
   const match = fileName.toLowerCase().match(/\.[a-z0-9]+$/);
   return match?.[0] || "";
-}
-
-function replaceFileExtension(fileName: string, extension: string) {
-  const baseName = fileName.replace(/\.[a-z0-9]+$/i, "") || "coach-photo";
-  return `${baseName}${extension}`;
 }
 
 function formatBytes(bytes: number) {

@@ -13,7 +13,8 @@ export type AdminAuditEventType =
   | "otp_failed"
   | "otp_requested"
   | "otp_verified"
-  | "password_reset_requested";
+  | "password_reset_requested"
+  | "shop_payment_link_updated";
 
 export type AdminAuditEnv = {
   ADMIN_DB?: D1Database;

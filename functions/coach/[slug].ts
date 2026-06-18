@@ -9,6 +9,18 @@ import {
   getCoachTemplateTheme
 } from "../../lib/coach-template-themes";
 import {
+  CANONICAL_COACH_TEMPLATE_ID,
+  getCanonicalCoachInitials,
+  getCanonicalCoachName,
+  getCanonicalCoachNiche,
+  getCanonicalHeroDetailCards,
+  getCanonicalHeroPackage,
+  getCanonicalLegalDisclaimer,
+  getCanonicalRegisterLabel,
+  getSafeCoachTemplateCopy,
+  getNicheAdaptiveBonusSection
+} from "../../lib/coach-canonical-template";
+import {
   DEFAULT_SUPPORT_EMAIL,
   DEFAULT_SUPPORT_PHONE,
   DEFAULT_SUPPORT_WHATSAPP,
@@ -50,11 +62,11 @@ function renderInlineYWLoaderCss() {
         isolation: isolate;
         background: linear-gradient(145deg, var(--overlay-bg-a), var(--overlay-bg-b)), #f9fcff;
         padding: clamp(1rem, 4vw, 2.5rem);
-        opacity: 1;
-        visibility: visible;
-        pointer-events: auto;
-        transition: opacity 220ms ease, visibility 220ms ease;
-        animation: yw-loader-auto-hide 240ms ease 1.35s forwards;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 140ms ease, visibility 140ms ease;
+        animation: none;
       }
       .yw-global-loader::before {
         content: "";
@@ -328,6 +340,11 @@ function renderInlineYWLoaderCss() {
         .yw-inline-floor-shadow { left: 24%; right: 24%; }
       }
       @media (prefers-reduced-motion: reduce) {
+        .yw-global-loader {
+          opacity: 0;
+          visibility: hidden;
+          pointer-events: none;
+        }
         .yw-inline-stage,
         .yw-inline-aura,
         .yw-inline-floor-shadow,
@@ -596,6 +613,566 @@ export async function onRequest({ env, params, request }: PagesContext) {
 }
 
 function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
+  if (String(site.selectedThemeId) === "__legacy_rollback") {
+    return renderLegacyCoachSiteHtml(site);
+  }
+
+  return renderCanonicalCoachSiteHtml(site);
+}
+
+function renderCanonicalCoachSiteHtml(site: PublicCoachSiteRecord) {
+  const coachName = getCanonicalCoachName(site);
+  const coachNiche = getCanonicalCoachNiche(site);
+  const heroPackage = getCanonicalHeroPackage(site);
+  const detailCards = getCanonicalHeroDetailCards(site);
+  const bonusSection = getNicheAdaptiveBonusSection(site);
+  const registerLabel = getCanonicalRegisterLabel(site);
+  const support = getSupportDetails(site);
+  const title = `${coachName} | YW Nutritech Coach Circle`;
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapeHtml(title)}</title>
+    <meta name="description" content="${escapeAttribute(heroPackage.subheadline)}" />
+    <link rel="preload" href="/assets/allia-yw-hero-background.avif" as="image" />
+    <link rel="stylesheet" href="/coach-circle-template.css" />
+    <style>
+      :root {
+        --font-display: Georgia, Cambria, "Times New Roman", serif;
+        --font-accent: Georgia, Cambria, "Times New Roman", serif;
+        --font-tech-display: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+        --font-conversion: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+        --font-body: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html { min-width: 0; overflow-x: clip; scroll-behavior: smooth; }
+      body { min-height: 100vh; margin: 0; overflow-x: hidden; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+      a { color: inherit; }
+      h1, h2, h3, p, strong, span { overflow-wrap: anywhere; }
+      ${renderInlineYWLoaderCss()}
+    </style>
+  </head>
+  <body>
+    ${renderInlineYWLoader()}
+    <main
+      class="yw-circle-site"
+      data-coach-site-page="public"
+      data-coach-slug="${escapeAttribute(site.slug)}"
+      data-theme="${CANONICAL_COACH_TEMPLATE_ID}"
+      id="top"
+    >
+      <div class="yw-allia-background" aria-hidden="true"></div>
+      <div class="yw-scroll-progress" aria-hidden="true"><span class="yw-scroll-progress__bar"></span></div>
+
+      <nav class="navbar14_component w-nav" aria-label="Coach page navigation">
+        <div class="navbar14_container">
+          <a class="navbar14_logo-link w-nav-brand yw-navbar-brand" href="#top">
+            <span class="yw-navbar-mark" aria-hidden="true">
+              <img alt="" decoding="async" loading="eager" src="/assets/yw-logo-transparent.png" />
+            </span>
+            <span class="yw-navbar-wordmark"><strong>YWN</strong></span>
+          </a>
+          <div class="navbar14_menu w-nav-menu">
+            <div class="navbar14_menu-links">
+              <a href="#story">About Us</a>
+              <a href="#story">How It Works</a>
+              <a href="#bonus">Quality &amp; Innovation</a>
+              <a href="#bonus">Our Brands</a>
+              <a href="#faq">FAQ</a>
+              <a href="#coach-contact-support">Careers</a>
+              <a href="#coach-contact-support">Contact Us</a>
+            </div>
+          </div>
+          <div class="navbar14_menu-button w-nav-button" aria-hidden="true"><div class="menu-icon2"></div></div>
+        </div>
+      </nav>
+
+      <div class="yw-circle-main">
+        <section class="yw-circle-hero" id="hero">
+          <div class="yw-circle-hero__shell">
+            <p class="yw-hero-kicker">${escapeHtml(heroPackage.eyebrow)}</p>
+            <p class="yw-hero-pill">${escapeHtml(site.content.brandEyebrow || `Free coach guidance with ${coachName}`)}</p>
+            <h1 class="yw-circle-title">${escapeHtml(heroPackage.headline)} <span>${escapeHtml(heroPackage.highlight)}</span></h1>
+            <p class="yw-circle-subtitle">${escapeHtml(heroPackage.subheadline)}</p>
+            ${renderRegisterAction(site, "yw-register-button yw-hero-top-register", registerLabel)}
+
+            <div class="yw-hero-grid">
+              <div class="yw-coach-visual" data-media="${escapeAttribute(site.heroMediaType || "image")}">
+                <div class="yw-coach-photo-frame" data-empty="${site.photoUrl || site.logoUrl ? "false" : "true"}">
+                  ${renderCanonicalHeroImageContent(site)}
+                </div>
+                <div class="yw-coach-card">
+                  <h2>${escapeHtml(coachName)}</h2>
+                  <p>${escapeHtml(coachNiche)}</p>
+                </div>
+              </div>
+
+              <div class="yw-details-panel">
+                <h2 class="yw-details-heading">Coach Support Details</h2>
+                <span class="yw-details-line" aria-hidden="true"></span>
+                <p class="yw-audience-label">${escapeHtml(heroPackage.helperText)}</p>
+                <div class="yw-details-grid">
+                  ${detailCards
+                    .map(
+                      (card, index) => `<article class="yw-detail-card">
+                        <span class="yw-detail-icon" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
+                        <span><h3>${escapeHtml(card.label)}</h3><p>${escapeHtml(card.value)}</p></span>
+                      </article>`
+                    )
+                    .join("")}
+                </div>
+                ${renderRegisterAction(site, "yw-register-button", registerLabel)}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        ${renderCanonicalMarquee(coachName)}
+
+        <section class="yw-story-section" id="story" aria-labelledby="yw-story-title">
+          <div class="yw-story-grid">
+            <div class="yw-story-media">
+              <div class="yw-story-video-card">
+                ${renderCanonicalStoryVideoContent(site)}
+              </div>
+              <div class="yw-story-media-footer">
+                <strong>${escapeHtml(coachName)}</strong>
+                <span>${escapeHtml(coachNiche)}</span>
+              </div>
+            </div>
+            <div class="yw-story-copy">
+              <h2 id="yw-story-title">${escapeHtml(site.content.introHeading || `Meet Coach ${coachName}`)} <span>${escapeHtml(site.content.visionLabel || "with clarity.")}</span></h2>
+              <p>${escapeHtml(site.content.coachIntro || site.bio)}</p>
+              <p>${escapeHtml(site.content.visionText || site.vision)}</p>
+              <div class="yw-story-stats" aria-label="YW Nutritech coach highlights">
+                <div><strong>50K+</strong><span>Community Members</span></div>
+                <div><strong>1Cr+</strong><span>People Mission</span></div>
+                <div><strong>YW</strong><span>Coach Network</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="yw-sales-section yw-sales-section--cream" aria-labelledby="yw-familiar-title">
+          <div class="yw-sales-shell">
+            <p class="yw-kicker">${escapeHtml(site.content.problemSectionLabel || "Does this sound familiar?")}</p>
+            <h2 id="yw-familiar-title">${escapeHtml(getSafeCoachTemplateCopy(site.content.problemHeading, `You want clearer ${coachNiche} guidance.`))}</h2>
+            <div class="yw-check-grid">
+              ${getProblemPoints(site)
+                .map((point) => `<div class="yw-check-row"><span aria-hidden="true">&#10003;</span><p>${escapeHtml(point)}</p></div>`)
+                .join("")}
+            </div>
+            ${renderRegisterAction(site, "yw-register-strip", registerLabel)}
+          </div>
+        </section>
+
+        <section class="yw-sales-section yw-sales-section--mint" aria-labelledby="yw-blueprint-title">
+          <div class="yw-sales-shell">
+            <p class="yw-kicker">${escapeHtml(site.content.journeySectionLabel || "What you will walk away with")}</p>
+            <h2 id="yw-blueprint-title">${escapeHtml(getSafeCoachTemplateCopy(site.content.journeyHeading, "A complete practical coach-support blueprint."))}</h2>
+            <div class="yw-blueprint-grid">
+              ${getJourneySteps(site)
+                .map(
+                  (step, index) => `<article>
+                    <strong>${String(index + 1).padStart(2, "0")}</strong>
+                    <h3>${escapeHtml(step.title)}</h3>
+                    <p>${escapeHtml(step.description)}</p>
+                  </article>`
+                )
+                .join("")}
+            </div>
+            ${renderRegisterAction(site, "yw-register-strip", registerLabel)}
+          </div>
+        </section>
+
+        <section
+          class="yw-sales-section yw-sales-section--dark yw-sales-section--bonus yw-niche-bonus"
+          data-yw-ai-adaptive="true"
+          data-yw-bonus-count="${bonusSection.items.length}"
+          data-yw-bonus-source="universalBonusRegistry"
+          data-yw-editable-slots="bonus.heading,bonus.subheading,bonus.items[].title,bonus.items[].description,bonus.ctaText"
+          data-yw-locked-fields="bonus.id,bonus.actualAssetUrl,bonus.actualValue,legal.disclaimer,cta.destination"
+          data-yw-template-rule="nicheAdaptiveBonusSection"
+          id="bonus"
+          aria-labelledby="yw-bonus-title"
+        >
+          <div class="yw-sales-shell yw-bonus-shell">
+            <p class="yw-bonus-kicker">Niche-adaptive bonuses</p>
+            <h2 id="yw-bonus-title">${escapeHtml(bonusSection.heading)}</h2>
+            <p class="yw-section-subcopy">${escapeHtml(bonusSection.subheading)}</p>
+            <div class="yw-bonus-grid" data-yw-bonus-grid>
+              ${bonusSection.items
+                .map(
+                  (bonus, index) => `<article class="yw-niche-bonus__card" data-bonus-asset-type="${escapeAttribute(bonus.assetType)}" data-bonus-id="${escapeAttribute(bonus.id)}" data-bonus-locked-asset="true">
+                    <div class="yw-bonus-badge">Bonus ${index + 1}</div>
+                    <div class="yw-bonus-visual yw-bonus-visual--${escapeAttribute(bonus.assetType)}" aria-hidden="true"></div>
+                    <p class="yw-bonus-type">${bonus.assetType === "video" ? "Video Training" : "Digital Guide"}</p>
+                    <h3>${escapeHtml(bonus.title)}</h3>
+                    <p>${escapeHtml(bonus.description)}</p>
+                    <strong data-yw-locked="actualValue">${escapeHtml(bonus.valueLabel)} - Included Free</strong>
+                  </article>`
+                )
+                .join("")}
+            </div>
+            <p class="yw-bonus-total" data-yw-bonus-total>${escapeHtml(bonusSection.totalValueLabel)}</p>
+            <p class="yw-bonus-cta-copy">${escapeHtml(bonusSection.ctaSupportCopy)}</p>
+            ${renderRegisterAction(site, "yw-register-strip yw-register-strip--dark yw-bonus-cta", bonusSection.ctaText)}
+          </div>
+        </section>
+
+        <section class="yw-sales-section yw-sales-section--cream" aria-labelledby="yw-fit-title">
+          <div class="yw-sales-shell">
+            <h2 id="yw-fit-title">Is this <span>coach support right for you?</span></h2>
+            <div class="yw-fit-table" aria-label="Who this coach support is for">
+              <div class="yw-fit-col">
+                <h3>This IS for you if...</h3>
+                <p><span aria-hidden="true">&#10003;</span> You want education-first guidance before taking the next step.</p>
+                <p><span aria-hidden="true">&#10003;</span> You are open to practical lifestyle habits and consistency.</p>
+                <p><span aria-hidden="true">&#10003;</span> You want to understand the coach's method before registering.</p>
+              </div>
+              <div class="yw-fit-col yw-fit-col--no">
+                <h3>This is NOT for you if...</h3>
+                <p><span aria-hidden="true">&#215;</span> You are looking for instant results or guaranteed outcomes.</p>
+                <p><span aria-hidden="true">&#215;</span> You need emergency, diagnosis, or treatment advice.</p>
+                <p><span aria-hidden="true">&#215;</span> You do not want to take action after learning.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="yw-circle-faq" id="faq" aria-labelledby="yw-faq-title">
+          <div class="yw-faq-shell">
+            <h2 id="yw-faq-title">${escapeHtml(site.content.faqHeading || "Frequently Asked Questions")}</h2>
+            <div class="yw-faq-list">
+              ${getFaq(site)
+                .map((item) => `<details><summary>${escapeHtml(item.question)}</summary><p>${escapeHtml(item.answer)}</p></details>`)
+                .join("")}
+            </div>
+          </div>
+        </section>
+
+        ${renderCanonicalSupportSection(site, support, registerLabel)}
+        ${renderCanonicalFooter(site)}
+      </div>
+
+      <aside aria-hidden="true" aria-label="Register for free" class="yw-floating-register-cta" data-yw-sticky-register tabindex="-1">
+        ${renderRegisterAction(site, "yw-register-button", registerLabel)}
+      </aside>
+    </main>
+    ${renderCanonicalScript(site.slug)}
+  </body>
+</html>`;
+}
+
+function renderCanonicalHeroImageContent(site: PublicCoachSiteRecord) {
+  const imageUrl = site.photoUrl || site.logoUrl;
+
+  if (imageUrl) {
+    return `<img alt="${escapeAttribute(`${getCanonicalCoachName(site)} profile`)}" decoding="async" src="${escapeAttribute(imageUrl)}" />`;
+  }
+
+  return `<span>${escapeHtml(getCanonicalCoachInitials(site))}</span>`;
+}
+
+function renderCanonicalStoryVideoContent(site: PublicCoachSiteRecord) {
+  const embedVideoUrl = normalizeVideoEmbedUrl(site.videoUrl);
+  const uploadedVideoUrl = isUploadedVideoSource(site.videoUrl) ? site.videoUrl : "";
+
+  if (embedVideoUrl) {
+    return `<iframe allow="accelerometer; autoplay; clipboard-write; compute-pressure; encrypted-media; gyroscope; picture-in-picture" allowfullscreen src="${escapeAttribute(embedVideoUrl)}" title="${escapeAttribute(`${getCanonicalCoachName(site)} story video`)}"></iframe>`;
+  }
+
+  if (uploadedVideoUrl) {
+    return `<video controls playsinline preload="metadata" src="${escapeAttribute(uploadedVideoUrl)}" title="${escapeAttribute(`${getCanonicalCoachName(site)} story video`)}"></video>`;
+  }
+
+  return `<div class="yw-story-video-placeholder" aria-hidden="true"><span class="yw-story-play"><svg viewBox="0 0 24 24" focusable="false"><path d="M9 6.75L17 12L9 17.25V6.75Z"></path></svg></span></div>`;
+}
+
+function renderCanonicalMarquee(coachName: string) {
+  return `
+    <section class="circle-marquee" aria-label="YW Nutritech Circle marquee" data-yw-circle-marquee data-yw-marquee-brand="YW NUTRITECH CIRCLE" data-yw-marquee-name="${escapeAttribute(coachName)}">
+      <div class="circle-marquee__track">
+        ${Array.from({ length: 16 })
+          .map(
+            () => `<span class="circle-marquee__item"><span class="circle-marquee__brand">YW NUTRITECH CIRCLE</span><span class="circle-marquee__star">&#9733;</span><span class="circle-marquee__name">${escapeHtml(coachName)}</span><span class="circle-marquee__star">&#9733;</span></span>`
+          )
+          .join("")}
+      </div>
+    </section>`;
+}
+
+function renderCanonicalSupportSection(
+  site: PublicCoachSiteRecord,
+  support: SupportDetails,
+  registerLabel: string
+) {
+  const targetAttribute =
+    support.primaryHref.startsWith("mailto:") || support.primaryHref.startsWith("tel:")
+      ? ""
+      : ` target="_blank" rel="noreferrer"`;
+  const trackAttribute = support.whatsappLink ? ` data-track="coach_whatsapp_click"` : "";
+
+  return `
+    <section class="yw-sales-section yw-sales-section--mint" id="coach-contact-support">
+      <div class="yw-sales-shell">
+        <p class="yw-kicker">${escapeHtml(site.content.supportHeading || "Contact Support")}</p>
+        <h2>${escapeHtml(getSafeCoachTemplateCopy(site.content.ctaText, `Ready to connect with ${getCanonicalCoachName(site)}?`))}</h2>
+        <p class="yw-section-subcopy">${escapeHtml(getSafeCoachTemplateCopy(site.content.trustText, "This page is education-first and does not replace medical advice, diagnosis, or treatment."))}</p>
+        ${renderRegisterAction(site, "yw-register-strip", registerLabel)}
+        <a class="yw-register-strip"${trackAttribute} href="${escapeAttribute(support.primaryHref)}"${targetAttribute}>${escapeHtml(site.content.supportPrimaryButton || site.content.stickyCtaContactButton || "Contact Support")}</a>
+      </div>
+    </section>`;
+}
+
+function renderCanonicalFooter(site: PublicCoachSiteRecord) {
+  return `
+    <footer class="yw-brand-footer" data-preview-section="footer">
+      <div class="yw-footer-content">
+        <h2>${escapeHtml(site.content.footerHeadline || "About YW Nutritech")}</h2>
+        <p>${escapeHtml(getCanonicalLegalDisclaimer(site))}</p>
+        <div class="yw-footer-stats" aria-label="YW Nutritech community proof">
+          <div><strong>50K+</strong><span>Community Members</span></div>
+          <div><strong>1Cr+</strong><span>People Mission</span></div>
+          <div><strong>YW</strong><span>Coach Network</span></div>
+        </div>
+        <div class="yw-footer-links">
+          <a href="/privacy">Privacy Policy</a>
+          <a href="/terms">Terms and Conditions</a>
+          <a href="/refund">Refund Policy</a>
+          <a href="/disclaimer">Disclaimer</a>
+        </div>
+        <div class="yw-footer-brand">
+          <span class="yw-footer-mark" aria-hidden="true"><img alt="" decoding="async" loading="lazy" src="/assets/yw-logo-transparent.png" /></span>
+          <span><strong>YW Nutritech</strong><small>Coach Circle</small></span>
+        </div>
+      </div>
+      <div class="yw-footer-watermark" aria-hidden="true">YWN</div>
+    </footer>`;
+}
+
+function renderCanonicalScript(slug: string) {
+  return `
+    <script>
+      (function () {
+        var slug = ${JSON.stringify(slug)};
+        var loader = document.getElementById('yw-global-loader');
+        function hideLoader() {
+          if (!loader) return;
+          loader.setAttribute('data-state', 'hidden');
+          window.setTimeout(function () {
+            if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
+          }, 280);
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function () { window.setTimeout(hideLoader, 120); }, { once: true });
+        } else {
+          window.setTimeout(hideLoader, 120);
+        }
+        window.setTimeout(hideLoader, 1600);
+
+        var root = document.documentElement;
+        var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+        var progressFrame = 0;
+        var pointerFrame = 0;
+        var pointerX = 0;
+        var pointerY = 0;
+        var cta = document.querySelector('.yw-floating-register-cta');
+        var trigger = document.querySelector('.circle-marquee');
+        var progressBar = document.querySelector('.yw-scroll-progress__bar');
+        function clamp(value) { return Math.max(0, Math.min(1, value)); }
+        function getScrollY() { return window.scrollY || root.scrollTop || document.body.scrollTop || 0; }
+        function updateStickyRegister(scrollTop) {
+          if (!cta || !trigger) return;
+          var triggerTop = trigger.getBoundingClientRect().top;
+          var footer = document.querySelector('.yw-brand-footer');
+          var footerTop = footer ? footer.getBoundingClientRect().top : Number.POSITIVE_INFINITY;
+          var activationPoint = Math.min(140, window.innerHeight * 0.24);
+          var shouldShow = scrollTop > 24 && triggerTop <= activationPoint && footerTop > window.innerHeight * 0.92;
+          root.classList.toggle('yw-sticky-register-visible', shouldShow);
+          cta.classList.toggle('is-visible', shouldShow);
+          cta.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+          cta.tabIndex = shouldShow ? 0 : -1;
+        }
+        function updateAlliaSectionVars() {
+          var hero = document.querySelector('.yw-circle-hero');
+          var footer = document.querySelector('.yw-brand-footer');
+          if (hero) {
+            var heroRect = hero.getBoundingClientRect();
+            var travel = Math.max(1, heroRect.height - window.innerHeight * 0.2);
+            root.style.setProperty('--yw-hero-progress', clamp(-heroRect.top / travel).toFixed(4));
+          }
+          if (footer) {
+            var footerRect = footer.getBoundingClientRect();
+            root.style.setProperty('--yw-footer-progress', clamp((window.innerHeight - footerRect.top) / (window.innerHeight + footerRect.height)).toFixed(4));
+          }
+        }
+        function updateAlliaBackground(scrollTop) {
+          var sections = Array.prototype.slice.call(document.querySelectorAll('.yw-circle-hero,.yw-story-section,.yw-sales-section,.yw-circle-faq,.yw-brand-footer')).filter(function (section) {
+            return section.offsetHeight > 0;
+          });
+          if (!sections.length) return;
+          var viewportCenter = scrollTop + window.innerHeight / 2;
+          var sectionIndex = 0;
+          for (var index = 0; index < sections.length; index += 1) {
+            var top = sections[index].offsetTop;
+            var next = sections[index + 1];
+            var bottom = next ? next.offsetTop : top + sections[index].offsetHeight;
+            if (viewportCenter >= top && viewportCenter < bottom) {
+              sectionIndex = index;
+              break;
+            }
+          }
+          var keyframes = [
+            ['50%', '50%', '88%', '92%', '#cdf0e8', '#08aaa6', '#153747', '18%', '64%'],
+            ['50%', '0%', '112%', '104%', '#cdef63', '#21e6c1', '#d0f5f0', '20%', '66%'],
+            ['0%', '50%', '70%', '108%', '#f4f8fa', '#d0f5f0', '#e8f5d6', '15%', '55%'],
+            ['50%', '50%', '100%', '100%', '#f4f8fa', '#f4f8fa', '#f4f8fa', '0%', '0%'],
+            ['100%', '50%', '112%', '180%', '#d0f5f0', '#d0f5f0', '#e8f5d6', '0%', '0%']
+          ][sectionIndex % 5];
+          ['--yw-grad-x', '--yw-grad-y', '--yw-grad-size-x', '--yw-grad-size-y', '--yw-color-1', '--yw-color-2', '--yw-color-3', '--yw-stop-1', '--yw-stop-2'].forEach(function (name, index) {
+            root.style.setProperty(name, keyframes[index]);
+          });
+        }
+        function updateProgress() {
+          progressFrame = 0;
+          var scrollTop = getScrollY();
+          var max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+          var progress = clamp(scrollTop / max);
+          root.style.setProperty('--yw-scroll-progress', progress.toFixed(4));
+          root.style.setProperty('--yw-scroll-y', scrollTop.toFixed(1) + 'px');
+          root.classList.toggle('yw-nav-condensed', scrollTop > 36);
+          if (progressBar) progressBar.style.transform = 'scaleX(' + progress + ')';
+          updateStickyRegister(scrollTop);
+          updateAlliaSectionVars();
+          updateAlliaBackground(scrollTop);
+        }
+        function scheduleProgressUpdate() {
+          if (progressFrame) return;
+          progressFrame = window.requestAnimationFrame(updateProgress);
+        }
+        function initReveals() {
+          var revealTargets = Array.prototype.slice.call(document.querySelectorAll([
+            '.circle-marquee',
+            '.yw-circle-hero',
+            '.yw-story-section',
+            '.yw-story-media',
+            '.yw-story-copy',
+            '.yw-sales-section',
+            '.yw-check-grid',
+            '.yw-blueprint-grid',
+            '.yw-result-cards',
+            '.yw-fit-table',
+            '.yw-bonus-grid',
+            '.yw-circle-faq',
+            '.yw-brand-footer',
+            '.yw-footer-content',
+            '.yw-footer-stats',
+            '.yw-footer-brand'
+          ].join(',')));
+          var effectTargets = Array.prototype.slice.call(document.querySelectorAll([
+            '.yw-hero-kicker',
+            '.yw-hero-pill',
+            '.yw-circle-title',
+            '.yw-circle-subtitle',
+            '.yw-coach-photo-frame',
+            '.yw-coach-card',
+            '.yw-details-heading',
+            '.yw-audience-label',
+            '.yw-detail-card',
+            '.yw-register-strip',
+            '.yw-register-button',
+            '.yw-check-row',
+            '.yw-blueprint-grid article',
+            '.yw-result-cards article',
+            '.yw-bonus-grid article',
+            '.yw-fit-col',
+            '.yw-circle-faq details',
+            '.yw-footer-links a'
+          ].join(',')));
+          revealTargets.forEach(function (target) { target.classList.add('yw-reveal'); });
+          effectTargets.forEach(function (target, index) {
+            target.classList.add('yw-allia-effect');
+            target.style.setProperty('--yw-reveal-delay', Math.min(520, index * 36) + 'ms');
+          });
+          Array.prototype.slice.call(document.querySelectorAll('.yw-coach-photo-frame,.yw-story-video-card,.yw-footer-brand')).forEach(function (target) {
+            target.classList.add('yw-allia-float');
+          });
+          var allTargets = revealTargets.concat(effectTargets);
+          if (!('IntersectionObserver' in window) || (reducedMotion && reducedMotion.matches)) {
+            allTargets.forEach(function (target) { target.classList.add('is-visible', 'is-allia-visible'); });
+            return;
+          }
+          var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+              if (!entry.isIntersecting) return;
+              entry.target.classList.add('is-visible', 'is-allia-visible');
+              observer.unobserve(entry.target);
+            });
+          }, { root: null, rootMargin: '0px 0px -10% 0px', threshold: 0.08 });
+          allTargets.forEach(function (target) { observer.observe(target); });
+        }
+        function commitPointer() {
+          root.style.setProperty('--yw-pointer-x', pointerX.toFixed(4));
+          root.style.setProperty('--yw-pointer-y', pointerY.toFixed(4));
+          pointerFrame = 0;
+        }
+        function updatePointer(event) {
+          if (reducedMotion && reducedMotion.matches) return;
+          pointerX = (event.clientX / window.innerWidth - 0.5) * 2;
+          pointerY = (event.clientY / window.innerHeight - 0.5) * 2;
+          if (!pointerFrame) pointerFrame = window.requestAnimationFrame(commitPointer);
+        }
+        function resetPointer() {
+          pointerX = 0;
+          pointerY = 0;
+          if (!pointerFrame) pointerFrame = window.requestAnimationFrame(commitPointer);
+        }
+        function getSessionId() {
+          try {
+            var key = 'yw_analytics_session_id';
+            var current = window.sessionStorage.getItem(key);
+            if (current) return current;
+            var next = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : String(Date.now()) + '-' + String(Math.random()).slice(2);
+            window.sessionStorage.setItem(key, next);
+            return next;
+          } catch (_) {
+            return '';
+          }
+        }
+        function track(eventName) {
+          try {
+            if (!navigator.sendBeacon) return;
+            navigator.sendBeacon('/api/coach-events', new Blob([JSON.stringify({
+              coachSlug: slug,
+              eventName: eventName,
+              pagePath: window.location.pathname + window.location.search,
+              pageUrl: window.location.href,
+              referrer: document.referrer,
+              sessionId: getSessionId()
+            })], { type: 'application/json' }));
+          } catch (_) {}
+        }
+        initReveals();
+        updateProgress();
+        window.addEventListener('scroll', scheduleProgressUpdate, { passive: true });
+        window.addEventListener('resize', scheduleProgressUpdate);
+        window.addEventListener('load', scheduleProgressUpdate);
+        window.addEventListener('pointermove', updatePointer, { passive: true });
+        window.addEventListener('pointerleave', resetPointer, { passive: true });
+        track('coach_site_view');
+        document.addEventListener('click', function (event) {
+          var target = event.target && event.target.closest ? event.target.closest('[data-track]') : null;
+          if (target) track(target.getAttribute('data-track'));
+        });
+      })();
+    </script>`;
+}
+
+function renderLegacyCoachSiteHtml(site: PublicCoachSiteRecord) {
   const support = getSupportDetails(site);
   const isPaused = false;
   const theme = getCoachTemplateTheme(site.selectedThemeId);
@@ -1491,56 +2068,11 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         background: var(--template-section);
         padding: clamp(1.2rem, 5vw, 3rem);
       }
-      .page[data-theme="premium-feminine-wellness"] .nav {
-        color: var(--template-ink);
-      }
-      .page[data-theme="premium-feminine-wellness"] .sticky-coach-cta {
-        background:
-          linear-gradient(135deg, rgb(255 253 249 / 0.86), rgb(255 240 247 / 0.68)),
-          var(--template-card-strong);
-        color: var(--template-ink);
-      }
-      .page[data-theme="premium-feminine-wellness"] .hero,
-      .page[data-theme="premium-feminine-wellness"] .register-section {
-        color: var(--template-ink);
-      }
-      .page[data-theme="premium-feminine-wellness"] .hero h1,
-      .page[data-theme="premium-feminine-wellness"] .hero p,
-      .page[data-theme="premium-feminine-wellness"] .register-section h2,
-      .page[data-theme="premium-feminine-wellness"] .register-section p {
-        color: var(--template-ink);
-      }
-      .page[data-theme="apple-liquid-glass"] .spot-card,
-      .page[data-theme="apple-liquid-glass"] .section,
-      .page[data-theme="apple-liquid-glass"] .support-card,
-      .page[data-theme="apple-liquid-glass"] .sticky-coach-cta {
-        backdrop-filter: blur(14px) saturate(1.16);
-      }
       .section,
       .support,
       .footer {
         content-visibility: auto;
         contain-intrinsic-size: auto 44rem;
-      }
-      .page[data-theme="dark-luxury-wellness"] .nav,
-      .page[data-theme="dark-luxury-wellness"] .footer {
-        color: var(--template-inverted-ink);
-      }
-      .page[data-theme="dark-luxury-wellness"] .footer {
-        background: linear-gradient(135deg, #080b17, #111730 58%, #321b38);
-      }
-      .page[data-theme="dark-luxury-wellness"] .footer h2,
-      .page[data-theme="dark-luxury-wellness"] .footer p {
-        color: var(--template-inverted-ink);
-      }
-      .page[data-theme="dark-luxury-wellness"] .sticky-coach-cta {
-        background:
-          linear-gradient(135deg, rgb(8 11 23 / 0.9), rgb(31 23 45 / 0.74)),
-          var(--template-card-strong);
-        color: var(--template-ink);
-        box-shadow:
-          0 1.2rem 4rem rgb(0 0 0 / 0.34),
-          inset 0 1px 0 rgb(255 255 255 / 0.12);
       }
       @supports (animation-timeline: view()) {
         .section,
@@ -1690,11 +2222,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         .section,
         .spot-card,
         .support-card,
-        .faq-card,
-        .page[data-theme="apple-liquid-glass"] .spot-card,
-        .page[data-theme="apple-liquid-glass"] .section,
-        .page[data-theme="apple-liquid-glass"] .support-card,
-        .page[data-theme="apple-liquid-glass"] .sticky-coach-cta {
+        .faq-card {
           backdrop-filter: none;
         }
         .trust-row {
@@ -1789,7 +2317,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           grid-template-columns: minmax(0, 1fr) auto;
           gap: 0.6rem;
           border-radius: calc(var(--template-radius) + 6px);
-          min-height: 4.35rem;
+          min-height: 4.7rem;
           padding: 0.56rem;
         }
         .sticky-coach-context {
@@ -1801,9 +2329,9 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         .sticky-coach-context strong {
           display: -webkit-box;
           -webkit-box-orient: vertical;
-          -webkit-line-clamp: 1;
-          font-size: 0.9rem;
-          line-height: 1.08;
+          -webkit-line-clamp: 2;
+          font-size: clamp(0.82rem, 2.8vw, 0.92rem);
+          line-height: 1.06;
           overflow: hidden;
         }
         .sticky-coach-context small {
@@ -1853,7 +2381,7 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           bottom: max(0.55rem, env(safe-area-inset-bottom));
           left: max(0.55rem, env(safe-area-inset-left));
           width: auto;
-          min-height: 4.1rem;
+          min-height: 4.7rem;
           padding: 0.52rem;
         }
         .sticky-coach-actions {
@@ -1864,8 +2392,9 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
           display: none;
         }
         .sticky-coach-register {
-          min-width: 7.35rem;
+          min-width: 7.1rem;
           min-height: 2.45rem;
+          font-size: 0.82rem;
           white-space: nowrap;
         }
         .support-identity {
@@ -1943,15 +2472,16 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         .sticky-coach-cta {
           bottom: max(0.45rem, env(safe-area-inset-bottom));
           grid-template-columns: minmax(0, 1fr) auto;
-          gap: 0.55rem;
-          min-height: 3.7rem;
+          gap: 0.45rem;
+          min-height: 4.55rem;
           padding: 0.52rem;
         }
         .sticky-coach-context small {
           display: none;
         }
         .sticky-coach-context strong {
-          font-size: 0.9rem;
+          font-size: 0.78rem;
+          line-height: 1.04;
         }
         .sticky-coach-actions {
           display: inline-flex;
@@ -1959,7 +2489,8 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         .sticky-coach-register,
         .sticky-coach-contact {
           min-height: 2.35rem;
-          font-size: 0.82rem;
+          font-size: 0.78rem;
+          padding-inline: 0.68rem;
         }
       }
       @media (hover: none), (pointer: coarse) {
@@ -2027,6 +2558,11 @@ function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
         to { opacity: 1; transform: translate3d(0, 0, 0); }
       }
       @media (prefers-reduced-motion: reduce) {
+        .yw-global-loader {
+          opacity: 0 !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
         .yw-global-loader,
         .yw-global-loader * {
           animation: none !important;
@@ -2286,13 +2822,14 @@ function renderPausedHtml(site: PublicCoachSiteRecord, support: SupportDetails) 
 }
 
 function renderSupportHtml(site: PublicCoachSiteRecord, support: SupportDetails, compact = false) {
+  const primarySupportLabel = site.content.supportPrimaryButton || "Contact Support";
   return `
     <section class="support" id="coach-contact-support">
       <article class="support-card">
         ${renderSupportBody(site, support)}
         ${
           compact
-            ? `<div class="support-actions"><a href="${escapeAttribute(support.primaryHref)}">Contact Support</a><a href="/">Go Back Home</a></div>`
+            ? `<div class="support-actions"><a href="${escapeAttribute(support.primaryHref)}">${escapeHtml(primarySupportLabel)}</a><a href="/">Go Back Home</a></div>`
             : ""
         }
       </article>
@@ -2312,17 +2849,17 @@ function renderSupportBody(
         ${support.imageUrl ? `<img alt="${escapeAttribute(`${support.name} support profile`)}" src="${escapeAttribute(support.imageUrl)}" />` : `<span>${escapeHtml(support.name.slice(0, 2).toUpperCase())}</span>`}
       </div>
       <div>
-        <p class="kicker">Contact Support</p>
+        <p class="kicker">${escapeHtml(site?.content.supportHeading || "Contact Support")}</p>
         <h2>${escapeHtml(support.name)}</h2>
         <p>${escapeHtml(support.text)}</p>
       </div>
     </div>
     <div class="support-grid">
-      ${support.phone ? `<a href="tel:${escapeAttribute(support.phone.replace(/[^\\d+]/g, ""))}"><span>Phone</span><strong>${escapeHtml(support.phone)}</strong></a>` : ""}
-      ${support.whatsappLink ? `<a data-track="coach_whatsapp_click" href="${escapeAttribute(support.whatsappLink)}" rel="noreferrer" target="_blank"><span>WhatsApp</span><strong>Message coach</strong></a>` : ""}
-      ${support.email ? `<a href="${escapeAttribute(support.emailHref)}"><span>Email</span><strong>${escapeHtml(support.email)}</strong></a>` : `<div class="pending"><span>Support</span><strong>Support contact will be updated soon.</strong></div>`}
+      ${support.phone ? `<a href="tel:${escapeAttribute(support.phone.replace(/[^\\d+]/g, ""))}"><span>${escapeHtml(site?.content.supportPhoneLabel || "Phone")}</span><strong>${escapeHtml(support.phone)}</strong></a>` : ""}
+      ${support.whatsappLink ? `<a data-track="coach_whatsapp_click" href="${escapeAttribute(support.whatsappLink)}" rel="noreferrer" target="_blank"><span>${escapeHtml(site?.content.supportWhatsappLabel || "WhatsApp")}</span><strong>${escapeHtml(site?.content.supportWhatsappButton || "Message coach")}</strong></a>` : ""}
+      ${support.email ? `<a href="${escapeAttribute(support.emailHref)}"><span>${escapeHtml(site?.content.supportEmailLabel || "Email")}</span><strong>${escapeHtml(support.email)}</strong></a>` : `<div class="pending"><span>Support</span><strong>Support contact will be updated soon.</strong></div>`}
     </div>
-    <p class="privacy">Contact details shown here are public support details, not admin-only data. Reference: ${escapeHtml(referenceId)}</p>`;
+    <p class="privacy">${escapeHtml(site?.content.supportPrivacyNote || "Contact details shown here are public support details, not admin-only data.")} Reference: ${escapeHtml(referenceId)}</p>`;
 }
 
 function renderSupportFallbackHtml({
@@ -2361,7 +2898,7 @@ function renderSupportFallbackHtml({
       .support-grid{display:grid;gap:.65rem}.support-grid a,.pending{display:grid;gap:.22rem;border:1px solid rgb(242 201 218/.72);border-radius:.85rem;background:rgb(255 255 255/.68);color:inherit;padding:.78rem .85rem;text-decoration:none}.support-grid span{color:#8b6078;font-size:.75rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
       .support-actions{display:flex;flex-wrap:wrap;gap:.7rem}.support-actions a{min-height:2.9rem;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgb(242 201 218/.78);border-radius:999px;padding:0 1rem;color:#251822;font-weight:900;text-decoration:none}.support-actions a:first-child{background:linear-gradient(135deg,#251822,#9f174d 54%,#a855f7);color:#fff}
       @keyframes yw-loader-orbit{to{transform:rotate(360deg)}}@keyframes yw-loader-auto-hide{to{opacity:0;visibility:hidden;pointer-events:none}}
-      @media(prefers-reduced-motion:reduce){.yw-global-loader,.yw-global-loader *{animation:none!important;transition-duration:80ms!important}}
+      @media(prefers-reduced-motion:reduce){.yw-global-loader{opacity:0!important;visibility:hidden!important;pointer-events:none!important}.yw-global-loader,.yw-global-loader *{animation:none!important;transition-duration:80ms!important}}
       @media(max-width:720px){body{padding:.75rem}main{min-height:calc(100svh - 1.5rem);display:grid;align-content:center;border-radius:1rem}header{align-items:flex-start;flex-direction:column}.content{grid-template-columns:1fr}.support-actions a{width:100%}}
     </style>
   </head>
@@ -2442,29 +2979,35 @@ function renderFooterHtml(site: PublicCoachSiteRecord) {
 function renderStickyRegisterAction(site: PublicCoachSiteRecord) {
   const support = getSupportDetails(site);
   const hasCoachContact = support.name !== DEFAULT_SUPPORT_NAME;
+  const stickyLabel = site.content.stickyCtaLabel || "Free guest registration";
+  const stickyHeading =
+    site.content.stickyCtaHeading || `Ready to connect with Coach ${site.coachName}?`;
+  const stickyContext =
+    site.content.stickyCtaContext || `${site.niche || "Coach referral"} through YW Nutritech`;
 
   return `
-    <aside class="sticky-coach-cta" aria-label="Coach registration">
+    <aside class="sticky-coach-cta" aria-label="Coach registration" data-preview-section="sticky-cta">
       <div class="sticky-coach-context">
-        <span>Free guest registration</span>
-        <strong>Ready to connect with Coach ${escapeHtml(site.coachName)}?</strong>
-        <small>${escapeHtml(site.niche || "Coach referral")} through YW Nutritech</small>
+        <span>${escapeHtml(stickyLabel)}</span>
+        <strong>${escapeHtml(stickyHeading)}</strong>
+        <small>${escapeHtml(stickyContext)}</small>
       </div>
       <div class="sticky-coach-actions">
         ${renderRegisterAction(site, "button primary sticky-coach-register", site.registerButtonText || "Register Now")}
-        ${hasCoachContact ? renderStickyCoachContactAction(support) : ""}
+        ${hasCoachContact ? renderStickyCoachContactAction(site, support) : ""}
       </div>
     </aside>`;
 }
 
-function renderStickyCoachContactAction(support: SupportDetails) {
+function renderStickyCoachContactAction(site: PublicCoachSiteRecord, support: SupportDetails) {
   const trackAttribute = support.whatsappLink ? ` data-track="coach_whatsapp_click"` : "";
   const targetAttribute =
     support.primaryHref.startsWith("mailto:") || support.primaryHref.startsWith("tel:")
       ? ""
       : ` target="_blank" rel="noreferrer"`;
+  const label = site.content.stickyCtaContactButton || "Contact Coach";
 
-  return `<a class="button secondary sticky-coach-contact"${trackAttribute} href="${escapeAttribute(support.primaryHref)}"${targetAttribute}>Contact Coach</a>`;
+  return `<a class="button secondary sticky-coach-contact"${trackAttribute} href="${escapeAttribute(support.primaryHref)}"${targetAttribute}>${escapeHtml(label)}</a>`;
 }
 
 function renderRegisterAction(

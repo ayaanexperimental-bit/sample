@@ -219,10 +219,43 @@ const AI_COPY_SCHEMA = {
       socialCopy: {
         type: "string"
       },
+      stickyCtaContactButton: {
+        type: "string"
+      },
+      stickyCtaContext: {
+        type: "string"
+      },
+      stickyCtaHeading: {
+        type: "string"
+      },
+      stickyCtaLabel: {
+        type: "string"
+      },
       benefitsSectionLabel: {
         type: "string"
       },
       subheadline: {
+        type: "string"
+      },
+      supportEmailLabel: {
+        type: "string"
+      },
+      supportHeading: {
+        type: "string"
+      },
+      supportPhoneLabel: {
+        type: "string"
+      },
+      supportPrimaryButton: {
+        type: "string"
+      },
+      supportPrivacyNote: {
+        type: "string"
+      },
+      supportWhatsappButton: {
+        type: "string"
+      },
+      supportWhatsappLabel: {
         type: "string"
       },
       trustText: {
@@ -247,9 +280,24 @@ const AI_COPY_SCHEMA_PROPERTIES = AI_COPY_SCHEMA.schema.properties;
 const COPY_SCOPE_FIELDS: Record<CoachCopyScope, Array<keyof CoachSiteContent>> = {
   all: requiredCoachTemplateContentFields,
   benefits: ["benefitsSectionLabel", "benefitsHeading", "benefits", "benefitDescriptions"],
-  cta: ["ctaSectionLabel", "ctaText", "trustText", "socialCopy"],
+  cta: [
+    "ctaSectionLabel",
+    "ctaText",
+    "trustText",
+    "socialCopy",
+    "stickyCtaContactButton",
+    "stickyCtaContext",
+    "stickyCtaHeading",
+    "stickyCtaLabel",
+    "supportEmailLabel",
+    "supportHeading",
+    "supportPhoneLabel",
+    "supportPrimaryButton",
+    "supportWhatsappButton",
+    "supportWhatsappLabel"
+  ],
   faq: ["faqSectionLabel", "faqHeading", "faq"],
-  footer: ["footerBrandLine", "footerHeadline", "footerText"],
+  footer: ["footerBrandLine", "footerHeadline", "footerText", "supportPrivacyNote"],
   hero: [
     "brandBadge",
     "brandEyebrow",
@@ -270,9 +318,9 @@ const COPY_SCOPE_FIELDS: Record<CoachCopyScope, Array<keyof CoachSiteContent>> =
 const COPY_SCOPE_MAX_OUTPUT_TOKENS: Record<CoachCopyScope, number> = {
   all: 3200,
   benefits: 450,
-  cta: 320,
+  cta: 720,
   faq: 650,
-  footer: 320,
+  footer: 420,
   hero: 360,
   intro: 300,
   journey: 520,
@@ -324,7 +372,7 @@ export async function generateCoachSiteCopyWithAi(
       body: JSON.stringify({
         input: prompt,
         instructions:
-          "Generate only editable website copy for a fixed coach referral page. Do not propose design changes, backend logic, database schema, security settings, payment changes, or third-party automation. Keep copy practical, ethical, and education-first.",
+          "Generate only editable website copy for the single canonical YW Nutritech Circle coach page. Do not propose design changes, backend logic, database schema, security settings, payment changes, or third-party automation. Keep copy practical, ethical, and education-first.",
         max_output_tokens: maxOutputTokens,
         model: config.copyModel,
         reasoning: {
@@ -424,7 +472,7 @@ function createCopySchemaForScope(scope: CoachCopyScope) {
 
 function createCoachCopyPrompt(input: CoachCopyAiInput, scope: CoachCopyScope) {
   return [
-    "Create copy for a Yours Wellness fixed-template coach referral page.",
+    "Create copy for the single canonical Yours Wellness fixed-template coach referral page.",
     `Requested generation scope: ${getPromptScopeLabel(scope)}.`,
     `Coach name: ${input.coachName}`,
     `Coach niche: ${input.niche}`,
@@ -443,6 +491,10 @@ function createCoachCopyPrompt(input: CoachCopyAiInput, scope: CoachCopyScope) {
     `Hidden fallback support text configured: ${input.supportText ? "yes" : "no"}`,
     `Hidden fallback support contact configured: ${input.hasSupportContact ? "yes" : "no"}`,
     "The public page leads to a Google Form register button when configured. Do not claim form submissions are tracked.",
+    "Do not generate or alter Google Form URLs. Each coach site uses its own admin/shop-provided registration link.",
+    "Do not generate or alter support contact details, public slugs, analytics behavior, payment/security logic, legal link destinations, or YW Nutritech branding placement.",
+    "The benefitsSectionLabel, benefitsHeading, benefits, and benefitDescriptions fields now drive the canonical nicheAdaptiveBonusSection presentation. Adapt their visible copy to the coach niche, but do not invent new bonus assets, fake values, fake scarcity, countdowns, or spots-left claims.",
+    "Universal bonus asset identity, actual value, legal disclaimer, CTA destination, public route, analytics, payment logic, and YW Nutritech branding are locked template rules.",
     "If paid funnel page context is provided, adapt it into a free guest/referral page. Do not copy paid funnel text word-for-word.",
     "Do not invent coach credentials, medical claims, contact details, or outcomes that are not supported by admin fields or extracted page context.",
     "Do not publish coach phone, email, WhatsApp, or contact-support instructions in normal page copy.",
@@ -458,7 +510,7 @@ function createCoachCopyPrompt(input: CoachCopyAiInput, scope: CoachCopyScope) {
 }
 
 function getPromptScopeLabel(scope: CoachCopyScope) {
-  if (scope === "benefits") return "benefits section only";
+  if (scope === "benefits") return "niche-adaptive bonus section presentation only";
   if (scope === "cta") return "CTA and trust section only";
   if (scope === "faq") return "FAQ section only";
   if (scope === "footer") return "footer section only";

@@ -1445,6 +1445,11 @@
   box-shadow: 0 0.8rem 1.8rem rgb(13 112 183 / 0.16);
 }
 
+.primaryAction .actionIcon,
+.secondaryAction .actionIcon {
+  margin-right: 0.45rem;
+}
+
 .secondaryAction {
   border-color: rgb(168 85 137 / 0.16);
   background: rgb(255 255 255 / 0.7);
@@ -1473,71 +1478,6 @@
   cursor: not-allowed;
   filter: saturate(0.72);
   opacity: 0.64;
-}
-
-.themeChoicePanel {
-  display: grid;
-  gap: 0.9rem;
-  border: 1px solid rgb(168 85 137 / 0.16);
-  border-radius: var(--radius-md);
-  background:
-    radial-gradient(circle at 8% 10%, rgb(217 70 131 / 0.08), transparent 12rem),
-    linear-gradient(145deg, rgb(255 255 255 / 0.82), rgb(255 250 253 / 0.58));
-  margin-top: 1rem;
-  padding: 1rem;
-}
-
-.themeChoicePanel h3 {
-  margin: 0.25rem 0 0;
-  color: #251822;
-  font-size: 1.05rem;
-}
-
-.themeChoicePanel p {
-  margin: 0.35rem 0 0;
-  color: #75606c;
-  font-size: 0.9rem;
-  font-weight: 720;
-}
-
-.themeChoiceGrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.55rem;
-}
-
-.themeChoiceGrid button,
-.previewThemeBar button {
-  display: grid;
-  gap: 0.22rem;
-  border: 1px solid rgb(168 85 137 / 0.14);
-  border-radius: var(--radius-md);
-  background: rgb(255 255 255 / 0.72);
-  color: #332435;
-  cursor: pointer;
-  padding: 0.75rem;
-  text-align: left;
-}
-
-.themeChoiceGrid button[data-active="true"],
-.previewThemeBar button[data-active="true"] {
-  border-color: rgb(217 70 131 / 0.42);
-  background: linear-gradient(135deg, rgb(217 70 131 / 0.14), rgb(196 181 253 / 0.18));
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.8),
-    0 1rem 2rem rgb(159 23 77 / 0.1);
-}
-
-.themeChoiceGrid span {
-  color: #a21caf;
-  font-size: 0.78rem;
-  font-weight: 950;
-}
-
-.themeChoiceGrid strong {
-  color: #554354;
-  font-size: 0.78rem;
-  line-height: 1.35;
 }
 
 .coachPreview {
@@ -1603,6 +1543,7 @@
 }
 
 .productionPreviewFrame {
+  position: relative;
   min-width: 0;
   max-height: min(76vh, 72rem);
   overflow: auto;
@@ -1612,9 +1553,207 @@
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.68);
 }
 
+.previewFloatingInspectWidget {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  width: fit-content;
+  max-width: calc(100% - 1rem);
+  margin: 0.75rem auto -3.35rem;
+  border: 1px solid rgb(255 255 255 / 0.72);
+  border-radius: 999px;
+  background: rgb(28 24 34 / 0.76);
+  box-shadow: 0 1rem 2.4rem rgb(31 25 43 / 0.18);
+  color: #ffffff;
+  padding: 0.34rem;
+  backdrop-filter: blur(18px) saturate(150%);
+}
+
+.previewFloatingInspectWidget .inspectToggleButton {
+  border-color: rgb(255 255 255 / 0.22);
+  background: rgb(255 255 255 / 0.16);
+  color: #ffffff;
+}
+
+.previewFloatingInspectWidget small {
+  max-width: 18rem;
+  color: rgb(255 255 255 / 0.82);
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding-right: 0.7rem;
+}
+
+.floatingInspectEditor,
+.floatingInspectHint {
+  position: sticky;
+  right: 0.85rem;
+  bottom: 0.85rem;
+  z-index: 32;
+  width: min(calc(100% - 1.7rem), 28rem);
+  margin: -1rem 0.85rem 0.85rem auto;
+  border: 1px solid rgb(20 184 166 / 0.34);
+  border-radius: 1.05rem;
+  background:
+    linear-gradient(145deg, rgb(15 23 42 / 0.9), rgb(43 36 57 / 0.88)),
+    radial-gradient(circle at 0% 0%, rgb(20 184 166 / 0.3), transparent 14rem);
+  box-shadow: 0 1.5rem 3.4rem rgb(15 23 42 / 0.24);
+  color: #ffffff;
+  padding: 0.95rem;
+  backdrop-filter: blur(22px) saturate(155%);
+}
+
+.floatingInspectEditor[data-positioned="true"] {
+  position: absolute;
+  top: var(--inspect-editor-top, 1rem);
+  right: auto;
+  bottom: auto;
+  left: var(--inspect-editor-left, 1rem);
+  max-width: min(28rem, calc(100% - 1.5rem));
+  margin: 0;
+}
+
+.floatingInspectHint {
+  display: grid;
+  gap: 0.32rem;
+  width: min(calc(100% - 1.7rem), 21rem);
+}
+
+.floatingInspectHint span {
+  width: fit-content;
+  border-radius: 999px;
+  background: rgb(20 184 166 / 0.22);
+  color: #a7fff4;
+  font-size: 0.68rem;
+  font-weight: 950;
+  padding: 0.2rem 0.48rem;
+}
+
+.floatingInspectHint strong {
+  color: #ffffff;
+  font-size: 0.94rem;
+}
+
+.floatingInspectHint small {
+  color: rgb(255 255 255 / 0.75);
+  line-height: 1.45;
+}
+
+.floatingInspectHeader {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.floatingInspectHeader span {
+  width: fit-content;
+  border-radius: 999px;
+  background: rgb(20 184 166 / 0.18);
+  color: #9bf7ed;
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  padding: 0.2rem 0.5rem;
+  text-transform: uppercase;
+}
+
+.floatingInspectHeader strong {
+  font-size: 1rem;
+}
+
+.floatingInspectHeader code {
+  color: rgb(255 255 255 / 0.66);
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+}
+
+.floatingInspectEditor label {
+  display: grid;
+  gap: 0.38rem;
+  color: rgb(255 255 255 / 0.86);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.floatingInspectEditor input,
+.floatingInspectEditor textarea {
+  width: 100%;
+  border: 1px solid rgb(255 255 255 / 0.22);
+  border-radius: 0.75rem;
+  background: rgb(255 255 255 / 0.94);
+  color: #172134;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 760;
+  line-height: 1.45;
+  outline: none;
+  padding: 0.72rem 0.78rem;
+}
+
+.floatingInspectEditor textarea {
+  min-height: 7.5rem;
+  resize: vertical;
+}
+
+.inlineError {
+  margin: 0.6rem 0 0;
+  border-radius: 0.75rem;
+  background: rgb(254 226 226 / 0.94);
+  color: #991b1b;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0.55rem 0.65rem;
+}
+
+.inspectSlotMeta {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.65rem;
+  color: rgb(255 255 255 / 0.66);
+  font-size: 0.72rem;
+  font-weight: 760;
+}
+
+.floatingInspectActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.78rem;
+}
+
+.floatingInspectActions button {
+  min-height: 2.25rem;
+  border: 1px solid rgb(255 255 255 / 0.22);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.12);
+  color: #ffffff;
+  padding: 0 0.75rem;
+  font-size: 0.76rem;
+  font-weight: 950;
+}
+
+.floatingInspectActions .primaryAction {
+  background: linear-gradient(135deg, #0f9f94, #1d78c7);
+}
+
 .productionPreviewFrame :global(main[data-preview="true"]) {
   min-height: auto;
+  padding-top: 0;
   padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
+}
+
+.productionPreviewFrame :global(main[data-preview="true"] nav[aria-label="Coach page navigation"]) {
+  position: sticky;
+  top: 0.75rem;
+  left: auto;
+  right: auto;
+  width: min(calc(100% - 1rem), 84rem);
+  margin-block: 0.75rem 0;
+  margin-inline: auto;
+  transform: none;
 }
 
 .productionPreviewFrame :global(main[data-preview="true"] aside[aria-label="Coach registration"]) {
@@ -1673,73 +1812,6 @@
   pointer-events: none;
 }
 
-.coachPreview[data-theme="premium-feminine-wellness"] {
-  border-color: rgb(217 145 171 / 0.24);
-  background: linear-gradient(135deg, #fff8f3, #fff0f6 52%, #f6ecff);
-}
-
-.coachPreview[data-theme="apple-liquid-glass"] {
-  border-color: rgb(255 255 255 / 0.52);
-  background: linear-gradient(135deg, rgb(255 255 255 / 0.62), rgb(238 247 255 / 0.78));
-  backdrop-filter: blur(10px);
-}
-
-.coachPreview[data-theme="dark-luxury-wellness"] {
-  border-color: rgb(216 181 111 / 0.22);
-  background: linear-gradient(135deg, #080b17, #111730 58%, #321b38);
-}
-
-.coachPreview[data-theme="dark-luxury-wellness"] .previewHero h3,
-.coachPreview[data-theme="dark-luxury-wellness"] .previewHero p,
-.coachPreview[data-theme="dark-luxury-wellness"] .previewGrid h4,
-.coachPreview[data-theme="dark-luxury-wellness"] .previewGrid p,
-.coachPreview[data-theme="dark-luxury-wellness"] .previewGrid li,
-.coachPreview[data-theme="dark-luxury-wellness"] .previewFacts dd {
-  color: #fffaf1;
-}
-
-.previewThemeBar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.8rem;
-  align-items: center;
-  border: 1px solid rgb(168 85 137 / 0.12);
-  border-radius: var(--radius-md);
-  background: rgb(255 255 255 / 0.62);
-  padding: 0.75rem;
-}
-
-.previewThemeBar span {
-  color: #087a73;
-  font-size: 0.72rem;
-  font-weight: 950;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.previewThemeBar strong {
-  display: block;
-  margin-top: 0.2rem;
-  color: #251822;
-}
-
-.previewThemeBar > div:last-child {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  justify-content: flex-end;
-}
-
-.previewThemeBar button {
-  min-height: 2.25rem;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 0.65rem;
-  font-size: 0.78rem;
-  font-weight: 900;
-  text-align: center;
-}
-
 .previewHero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.34fr);
@@ -1767,25 +1839,6 @@
   font-size: 0.95rem;
   font-weight: 680;
   line-height: 1.58;
-}
-
-.previewTemplateMark {
-  width: fit-content;
-  max-width: 100%;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.8rem;
-  color: #37524d;
-  font-size: 0.74rem;
-  font-weight: 850;
-}
-
-.previewTemplateMark span {
-  border: 1px solid rgb(23 36 33 / 0.1);
-  border-radius: var(--radius-md);
-  background: rgb(255 255 255 / 0.72);
-  padding: 0.36rem 0.52rem;
 }
 
 .previewNiche {
@@ -4805,9 +4858,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .themeChoiceGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 860px) {
@@ -4922,13 +4972,8 @@
   .previewGrid,
   .inspectSectionEditorGrid,
   .previewInspectTray,
-  .previewThemeBar,
   .previewRegisterBand {
     grid-template-columns: 1fr;
-  }
-
-  .previewThemeBar > div:last-child {
-    justify-content: flex-start;
   }
 
   .regenerateActions {
@@ -4947,7 +4992,6 @@
     width: 100%;
   }
 
-  .coachPreview[data-theme="apple-liquid-glass"],
   .previewMediaCaption {
     backdrop-filter: none;
   }
@@ -5226,7 +5270,6 @@
   .formGrid,
   .removeDetails,
   .removalChoiceGrid,
-  .themeChoiceGrid,
   .statusGrid {
     grid-template-columns: 1fr;
   }
@@ -5284,6 +5327,13 @@
   font-weight: 650;
   line-height: 1.5;
   overflow-wrap: anywhere;
+}
+
+.noticeActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.85rem;
 }
 
 .errorReportList {
@@ -5674,6 +5724,17 @@
 
   .productionPreviewFrame {
     max-height: 72vh;
+  }
+
+  .floatingInspectEditor[data-positioned="true"] {
+    position: sticky;
+    top: auto;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    left: auto;
+    width: min(calc(100% - 1.5rem), 28rem);
+    max-width: calc(100% - 1.5rem);
+    margin: -1rem 0.75rem 0.75rem auto;
   }
 }
 

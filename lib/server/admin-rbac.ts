@@ -20,6 +20,7 @@ export type AdminModuleKey =
   | "paid_masterclass"
   | "settings"
   | "security"
+  | "shop"
   | "website_creator";
 
 export type AdminAccessProfile = {
@@ -67,6 +68,11 @@ export const ADMIN_PERMISSION_DEFINITIONS: AdminPermissionDefinition[] = [
   ["paid_masterclass.view_settings", "paid_masterclass", "View paid settings", "View paid funnel link settings."],
   ["paid_masterclass.edit_settings", "paid_masterclass", "Edit paid settings", "Edit protected paid funnel settings."],
   ["paid_masterclass.reveal_private_links", "paid_masterclass", "Reveal private links", "Reveal private paid links after OTP."],
+  ["shop.view", "shop", "View Shop", "View public shop website-builder purchases."],
+  ["shop.payment_settings.view", "shop", "View Shop payment settings", "View independent Shop payment configuration."],
+  ["shop.payment_settings.edit", "shop", "Edit Shop payment settings", "Edit independent Shop payment links."],
+  ["shop.reports", "shop", "Download Shop reports", "Download Shop purchases, failures, settings, and analytics reports."],
+  ["shop.recovery", "shop", "Recover Shop workflow", "Review and recover failed Shop payment/publish workflow states."],
   ["error_reports.view", "error_reports", "View error reports", "View safe error reports."],
   ["error_reports.mark_status", "error_reports", "Mark fixed/ignored", "Update error report status."],
   ["error_reports.clear_stale", "error_reports", "Clear stale reports", "Clear old fixed or ignored reports."],

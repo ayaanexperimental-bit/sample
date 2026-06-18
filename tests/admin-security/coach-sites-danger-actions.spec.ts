@@ -46,7 +46,7 @@ test.describe("coach site dangerous actions", () => {
             niche: "Pipeline Wellness",
             publicUrl: "/coach/pipeline-coach",
             registerButtonText: "Register Now",
-            selectedThemeId: "default-current",
+            selectedThemeId: "canonical-coach-site-template",
             slug: "pipeline-coach",
             status: "published"
           }
@@ -87,7 +87,7 @@ test.describe("coach site dangerous actions", () => {
             niche: "Pipeline Wellness",
             publicUrl: "/coach/pipeline-coach",
             registerButtonText: "Register Now",
-            selectedThemeId: "default-current",
+            selectedThemeId: "canonical-coach-site-template",
             slug: "pipeline-coach",
             status: "draft",
             whatsappLink: "https://wa.me/911234567890"
@@ -156,7 +156,7 @@ test.describe("coach site dangerous actions", () => {
             niche: "Updated Pipeline Wellness",
             publicUrl: "/coach/pipeline-coach",
             registerButtonText: "Register Now",
-            selectedThemeId: "premium-feminine-wellness",
+            selectedThemeId: "canonical-coach-site-template",
             slug: "pipeline-coach",
             status: "draft",
             whatsappLink: "https://wa.me/911234567890"
@@ -171,7 +171,7 @@ test.describe("coach site dangerous actions", () => {
       coachSite: {
         niche: "Updated Pipeline Wellness",
         publicUrl: "/coach/pipeline-coach",
-        selectedThemeId: "premium-feminine-wellness",
+        selectedThemeId: "canonical-coach-site-template",
         slug: "pipeline-coach",
         status: "draft"
       },
@@ -198,7 +198,7 @@ test.describe("coach site dangerous actions", () => {
       }),
       niche: "Updated Pipeline Wellness",
       publicUrl: "/coach/pipeline-coach",
-      selectedThemeId: "premium-feminine-wellness",
+      selectedThemeId: "canonical-coach-site-template",
       status: "draft"
     });
 
@@ -641,7 +641,7 @@ test.describe("coach site dangerous actions", () => {
             niche: "Duplicate Wellness",
             publicUrl: "/coach/local-coach-another",
             registerButtonText: "Register Now",
-            selectedThemeId: "default-current",
+            selectedThemeId: "canonical-coach-site-template",
             slug: "local-coach-another",
             status: "draft"
           }
@@ -709,7 +709,7 @@ test.describe("coach site dangerous actions", () => {
             niche: "Wellness",
             publicUrl: "/coach/local-coach",
             registerButtonText: "Register Now",
-            selectedThemeId: "default-current",
+            selectedThemeId: "canonical-coach-site-template",
             slug: "local-coach",
             status: "draft"
           }
@@ -806,7 +806,7 @@ function createCoachSitesDb() {
         published_at: 1780000005,
         public_url: "/coach/local-coach",
         register_button_text: "Register Now",
-        selected_theme_id: "default-current",
+        selected_theme_id: "canonical-coach-site-template",
         paid_funnel_context: "",
         slug: "local-coach",
         status: "published",
@@ -937,7 +937,7 @@ function createCoachSitesStatement(
           published_at: publishedAt === null ? null : Number(publishedAt || 0) || null,
           public_url: String(publicUrl || ""),
           register_button_text: String(registerButtonText || "Register Now"),
-          selected_theme_id: String(selectedThemeId || "default-current"),
+          selected_theme_id: String(selectedThemeId || "canonical-coach-site-template"),
           paid_funnel_context: String(paidFunnelContext || ""),
           slug: String(slug || ""),
           status: String(status || "draft"),

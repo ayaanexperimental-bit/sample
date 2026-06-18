@@ -14,13 +14,13 @@
 - Real production referral pages using the final YW Nutritech template: 1
 - Pages showing old template during normal flow: 0 found in this audit
 - Pages showing Contact Support during normal successful referral flow: 0 found in this audit
-- Current selected production theme for Gyana: `premium-feminine-wellness`
+- Current selected production theme for Gyana: legacy theme value removed from active template support; runtime normalizes to the canonical coach-site template.
 
 ## Site Result
 
 | Coach | Public URL | Source | Status | Theme | Register Link | Normal Support Card | Result |
 |---|---|---|---|---|---|---|---|
-| Gyana Ranjan | `/coach/gyana-ranjan` | D1 `coach_sites` | Published | `premium-feminine-wellness` | Configured Google Form | Hidden, as required | Pass |
+| Gyana Ranjan | `/coach/gyana-ranjan` | D1 `coach_sites` | Published | Canonical coach-site layout | Configured Google Form | Hidden, as required | Pass |
 
 ## Gyana Route Evidence
 
@@ -56,7 +56,7 @@ Current verified state:
 - D1 `coach_sites.id`: `coach-site-gyana-ranjan`
 - `slug`: `gyana-ranjan`
 - `status`: `published`
-- `selected_theme_id`: `premium-feminine-wellness`
+- `selected_theme_id`: legacy DB value ignored by active rendering; normalized to the canonical coach-site template.
 - `google_form_url`: configured
 - `photo_url`: configured
 - `video_url`: configured

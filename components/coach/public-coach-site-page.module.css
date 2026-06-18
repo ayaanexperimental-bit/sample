@@ -91,8 +91,7 @@
 .section,
 .coachSupport,
 .footer,
-.unavailablePanel,
-.themeSwitcher {
+.unavailablePanel {
   width: min(calc(100% - 2rem), 84rem);
   margin-inline: auto;
 }
@@ -170,8 +169,7 @@
 .mediaNotes span,
 .registerSection span,
 .footer span,
-.supportCredentialGrid span,
-.themeSwitcher span {
+.supportCredentialGrid span {
   color: var(--template-accent);
   font-size: 0.72rem;
   font-weight: 950;
@@ -193,8 +191,6 @@
 .stickyCoachRegister,
 .stickyCoachContact,
 .footerLinks a,
-.themeSwitcher a,
-.themeSwitcher button,
 .supportActions a,
 .retryButton {
   min-height: 2.6rem;
@@ -246,8 +242,6 @@
 .stickyCoachRegister:hover,
 .stickyCoachContact:hover,
 .footerLinks a:hover,
-.themeSwitcher a:hover,
-.themeSwitcher button:hover,
 .supportActions a:hover,
 .retryButton:hover {
   transform: translate3d(0, -2px, 0);
@@ -355,48 +349,6 @@
   padding: 0 1.05rem;
 }
 
-.themeSwitcher {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  gap: 0.75rem;
-  border: 1px solid rgb(235 201 219 / 0.78);
-  border-radius: var(--template-radius);
-  background: rgb(255 255 255 / 0.82);
-  box-shadow: var(--template-shadow);
-  color: #151827;
-  margin-top: 1rem;
-  padding: 1rem;
-  backdrop-filter: blur(18px);
-}
-
-.themeSwitcher > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-}
-
-.themeSwitcher a,
-.themeSwitcher button {
-  border: 1px solid rgb(235 201 219 / 0.74);
-  background: rgb(255 255 255 / 0.88);
-  color: #151827;
-  padding: 0 0.9rem;
-}
-
-.themeSwitcher button {
-  appearance: none;
-  cursor: pointer;
-  font: inherit;
-}
-
-.themeSwitcher a[data-active="true"],
-.themeSwitcher button[data-active="true"] {
-  border-color: var(--template-accent);
-  background: var(--template-cta);
-  color: var(--template-cta-text);
-}
-
 .hero,
 .section,
 .heroMetrics,
@@ -431,6 +383,54 @@
 }
 
 .previewInspectable[data-inspect-mode="true"] :is(a, button, iframe, summary, video) {
+  pointer-events: none;
+}
+
+.previewInspectableText {
+  border-radius: 0.28rem;
+  outline: 1px dashed transparent;
+  outline-offset: 0.12rem;
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    outline-color 160ms ease;
+}
+
+.previewInspectableText[data-inspect-mode="true"] {
+  cursor: crosshair;
+  outline-color: rgb(183 93 120 / 0.36);
+}
+
+.previewInspectableText[data-inspect-mode="true"]:hover,
+.previewInspectableText[data-inspect-mode="true"]:focus-visible,
+.previewInspectableText[data-selected="true"] {
+  background: rgb(255 255 255 / 0.44);
+  outline-color: rgb(183 93 120 / 0.82);
+  box-shadow: 0 0.4rem 1rem rgb(183 93 120 / 0.16);
+}
+
+.previewInspectableText[data-selected="true"] {
+  position: relative;
+}
+
+.previewInspectableText[data-selected="true"]::after {
+  position: absolute;
+  top: -0.9rem;
+  right: -0.7rem;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border: 1px solid rgb(255 255 255 / 0.85);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #0f9f94, #1d78c7);
+  box-shadow: 0 0.45rem 1rem rgb(15 23 42 / 0.2);
+  color: #ffffff;
+  content: "1";
+  font-size: 0.62rem;
+  font-weight: 950;
+  line-height: 1;
   pointer-events: none;
 }
 
@@ -1087,36 +1087,6 @@
   padding: 0 1rem;
 }
 
-.page[data-theme="premium-feminine-wellness"] .hero {
-  color: var(--template-ink);
-}
-
-.page[data-theme="premium-feminine-wellness"] .hero .lead,
-.page[data-theme="premium-feminine-wellness"] .hero .heroCopy > p,
-.page[data-theme="premium-feminine-wellness"] .brandAssurance strong {
-  color: var(--template-muted);
-}
-
-.page[data-theme="premium-feminine-wellness"] .nav {
-  color: var(--template-ink);
-}
-
-.page[data-theme="premium-feminine-wellness"] .stickyCoachCta {
-  background:
-    linear-gradient(135deg, rgb(255 253 249 / 0.86), rgb(255 240 247 / 0.68)),
-    var(--template-card-strong);
-  color: var(--template-ink);
-}
-
-.page[data-theme="apple-liquid-glass"] .card,
-.page[data-theme="apple-liquid-glass"] .supportCard,
-.page[data-theme="apple-liquid-glass"] .themeSwitcher,
-.page[data-theme="apple-liquid-glass"] .footer,
-.page[data-theme="apple-liquid-glass"] .stickyCoachCta,
-.page[data-theme="apple-liquid-glass"] .mediaSection {
-  backdrop-filter: blur(14px) saturate(1.18);
-}
-
 .section,
 .coachSupport,
 .footer {
@@ -1128,27 +1098,6 @@
   .mediaStage {
     animation: media-float 9s ease-in-out 1s infinite;
   }
-}
-
-.page[data-theme="dark-luxury-wellness"] .sectionHead h2,
-.page[data-theme="dark-luxury-wellness"] .introGrid h3,
-.page[data-theme="dark-luxury-wellness"] .journeyGrid h3,
-.page[data-theme="dark-luxury-wellness"] .benefitGrid h3,
-.page[data-theme="dark-luxury-wellness"] .mediaNotes h2,
-.page[data-theme="dark-luxury-wellness"] .coachSupport h2,
-.page[data-theme="dark-luxury-wellness"] .footer h2,
-.page[data-theme="dark-luxury-wellness"] .faqList summary {
-  color: var(--template-ink);
-}
-
-.page[data-theme="dark-luxury-wellness"] .stickyCoachCta {
-  background:
-    linear-gradient(135deg, rgb(8 11 23 / 0.9), rgb(31 23 45 / 0.74)),
-    var(--template-card-strong);
-  color: var(--template-ink);
-  box-shadow:
-    0 1.2rem 4rem rgb(0 0 0 / 0.34),
-    inset 0 1px 0 rgb(255 255 255 / 0.12);
 }
 
 @keyframes aurora {
@@ -1200,13 +1149,11 @@
   .supportCard,
   .navCta,
   .primaryAction,
-  .secondaryAction,
-  .stickyRegister,
-  .stickyCoachRegister,
-  .stickyCoachContact,
-  .themeSwitcher a,
-  .themeSwitcher button,
-  .footerLinks a {
+.secondaryAction,
+.stickyRegister,
+.stickyCoachRegister,
+.stickyCoachContact,
+.footerLinks a {
     transition: none !important;
   }
 }
@@ -1219,13 +1166,11 @@
   .primaryAction:hover,
   .secondaryAction:hover,
   .stickyRegister:hover,
-  .stickyCoachRegister:hover,
-  .stickyCoachContact:hover,
-  .footerLinks a:hover,
-  .themeSwitcher a:hover,
-  .themeSwitcher button:hover,
-  .supportActions a:hover,
-  .retryButton:hover {
+.stickyCoachRegister:hover,
+.stickyCoachContact:hover,
+.footerLinks a:hover,
+.supportActions a:hover,
+.retryButton:hover {
     transform: none;
   }
 }
@@ -1299,8 +1244,7 @@
   .section,
   .coachSupport,
   .footer,
-  .unavailablePanel,
-  .themeSwitcher {
+  .unavailablePanel {
     width: min(calc(100% - 1rem), 84rem);
   }
 
@@ -1379,7 +1323,6 @@
     display: none;
   }
 
-  .themeSwitcher,
   .trustRow span,
   .brandAssurance,
   .heroMetrics,
@@ -1387,13 +1330,7 @@
   .mediaCaption,
   .card,
   .supportCard,
-  .faqList details,
-  .page[data-theme="apple-liquid-glass"] .card,
-  .page[data-theme="apple-liquid-glass"] .supportCard,
-  .page[data-theme="apple-liquid-glass"] .themeSwitcher,
-  .page[data-theme="apple-liquid-glass"] .footer,
-  .page[data-theme="apple-liquid-glass"] .stickyCoachCta,
-  .page[data-theme="apple-liquid-glass"] .mediaSection {
+  .faqList details {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
@@ -1534,7 +1471,7 @@
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 0.6rem;
     border-radius: calc(var(--template-radius) + 6px);
-    min-height: 4.35rem;
+    min-height: 4.7rem;
     padding: 0.56rem;
   }
 
@@ -1549,9 +1486,9 @@
   .stickyCoachContext strong {
     display: -webkit-box;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
-    font-size: 0.9rem;
-    line-height: 1.08;
+    -webkit-line-clamp: 2;
+    font-size: clamp(0.82rem, 2.8vw, 0.92rem);
+    line-height: 1.06;
     overflow: hidden;
   }
 
@@ -1593,7 +1530,7 @@
     bottom: max(0.55rem, env(safe-area-inset-bottom));
     left: max(0.55rem, env(safe-area-inset-left));
     width: auto;
-    min-height: 4.1rem;
+    min-height: 4.7rem;
     padding: 0.52rem;
   }
 
@@ -1607,8 +1544,9 @@
   }
 
   .stickyCoachRegister {
-    min-width: 7.35rem;
+    min-width: 7.1rem;
     min-height: 2.45rem;
+    font-size: 0.82rem;
     white-space: nowrap;
   }
 }
@@ -1620,8 +1558,7 @@
   .section,
   .coachSupport,
   .footer,
-  .unavailablePanel,
-  .themeSwitcher {
+  .unavailablePanel {
     width: min(calc(100% - 0.7rem), 84rem);
   }
 
@@ -1719,8 +1656,8 @@
   .stickyCoachCta {
     bottom: max(0.45rem, env(safe-area-inset-bottom));
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.55rem;
-    min-height: 3.7rem;
+    gap: 0.45rem;
+    min-height: 4.55rem;
     padding: 0.52rem;
   }
 
@@ -1729,7 +1666,8 @@
   }
 
   .stickyCoachContext strong {
-    font-size: 0.9rem;
+    font-size: 0.78rem;
+    line-height: 1.04;
   }
 
   .stickyCoachActions {
@@ -1739,7 +1677,68 @@
   .stickyCoachRegister,
   .stickyCoachContact {
     min-height: 2.35rem;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
+    padding-inline: 0.68rem;
+  }
+}
+
+.page[data-sticky-scope="contained"] {
+  min-height: auto;
+  padding-top: 0;
+  padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
+  scroll-padding-top: 0;
+}
+
+.page[data-sticky-scope="contained"] .nav {
+  position: sticky;
+  top: 0.75rem;
+  left: auto;
+  right: auto;
+  width: min(calc(100% - 1rem), 84rem);
+  margin-block: 0.75rem 0;
+  margin-inline: auto;
+  transform: none;
+}
+
+.page[data-sticky-scope="contained"] .stickyCoachCta {
+  position: sticky;
+  right: auto;
+  bottom: 0.75rem;
+  left: auto;
+  width: min(calc(100% - 1rem), 44rem);
+  margin-block: 1rem 0;
+  margin-inline: auto;
+  transform: none;
+}
+
+@media (max-width: 760px) {
+  .page[data-sticky-scope="contained"] {
+    padding-top: 0;
+    padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
+    scroll-padding-top: 0;
+  }
+
+  .page[data-sticky-scope="contained"] .nav {
+    position: sticky;
+    top: 0.75rem;
+    left: auto;
+    right: auto;
+    width: min(calc(100% - 1rem), 84rem);
+    max-width: 84rem;
+    margin-block: 0.75rem 0;
+    margin-inline: auto;
+    transform: none;
+  }
+
+  .page[data-sticky-scope="contained"] .stickyCoachCta {
+    position: sticky;
+    right: auto;
+    bottom: 0.75rem;
+    left: auto;
+    width: min(calc(100% - 1rem), 44rem);
+    margin-block: 1rem 0;
+    margin-inline: auto;
+    transform: none;
   }
 }
 
