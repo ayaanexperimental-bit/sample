@@ -309,8 +309,7 @@ export const approvedCoachSites: CoachSiteRecord[] = [
       brandBadge: "Education-first wellness page",
       brandEyebrow: "Education-first wellness pathway",
       benefitsHeading: "PMOS lifestyle guidance without clutter.",
-      subheadline:
-        "A fixed-template coach referral page introducing the coach, niche, vision, and next registration step.",
+      subheadline: "A clear introduction to the coach, support focus, and next registration step.",
       coachIntro:
         "Gyana helps women slow down confusing hormone advice and rebuild simple routines around food, movement, sleep, stress, and tracking.",
       coachIntroLabel: "Who Gyana is",
@@ -323,7 +322,7 @@ export const approvedCoachSites: CoachSiteRecord[] = [
       heroMediaLabel: "Coach",
       heroMicroTrustText: "Nutrition, habits, lifestyle, education",
       heroTrustLine: "Education-first wellness guidance",
-      introHeading: "Personal PMOS guidance inside a premium wellness-tech ecosystem.",
+      introHeading: "Personal PMOS guidance with a calm, practical first step.",
       introSectionLabel: "Coach Introduction",
       journeyHeading: "One page that moves from trust to action.",
       journeySectionLabel: "YW Nutritech guidance path",
@@ -345,10 +344,10 @@ export const approvedCoachSites: CoachSiteRecord[] = [
         }
       ],
       mediaBody:
-        "Gyana's image and video-ready area stay inside the fixed YW Nutritech template while keeping the coach visible.",
-      mediaHeading: "Coach image and video-ready area",
-      mediaModuleLabel: "Coach media module",
-      mediaSubheading: "YW Nutritech coach media",
+        "Gyana shares her support focus, coaching style, and the next step in one clear place.",
+      mediaHeading: "Meet Gyana",
+      mediaModuleLabel: "Coach introduction",
+      mediaSubheading: "A quick look at the coach and support focus",
       problemHeading: "For women who need direction before committing to a bigger program.",
       problemSectionLabel: "Problem to solution",
       problemPoints: [
@@ -484,15 +483,14 @@ export function createCoachContentFromForm(form: CoachSiteFormState): CoachSiteC
       benefits.map(() => "Coach-led education designed to make the next step calmer and clearer.")
     ),
     benefits,
-    benefitsHeading:
-      form.benefitsHeading.trim() || `Practical ${niche} support without clutter.`,
+    benefitsHeading: form.benefitsHeading.trim() || `Practical ${niche} support without clutter.`,
     brandBadge: form.brandBadge.trim() || "Education-first wellness page",
     brandEyebrow: form.brandEyebrow.trim() || "Education-first wellness pathway",
     coachIntroLabel: form.coachIntroLabel.trim() || `Who ${coachName} is`,
     heroHeadline: form.heroHeadline.trim() || `Meet ${coachName} for practical ${niche} guidance.`,
     subheadline:
       form.subheadline.trim() ||
-      `A fixed-template coach referral page introducing ${coachName}, their niche, vision, and registration step.`,
+      `A clear introduction to ${coachName}, the support focus, and the next registration step.`,
     coachIntro: form.coachIntro.trim() || bio,
     ctaSectionLabel: form.ctaSectionLabel.trim() || "Register",
     ctaText: form.ctaText.trim() || form.registerButtonText.trim() || "Register Now",
@@ -505,27 +503,23 @@ export function createCoachContentFromForm(form: CoachSiteFormState): CoachSiteC
       form.footerText.trim() ||
       "This page is for wellness education and lifestyle coaching support. It is not a substitute for medical advice, diagnosis, or treatment. Results vary based on individual health history, lifestyle, and consistency.",
     heroMediaLabel: form.heroMediaLabel.trim() || "Coach",
-    heroMicroTrustText:
-      form.heroMicroTrustText.trim() || "Nutrition, habits, lifestyle, education",
+    heroMicroTrustText: form.heroMicroTrustText.trim() || "Nutrition, habits, lifestyle, education",
     heroTrustLine: form.heroTrustLine.trim() || "Education-first wellness guidance",
     introHeading:
-      form.introHeading.trim() ||
-      `Personal ${niche} guidance inside a premium wellness-tech ecosystem.`,
+      form.introHeading.trim() || `Personal ${niche} guidance with a calm, practical first step.`,
     introSectionLabel: form.introSectionLabel.trim() || "Coach Introduction",
-    journeyHeading:
-      form.journeyHeading.trim() || "One page that moves from trust to action.",
+    journeyHeading: form.journeyHeading.trim() || "One page that moves from trust to action.",
     journeySectionLabel: form.journeySectionLabel.trim() || "YW Nutritech guidance path",
     journeySteps: parseJourneySteps(form.journeyStepsText, coachName, niche),
     mediaBody:
       form.mediaBody.trim() ||
-      `${coachName}'s media stays inside the fixed YW Nutritech template while keeping the coach visible.`,
-    mediaHeading: form.mediaHeading.trim() || "Coach image and video-ready area",
-    mediaModuleLabel: form.mediaModuleLabel.trim() || "Coach media module",
-    mediaSubheading:
-      form.mediaSubheading.trim() || "YW Nutritech coach media",
+      `${coachName} shares the coach story, support focus, and next step in one clear place.`,
+    mediaHeading: form.mediaHeading.trim() || `Meet ${coachName}`,
+    mediaModuleLabel: form.mediaModuleLabel.trim() || "Coach introduction",
+    mediaSubheading: form.mediaSubheading.trim() || "A quick look at the coach and support focus",
     problemHeading:
       form.problemHeading.trim() ||
-      `For guests who need direction before committing to a bigger ${niche} program.`,
+      "For guests who want a clearer starting point before choosing the next step.",
     problemSectionLabel: form.problemSectionLabel.trim() || "Problem to solution",
     problemPoints: parseLines(form.problemPointsText, [
       `Too much conflicting ${niche} advice`,
@@ -540,12 +534,12 @@ export function createCoachContentFromForm(form: CoachSiteFormState): CoachSiteC
       "This page is for coach introduction and education. It does not replace medical advice.",
     visionLabel: form.visionLabel.trim() || "Coach mission",
     socialCopy:
-      form.socialCopy.trim() || `Join ${coachName}'s ${niche} referral page for a clear first step.`,
+      form.socialCopy.trim() ||
+      `Register to connect with ${coachName} and understand the ${niche} support available.`,
     stickyCtaContactButton: form.stickyCtaContactButton.trim() || "Register Now",
     stickyCtaContext:
       form.stickyCtaContext.trim() || `${niche || "Coach referral"} through YW Nutritech`,
-    stickyCtaHeading:
-      form.stickyCtaHeading.trim() || `Ready to connect with Coach ${coachName}?`,
+    stickyCtaHeading: form.stickyCtaHeading.trim() || `Ready to connect with Coach ${coachName}?`,
     stickyCtaLabel: form.stickyCtaLabel.trim() || "Registration",
     supportEmailLabel: form.supportEmailLabel.trim() || "Email",
     supportHeading: form.supportHeading.trim() || "Contact Support",
@@ -585,7 +579,8 @@ function parseJourneySteps(value: string, coachName: string, niche: string) {
         {
           label: "Profile",
           title: `Meet ${coachName}`,
-          description: "Guests understand the coach story, niche, mission, and practical guidance approach."
+          description:
+            "Guests understand the coach story, niche, mission, and practical guidance approach."
         },
         {
           label: "Focus",
@@ -713,7 +708,8 @@ export function createFormFromCoachSite(site: CoachSiteRecord): CoachSiteFormSta
     benefitsSectionLabel: site.content.benefitsSectionLabel,
     socialCopy: site.content.socialCopy,
     stickyCtaContactButton: site.content.stickyCtaContactButton || "Register Now",
-    stickyCtaContext: site.content.stickyCtaContext || `${site.niche || "Coach referral"} through YW Nutritech`,
+    stickyCtaContext:
+      site.content.stickyCtaContext || `${site.niche || "Coach referral"} through YW Nutritech`,
     stickyCtaHeading:
       site.content.stickyCtaHeading || `Ready to connect with Coach ${site.coachName}?`,
     stickyCtaLabel: site.content.stickyCtaLabel || "Registration",

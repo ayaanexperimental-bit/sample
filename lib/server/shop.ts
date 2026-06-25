@@ -1,5 +1,12 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import { buildCoachSiteFromShopState, normalizeShopBuilderState, validateShopBuilderState, type ShopBuilderState, type ShopBuilderStatus } from "../shop-builder";
+import {
+  buildCoachSiteFromShopState,
+  normalizeShopBuilderState,
+  validateShopBuilderState,
+  validateShopDraftContactFields,
+  type ShopBuilderState,
+  type ShopBuilderStatus
+} from "../shop-builder";
 import { type CoachSiteStatus, normalizeCoachSlug } from "../admin-coach-sites";
 import { getCoachSiteBySlugFromDb, upsertCoachSiteToDb } from "./coach-site-storage";
 import { runCachedD1SchemaSetup, type D1SchemaCacheEntry } from "./d1-schema-cache";
@@ -333,7 +340,15 @@ export async function updateShopPaymentSettings({
         updated_at = excluded.updated_at,
         updated_by = excluded.updated_by`
     )
-    .bind(SHOP_SETTINGS_ID, cleanUrl, cleanProvider, cleanPackage, active ? 1 : 0, now, sanitizeEmail(adminEmail))
+    .bind(
+      SHOP_SETTINGS_ID,
+      cleanUrl,
+      cleanProvider,
+      cleanPackage,
+      active ? 1 : 0,
+      now,
+      sanitizeEmail(adminEmail)
+    )
     .run();
 
   await db
@@ -388,6 +403,18 @@ export async function saveShopDraft({
   if (!isValidShopDraftEmail(normalizedEmail)) {
     return { ok: false as const, error: "Enter a valid email before saving this Shop draft." };
   }
+  const draftContactIssues = validateShopDraftContactFields(normalized).filter(
+    (issue) => issue.severity === "error"
+  );
+  if (draftContactIssues.length > 0) {
+    return {
+      ok: false as const,
+      error:
+        draftContactIssues[0]?.message ||
+        "Fix the highlighted contact details before saving this Shop draft.",
+      issues: draftContactIssues
+    };
+  }
   const cleanIdempotencyKey = sanitizeText(idempotencyKey, 160);
   const existingIdempotentOrder =
     normalized.orderId || !cleanIdempotencyKey
@@ -404,9 +431,9 @@ export async function saveShopDraft({
     const existingOrder = await getShopOrder(env, targetOrderId);
     const isPublishFailedRecovery = Boolean(
       existingOrder &&
-        existingOrder.siteStatus === "publish_failed" &&
-        (existingOrder.paymentStatus === "paid" || existingOrder.paymentStatus === "publishing") &&
-        !existingOrder.lockedAt
+      existingOrder.siteStatus === "publish_failed" &&
+      (existingOrder.paymentStatus === "paid" || existingOrder.paymentStatus === "publishing") &&
+      !existingOrder.lockedAt
     );
     if (
       existingOrder &&
@@ -452,7 +479,9 @@ export async function saveShopDraft({
     email: normalizedEmail,
     orderId,
     slug,
-    status: targetOrderId ? (await getShopOrder(env, targetOrderId))?.siteStatus || "draft" : "draft"
+    status: targetOrderId
+      ? (await getShopOrder(env, targetOrderId))?.siteStatus || "draft"
+      : "draft"
   });
 
   await db
@@ -546,7 +575,11 @@ export async function startShopCheckout({
     (issue) => issue.severity === "error"
   );
   if (issues.length > 0) {
-    return { ok: false as const, error: "Fix the highlighted website details before checkout.", issues };
+    return {
+      ok: false as const,
+      error: "Fix the highlighted website details before checkout.",
+      issues
+    };
   }
 
   const duplicateCoachName = await coachSiteNameExists(db, normalized.coachName);
@@ -654,7 +687,9 @@ async function reconcileShopOrderLiveStatus(env: ShopEnv, order: ShopSiteRecord)
   };
 }
 
-function shopStatusFromCoachSiteStatus(status: CoachSiteStatus | null | undefined): ShopBuilderStatus {
+function shopStatusFromCoachSiteStatus(
+  status: CoachSiteStatus | null | undefined
+): ShopBuilderStatus {
   if (
     status === "archived" ||
     status === "draft" ||
@@ -718,15 +753,7 @@ export async function syncShopOrderStatusForCoachSite({
          AND payment_status IN ('paid', 'published', 'publishing')
          AND (slug = ?6 OR public_url = ?4 OR id = ?7)`
     )
-    .bind(
-      nextStatus,
-      workflowStage,
-      issueStatus,
-      publicUrl,
-      now,
-      slug,
-      `shop-site-${slug}`
-    )
+    .bind(nextStatus, workflowStage, issueStatus, publicUrl, now, slug, `shop-site-${slug}`)
     .run();
 
   return { ok: true as const };
@@ -787,15 +814,13 @@ export async function findPendingShopOrderByContact({
     .bind(recentCutoff)
     .all<ShopSiteRow>();
 
-  const matches = (rows.results || [])
-    .map(shopSiteRowToRecord)
-    .filter((order) => {
-      const emailMatches = Boolean(cleanEmail && sanitizeEmail(order.coachEmail) === cleanEmail);
-      const phoneMatches = Boolean(
-        cleanPhone && normalizePhoneDigits(order.coachPhone) === cleanPhone
-      );
-      return emailMatches || phoneMatches;
-    });
+  const matches = (rows.results || []).map(shopSiteRowToRecord).filter((order) => {
+    const emailMatches = Boolean(cleanEmail && sanitizeEmail(order.coachEmail) === cleanEmail);
+    const phoneMatches = Boolean(
+      cleanPhone && normalizePhoneDigits(order.coachPhone) === cleanPhone
+    );
+    return emailMatches || phoneMatches;
+  });
 
   if (matches.length === 1) return { matchCount: 1, ok: true, order: matches[0] };
   if (matches.length > 1) return { matchCount: matches.length, ok: false, reason: "ambiguous" };
@@ -817,11 +842,10 @@ export async function getPublicShopOrder({
   const db = env.ADMIN_DB;
   const orderAccessKey = db ? await getExistingShopClientAccessKey(db, order.orderId) : "";
   const cleanAccessKey = sanitizeText(accessKey, 120);
-  const hasClientAccess = Boolean(cleanAccessKey && orderAccessKey && cleanAccessKey === orderAccessKey);
-  const hasAccess = Boolean(
-    order.siteStatus === "published" ||
-      hasClientAccess
+  const hasClientAccess = Boolean(
+    cleanAccessKey && orderAccessKey && cleanAccessKey === orderAccessKey
   );
+  const hasAccess = Boolean(order.siteStatus === "published" || hasClientAccess);
 
   if (!hasAccess) {
     if (isPublicInactiveShopStatus(order.siteStatus)) {
@@ -876,9 +900,7 @@ export async function listShopAdminSnapshot(env: ShopEnv): Promise<ShopAdminSnap
 
   await ensureShopTables(env);
   const [siteRows, auditRows, failureRows] = await Promise.all([
-    db
-      .prepare(`SELECT * FROM shop_sites ORDER BY updated_at DESC LIMIT 500`)
-      .all<ShopSiteRow>(),
+    db.prepare(`SELECT * FROM shop_sites ORDER BY updated_at DESC LIMIT 500`).all<ShopSiteRow>(),
     db
       .prepare(`SELECT * FROM shop_payment_settings_audit ORDER BY created_at DESC LIMIT 100`)
       .all<ShopAuditRow>(),
@@ -888,7 +910,9 @@ export async function listShopAdminSnapshot(env: ShopEnv): Promise<ShopAdminSnap
   ]);
 
   const sites = await Promise.all(
-    (siteRows.results || []).map((row) => reconcileShopOrderLiveStatus(env, shopSiteRowToRecord(row)))
+    (siteRows.results || []).map((row) =>
+      reconcileShopOrderLiveStatus(env, shopSiteRowToRecord(row))
+    )
   );
   const failures = (failureRows.results || []).map(failureRowToRecord);
   const audits = (auditRows.results || []).map(auditRowToRecord);
@@ -1021,7 +1045,10 @@ export async function markShopOrderPaymentVerified({
     return { ok: true as const, order };
   }
 
-  const contactMatches = shopOrderContactMatchesPayment(order, { email: payerEmail, phone: payerPhone });
+  const contactMatches = shopOrderContactMatchesPayment(order, {
+    email: payerEmail,
+    phone: payerPhone
+  });
   const legacyContactRecovery = canRecoverLegacyBlankContactOrder(order, {
     email: payerEmail,
     phone: payerPhone
@@ -1146,7 +1173,10 @@ export async function claimSignedShopPaymentForOrder({
     .first<{ order_id: string }>();
 
   if (alreadyClaimed?.order_id) {
-    return { ok: false as const, error: "This Razorpay payment is already linked to another Shop order." };
+    return {
+      ok: false as const,
+      error: "This Razorpay payment is already linked to another Shop order."
+    };
   }
 
   const failure = await findSignedUnmatchedShopPaymentFailure(db, {
@@ -1395,7 +1425,8 @@ export async function createShopReportCsv(env: ShopEnv, report: string) {
   if (report === "settings") return createPaymentAuditCsv(snapshot.audits);
   if (report === "failures") return createFailureCsv(snapshot.failures);
   if (report === "analytics") return createAnalyticsSummaryCsv(snapshot.sites);
-  if (report === "published") return createSitesCsv(snapshot.sites.filter((site) => site.siteStatus === "published"));
+  if (report === "published")
+    return createSitesCsv(snapshot.sites.filter((site) => site.siteStatus === "published"));
   return createSitesCsv(snapshot.sites);
 }
 
@@ -1467,7 +1498,17 @@ function createSitesCsv(sites: ShopSiteRecord[]) {
 }
 
 function createFailureCsv(failures: ShopFailureRecord[]) {
-  const headers = ["id", "order_id", "coach_name", "coach_email", "severity", "stage", "message", "recovery_status", "created_at"];
+  const headers = [
+    "id",
+    "order_id",
+    "coach_name",
+    "coach_email",
+    "severity",
+    "stage",
+    "message",
+    "recovery_status",
+    "created_at"
+  ];
   return [
     headers.join(","),
     ...failures.map((failure) =>
@@ -1489,7 +1530,17 @@ function createFailureCsv(failures: ShopFailureRecord[]) {
 }
 
 function createPaymentAuditCsv(audits: ShopPaymentAuditRecord[]) {
-  const headers = ["id", "action", "old_url_summary", "new_url_summary", "provider", "package", "active", "admin_email", "created_at"];
+  const headers = [
+    "id",
+    "action",
+    "old_url_summary",
+    "new_url_summary",
+    "provider",
+    "package",
+    "active",
+    "admin_email",
+    "created_at"
+  ];
   return [
     headers.join(","),
     ...audits.map((audit) =>
@@ -1511,7 +1562,15 @@ function createPaymentAuditCsv(audits: ShopPaymentAuditRecord[]) {
 }
 
 function createAnalyticsSummaryCsv(sites: ShopSiteRecord[]) {
-  const headers = ["coach_name", "public_url", "source", "page_views", "cta_clicks", "whatsapp_clicks", "video_plays"];
+  const headers = [
+    "coach_name",
+    "public_url",
+    "source",
+    "page_views",
+    "cta_clicks",
+    "whatsapp_clicks",
+    "video_plays"
+  ];
   return [
     headers.join(","),
     ...sites.map((site) =>
@@ -1739,18 +1798,14 @@ async function findPendingShopOrderConflictForContact(
       .all<ShopSiteRow>();
 
     return (
-      (rows.results || [])
-        .map(shopSiteRowToRecord)
-        .find((order) => {
-          const emailMatches = Boolean(
-            cleanEmail && sanitizeEmail(order.coachEmail) === cleanEmail
-          );
-          const phoneMatches = Boolean(
-            cleanPhone && normalizePhoneDigits(order.coachPhone) === cleanPhone
-          );
+      (rows.results || []).map(shopSiteRowToRecord).find((order) => {
+        const emailMatches = Boolean(cleanEmail && sanitizeEmail(order.coachEmail) === cleanEmail);
+        const phoneMatches = Boolean(
+          cleanPhone && normalizePhoneDigits(order.coachPhone) === cleanPhone
+        );
 
-          return emailMatches || phoneMatches;
-        }) || null
+        return emailMatches || phoneMatches;
+      }) || null
     );
   } catch {
     return null;

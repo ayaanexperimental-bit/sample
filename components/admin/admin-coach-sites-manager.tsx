@@ -420,7 +420,9 @@ function getPreviewInspectSlotConfig(
   const scalar = getScalarPreviewInspectSlot(slotKey, form);
   if (scalar) return scalar;
 
-  const benefitMatch = slotKey.match(/^(benefits|bonus)\.items\.(\d+)\.(displayTitle|title|description)$/);
+  const benefitMatch = slotKey.match(
+    /^(benefits|bonus)\.items\.(\d+)\.(displayTitle|title|description)$/
+  );
   if (benefitMatch) {
     const sectionName = benefitMatch[1] === "bonus" ? "bonus" : "benefits";
     const index = Number(benefitMatch[2]);
@@ -445,7 +447,8 @@ function getPreviewInspectSlotConfig(
     const lines = getEditableLines(form[field]);
     return createSlotConfig({
       aiRegenerationScope: "benefits",
-      apply: (value, onUpdateField) => onUpdateField(field, replaceEditableLine(form[field], index, value)),
+      apply: (value, onUpdateField) =>
+        onUpdateField(field, replaceEditableLine(form[field], index, value)),
       fieldType: "textarea",
       label: `${sectionName === "bonus" ? "Bonus" : "Benefit"} ${index + 1} ${isDescription ? "Description" : "Title"}`,
       section: sectionName,
@@ -465,7 +468,10 @@ function getPreviewInspectSlotConfig(
     return createSlotConfig({
       aiRegenerationScope: "problem",
       apply: (value, onUpdateField) =>
-        onUpdateField("problemPointsText", replaceEditableLine(form.problemPointsText, index, value)),
+        onUpdateField(
+          "problemPointsText",
+          replaceEditableLine(form.problemPointsText, index, value)
+        ),
       fieldType: "textarea",
       label: `Pain Point ${index + 1}`,
       section: "problem",
@@ -482,7 +488,10 @@ function getPreviewInspectSlotConfig(
     return createSlotConfig({
       aiRegenerationScope: "journey",
       apply: (value, onUpdateField) =>
-        onUpdateField("journeyStepsText", replaceJourneyStepSlot(form.journeyStepsText, index, part, value)),
+        onUpdateField(
+          "journeyStepsText",
+          replaceJourneyStepSlot(form.journeyStepsText, index, part, value)
+        ),
       fieldType: part === "description" ? "textarea" : "text",
       label: `Journey Step ${index + 1} ${part}`,
       section: "journey",
@@ -549,18 +558,50 @@ function getScalarPreviewInspectSlot(
       label: "Coach Referral Label",
       section: "hero"
     },
-    "coach.location": { aiRegenerationScope: "hero", field: "location", label: "Coach Location", section: "hero" },
-    "coach.name": { aiRegenerationScope: "hero", field: "coachName", label: "Coach Name", section: "hero" },
-    "coach.niche": { aiRegenerationScope: "hero", field: "niche", label: "Niche Label", section: "hero" },
-    "cta.heading": { aiRegenerationScope: "cta", field: "ctaText", fieldType: "textarea", label: "CTA Heading", section: "cta" },
+    "coach.location": {
+      aiRegenerationScope: "hero",
+      field: "location",
+      label: "Coach Location",
+      section: "hero"
+    },
+    "coach.name": {
+      aiRegenerationScope: "hero",
+      field: "coachName",
+      label: "Coach Name",
+      section: "hero"
+    },
+    "coach.niche": {
+      aiRegenerationScope: "hero",
+      field: "niche",
+      label: "Niche Label",
+      section: "hero"
+    },
+    "cta.heading": {
+      aiRegenerationScope: "cta",
+      field: "ctaText",
+      fieldType: "textarea",
+      label: "CTA Heading",
+      section: "cta"
+    },
     "cta.registerButtonText": {
       aiRegenerationScope: "cta",
       field: "registerButtonText",
       label: "Register Button Text",
       section: "cta"
     },
-    "cta.sectionLabel": { aiRegenerationScope: "cta", field: "ctaSectionLabel", label: "CTA Section Label", section: "cta" },
-    "cta.trustText": { aiRegenerationScope: "cta", field: "trustText", fieldType: "textarea", label: "CTA Support Text", section: "cta" },
+    "cta.sectionLabel": {
+      aiRegenerationScope: "cta",
+      field: "ctaSectionLabel",
+      label: "CTA Section Label",
+      section: "cta"
+    },
+    "cta.trustText": {
+      aiRegenerationScope: "cta",
+      field: "trustText",
+      fieldType: "textarea",
+      label: "CTA Support Text",
+      section: "cta"
+    },
     "benefits.heading": {
       aiRegenerationScope: "benefits",
       field: "benefitsHeading",
@@ -601,54 +642,281 @@ function getScalarPreviewInspectSlot(
       label: "Bonus Section Subheading",
       section: "bonus"
     },
-    "faq.heading": { aiRegenerationScope: "faq", field: "faqHeading", fieldType: "textarea", label: "FAQ Heading", section: "faq" },
-    "faq.sectionLabel": { aiRegenerationScope: "faq", field: "faqSectionLabel", label: "FAQ Section Label", section: "faq" },
+    "faq.heading": {
+      aiRegenerationScope: "faq",
+      field: "faqHeading",
+      fieldType: "textarea",
+      label: "FAQ Heading",
+      section: "faq"
+    },
+    "faq.sectionLabel": {
+      aiRegenerationScope: "faq",
+      field: "faqSectionLabel",
+      label: "FAQ Section Label",
+      section: "faq"
+    },
     "footer.brandLine": {
       aiRegenerationScope: "footer",
       field: "footerBrandLine",
       label: "Footer Brand Line",
       section: "footer"
     },
-    "footer.headline": { aiRegenerationScope: "footer", field: "footerHeadline", fieldType: "textarea", label: "Footer Headline", section: "footer" },
-    "footer.text": { aiRegenerationScope: "footer", field: "footerText", fieldType: "textarea", label: "Footer Legal Copy", section: "footer" },
-    "hero.brandBadge": { aiRegenerationScope: "hero", field: "brandBadge", label: "Hero Badge", section: "hero" },
-    "hero.brandEyebrow": { aiRegenerationScope: "hero", field: "brandEyebrow", label: "Hero Support Line", section: "hero" },
-    "hero.headline": { aiRegenerationScope: "hero", field: "heroHeadline", fieldType: "textarea", label: "Hero Headline", section: "hero" },
-    "hero.mediaLabel": { aiRegenerationScope: "media", field: "heroMediaLabel", label: "Media Caption Label", section: "media" },
-    "hero.subheadline": { aiRegenerationScope: "hero", field: "subheadline", fieldType: "textarea", label: "Hero Subheadline", section: "hero" },
-    "hero.trustCopy": { aiRegenerationScope: "hero", field: "heroMicroTrustText", fieldType: "textarea", label: "Hero Trust Copy", section: "hero" },
-    "hero.trustLabel": { aiRegenerationScope: "hero", field: "heroTrustLine", label: "Hero Trust Label", section: "hero" },
-    "intro.body": { aiRegenerationScope: "intro", field: "coachIntro", fieldType: "textarea", label: "Coach Introduction", section: "intro" },
-    "intro.cardLabel": { aiRegenerationScope: "intro", field: "coachIntroLabel", label: "Intro Card Label", section: "intro" },
-    "intro.heading": { aiRegenerationScope: "intro", field: "introHeading", fieldType: "textarea", label: "Intro Heading", section: "intro" },
-    "intro.sectionLabel": { aiRegenerationScope: "intro", field: "introSectionLabel", label: "Intro Section Label", section: "intro" },
-    "journey.heading": { aiRegenerationScope: "journey", field: "journeyHeading", fieldType: "textarea", label: "Journey Heading", section: "journey" },
-    "journey.sectionLabel": { aiRegenerationScope: "journey", field: "journeySectionLabel", label: "Journey Section Label", section: "journey" },
-    "media.body": { aiRegenerationScope: "media", field: "mediaBody", fieldType: "textarea", label: "Media Body", section: "media" },
-    "media.heading": { aiRegenerationScope: "media", field: "mediaHeading", fieldType: "textarea", label: "Media Heading", section: "media" },
-    "media.moduleLabel": { aiRegenerationScope: "media", field: "mediaModuleLabel", label: "Media Module Label", section: "media" },
-    "media.sectionLabel": { aiRegenerationScope: "media", field: "mediaSubheading", label: "Media Section Label", section: "media" },
-    "problem.heading": { aiRegenerationScope: "problem", field: "problemHeading", fieldType: "textarea", label: "Problem Heading", section: "problem" },
-    "problem.sectionLabel": { aiRegenerationScope: "problem", field: "problemSectionLabel", label: "Problem Section Label", section: "problem" },
-    "problem.trustText": { aiRegenerationScope: "problem", field: "trustText", fieldType: "textarea", label: "Problem Support Text", section: "problem" },
-    "stickyCta.contactButton": { aiRegenerationScope: "cta", field: "stickyCtaContactButton", label: "Sticky Contact Button Text", section: "cta" },
-    "stickyCta.context": { aiRegenerationScope: "hero", field: "stickyCtaContext", label: "Sticky CTA Context", section: "hero" },
-    "stickyCta.heading": { aiRegenerationScope: "cta", field: "stickyCtaHeading", fieldType: "textarea", label: "Sticky CTA Heading", section: "cta" },
-    "stickyCta.label": { aiRegenerationScope: "cta", field: "stickyCtaLabel", label: "Sticky CTA Label", section: "cta" },
-    "stickyCta.registerButton": { aiRegenerationScope: "cta", field: "registerButtonText", label: "Sticky Register Text", section: "cta" },
-    "support.email": { aiRegenerationScope: "cta", field: "coachEmail", label: "Support Email", section: "cta" },
-    "support.emailLabel": { aiRegenerationScope: "cta", field: "supportEmailLabel", label: "Support Email Label", section: "cta" },
-    "support.heading": { aiRegenerationScope: "cta", field: "supportHeading", label: "Support Heading", section: "cta" },
-    "support.name": { aiRegenerationScope: "intro", field: "coachName", label: "Support Name", section: "intro" },
-    "support.phone": { aiRegenerationScope: "cta", field: "coachPhone", label: "Support Phone", section: "cta" },
-    "support.phoneLabel": { aiRegenerationScope: "cta", field: "supportPhoneLabel", label: "Support Phone Label", section: "cta" },
-    "support.primaryButton": { aiRegenerationScope: "cta", field: "supportPrimaryButton", label: "Support Button Label", section: "cta" },
-    "support.privacyNote": { aiRegenerationScope: "footer", field: "supportPrivacyNote", fieldType: "textarea", label: "Support Privacy Note", section: "footer" },
-    "support.text": { aiRegenerationScope: "cta", field: "supportText", fieldType: "textarea", label: "Support Text", section: "cta" },
-    "support.whatsappButton": { aiRegenerationScope: "cta", field: "supportWhatsappButton", label: "WhatsApp Button Label", section: "cta" },
-    "support.whatsappLabel": { aiRegenerationScope: "cta", field: "supportWhatsappLabel", label: "WhatsApp Helper Label", section: "cta" },
-    "vision.body": { aiRegenerationScope: "vision", field: "visionText", fieldType: "textarea", label: "Mission Copy", section: "vision" },
-    "vision.label": { aiRegenerationScope: "vision", field: "visionLabel", label: "Mission Label", section: "vision" }
+    "footer.headline": {
+      aiRegenerationScope: "footer",
+      field: "footerHeadline",
+      fieldType: "textarea",
+      label: "Footer Headline",
+      section: "footer"
+    },
+    "footer.text": {
+      aiRegenerationScope: "footer",
+      field: "footerText",
+      fieldType: "textarea",
+      label: "Footer Legal Copy",
+      section: "footer"
+    },
+    "hero.brandBadge": {
+      aiRegenerationScope: "hero",
+      field: "brandBadge",
+      label: "Hero Badge",
+      section: "hero"
+    },
+    "hero.brandEyebrow": {
+      aiRegenerationScope: "hero",
+      field: "brandEyebrow",
+      label: "Hero Support Line",
+      section: "hero"
+    },
+    "hero.headline": {
+      aiRegenerationScope: "hero",
+      field: "heroHeadline",
+      fieldType: "textarea",
+      label: "Hero Headline",
+      section: "hero"
+    },
+    "hero.mediaLabel": {
+      aiRegenerationScope: "media",
+      field: "heroMediaLabel",
+      label: "Media Caption Label",
+      section: "media"
+    },
+    "hero.subheadline": {
+      aiRegenerationScope: "hero",
+      field: "subheadline",
+      fieldType: "textarea",
+      label: "Hero Subheadline",
+      section: "hero"
+    },
+    "hero.trustCopy": {
+      aiRegenerationScope: "hero",
+      field: "heroMicroTrustText",
+      fieldType: "textarea",
+      label: "Hero Trust Copy",
+      section: "hero"
+    },
+    "hero.trustLabel": {
+      aiRegenerationScope: "hero",
+      field: "heroTrustLine",
+      label: "Hero Trust Label",
+      section: "hero"
+    },
+    "intro.body": {
+      aiRegenerationScope: "intro",
+      field: "coachIntro",
+      fieldType: "textarea",
+      label: "Coach Introduction",
+      section: "intro"
+    },
+    "intro.cardLabel": {
+      aiRegenerationScope: "intro",
+      field: "coachIntroLabel",
+      label: "Intro Card Label",
+      section: "intro"
+    },
+    "intro.heading": {
+      aiRegenerationScope: "intro",
+      field: "introHeading",
+      fieldType: "textarea",
+      label: "Intro Heading",
+      section: "intro"
+    },
+    "intro.sectionLabel": {
+      aiRegenerationScope: "intro",
+      field: "introSectionLabel",
+      label: "Intro Section Label",
+      section: "intro"
+    },
+    "journey.heading": {
+      aiRegenerationScope: "journey",
+      field: "journeyHeading",
+      fieldType: "textarea",
+      label: "Journey Heading",
+      section: "journey"
+    },
+    "journey.sectionLabel": {
+      aiRegenerationScope: "journey",
+      field: "journeySectionLabel",
+      label: "Journey Section Label",
+      section: "journey"
+    },
+    "media.body": {
+      aiRegenerationScope: "media",
+      field: "mediaBody",
+      fieldType: "textarea",
+      label: "Media Body",
+      section: "media"
+    },
+    "media.heading": {
+      aiRegenerationScope: "media",
+      field: "mediaHeading",
+      fieldType: "textarea",
+      label: "Media Heading",
+      section: "media"
+    },
+    "media.moduleLabel": {
+      aiRegenerationScope: "media",
+      field: "mediaModuleLabel",
+      label: "Media Module Label",
+      section: "media"
+    },
+    "media.sectionLabel": {
+      aiRegenerationScope: "media",
+      field: "mediaSubheading",
+      label: "Media Section Label",
+      section: "media"
+    },
+    "problem.heading": {
+      aiRegenerationScope: "problem",
+      field: "problemHeading",
+      fieldType: "textarea",
+      label: "Problem Heading",
+      section: "problem"
+    },
+    "problem.sectionLabel": {
+      aiRegenerationScope: "problem",
+      field: "problemSectionLabel",
+      label: "Problem Section Label",
+      section: "problem"
+    },
+    "problem.trustText": {
+      aiRegenerationScope: "problem",
+      field: "trustText",
+      fieldType: "textarea",
+      label: "Problem Support Text",
+      section: "problem"
+    },
+    "stickyCta.contactButton": {
+      aiRegenerationScope: "cta",
+      field: "stickyCtaContactButton",
+      label: "Sticky Contact Button Text",
+      section: "cta"
+    },
+    "stickyCta.context": {
+      aiRegenerationScope: "hero",
+      field: "stickyCtaContext",
+      label: "Sticky CTA Context",
+      section: "hero"
+    },
+    "stickyCta.heading": {
+      aiRegenerationScope: "cta",
+      field: "stickyCtaHeading",
+      fieldType: "textarea",
+      label: "Sticky CTA Heading",
+      section: "cta"
+    },
+    "stickyCta.label": {
+      aiRegenerationScope: "cta",
+      field: "stickyCtaLabel",
+      label: "Sticky CTA Label",
+      section: "cta"
+    },
+    "stickyCta.registerButton": {
+      aiRegenerationScope: "cta",
+      field: "registerButtonText",
+      label: "Sticky Register Text",
+      section: "cta"
+    },
+    "support.email": {
+      aiRegenerationScope: "cta",
+      field: "coachEmail",
+      label: "Support Email",
+      section: "cta"
+    },
+    "support.emailLabel": {
+      aiRegenerationScope: "cta",
+      field: "supportEmailLabel",
+      label: "Support Email Label",
+      section: "cta"
+    },
+    "support.heading": {
+      aiRegenerationScope: "cta",
+      field: "supportHeading",
+      label: "Support Heading",
+      section: "cta"
+    },
+    "support.name": {
+      aiRegenerationScope: "intro",
+      field: "coachName",
+      label: "Support Name",
+      section: "intro"
+    },
+    "support.phone": {
+      aiRegenerationScope: "cta",
+      field: "coachPhone",
+      label: "Support Phone",
+      section: "cta"
+    },
+    "support.phoneLabel": {
+      aiRegenerationScope: "cta",
+      field: "supportPhoneLabel",
+      label: "Support Phone Label",
+      section: "cta"
+    },
+    "support.primaryButton": {
+      aiRegenerationScope: "cta",
+      field: "supportPrimaryButton",
+      label: "Support Button Label",
+      section: "cta"
+    },
+    "support.privacyNote": {
+      aiRegenerationScope: "footer",
+      field: "supportPrivacyNote",
+      fieldType: "textarea",
+      label: "Support Privacy Note",
+      section: "footer"
+    },
+    "support.text": {
+      aiRegenerationScope: "cta",
+      field: "supportText",
+      fieldType: "textarea",
+      label: "Support Text",
+      section: "cta"
+    },
+    "support.whatsappButton": {
+      aiRegenerationScope: "cta",
+      field: "supportWhatsappButton",
+      label: "WhatsApp Button Label",
+      section: "cta"
+    },
+    "support.whatsappLabel": {
+      aiRegenerationScope: "cta",
+      field: "supportWhatsappLabel",
+      label: "WhatsApp Helper Label",
+      section: "cta"
+    },
+    "vision.body": {
+      aiRegenerationScope: "vision",
+      field: "visionText",
+      fieldType: "textarea",
+      label: "Mission Copy",
+      section: "vision"
+    },
+    "vision.label": {
+      aiRegenerationScope: "vision",
+      field: "visionLabel",
+      label: "Mission Label",
+      section: "vision"
+    }
   };
   const meta = scalarSlots[slotKey];
   if (!meta) return null;
@@ -691,7 +959,10 @@ function createSlotConfig(input: {
 }
 
 function getEditableLines(value: string) {
-  return value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
 function replaceEditableLine(value: string, index: number, nextValue: string) {
@@ -701,7 +972,10 @@ function replaceEditableLine(value: string, index: number, nextValue: string) {
 }
 
 function getJourneyBlocks(value: string) {
-  const blocks = value.split(/\n\s*\n/).map((block) => block.trim()).filter(Boolean);
+  const blocks = value
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean);
   return blocks.map((block) => {
     const [label = "", title = "", ...descriptionLines] = block.split(/\r?\n/);
     return {
@@ -727,7 +1001,9 @@ function replaceJourneyStepSlot(
     ...(blocks[index] || { description: "", label: "", title: "" }),
     [part]: nextValue.trim()
   };
-  return blocks.map((step) => [step.label, step.title, step.description].filter(Boolean).join("\n")).join("\n\n");
+  return blocks
+    .map((step) => [step.label, step.title, step.description].filter(Boolean).join("\n"))
+    .join("\n\n");
 }
 
 function getFaqBlocks(value: string) {
@@ -744,7 +1020,12 @@ function getFaqSlot(value: string, index: number) {
   return getFaqBlocks(value)[index] || { answer: "", question: "" };
 }
 
-function replaceFaqSlot(value: string, index: number, part: "answer" | "question", nextValue: string) {
+function replaceFaqSlot(
+  value: string,
+  index: number,
+  part: "answer" | "question",
+  nextValue: string
+) {
   const blocks = getFaqBlocks(value);
   blocks[index] = {
     ...(blocks[index] || { answer: "", question: "" }),
@@ -851,9 +1132,10 @@ function applyGeneratedCopyToForm(
   const benefitsText = content.benefits?.join("\n") || current.benefitsText;
   const benefitDescriptionsText =
     content.benefitDescriptions?.join("\n") || current.benefitDescriptionsText;
-  const journeyStepsText = content.journeySteps
-    ?.map((step) => `${step.label}\n${step.title}\n${step.description}`)
-    .join("\n\n") || current.journeyStepsText;
+  const journeyStepsText =
+    content.journeySteps
+      ?.map((step) => `${step.label}\n${step.title}\n${step.description}`)
+      .join("\n\n") || current.journeyStepsText;
   const problemPointsText = content.problemPoints?.join("\n") || current.problemPointsText;
 
   if (scope === "hero") {
@@ -1041,10 +1323,7 @@ export function AdminCoachSitesManager({
   onAdminActivity,
   onSitesChange
 }: AdminCoachSitesManagerProps) {
-  const externalSites = useMemo(
-    () => dedupeCoachSiteRecords(initialSites || []),
-    [initialSites]
-  );
+  const externalSites = useMemo(() => dedupeCoachSiteRecords(initialSites || []), [initialSites]);
   const [localSites, setLocalSites] = useState<CoachSiteRecord[] | null>(null);
   const [form, setForm] = useState<CoachSiteFormState>(EMPTY_COACH_SITE_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1113,22 +1392,28 @@ export function AdminCoachSitesManager({
     onAdminActivity?.(activity);
   }
 
-  const commitSites = useCallback((nextSites: CoachSiteRecord[]) => {
-    const dedupedSites = dedupeCoachSiteRecords(nextSites);
-    setLocalSites(dedupedSites);
-    onSitesChange?.(dedupedSites);
-
-    return dedupedSites;
-  }, [onSitesChange]);
-
-  const updateCommittedSites = useCallback((updater: (current: CoachSiteRecord[]) => CoachSiteRecord[]) => {
-    setLocalSites((current) => {
-      const dedupedSites = dedupeCoachSiteRecords(updater(current || externalSites));
+  const commitSites = useCallback(
+    (nextSites: CoachSiteRecord[]) => {
+      const dedupedSites = dedupeCoachSiteRecords(nextSites);
+      setLocalSites(dedupedSites);
       onSitesChange?.(dedupedSites);
 
       return dedupedSites;
-    });
-  }, [externalSites, onSitesChange]);
+    },
+    [onSitesChange]
+  );
+
+  const updateCommittedSites = useCallback(
+    (updater: (current: CoachSiteRecord[]) => CoachSiteRecord[]) => {
+      setLocalSites((current) => {
+        const dedupedSites = dedupeCoachSiteRecords(updater(current || externalSites));
+        onSitesChange?.(dedupedSites);
+
+        return dedupedSites;
+      });
+    },
+    [externalSites, onSitesChange]
+  );
 
   useEffect(() => {
     if (mode === "create") {
@@ -1396,7 +1681,9 @@ export function AdminCoachSitesManager({
       }
 
       if (sourceForm.coachPhone.trim() && !isValidIndianPhoneNumber(sourceForm.coachPhone)) {
-        setMessage("Use one valid 10-digit Indian support phone/WhatsApp number before publishing.");
+        setMessage(
+          "Use one valid 10-digit Indian support phone/WhatsApp number before publishing."
+        );
         return null;
       }
 
@@ -1446,12 +1733,10 @@ export function AdminCoachSitesManager({
       footerText: sourceForm.footerText || fallbackSite.content.footerText,
       heroHeadline: sourceForm.heroHeadline || fallbackSite.content.heroHeadline,
       heroMediaLabel: sourceForm.heroMediaLabel || fallbackSite.content.heroMediaLabel,
-      heroMicroTrustText:
-        sourceForm.heroMicroTrustText || fallbackSite.content.heroMicroTrustText,
+      heroMicroTrustText: sourceForm.heroMicroTrustText || fallbackSite.content.heroMicroTrustText,
       heroTrustLine: sourceForm.heroTrustLine || fallbackSite.content.heroTrustLine,
       introHeading: sourceForm.introHeading || fallbackSite.content.introHeading,
-      introSectionLabel:
-        sourceForm.introSectionLabel || fallbackSite.content.introSectionLabel,
+      introSectionLabel: sourceForm.introSectionLabel || fallbackSite.content.introSectionLabel,
       journeyHeading: sourceForm.journeyHeading || fallbackSite.content.journeyHeading,
       journeySectionLabel:
         sourceForm.journeySectionLabel || fallbackSite.content.journeySectionLabel,
@@ -1471,7 +1756,9 @@ export function AdminCoachSitesManager({
         sourceForm.problemPointsText || fallbackSite.content.problemPoints.join("\n"),
       socialCopy: sourceForm.socialCopy || fallbackSite.content.socialCopy,
       stickyCtaContactButton:
-        sourceForm.stickyCtaContactButton || fallbackSite.content.stickyCtaContactButton || "Register Now",
+        sourceForm.stickyCtaContactButton ||
+        fallbackSite.content.stickyCtaContactButton ||
+        "Register Now",
       stickyCtaContext:
         sourceForm.stickyCtaContext ||
         fallbackSite.content.stickyCtaContext ||
@@ -1483,17 +1770,24 @@ export function AdminCoachSitesManager({
       stickyCtaLabel:
         sourceForm.stickyCtaLabel || fallbackSite.content.stickyCtaLabel || "Registration",
       subheadline: sourceForm.subheadline || fallbackSite.content.subheadline,
-      supportEmailLabel: sourceForm.supportEmailLabel || fallbackSite.content.supportEmailLabel || "Email",
-      supportHeading: sourceForm.supportHeading || fallbackSite.content.supportHeading || "Contact Support",
-      supportPhoneLabel: sourceForm.supportPhoneLabel || fallbackSite.content.supportPhoneLabel || "Phone",
+      supportEmailLabel:
+        sourceForm.supportEmailLabel || fallbackSite.content.supportEmailLabel || "Email",
+      supportHeading:
+        sourceForm.supportHeading || fallbackSite.content.supportHeading || "Contact Support",
+      supportPhoneLabel:
+        sourceForm.supportPhoneLabel || fallbackSite.content.supportPhoneLabel || "Phone",
       supportPrimaryButton:
-        sourceForm.supportPrimaryButton || fallbackSite.content.supportPrimaryButton || "Contact Support",
+        sourceForm.supportPrimaryButton ||
+        fallbackSite.content.supportPrimaryButton ||
+        "Contact Support",
       supportPrivacyNote:
         sourceForm.supportPrivacyNote ||
         fallbackSite.content.supportPrivacyNote ||
         "Contact details shown here are public coach-site support details, not admin-only data.",
       supportWhatsappButton:
-        sourceForm.supportWhatsappButton || fallbackSite.content.supportWhatsappButton || "Message coach",
+        sourceForm.supportWhatsappButton ||
+        fallbackSite.content.supportWhatsappButton ||
+        "Message coach",
       supportWhatsappLabel:
         sourceForm.supportWhatsappLabel || fallbackSite.content.supportWhatsappLabel || "WhatsApp",
       trustText: sourceForm.trustText || fallbackSite.content.trustText,
@@ -1605,11 +1899,11 @@ export function AdminCoachSitesManager({
       setStorageMessage("Saved in coach-site database.");
       const savedSite = payload.coachSite;
       updateCommittedSites((current) =>
-          current.some((item) => item.id === site.id || item.slug === site.slug)
-            ? current.map((item) =>
-                item.id === site.id || item.slug === site.slug ? savedSite! : item
-              )
-            : [savedSite!, ...current]
+        current.some((item) => item.id === site.id || item.slug === site.slug)
+          ? current.map((item) =>
+              item.id === site.id || item.slug === site.slug ? savedSite! : item
+            )
+          : [savedSite!, ...current]
       );
       setPreviewSite(savedSite);
       setEditingId(savedSite.id);
@@ -1954,7 +2248,7 @@ export function AdminCoachSitesManager({
       heroHeadline: sourceForm.heroHeadline || analysis.headings[0] || analysis.title || "",
       introHeading:
         sourceForm.introHeading ||
-        `Personal ${analysis.niche || sourceForm.niche || "wellness"} guidance inside a premium wellness-tech ecosystem.`,
+        `Personal ${analysis.niche || sourceForm.niche || "wellness"} guidance with a calm, practical first step.`,
       niche: sourceForm.niche || analysis.niche || "",
       paidFunnelContext: context,
       problemHeading:
@@ -2490,23 +2784,19 @@ export function AdminCoachSitesManager({
       setRemoveConfirm("");
       setRemoveOtp("");
       setRemoveMessage("");
-      setRemoveActionStep(
-        status === "archived" ? "Archived successfully" : "Removed successfully"
-      );
+      setRemoveActionStep(status === "archived" ? "Archived successfully" : "Removed successfully");
       recordActivity({
         detail:
           status === "archived"
             ? `${payload.coachSite.coachName} archived successfully.`
             : `${payload.coachSite.coachName} removed and hidden from active admin lists.`,
-          label: "Coach Sites",
-          status: "success"
-        });
+        label: "Coach Sites",
+        status: "success"
+      });
       await waitForCoachSiteActionFeedback();
       setDialog(null);
     } catch {
-      setRemoveActionStep(
-        status === "archived" ? "Archive failed safely" : "Remove failed safely"
-      );
+      setRemoveActionStep(status === "archived" ? "Archive failed safely" : "Remove failed safely");
       setRemoveMessage("Could not reach admin API for this coach-site action.");
       recordActivity({
         detail:
@@ -3484,13 +3774,13 @@ function CoachDialogRenderer({
             ) : null}
 
             {wizardStep === 4 ? (
-            <PreviewAndEditStep
-              aiMessage={aiMessage}
-              aiSubmitting={aiSubmitting}
-              form={form}
-              onRegenerateCopy={onRegenerateCopy}
-              onUpdateField={onUpdateField}
-              persistedRevision={previewPersistenceRevision}
+              <PreviewAndEditStep
+                aiMessage={aiMessage}
+                aiSubmitting={aiSubmitting}
+                form={form}
+                onRegenerateCopy={onRegenerateCopy}
+                onUpdateField={onUpdateField}
+                persistedRevision={previewPersistenceRevision}
                 previewSite={previewSite}
               />
             ) : null}
@@ -3638,7 +3928,9 @@ function CoachDialogRenderer({
         </p>
         {deletingCurrentDraft ? (
           <CoachSiteActionProgressCard
-            label={deleteDraftStep.includes("successfully") ? "Deleted successfully" : "Deleting draft"}
+            label={
+              deleteDraftStep.includes("successfully") ? "Deleted successfully" : "Deleting draft"
+            }
             progress={deleteDraftStep.includes("successfully") ? 100 : 62}
             steps={[
               "Protected admin request started",
@@ -4384,7 +4676,9 @@ function PreviewAndEditStep({
             helper="Each step uses three lines: label, title, description. Separate steps with a blank line."
             label="Journey steps"
             onChange={(value) => onUpdateField("journeyStepsText", value)}
-            placeholder={"Profile\nMeet the coach\nGuests understand the coach story.\n\nFocus\nSee the wellness focus\nThe page explains the coach approach."}
+            placeholder={
+              "Profile\nMeet the coach\nGuests understand the coach story.\n\nFocus\nSee the wellness focus\nThe page explains the coach approach."
+            }
             value={form.journeyStepsText}
           />
           <TextAreaField
@@ -4531,8 +4825,8 @@ function AdminTemplateSkinPicker({
         ))}
       </select>
       <small>
-        Presentation only. The canonical renderer keeps the same sections, CTA destination,
-        Google Form behavior, support, legal links, analytics, inspect rules, and bonus services.
+        Presentation only. The canonical renderer keeps the same sections, CTA destination, Google
+        Form behavior, support, legal links, analytics, inspect rules, and bonus services.
       </small>
     </label>
   );
@@ -4566,8 +4860,8 @@ function InspectSectionEditor({
           <p className={styles.kicker}>Selected Section</p>
           <h3>{scopeLabel} editor</h3>
           <p>
-            Edits apply to the live preview immediately and are included when the draft is saved
-            or the site is published.
+            Edits apply to the live preview immediately and are included when the draft is saved or
+            the site is published.
           </p>
         </div>
         <button
@@ -5008,9 +5302,7 @@ function HeroMediaStep({
       const payload = (await response.json().catch(() => ({}))) as MediaUploadApiPayload;
 
       if (!response.ok || !payload.ok || !payload.media?.publicUrl) {
-        setUploadMessage(
-          payload.error || `${file.name} could not be saved. Please try again.`
-        );
+        setUploadMessage(payload.error || `${file.name} could not be saved. Please try again.`);
         onAdminActivity?.({
           detail:
             payload.error ||
@@ -5058,9 +5350,7 @@ function HeroMediaStep({
       );
       onAdminActivity?.({
         detail:
-          error instanceof Error
-            ? error.message
-            : `${file.name} upload API was not reachable.`,
+          error instanceof Error ? error.message : `${file.name} upload API was not reachable.`,
         label: "Coach Sites",
         status: "error"
       });
@@ -5162,11 +5452,7 @@ function HeroMediaStep({
               onUse={handleUseImageUrl}
             />
           ) : imagePreviewUrl ? (
-            <button
-              className={styles.secondaryAction}
-              onClick={handleResetImage}
-              type="button"
-            >
+            <button className={styles.secondaryAction} onClick={handleResetImage} type="button">
               Reset image
             </button>
           ) : null}
@@ -5196,7 +5482,10 @@ function HeroMediaStep({
             type="url"
             value={form.videoUrl}
           />
-          <div className={styles.mediaPreview} data-state={videoPreviewUrl || uploadedVideoUrl ? "ready" : "empty"}>
+          <div
+            className={styles.mediaPreview}
+            data-state={videoPreviewUrl || uploadedVideoUrl ? "ready" : "empty"}
+          >
             {videoPreviewUrl ? (
               <iframe
                 allow="accelerometer; autoplay; clipboard-write; compute-pressure; encrypted-media; gyroscope; picture-in-picture"
@@ -5474,6 +5763,9 @@ const CoachSitePreview = memo(function CoachSitePreview({
 }) {
   const selectedTheme = getCoachTemplateTheme(site.selectedThemeId);
   const previewFrameRef = useRef<HTMLDivElement | null>(null);
+  const [previewViewport, setPreviewViewport] = useState<"desktop" | "mobile" | "tablet">(
+    "desktop"
+  );
   const [inspectEditorPosition, setInspectEditorPosition] = useState<{
     left: number;
     target: PreviewInspectTarget;
@@ -5521,7 +5813,8 @@ const CoachSitePreview = memo(function CoachSitePreview({
         const editorWidth = Math.min(448, Math.max(280, activeFrame.clientWidth - 24));
         const gap = 12;
         const minLeft = activeFrame.scrollLeft + gap;
-        const maxLeft = activeFrame.scrollLeft + Math.max(gap, activeFrame.clientWidth - editorWidth - gap);
+        const maxLeft =
+          activeFrame.scrollLeft + Math.max(gap, activeFrame.clientWidth - editorWidth - gap);
         const preferredLeft = activeFrame.scrollLeft + targetRect.right - frameRect.left + gap;
         const fallbackLeft = activeFrame.scrollLeft + targetRect.left - frameRect.left;
         const left = Math.min(Math.max(minLeft, preferredLeft), maxLeft);
@@ -5552,11 +5845,11 @@ const CoachSitePreview = memo(function CoachSitePreview({
 
   const inspectEditorStyle =
     inspectEditorPosition && inspectEditorPosition.target === selectedInspectScope
-    ? ({
-        "--inspect-editor-left": `${inspectEditorPosition.left}px`,
-        "--inspect-editor-top": `${inspectEditorPosition.top}px`
-      } as CSSProperties)
-    : undefined;
+      ? ({
+          "--inspect-editor-left": `${inspectEditorPosition.left}px`,
+          "--inspect-editor-top": `${inspectEditorPosition.top}px`
+        } as CSSProperties)
+      : undefined;
 
   return (
     <article className={styles.productionPreview} data-theme={selectedTheme.id}>
@@ -5565,10 +5858,31 @@ const CoachSitePreview = memo(function CoachSitePreview({
           <p className={styles.kicker}>Public Website Preview</p>
           <h3>{site.coachName}</h3>
         </div>
-        <span>{site.publicUrl}</span>
+        <div className={styles.productionPreviewHeaderActions}>
+          <div className={styles.productionPreviewViewportTools} aria-label="Preview device size">
+            {(["desktop", "tablet", "mobile"] as const).map((item) => (
+              <button
+                data-active={previewViewport === item ? "true" : undefined}
+                key={item}
+                onClick={() => setPreviewViewport(item)}
+                type="button"
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+          <span>{site.publicUrl}</span>
+        </div>
       </div>
-      <div className={styles.productionPreviewFrame} ref={previewFrameRef}>
-        <div className={styles.previewFloatingInspectWidget} data-active={inspectMode ? "true" : "false"}>
+      <div
+        className={styles.productionPreviewFrame}
+        data-size={previewViewport}
+        ref={previewFrameRef}
+      >
+        <div
+          className={styles.previewFloatingInspectWidget}
+          data-active={inspectMode ? "true" : "false"}
+        >
           <button
             aria-pressed={inspectMode}
             className={styles.inspectToggleButton}
@@ -5579,7 +5893,9 @@ const CoachSitePreview = memo(function CoachSitePreview({
             <CursorInspectIcon />
             <span>{inspectMode ? "Inspect On" : "Inspect"}</span>
           </button>
-          {inspectMode ? <small>Click any highlighted text to edit the mapped content slot.</small> : null}
+          {inspectMode ? (
+            <small>Click any highlighted text to edit the mapped content slot.</small>
+          ) : null}
         </div>
         <PublicCoachSitePage
           enableTracking={false}
@@ -5604,7 +5920,9 @@ const CoachSitePreview = memo(function CoachSitePreview({
           <div className={styles.floatingInspectHint}>
             <span>01</span>
             <strong>Select website text</strong>
-            <small>Hero, benefits, FAQ, CTA, support, and footer copy are editable content slots.</small>
+            <small>
+              Hero, benefits, FAQ, CTA, support, and footer copy are editable content slots.
+            </small>
           </div>
         ) : null}
       </div>
@@ -5677,7 +5995,9 @@ function FloatingInspectEditor({
           onClick={() => void onRegenerateCopy?.(slot.aiRegenerationScope)}
           type="button"
         >
-          {aiSubmitting ? "Regenerating..." : `Regenerate ${getCopyScopeLabel(slot.aiRegenerationScope)}`}
+          {aiSubmitting
+            ? "Regenerating..."
+            : `Regenerate ${getCopyScopeLabel(slot.aiRegenerationScope)}`}
         </button>
       </div>
     </section>
@@ -5779,7 +6099,9 @@ function sanitizeSingleFieldPaste(
   const normalized = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
   const currentDigits = currentValue.replace(/\D/g, "");
   const normalizedCurrent =
-    currentDigits.length === 12 && currentDigits.startsWith("91") ? currentDigits.slice(2) : currentDigits;
+    currentDigits.length === 12 && currentDigits.startsWith("91")
+      ? currentDigits.slice(2)
+      : currentDigits;
   if (normalized.length === 10 && normalized === normalizedCurrent) return normalized;
   if (normalized.length === 10) return normalized;
   return null;
@@ -5858,7 +6180,9 @@ function isAllowedVideoFile(file: File) {
   return (
     Boolean(extension) &&
     ALLOWED_VIDEO_EXTENSIONS.has(extension) &&
-    (contentType === "" || contentType === "application/octet-stream" || contentType.startsWith("video/"))
+    (contentType === "" ||
+      contentType === "application/octet-stream" ||
+      contentType.startsWith("video/"))
   );
 }
 
@@ -5902,9 +6226,7 @@ function getCoachImageAdminActivityMessage(
       : "Coach photo uploaded, but the transparent cutout was not created.";
   }
 
-  return file
-    ? `${file.name} coach photo uploaded.`
-    : "Coach photo uploaded.";
+  return file ? `${file.name} coach photo uploaded.` : "Coach photo uploaded.";
 }
 
 function getCoachImageResultTitle(media: CoachImageMediaResult) {
