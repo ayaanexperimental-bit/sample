@@ -117,27 +117,27 @@ export function createShopContent({
   const safeBio =
     sanitizeText(shortBio, 420) ||
     `A practical coach helping clients move with more clarity, confidence, and consistency.`;
-  const nicheLower = safeNiche.toLowerCase();
+  const fallback = getShopNicheFallbackCopy(safeNiche, safeLocation);
 
   return {
     benefitDescriptions: [
-      `A sharp introduction to ${safeName}'s point of view, coaching style, and client fit.`,
-      `A calm explanation of how ${nicheLower} support works before someone registers.`,
-      "A polished public page built for sharing, referrals, and confident first contact."
+      `A clear introduction to ${safeName}'s method, boundaries, and who the page is best for.`,
+      fallback.benefitDescription,
+      "A simple registration path that helps guests decide without pressure or confusing claims."
     ],
     benefits: ["Clear coach story", "Trust before registration", "Fast client action"],
     benefitsHeading: `Why clients connect with ${safeName}`,
     benefitsSectionLabel: "Benefits",
-    brandBadge: "YW Nutritech premium coach profile",
-    brandEyebrow: "Built for client-ready referrals",
+    brandBadge: "Education-first wellness page",
+    brandEyebrow: "Coach-led practical guidance",
     coachIntro: safeBio,
     coachIntroLabel: `Who ${safeName} is`,
-    ctaText: "Ready to work with this coach?",
+    ctaText: "Register Now",
     ctaSectionLabel: "Next step",
     faq: [
       {
         question: "Who is this website for?",
-        answer: `People looking for practical ${nicheLower} support from ${safeName}.`
+        answer: fallback.faqAudience(safeName)
       },
       {
         question: "Is this medical advice?",
@@ -149,23 +149,23 @@ export function createShopContent({
         answer: "Use the registration or contact button on this page to take the next step."
       }
     ],
-    faqHeading: "Questions before connecting",
+    faqHeading: "Common Questions Before You Register",
     faqSectionLabel: "FAQ",
-    footerBrandLine: "YW Nutritech Premium Coach Website",
+    footerBrandLine: "YW Nutritech Coach Circle",
     footerHeadline: "Yours Wellness Center",
     footerText:
       "This page is for wellness education and coaching support. It is not a substitute for medical advice, diagnosis, or treatment. Results vary based on individual context and consistency.",
-    heroHeadline: `${safeName}: premium ${nicheLower} support`,
+    heroHeadline: fallback.heroHeadline(safeName),
     heroMediaLabel: "Coach",
     heroMicroTrustText: "Coach identity, clear method, trusted next step",
-    heroTrustLine: "YW Nutritech care lens",
-    introHeading: `${safeNiche} guidance for ${safeLocation}`,
+    heroTrustLine: "Education-first wellness guidance",
+    introHeading: fallback.introHeading(safeName),
     introSectionLabel: "Coach Introduction",
     journeyHeading: "A simple path from discovery to registration",
     journeySectionLabel: "Client journey",
     journeySteps: [
       {
-        description: "Understand the coach's niche, story, and support style without guessing.",
+        description: "Understand the coach's niche, story, and guidance approach without guessing.",
         label: "Discover",
         title: "Meet the coach"
       },
@@ -181,33 +181,138 @@ export function createShopContent({
       }
     ],
     mediaBody: "A strong photo or video makes the page feel personal, credible, and ready to share.",
-    mediaHeading: "Coach media spotlight",
+    mediaHeading: "Coach media",
     mediaModuleLabel: "Media",
-    mediaSubheading: "Photo and video-ready profile",
-    problemHeading: `For clients who need a clearer ${nicheLower} starting point.`,
+    mediaSubheading: "Photo and video-ready area",
+    problemHeading: fallback.problemHeading,
     problemPoints: [
       "Too much scattered advice and not enough structure.",
       "Unclear next steps before booking or registering.",
       "A need for trust before starting a coaching relationship."
     ],
     problemSectionLabel: "Problem to solution",
-    socialCopy: `Connect with ${safeName} for ${nicheLower} support.`,
-    stickyCtaContactButton: "Contact Coach",
-    stickyCtaContext: `${safeNiche} through YW Nutritech`,
+    socialCopy: fallback.socialCopy(safeName),
+    stickyCtaContactButton: "Register Now",
+    stickyCtaContext: fallback.stickyContext,
     stickyCtaHeading: `Ready to connect with Coach ${safeName}?`,
-    stickyCtaLabel: "Free guest registration",
-    subheadline: `Meet the coach, understand the support style, and register for ${nicheLower} guidance in ${safeLocation}.`,
+    stickyCtaLabel: "Registration",
+    subheadline: fallback.subheadline,
     supportEmailLabel: "Email",
-    supportHeading: "Contact Support",
+    supportHeading: "Coach Contact",
     supportPhoneLabel: "Phone",
-    supportPrimaryButton: "Contact Support",
+    supportPrimaryButton: "Register Now",
     supportPrivacyNote:
       "Contact details shown here are public coach-site support details, not admin-only data.",
     supportWhatsappButton: "Message coach",
     supportWhatsappLabel: "WhatsApp",
     trustText: "Built on education-first coaching, clear boundaries, and a simple registration step.",
     visionLabel: "Coach mission",
-    visionText: `Help clients make ${nicheLower} feel clearer, calmer, and easier to act on.`
+    visionText: fallback.visionText
+  };
+}
+
+function getShopNicheFallbackCopy(niche: string, location: string) {
+  const normalized = niche.toLowerCase();
+  const place = location || "your community";
+
+  if (/\b(pcos|pcod|pmos|hormone|hormonal|women'?s?\s+wellness|women wellness)\b/.test(normalized)) {
+    return {
+      benefitDescription: "A calm explanation of lifestyle guidance for everyday routines, cycle awareness, stress, sleep, movement, and consistency.",
+      faqAudience: (name: string) =>
+        `This page is for people who want education-first lifestyle guidance from ${name} while keeping medical care and personal health decisions with qualified professionals.`,
+      heroHeadline: (name: string) => `Personal wellness guidance with ${name}`,
+      introHeading: (name: string) => `${name}'s practical wellness approach in ${place}`,
+      problemHeading: "For guests who want a calmer first step before choosing support.",
+      socialCopy: (name: string) => `Connect with ${name} for education-first wellness guidance.`,
+      stickyContext: "Education-first wellness support through YW Nutritech",
+      subheadline:
+        "Understand the coach's approach, see how the guidance works, and register when the fit feels clear.",
+      visionText:
+        "Help guests turn confusing lifestyle advice into a practical routine they can discuss, adapt, and follow consistently."
+    };
+  }
+
+  if (/\b(diabetes|diabetic|blood sugar|glucose|insulin|metabolic)\b/.test(normalized)) {
+    return {
+      benefitDescription: "A practical overview of food rhythm, tracking, movement, recovery, and consistency habits for metabolic wellness education.",
+      faqAudience: (name: string) =>
+        `This page is for people who want structured education from ${name} to support daily wellness habits alongside their qualified healthcare providers.`,
+      heroHeadline: (name: string) => `Metabolic wellness guidance with ${name}`,
+      introHeading: (name: string) => `${name}'s practical metabolic wellness approach in ${place}`,
+      problemHeading: "For guests who want structure before committing to support.",
+      socialCopy: (name: string) => `Connect with ${name} for structured metabolic wellness education.`,
+      stickyContext: "Structured wellness education through YW Nutritech",
+      subheadline:
+        "Meet the coach, understand the method, and register for education-first support without medical promises.",
+      visionText:
+        "Help guests build clearer routines around daily choices, tracking, movement, recovery, and consistency."
+    };
+  }
+
+  if (/\b(gut|digestion|digestive)\b/.test(normalized)) {
+    return {
+      benefitDescription: "A grounded view of food rhythm, digestion patterns, stress, routine tracking, and sustainable daily changes.",
+      faqAudience: (name: string) =>
+        `This page is for people who want practical gut-wellness education from ${name} without replacing diagnosis or treatment from a clinician.`,
+      heroHeadline: (name: string) => `Gut wellness guidance with ${name}`,
+      introHeading: (name: string) => `${name}'s practical gut-wellness approach in ${place}`,
+      problemHeading: "For guests who need a clearer way to understand their daily patterns.",
+      socialCopy: (name: string) => `Connect with ${name} for practical gut-wellness education.`,
+      stickyContext: "Gut-wellness education through YW Nutritech",
+      subheadline:
+        "See the coach's method, understand the support boundaries, and register when you are ready.",
+      visionText:
+        "Help guests notice daily patterns, simplify routines, and build consistency around food, stress, and recovery."
+    };
+  }
+
+  if (/\b(sleep|recovery|rest)\b/.test(normalized)) {
+    return {
+      benefitDescription: "A simple look at sleep routines, evening habits, recovery rhythm, stress awareness, and consistency.",
+      faqAudience: (name: string) =>
+        `This page is for people who want practical sleep and recovery education from ${name} with clear coaching boundaries.`,
+      heroHeadline: (name: string) => `Sleep and recovery guidance with ${name}`,
+      introHeading: (name: string) => `${name}'s practical recovery approach in ${place}`,
+      problemHeading: "For guests who want steadier routines before choosing support.",
+      socialCopy: (name: string) => `Connect with ${name} for sleep and recovery education.`,
+      stickyContext: "Sleep and recovery education through YW Nutritech",
+      subheadline:
+        "Understand the coach's approach to routine, recovery, and consistency before you register.",
+      visionText:
+        "Help guests make rest, recovery, and daily rhythm easier to understand and act on."
+    };
+  }
+
+  if (/\b(fat\s*-?\s*loss|weight\s*-?\s*loss|fitness|strength|workout|movement)\b/.test(normalized)) {
+    return {
+      benefitDescription: "A practical path for movement, meal structure, recovery, tracking, and habit consistency without extreme promises.",
+      faqAudience: (name: string) =>
+        `This page is for people who want practical fitness or body-composition education from ${name} without unsafe shortcuts.`,
+      heroHeadline: (name: string) => `Practical habit coaching with ${name}`,
+      introHeading: (name: string) => `${name}'s practical habit approach in ${place}`,
+      problemHeading: "For guests who want a realistic plan before taking the next step.",
+      socialCopy: (name: string) => `Connect with ${name} for practical habit-based coaching.`,
+      stickyContext: "Habit-based wellness support through YW Nutritech",
+      subheadline:
+        "Meet the coach, understand the habit framework, and register when the next step feels clear.",
+      visionText:
+        "Help guests turn scattered effort into steadier habits around movement, food rhythm, recovery, and follow-through."
+    };
+  }
+
+  return {
+    benefitDescription: "A calm explanation of how the coach structures education, support boundaries, and daily follow-through.",
+    faqAudience: (name: string) =>
+      `This page is for people who want practical education-first wellness guidance from ${name} before taking the next step.`,
+    heroHeadline: (name: string) => `Practical wellness guidance with ${name}`,
+    introHeading: (name: string) => `${name}'s practical wellness approach in ${place}`,
+    problemHeading: "For guests who need a clearer first step before committing.",
+    socialCopy: (name: string) => `Connect with ${name} for practical wellness guidance.`,
+    stickyContext: "Education-first wellness support through YW Nutritech",
+    subheadline:
+      "Meet the coach, understand the method, and register when the next step feels clear.",
+    visionText:
+      "Help guests turn broad wellness intentions into clearer routines, better questions, and steadier follow-through."
   };
 }
 
@@ -229,21 +334,21 @@ export function normalizeShopBuilderState(input: ShopBuilderStateInput): ShopBui
     coachEmail: sanitizeText(input.coachEmail || input.email, 180),
     coachName,
     coachPhone: sanitizeText(input.coachPhone, 60),
-    contactLink: sanitizeUrl(input.contactLink),
+    contactLink: sanitizeText(input.contactLink, 500),
     currentStep: clampStep(input.currentStep),
     email: sanitizeText(input.email || input.coachEmail, 180),
     heroMediaType: normalizeHeroMediaType(input.heroMediaType),
     location,
-    logoUrl: sanitizeUrl(input.logoUrl),
+    logoUrl: sanitizeText(input.logoUrl, 500),
     niche,
     orderId: sanitizeText(input.orderId, 120),
-    photoUrl: sanitizeUrl(input.photoUrl),
+    photoUrl: sanitizeText(input.photoUrl, 1200),
     selectedThemeId: normalizeCoachTemplateThemeId(input.selectedThemeId),
     shortBio,
     slug,
     status: normalizeShopStatus(input.status),
-    videoUrl: sanitizeUrl(input.videoUrl),
-    whatsappLink: sanitizeUrl(input.whatsappLink),
+    videoUrl: sanitizeText(input.videoUrl, 1200),
+    whatsappLink: sanitizeText(input.whatsappLink, 500),
     content
   };
 }
@@ -263,6 +368,11 @@ export function buildCoachSiteFromShopState({
   const slug = normalized.slug || normalizeCoachSlug(normalized.coachName);
   const effectiveCreatedAt = createdAt || new Date().toISOString();
   const siteId = id || `shop-site-${slug}`;
+  const safeContactLink = sanitizeUrl(normalized.contactLink);
+  const safeLogoUrl = sanitizeUrl(normalized.logoUrl);
+  const safePhotoUrl = sanitizeUrl(normalized.photoUrl);
+  const safeVideoUrl = sanitizeUrl(normalized.videoUrl);
+  const safeWhatsappLink = sanitizeUrl(normalized.whatsappLink);
   const site = createCoachSiteFromForm({
     form: {
       ...EMPTY_COACH_SITE_FORM,
@@ -289,7 +399,7 @@ export function buildCoachSiteFromShopState({
       footerBrandLine: normalized.content.footerBrandLine,
       footerHeadline: normalized.content.footerHeadline,
       footerText: normalized.content.footerText,
-      googleFormUrl: normalized.contactLink,
+      googleFormUrl: safeContactLink,
       heroMediaType: normalized.heroMediaType,
       heroHeadline: normalized.content.heroHeadline,
       heroMediaLabel: normalized.content.heroMediaLabel,
@@ -303,14 +413,14 @@ export function buildCoachSiteFromShopState({
         .map((step) => `${step.label} | ${step.title} | ${step.description}`)
         .join("\n"),
       location: normalized.location,
-      logoUrl: normalized.logoUrl,
+      logoUrl: safeLogoUrl,
       mediaBody: normalized.content.mediaBody,
       mediaHeading: normalized.content.mediaHeading,
       mediaModuleLabel: normalized.content.mediaModuleLabel,
       mediaSubheading: normalized.content.mediaSubheading,
       niche: normalized.niche,
       paidFunnelContext: "source=shop_purchased",
-      photoUrl: normalized.photoUrl,
+      photoUrl: safePhotoUrl,
       problemHeading: normalized.content.problemHeading,
       problemPointsText: normalized.content.problemPoints.join("\n"),
       problemSectionLabel: normalized.content.problemSectionLabel,
@@ -321,11 +431,11 @@ export function buildCoachSiteFromShopState({
       subheadline: normalized.content.subheadline,
       supportText: "",
       trustText: normalized.content.trustText,
-      videoUrl: normalized.videoUrl,
+      videoUrl: safeVideoUrl,
       vision: normalized.content.visionText,
       visionLabel: normalized.content.visionLabel,
       visionText: normalized.content.visionText,
-      whatsappLink: normalized.whatsappLink
+      whatsappLink: safeWhatsappLink
     },
     id: siteId,
     status: (published ? "published" : "draft") as CoachSiteStatus
@@ -355,13 +465,13 @@ export function validateShopBuilderState(
   const normalized = normalizeShopBuilderState(state);
   const issues: ShopValidationIssue[] = [];
 
-  if (!normalized.coachName) {
+  if (!normalized.coachName.trim()) {
     issues.push({ field: "coachName", message: "Coach name is required.", severity: "error" });
   }
-  if (!normalized.niche) {
+  if (!normalized.niche.trim()) {
     issues.push({ field: "niche", message: "Niche is required.", severity: "error" });
   }
-  if (!normalized.shortBio) {
+  if (!normalized.shortBio.trim()) {
     issues.push({ field: "shortBio", message: "Short bio is required.", severity: "error" });
   }
   if (!normalized.slug) {
@@ -369,6 +479,13 @@ export function validateShopBuilderState(
   }
   if (normalized.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized.email)) {
     issues.push({ field: "email", message: "Enter a valid email address.", severity: "error" });
+  }
+  if (normalized.coachPhone && !isValidIndianPhoneNumber(normalized.coachPhone)) {
+    issues.push({
+      field: "coachPhone",
+      message: "Enter one valid 10-digit Indian phone/WhatsApp number.",
+      severity: "error"
+    });
   }
   if (
     options.requirePaymentReady &&
@@ -380,8 +497,12 @@ export function validateShopBuilderState(
       severity: "error"
     });
   }
-  if (normalized.contactLink && !isSafePublicUrl(normalized.contactLink)) {
-    issues.push({ field: "contactLink", message: "Enter a valid HTTPS contact or registration link.", severity: "error" });
+  if (normalized.contactLink && !isSingleSafePublicUrl(normalized.contactLink)) {
+    issues.push({
+      field: "contactLink",
+      message: "Enter one valid HTTPS registration/contact link only.",
+      severity: "error"
+    });
   }
   if (!normalized.content.heroHeadline.trim()) {
     issues.push({ field: "content", message: "Hero headline cannot be empty.", severity: "error" });
@@ -405,8 +526,18 @@ export function validateShopBuilderState(
 
 function hasUsableShopPaymentContact(email: string, phone: string) {
   const cleanEmail = email.trim().toLowerCase();
-  const phoneDigits = phone.replace(/\D/g, "");
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail) || phoneDigits.length >= 7;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail) || isValidIndianPhoneNumber(phone);
+}
+
+function isValidIndianPhoneNumber(value: string) {
+  const digits = normalizeIndianPhoneDigits(value);
+  return /^[6-9]\d{9}$/.test(digits);
+}
+
+function normalizeIndianPhoneDigits(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
+  return digits;
 }
 
 function normalizeShopSlugForCoach(inputSlug: unknown, coachName: string) {
@@ -469,7 +600,6 @@ function clampStep(value: unknown) {
 function sanitizeText(value: unknown, maxLength: number) {
   return String(value || "")
     .replace(/\s+/g, " ")
-    .trim()
     .slice(0, maxLength);
 }
 
@@ -491,14 +621,19 @@ function normalizeHeroMediaType(value: unknown): CoachHeroMediaType {
 }
 
 function isSafeInternalCoachMediaUrl(value: string) {
-  return (
-    /^\/api\/coach-media\?key=coach-sites%2F[a-z0-9-]+%2F(image|video)%2F[a-z0-9.-]+$/i.test(
-      value
-    ) ||
-    /^\/api\/coach-media\?key=coach-sites\/[a-z0-9-]+\/(image|video)\/[a-z0-9.-]+$/i.test(
-      value
-    )
-  );
+  try {
+    const url = new URL(value, "https://ywcoach.local");
+    if (url.origin !== "https://ywcoach.local") return false;
+    if (url.pathname !== "/api/coach-media") return false;
+
+    const objectKey = url.searchParams.get("key") || "";
+    if (objectKey.length > 900 || objectKey.includes("..")) return false;
+    return /^coach-sites\/[a-z0-9-]+\/(image|video)(\/(original|cutout))?\/[0-9]{14}-[a-f0-9-]+\.[a-z0-9]+$/i.test(
+      objectKey
+    );
+  } catch {
+    return false;
+  }
 }
 
 function isSafePublicUrl(value: string) {
@@ -508,4 +643,11 @@ function isSafePublicUrl(value: string) {
   } catch {
     return false;
   }
+}
+
+function isSingleSafePublicUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (/\s/.test(trimmed)) return false;
+  return isSafePublicUrl(trimmed);
 }

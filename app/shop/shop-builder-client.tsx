@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent } from "react";
 
 import { PublicCoachSitePage } from "../../components/coach/public-coach-site-page";
 import type {
@@ -17,7 +17,11 @@ import {
   type ShopBuilderState,
   type ShopValidationIssue
 } from "../../lib/shop-builder";
-import { prepareCoachHeroPhotoForUpload } from "../../lib/client/coach-photo-background-removal";
+import {
+  prepareCoachHeroPhotoForUpload,
+  preloadCoachHeroPhotoBackgroundRemoval
+} from "../../lib/client/coach-photo-background-removal";
+import { coachTemplateThemes, type CoachTemplateThemeId } from "../../lib/coach-template-themes";
 import { isUploadedVideoSource, normalizeVideoEmbedUrl } from "../../lib/video-links";
 import styles from "./shop-builder.module.css";
 
@@ -25,10 +29,11 @@ const STORAGE_KEY = "ywcoach-shop-builder-draft-v1";
 const CHECKOUT_IDEMPOTENCY_STORAGE_KEY = "ywcoach-shop-checkout-idempotency-v1";
 const ORDER_ACCESS_KEY_STORAGE_KEY = "ywcoach-shop-order-access-key-v1";
 const SHOP_PHOTO_MAX_BYTES = 12 * 1024 * 1024;
-const SHOP_VIDEO_MAX_BYTES = 24 * 1024 * 1024;
-const SHOP_PHOTO_PROCESS_MAX_EDGE = 1800;
+const SHOP_VIDEO_MAX_BYTES = 70 * 1024 * 1024;
 const PHOTO_UPLOAD_ACCEPT =
   ".jpg,.jpeg,.jpe,.jfif,.png,.webp,.avif,.gif,.heic,.heif,.bmp,.tif,.tiff,image/jpeg,image/png,image/webp,image/avif,image/gif,image/heic,image/heif,image/bmp,image/tiff";
+const VIDEO_UPLOAD_ACCEPT =
+  ".mp4,.m4v,.mov,.webm,.ogv,.ogg,.3gp,.3g2,.mpeg,.mpg,.avi,.wmv,.mkv,video/mp4,application/mp4,video/x-m4v,video/quicktime,video/webm,video/ogg,application/ogg,video/3gpp,video/3gpp2,video/mpeg,video/x-msvideo,video/msvideo,video/x-ms-wmv,video/x-matroska";
 const ALLOWED_PHOTO_EXTENSIONS = new Set([
   ".avif",
   ".bmp",
@@ -58,6 +63,37 @@ const ALLOWED_PHOTO_TYPES = new Set([
   "image/x-ms-bmp",
   "image/x-png"
 ]);
+const ALLOWED_VIDEO_EXTENSIONS = new Set([
+  ".3g2",
+  ".3gp",
+  ".avi",
+  ".m4v",
+  ".mkv",
+  ".mov",
+  ".mp4",
+  ".mpeg",
+  ".mpg",
+  ".ogg",
+  ".ogv",
+  ".webm",
+  ".wmv"
+]);
+const ALLOWED_VIDEO_TYPES = new Set([
+  "application/mp4",
+  "application/ogg",
+  "video/3gpp",
+  "video/3gpp2",
+  "video/mp4",
+  "video/mpeg",
+  "video/msvideo",
+  "video/ogg",
+  "video/quicktime",
+  "video/webm",
+  "video/x-m4v",
+  "video/x-matroska",
+  "video/x-ms-wmv",
+  "video/x-msvideo"
+]);
 
 type CheckoutResponse = {
   accessKey?: string;
@@ -71,13 +107,25 @@ type CheckoutResponse = {
 type MediaUploadResponse = {
   error?: string;
   media?: {
+    cutoutUrl?: string;
+    fallbackMode?: "cutout" | "framed" | "original";
     mediaType: "image" | "video";
     objectKey: string;
+    originalObjectKey?: string;
+    originalUrl?: string;
+    processingAttemptErrorCodes?: string[];
+    processingErrorCode?: string;
+    processingProvider?: "already-transparent" | "photoroom" | "removebg";
+    processingStatus?: "cutout_ready" | "disabled" | "framed_fallback" | "not_configured";
     publicUrl: string;
+    qualityStatus?: "failed" | "passed" | "skipped";
+    safeMessage?: string;
     sizeBytes: number;
   };
   ok?: boolean;
 };
+
+type CoachImageMediaResult = NonNullable<MediaUploadResponse["media"]>;
 
 type PublicShopOrder = {
   accessKey?: string;
@@ -181,13 +229,14 @@ export function ShopBuilderClient() {
   const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>("idle");
   const [autoSaveText, setAutoSaveText] = useState("");
   const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [mediaProcessingMessage, setMediaProcessingMessage] = useState("");
   const [message, setMessage] = useState("");
   const [issues, setIssues] = useState<ShopValidationIssue[]>([]);
   const [inspectOn, setInspectOn] = useState(false);
   const [lockedOrder, setLockedOrder] = useState<PublicShopOrder | null>(null);
   const [lockCheckDone, setLockCheckDone] = useState(true);
   const [resumeAccessKey, setResumeAccessKey] = useState("");
-  const [resumeChecked, setResumeChecked] = useState(false);
+  const [resumeChecked, setResumeChecked] = useState(true);
   const [selectedScope, setSelectedScope] = useState<CoachTemplatePreviewInspectSection | null>(
     null
   );
@@ -218,14 +267,14 @@ export function ShopBuilderClient() {
 
     const resumeParams = getResumeParamsFromUrl();
     if (!resumeParams) {
-      const noResumeTimer = window.setTimeout(() => setResumeChecked(true), 0);
-      return () => window.clearTimeout(noResumeTimer);
+      return;
     }
     const resumeOrderId = resumeParams.orderId;
     const resumeKey = resumeParams.accessKey;
 
     let active = true;
     async function loadResumeLink() {
+      setResumeChecked(false);
       setLockCheckDone(false);
       setMessage("Loading secure resume link...");
       try {
@@ -255,10 +304,12 @@ export function ShopBuilderClient() {
           order.paymentStatus === "paid" ||
           order.paymentStatus === "published" ||
           order.siteStatus === "publishing" ||
-          order.siteStatus === "published" ||
-          order.siteStatus === "publish_failed"
+          order.siteStatus === "published"
         ) {
           setLockedOrder(order);
+        } else if (order.siteStatus === "publish_failed") {
+          setBuilderStarted(true);
+          setMessage("Payment is recorded, but publishing failed. Review, save fixes, then retry publishing. Do not pay again.");
         }
       } catch {
         if (active) setMessage("Secure resume link could not load. Your browser draft is still safe.");
@@ -315,8 +366,7 @@ export function ShopBuilderClient() {
             order.paymentStatus === "paid" ||
             order.paymentStatus === "published" ||
             order.siteStatus === "publishing" ||
-            order.siteStatus === "published" ||
-            order.siteStatus === "publish_failed");
+            order.siteStatus === "published");
         if (active && locked) setLockedOrder(order);
       } finally {
         if (active) setLockCheckDone(true);
@@ -357,6 +407,7 @@ export function ShopBuilderClient() {
     return url.toString();
   }, [normalizedState.orderId, resumeAccessKey]);
   const progressPercent = Math.round((normalizedState.currentStep / SHOP_BUILDER_STEPS.length) * 100);
+  const mediaProcessing = Boolean(mediaProcessingMessage);
   const currentIssues = validateShopBuilderState(normalizedState, {
     requirePaymentReady: normalizedState.currentStep >= 4
   });
@@ -403,6 +454,7 @@ export function ShopBuilderClient() {
       try {
         const response = await fetch("/api/shop/draft", {
           body: JSON.stringify({
+            accessKey: getStoredOrderAccessKey(),
             idempotencyKey: getStableShopIdempotencyKey(snapshot.orderId),
             state: snapshot
           }),
@@ -518,7 +570,7 @@ export function ShopBuilderClient() {
     const entryIssues = getEntryValidationIssues(normalizedState);
     if (entryIssues.length > 0) {
       setIssues(entryIssues);
-      setMessage("Add your coach name and a valid email so we can save and recover this draft.");
+      setMessage("Enter a valid email first so we can save and recover this draft.");
       return;
     }
 
@@ -555,6 +607,10 @@ export function ShopBuilderClient() {
   }
 
   function nextStep() {
+    if (mediaProcessing) {
+      setMessage("Please wait until the coach photo finishes processing.");
+      return;
+    }
     const stepIssues = getStepIssues(normalizedState.currentStep, currentIssues);
     if (stepIssues.length) {
       setIssues(stepIssues);
@@ -570,15 +626,31 @@ export function ShopBuilderClient() {
   }
 
   function previousStep() {
+    if (mediaProcessing) {
+      setMessage("Please wait until the coach photo finishes processing.");
+      return;
+    }
     setIssues([]);
     patchState({ currentStep: Math.max(1, normalizedState.currentStep - 1) });
   }
 
   async function saveDraft() {
+    if (mediaProcessing) {
+      setMessage("Please wait until the coach photo finishes processing before saving.");
+      return;
+    }
     await persistDraft(normalizedState, "manual");
   }
 
   async function buyAndPublish() {
+    if (mediaProcessing) {
+      setMessage("Please wait until the coach photo finishes processing before checkout.");
+      return;
+    }
+    if (isPublishFailedRecovery(normalizedState)) {
+      await retryPublishAfterFailure();
+      return;
+    }
     const paymentIssues = validateShopBuilderState(normalizedState, { requirePaymentReady: true }).filter(
       (issue) => issue.severity === "error"
     );
@@ -622,6 +694,58 @@ export function ShopBuilderClient() {
       window.location.assign(payload.redirectUrl);
     } catch {
       setMessage("Checkout could not start. Your website draft is still saved in this browser.");
+    } finally {
+      setCheckoutBusy(false);
+    }
+  }
+
+  async function retryPublishAfterFailure() {
+    const paymentIssues = validateShopBuilderState(normalizedState, { requirePaymentReady: true }).filter(
+      (issue) => issue.severity === "error"
+    );
+    if (paymentIssues.length) {
+      setIssues(paymentIssues);
+      setMessage("Fix the required details before retrying publish.");
+      return;
+    }
+
+    const accessKey = getStoredOrderAccessKey();
+    if (!normalizedState.orderId || !accessKey) {
+      setMessage("Open the secure resume link before retrying publish.");
+      return;
+    }
+
+    setCheckoutBusy(true);
+    setMessage("Saving fixes before retrying publish...");
+    try {
+      const saved = await persistDraft(normalizedState, "autosave");
+      if (!saved) return;
+
+      setMessage("Retrying publish. No new payment will be taken.");
+      const response = await fetch("/api/shop/retry-publish", {
+        body: JSON.stringify({
+          accessKey,
+          orderId: normalizedState.orderId
+        }),
+        cache: "no-store",
+        headers: { "content-type": "application/json" },
+        method: "POST"
+      });
+      const payload = (await response.json().catch(() => ({}))) as CheckoutResponse;
+      if (!response.ok || !payload.ok) {
+        setMessage(payload.error || "Publish retry could not complete. Please contact YWcoach support.");
+        return;
+      }
+
+      if (payload.order?.siteStatus === "published") {
+        setLockedOrder(payload.order);
+        setMessage("Published successfully. Your live website link is ready.");
+        return;
+      }
+
+      setMessage("Publish retry started. Use the status page if it is still checking.");
+    } catch {
+      setMessage("Publish retry could not connect. Your saved fixes are still preserved.");
     } finally {
       setCheckoutBusy(false);
     }
@@ -758,8 +882,8 @@ export function ShopBuilderClient() {
             <div>
               <h1>Start your coach website</h1>
               <p>
-                Begin with your coach identity, resume a saved draft, and preview the exact
-                website before secure checkout.
+                Begin with your email so we can safely create or resume your website draft.
+                Coach details come next inside the builder.
               </p>
             </div>
             {message ? <p className={styles.statusLine}>{message}</p> : null}
@@ -786,21 +910,9 @@ export function ShopBuilderClient() {
             ) : null}
             <div className={styles.entryGrid}>
               <Field
-                label="Coach name"
-                onChange={(coachName) => patchState({ coachName })}
-                placeholder="Your public coach name"
-                value={normalizedState.coachName}
-              />
-              <Field
-                label="Niche"
-                onChange={(niche) => patchState({ niche })}
-                placeholder="Hormone wellness, fitness, nutrition..."
-                value={normalizedState.niche}
-              />
-              <Field
                 label="Email"
                 onChange={(email) => patchState({ email, coachEmail: email })}
-                placeholder="name@example.com"
+                sanitizeMode="email"
                 value={normalizedState.email}
               />
             </div>
@@ -841,7 +953,7 @@ export function ShopBuilderClient() {
             <span>YW</span>
             <div>
               <strong>YWcoach Shop</strong>
-              <small>Premium website builder</small>
+              <small>Coach website builder</small>
             </div>
           </div>
           <div className={styles.progressPanel}>
@@ -872,17 +984,22 @@ export function ShopBuilderClient() {
           </div>
         </aside>
 
-        <section className={styles.workspace}>
+        <section
+          aria-busy={mediaProcessing}
+          className={styles.workspace}
+          data-media-busy={mediaProcessing ? "true" : undefined}
+        >
+          {mediaProcessing ? <MediaProcessingOverlay message={mediaProcessingMessage} /> : null}
           <div className={styles.topbar}>
             <div>
-              <h1>Create your premium coach website</h1>
+              <h1>Create your coach website</h1>
               <p>Build, preview, edit, and purchase a YW Nutritech-ready public website.</p>
             </div>
             <div className={styles.topbarActions}>
-              <button disabled={saving} onClick={() => void saveDraft()} type="button">
+              <button disabled={saving || mediaProcessing} onClick={() => void saveDraft()} type="button">
                 {saving ? "Saving..." : "Save Draft"}
               </button>
-              <button disabled={checkoutBusy} onClick={() => void buyAndPublish()} type="button">
+              <button disabled={checkoutBusy || mediaProcessing} onClick={() => void buyAndPublish()} type="button">
                 {checkoutBusy ? "Preparing..." : "Buy & Publish"}
               </button>
             </div>
@@ -893,7 +1010,7 @@ export function ShopBuilderClient() {
             {autoSaveText ||
               (normalizedState.orderId
                 ? "Secure server draft is ready."
-                : "Enter name and email to enable secure draft recovery.")}
+                : "Enter email to enable secure draft recovery. Coach details are required before publishing.")}
           </p>
           {resumeLink && !lockedOrder ? (
             <div className={styles.resumeLinkCard}>
@@ -922,7 +1039,11 @@ export function ShopBuilderClient() {
                 <CoachDetailsStep state={normalizedState} onPatch={patchState} onRegenerate={regenerateContent} />
               ) : null}
               {normalizedState.currentStep === 2 ? (
-                <MediaContactStep state={normalizedState} onPatch={patchState} />
+                <MediaContactStep
+                  onMediaProcessingMessage={setMediaProcessingMessage}
+                  state={normalizedState}
+                  onPatch={patchState}
+                />
               ) : null}
               {normalizedState.currentStep === 3 ? (
                 <PreviewEditStep
@@ -940,19 +1061,35 @@ export function ShopBuilderClient() {
                 />
               ) : null}
               {normalizedState.currentStep === 4 ? (
-                <PaymentStep issues={currentIssues} onBuy={() => void buyAndPublish()} state={normalizedState} busy={checkoutBusy} />
+                <PaymentStep
+                  busy={checkoutBusy}
+                  issues={currentIssues}
+                  mode={isPublishFailedRecovery(normalizedState) ? "retry" : "checkout"}
+                  onBuy={() => void buyAndPublish()}
+                  state={normalizedState}
+                />
               ) : null}
               {normalizedState.currentStep === 5 ? <SuccessPreview state={normalizedState} /> : null}
 
               <div className={styles.stepActions}>
-                <button disabled={normalizedState.currentStep === 1} onClick={previousStep} type="button">
+                <button
+                  disabled={normalizedState.currentStep === 1 || mediaProcessing}
+                  onClick={previousStep}
+                  type="button"
+                >
                   Back
                 </button>
                 {normalizedState.currentStep < 4 ? (
-                  <button onClick={nextStep} type="button">Next</button>
+                  <button disabled={mediaProcessing} onClick={nextStep} type="button">Next</button>
                 ) : normalizedState.currentStep === 4 ? (
-                  <button disabled={checkoutBusy} onClick={() => void buyAndPublish()} type="button">
-                    {checkoutBusy ? "Preparing checkout..." : "Buy & Publish"}
+                  <button disabled={checkoutBusy || mediaProcessing} onClick={() => void buyAndPublish()} type="button">
+                    {checkoutBusy
+                      ? isPublishFailedRecovery(normalizedState)
+                        ? "Retrying publish..."
+                        : "Preparing checkout..."
+                      : isPublishFailedRecovery(normalizedState)
+                        ? "Retry Publish"
+                        : "Buy & Publish"}
                   </button>
                 ) : null}
               </div>
@@ -1025,6 +1162,10 @@ function CoachDetailsStep({
         onChange={(shortBio) => onPatch({ shortBio, bio: shortBio })}
         textarea
       />
+      <TemplateSkinPicker
+        onChange={(selectedThemeId) => onPatch({ selectedThemeId })}
+        value={state.selectedThemeId}
+      />
       <button className={styles.secondaryButton} onClick={onRegenerate} type="button">
         Improve website copy
       </button>
@@ -1032,20 +1173,87 @@ function CoachDetailsStep({
   );
 }
 
+function MediaProcessingOverlay({ message }: { message: string }) {
+  return (
+    <div className={styles.mediaProcessingOverlay} role="status" aria-live="polite">
+      <div className={styles.mediaProcessingCard}>
+        <span className={styles.mediaProcessingSpinner} aria-hidden="true" />
+        <p>Preparing transparent coach photo</p>
+        <strong>Please wait. Keep this builder open.</strong>
+        <small>{message || "Creating a clean cutout and saving it securely..."}</small>
+        <ul>
+          <li>Removing the photo background</li>
+          <li>Saving the processed cutout</li>
+          <li>Updating preview and publish data</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function TemplateSkinPicker({
+  onChange,
+  value
+}: {
+  onChange: (value: CoachTemplateThemeId) => void;
+  value: CoachTemplateThemeId;
+}) {
+  return (
+    <label className={styles.skinPicker}>
+      <span>Visual skin</span>
+      <select
+        onChange={(event) => onChange(event.target.value as CoachTemplateThemeId)}
+        value={value}
+      >
+        {coachTemplateThemes.map((theme) => (
+          <option key={theme.id} value={theme.id}>
+            {theme.name}
+          </option>
+        ))}
+      </select>
+      <small>
+        Changes only color, typography, background, and card styling. Content, links, legal,
+        analytics, and bonus rules stay locked to the canonical template.
+      </small>
+    </label>
+  );
+}
+
 function MediaContactStep({
+  onMediaProcessingMessage,
   onPatch,
   state
 }: {
+  onMediaProcessingMessage: (message: string) => void;
   onPatch: (patch: Partial<ShopBuilderState>) => void;
   state: ShopBuilderState;
 }) {
   const [uploadMessage, setUploadMessage] = useState("");
   const [uploadingMediaType, setUploadingMediaType] = useState<"" | "image" | "video">("");
-  const imagePreviewUrl = state.photoUrl || state.logoUrl;
+  const [coachImageResult, setCoachImageResult] = useState<CoachImageMediaResult | null>(null);
+  const [temporaryImagePreviewUrl, setTemporaryImagePreviewUrl] = useState("");
+  const [temporaryVideoPreviewUrl, setTemporaryVideoPreviewUrl] = useState("");
+  const imagePreviewUrl = temporaryImagePreviewUrl || state.photoUrl || state.logoUrl;
   const videoEmbedUrl = normalizeVideoEmbedUrl(state.videoUrl);
-  const uploadedVideoUrl = isUploadedVideoSource(state.videoUrl) ? state.videoUrl : "";
+  const uploadedVideoUrl =
+    temporaryVideoPreviewUrl || (isUploadedVideoSource(state.videoUrl) ? state.videoUrl : "");
   const videoInvalid =
     state.heroMediaType === "video" && state.videoUrl.trim() && !videoEmbedUrl && !uploadedVideoUrl;
+  const setImageUploadProgress = useCallback(
+    (nextMessage: string) => {
+      setUploadMessage(nextMessage);
+      onMediaProcessingMessage(nextMessage);
+    },
+    [onMediaProcessingMessage]
+  );
+
+  useEffect(() => {
+    const preloadTimer = window.setTimeout(() => {
+      void preloadCoachHeroPhotoBackgroundRemoval();
+    }, 180000);
+
+    return () => window.clearTimeout(preloadTimer);
+  }, []);
 
   async function handleMediaUpload(file: File | undefined, mediaType: "image" | "video") {
     if (!file) return;
@@ -1055,7 +1263,7 @@ function MediaContactStep({
       setUploadMessage(
         mediaType === "image"
           ? "Photo is too large. Upload a photo under 12 MB or use a secure HTTPS image link."
-          : "Video is too large. Upload a video under 24 MB or use a secure video link."
+          : "Video is too large. Upload a video under 70 MB or use a YouTube/secure video link."
       );
       return;
     }
@@ -1066,56 +1274,47 @@ function MediaContactStep({
     }
 
     if (mediaType === "video" && !isAllowedShopVideoFile(file)) {
-      setUploadMessage("Upload an MP4, MOV, or WebM video file.");
+      setUploadMessage("Upload a supported video file up to 70 MB, or paste a YouTube/video URL.");
       return;
     }
 
     const previousUrl = mediaType === "image" ? state.photoUrl : state.videoUrl;
     setUploadingMediaType(mediaType);
-    setUploadMessage(
+    if (mediaType === "image") setCoachImageResult(null);
+    const initialMessage =
       mediaType === "image"
-        ? `Removing background from ${file.name}...`
-        : `Uploading ${file.name} securely...`
-    );
+        ? "Preparing your coach photo..."
+        : `Uploading ${file.name} securely...`;
+    setUploadMessage(initialMessage);
+    if (mediaType === "image") onMediaProcessingMessage(initialMessage);
 
-    const preparedMedia =
-      mediaType === "image"
-        ? await prepareCoachHeroPhotoForUpload(file, {
-            maxBytes: SHOP_PHOTO_MAX_BYTES,
-            maxEdge: SHOP_PHOTO_PROCESS_MAX_EDGE
-          }).catch(() => ({
-            backgroundRemoved: false,
-            file,
-            message: "Could not remove the background in this browser. Uploading the original photo.",
-            optimized: false
-          }))
-        : { backgroundRemoved: false, file, message: "", optimized: false };
-    const uploadFile = preparedMedia.file;
+    const previewUrl = URL.createObjectURL(file);
+    const uploadedFile = file;
+    let cutoutFile: File | null = null;
 
-    if (mediaType === "image" && uploadFile.size > SHOP_PHOTO_MAX_BYTES) {
-      setUploadingMediaType("");
-      setUploadMessage(
-        "Photo is still too large after background removal. Use a smaller image or a secure HTTPS image link."
-      );
-      return;
+    if (mediaType === "image") {
+      setTemporaryImagePreviewUrl(previewUrl);
+      onPatch({ heroMediaType: "image" });
+    } else {
+      setTemporaryVideoPreviewUrl(previewUrl);
+      onPatch({ heroMediaType: "video" });
     }
-
-    const previewUrl = URL.createObjectURL(uploadFile);
-
-    onPatch(
-      mediaType === "image"
-        ? { heroMediaType: "image", photoUrl: previewUrl }
-        : { heroMediaType: "video", videoUrl: previewUrl }
-    );
-    setUploadMessage(
-      preparedMedia.message
-        ? `${preparedMedia.message} Uploading...`
-        : `Uploading ${uploadFile.name} securely...`
-    );
+    setUploadMessage(initialMessage);
+    if (mediaType === "image") onMediaProcessingMessage(initialMessage);
 
     try {
+      if (mediaType === "image") {
+        const preparedPhoto = await prepareCoachHeroPhotoForUpload(file, {
+          maxBytes: SHOP_PHOTO_MAX_BYTES,
+          onProgress: setImageUploadProgress
+        });
+        cutoutFile = preparedPhoto.file;
+        setImageUploadProgress("Saving transparent coach photo securely...");
+      }
+
       const formData = new FormData();
-      formData.append("file", uploadFile);
+      formData.append("file", uploadedFile);
+      if (cutoutFile) formData.append("cutoutFile", cutoutFile);
       formData.append("mediaType", mediaType);
       formData.append("slug", state.slug || state.coachName || "shop-draft");
 
@@ -1128,29 +1327,68 @@ function MediaContactStep({
 
       if (!response.ok || !payload.ok || !payload.media?.publicUrl) {
         onPatch(mediaType === "image" ? { photoUrl: previousUrl } : { videoUrl: previousUrl });
-        setUploadMessage(
-          payload.error || "Media upload was unavailable. Use a secure HTTPS media link instead."
-        );
+        setUploadMessage(payload.error || "Media upload was unavailable. Please try again.");
         return;
       }
 
+      const stableMediaUrl =
+        mediaType === "image"
+          ? payload.media.cutoutUrl || payload.media.publicUrl
+          : payload.media.publicUrl;
+
       onPatch(
         mediaType === "image"
-          ? { heroMediaType: "image", photoUrl: payload.media.publicUrl }
-          : { heroMediaType: "video", videoUrl: payload.media.publicUrl }
+          ? { heroMediaType: "image", photoUrl: stableMediaUrl }
+          : { heroMediaType: "video", videoUrl: stableMediaUrl }
       );
+      if (mediaType === "image") {
+        setCoachImageResult(payload.media);
+        setTemporaryImagePreviewUrl("");
+        onMediaProcessingMessage("");
+      } else {
+        setTemporaryVideoPreviewUrl("");
+      }
       setUploadMessage(
         mediaType === "image"
-          ? `${uploadFile.name} uploaded as transparent hero PNG (${formatBytes(uploadFile.size)}).`
-          : `${uploadFile.name} uploaded and saved securely (${formatBytes(uploadFile.size)}).`
+          ? getCoachImageUploadMessage(payload.media, file)
+          : `${uploadedFile.name} uploaded and saved securely (${formatBytes(uploadedFile.size)}).`
       );
-    } catch {
+    } catch (error) {
       onPatch(mediaType === "image" ? { photoUrl: previousUrl } : { videoUrl: previousUrl });
-      setUploadMessage("Media upload could not connect. Use a secure HTTPS media link instead.");
+      if (mediaType === "image") onMediaProcessingMessage("");
+      setUploadMessage(
+        error instanceof Error
+          ? error.message
+          : "Media upload could not connect. Please try again."
+      );
     } finally {
       URL.revokeObjectURL(previewUrl);
+      if (mediaType === "image") {
+        setTemporaryImagePreviewUrl((current) => (current === previewUrl ? "" : current));
+      } else {
+        setTemporaryVideoPreviewUrl((current) => (current === previewUrl ? "" : current));
+      }
       setUploadingMediaType("");
+      if (mediaType === "image") onMediaProcessingMessage("");
     }
+  }
+
+  function handleUseImageUrl(url: string | undefined, label: "cutout" | "original") {
+    if (!url) return;
+    setTemporaryImagePreviewUrl("");
+    onPatch({ heroMediaType: "image", photoUrl: url });
+    setUploadMessage(
+      label === "cutout"
+        ? "Using the transparent coach cutout."
+        : "Using the original photo in the portrait frame."
+    );
+  }
+
+  function handleResetImage() {
+    setCoachImageResult(null);
+    setTemporaryImagePreviewUrl("");
+    onPatch({ photoUrl: "" });
+    setUploadMessage("Coach photo cleared. Upload another image when ready.");
   }
 
   return (
@@ -1187,7 +1425,15 @@ function MediaContactStep({
                 : "JPEG, PNG, WebP, AVIF, GIF, HEIC, HEIF, BMP, and TIFF are supported."}
             </small>
           </label>
-          <Field label="Photo/logo URL" value={state.photoUrl} onChange={(photoUrl) => onPatch({ photoUrl })} placeholder="https://..." />
+          <Field
+            label="Photo/logo URL"
+            value={state.photoUrl}
+            onChange={(photoUrl) => {
+              setCoachImageResult(null);
+              onPatch({ photoUrl });
+            }}
+            placeholder="https://..."
+          />
           <div className={styles.mediaPreview} data-state={imagePreviewUrl ? "ready" : "empty"}>
             {imagePreviewUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -1196,9 +1442,17 @@ function MediaContactStep({
               <span>Photo preview</span>
             )}
           </div>
-          {imagePreviewUrl ? (
-            <button className={styles.secondaryButton} onClick={() => onPatch({ photoUrl: "" })} type="button">
-              Remove Photo
+          {coachImageResult ? (
+            <CoachImageResultPanel
+              activeUrl={state.photoUrl}
+              disabled={uploadingMediaType === "image"}
+              media={coachImageResult}
+              onReset={handleResetImage}
+              onUse={handleUseImageUrl}
+            />
+          ) : imagePreviewUrl ? (
+            <button className={styles.secondaryButton} onClick={handleResetImage} type="button">
+              Reset image
             </button>
           ) : null}
         </div>
@@ -1209,7 +1463,7 @@ function MediaContactStep({
           <label className={styles.uploadField}>
             <span>Upload coach video</span>
             <input
-              accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm"
+              accept={VIDEO_UPLOAD_ACCEPT}
               disabled={uploadingMediaType === "video"}
               onChange={(event) => void handleMediaUpload(event.target.files?.[0], "video")}
               type="file"
@@ -1217,7 +1471,7 @@ function MediaContactStep({
             <small>
               {uploadingMediaType === "video"
                 ? "Uploading video securely..."
-                : "MP4, MOV, and WebM are supported. YouTube links also work."}
+                : "Upload a supported video up to 70 MB, or paste a YouTube/video link."}
             </small>
           </label>
           <Field label="Optional video URL" value={state.videoUrl} onChange={(videoUrl) => onPatch({ videoUrl })} placeholder="https://..." />
@@ -1251,11 +1505,111 @@ function MediaContactStep({
       ) : null}
 
       {uploadMessage ? <p className={styles.statusLine}>{uploadMessage}</p> : null}
-      <Field label="Email" value={state.email} onChange={(email) => onPatch({ email, coachEmail: email })} />
-      <Field label="Phone/WhatsApp" value={state.coachPhone} onChange={(coachPhone) => onPatch({ coachPhone })} />
-      <Field label="Registration/contact link" value={state.contactLink} onChange={(contactLink) => onPatch({ contactLink })} placeholder="https://forms.gle/... or https://wa.me/..." />
+      <Field
+        label="Email"
+        value={state.email}
+        onChange={(email) => onPatch({ email, coachEmail: email })}
+        sanitizeMode="email"
+      />
+      <Field
+        label="Phone/WhatsApp"
+        value={state.coachPhone}
+        onChange={(coachPhone) => onPatch({ coachPhone })}
+        sanitizeMode="phone"
+      />
+      <Field
+        helper="Paste one public HTTPS registration link only."
+        label="Registration/contact link"
+        value={state.contactLink}
+        onChange={(contactLink) => onPatch({ contactLink })}
+        sanitizeMode="url"
+      />
     </div>
   );
+}
+
+function CoachImageResultPanel({
+  activeUrl,
+  disabled,
+  media,
+  onReset,
+  onUse
+}: {
+  activeUrl: string;
+  disabled: boolean;
+  media: CoachImageMediaResult;
+  onReset: () => void;
+  onUse: (url: string | undefined, label: "cutout" | "original") => void;
+}) {
+  const hasCutout = Boolean(media.cutoutUrl);
+
+  return (
+    <div className={styles.imageResultPanel} data-status={media.processingStatus || "unknown"}>
+      <div>
+        <strong>{getCoachImageResultTitle(media)}</strong>
+        <span>{getCoachImageResultDescription(media)}</span>
+      </div>
+      <div className={styles.imageResultActions}>
+        {hasCutout ? (
+          <button
+            data-active={activeUrl === media.cutoutUrl ? "true" : undefined}
+            disabled={disabled}
+            onClick={() => onUse(media.cutoutUrl, "cutout")}
+            type="button"
+          >
+            Use cutout
+          </button>
+        ) : null}
+        {media.originalUrl ? (
+          <button
+            data-active={activeUrl === media.originalUrl ? "true" : undefined}
+            disabled={disabled}
+            onClick={() => onUse(media.originalUrl, "original")}
+            type="button"
+          >
+            Use original frame
+          </button>
+        ) : null}
+        <button disabled={disabled} onClick={onReset} type="button">
+          Reset image
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function getCoachImageUploadMessage(media: NonNullable<MediaUploadResponse["media"]>, file?: File) {
+  if (media.processingStatus === "cutout_ready") {
+    return `Coach photo is ready${media.sizeBytes || file?.size ? ` (${formatBytes(media.sizeBytes || file?.size || 0)})` : ""}.`;
+  }
+
+  if (media.processingStatus === "not_configured") {
+    return "Photo uploaded, but the transparent cutout was not created. Upload a clearer photo and try again.";
+  }
+
+  if (media.safeMessage) {
+    return media.safeMessage;
+  }
+
+  return `Coach photo uploaded${file?.size ? ` (${formatBytes(file.size)})` : ""}.`;
+}
+
+function getCoachImageResultTitle(media: CoachImageMediaResult) {
+  if (media.processingStatus === "cutout_ready") return "Cutout ready";
+  if (media.processingStatus === "framed_fallback") return "Original frame active";
+  if (media.processingStatus === "not_configured") return "Cutout not created";
+  if (media.processingStatus === "disabled") return "Original uploaded";
+  return "Coach photo uploaded";
+}
+
+function getCoachImageResultDescription(media: CoachImageMediaResult) {
+  if (media.processingStatus === "cutout_ready") {
+    return "A transparent coach photo is saved. You can still switch back to the original photo.";
+  }
+
+  if (media.safeMessage) return media.safeMessage;
+
+  return "The original photo is stored for this coach site.";
 }
 
 function PreviewEditStep({
@@ -1325,19 +1679,26 @@ function PreviewEditStep({
 function PaymentStep({
   busy,
   issues,
+  mode,
   onBuy,
   state
 }: {
   busy: boolean;
   issues: ShopValidationIssue[];
+  mode: "checkout" | "retry";
   onBuy: () => void;
   state: ShopBuilderState;
 }) {
+  const retryMode = mode === "retry";
   return (
     <div className={styles.stepPanel}>
       <span className={styles.stepEyebrow}>Step 4</span>
-      <h2>Review and secure checkout</h2>
-      <p>Your site is saved as pending payment first. It publishes only after server-side payment verification is connected and confirmed.</p>
+      <h2>{retryMode ? "Review and retry publish" : "Review and secure checkout"}</h2>
+      <p>
+        {retryMode
+          ? "Payment is already recorded. Save any fixes and retry publishing without another checkout."
+          : "Your site is saved as pending payment first. It publishes only after server-side payment verification is connected and confirmed."}
+      </p>
       <dl className={styles.summaryList}>
         <div><dt>Coach</dt><dd>{state.coachName || "Missing"}</dd></div>
         <div><dt>Niche</dt><dd>{state.niche || "Missing"}</dd></div>
@@ -1353,7 +1714,13 @@ function PaymentStep({
         to make edits yourself. Any future changes must be requested through YWcoach support.
       </div>
       <button className={styles.buyButton} disabled={busy} onClick={onBuy} type="button">
-        {busy ? "Preparing secure checkout..." : "Buy & Publish"}
+        {busy
+          ? retryMode
+            ? "Retrying publish..."
+            : "Preparing secure checkout..."
+          : retryMode
+            ? "Retry Publish"
+            : "Buy & Publish"}
       </button>
     </div>
   );
@@ -1367,7 +1734,7 @@ function SuccessPreview({ state }: { state: ShopBuilderState }) {
       <p>After verified payment and publishing, the success page will show your live website link.</p>
       <div className={styles.successCard}>
         <strong>Congratulations, Coach {state.coachName || "Coach"}!</strong>
-        <span>Your premium coach website has been published.</span>
+        <span>Your coach website has been published.</span>
         <code>/coach/{state.slug || "coach-slug"}</code>
       </div>
     </div>
@@ -1375,28 +1742,86 @@ function SuccessPreview({ state }: { state: ShopBuilderState }) {
 }
 
 function Field({
+  helper,
   label,
   onChange,
   placeholder,
+  sanitizeMode,
   textarea,
   value
 }: {
+  helper?: string;
   label: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  sanitizeMode?: "email" | "phone" | "url";
   textarea?: boolean;
   value: string;
 }) {
+  function handlePaste(event: ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    if (!sanitizeMode) return;
+    const pasted = event.clipboardData.getData("text");
+    const sanitized = sanitizeSingleFieldPaste(pasted, sanitizeMode, value);
+    event.preventDefault();
+    if (sanitized === null) return;
+    onChange(sanitized);
+  }
+
   return (
     <label className={styles.field}>
       <span>{label}</span>
       {textarea ? (
-        <textarea value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
+        <textarea
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onPaste={handlePaste}
+          placeholder={placeholder}
+        />
       ) : (
-        <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
+        <input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onPaste={handlePaste}
+          placeholder={placeholder}
+        />
       )}
+      {helper ? <small>{helper}</small> : null}
     </label>
   );
+}
+
+function sanitizeSingleFieldPaste(
+  pasted: string,
+  mode: "email" | "phone" | "url",
+  currentValue: string
+) {
+  const raw = pasted.trim();
+  if (!raw) return "";
+
+  if (mode === "url") {
+    const matches = raw.match(/https:\/\/[^\s,;]+/gi) || [];
+    const unique = Array.from(new Set(matches.map((item) => item.trim())));
+    if (unique.length === 1) return unique[0];
+    if (unique.length > 1) return null;
+    return raw;
+  }
+
+  if (mode === "email") {
+    const matches = raw.match(/[^\s,;@]+@[^\s,;@]+\.[^\s,;@]+/gi) || [];
+    const unique = Array.from(new Set(matches.map((item) => item.trim().toLowerCase())));
+    if (unique.length === 1) return unique[0];
+    if (unique.length > 1) return null;
+    return raw.toLowerCase();
+  }
+
+  const digits = raw.replace(/\D/g, "");
+  const normalized = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
+  const currentDigits = currentValue.replace(/\D/g, "");
+  const normalizedCurrent =
+    currentDigits.length === 12 && currentDigits.startsWith("91") ? currentDigits.slice(2) : currentDigits;
+  if (normalized.length === 10 && normalized === normalizedCurrent) return normalized;
+  if (normalized.length === 10) return normalized;
+  return null;
 }
 
 function isAllowedShopPhotoFile(file: File) {
@@ -1414,11 +1839,11 @@ function isAllowedShopPhotoFile(file: File) {
 function isAllowedShopVideoFile(file: File) {
   const contentType = file.type.trim().toLowerCase();
   const extension = getClientFileExtension(file.name);
-  if (["video/mp4", "video/quicktime", "video/webm"].includes(contentType)) return true;
+  if (ALLOWED_VIDEO_TYPES.has(contentType)) return true;
   return Boolean(
     extension &&
-      [".mp4", ".mov", ".webm"].includes(extension) &&
-      (contentType === "" || contentType === "application/octet-stream")
+      ALLOWED_VIDEO_EXTENSIONS.has(extension) &&
+      (contentType === "" || contentType === "application/octet-stream" || contentType.startsWith("video/"))
   );
 }
 
@@ -1436,8 +1861,13 @@ function formatBytes(bytes: number) {
 
 function getOrderAccessKeyHeader(): Record<string, string> {
   if (typeof window === "undefined") return {};
-  const accessKey = window.localStorage.getItem(ORDER_ACCESS_KEY_STORAGE_KEY) || "";
+  const accessKey = getStoredOrderAccessKey();
   return accessKey ? { "x-shop-access-key": accessKey } : {};
+}
+
+function getStoredOrderAccessKey() {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(ORDER_ACCESS_KEY_STORAGE_KEY) || "";
 }
 
 function storeOrderAccessKey(accessKey?: string) {
@@ -1461,22 +1891,23 @@ function getDraftFingerprint(state: ShopBuilderState) {
 }
 
 function canCreateRecoverableShopDraft(state: ShopBuilderState) {
-  return Boolean(state.coachName.trim() && isValidShopEmail(state.email || state.coachEmail));
+  return isValidShopEmail(state.email || state.coachEmail);
 }
 
 function getEntryValidationIssues(state: ShopBuilderState): ShopValidationIssue[] {
   const issues: ShopValidationIssue[] = [];
-  if (!state.coachName.trim()) {
-    issues.push({ field: "coachName", message: "Coach name is required before saving a draft.", severity: "error" });
-  }
   if (!isValidShopEmail(state.email || state.coachEmail)) {
-    issues.push({ field: "email", message: "Enter a valid email to recover this draft later.", severity: "error" });
+    issues.push({ field: "email", message: "Enter a valid email to save or recover this draft.", severity: "error" });
   }
   return issues;
 }
 
 function isValidShopEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim().toLowerCase());
+}
+
+function isPublishFailedRecovery(state: ShopBuilderState) {
+  return state.status === "publish_failed";
 }
 
 function formatClockTime(value: Date) {

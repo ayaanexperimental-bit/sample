@@ -78,7 +78,7 @@ const coachTemplateContentSlotInputs: CoachTemplateContentSlotInput[] = [
     field: "benefitsSectionLabel",
     required: true,
     section: "bonus",
-    slotKey: "bonus.sectionLabel",
+    slotKey: "bonus.eyebrow",
     validationRule: "Required canonical bonus label. Keep it niche-aware and non-medical."
   },
   {
@@ -88,16 +88,7 @@ const coachTemplateContentSlotInputs: CoachTemplateContentSlotInput[] = [
     section: "bonus",
     slotKey: "bonus.heading",
     validationRule:
-      "Required canonical bonus heading. May adapt to niche but must not invent new assets or fake scarcity."
-  },
-  {
-    description: "Bonus card display titles",
-    field: "benefits",
-    required: true,
-    section: "bonus",
-    slotKey: "bonus.items[].title",
-    validationRule:
-      "Editable display title only. Actual bonus ID, asset, and value remain locked."
+      "Required canonical bonus heading. May adapt to niche but must not invent new assets, rename fixed services, or use fake scarcity."
   },
   {
     description: "Bonus card descriptions",
@@ -174,7 +165,7 @@ export const nonEditableCoachTemplateRules = [
   },
   {
     label: "Canonical bonus assets",
-    rule: "The nicheAdaptiveBonusSection can adapt presentation copy, but bonus IDs, asset identity, asset value, and CTA destination are locked."
+    rule: "The nicheAdaptiveBonusSection always keeps 3 universal service cards: Life-Long Health Calculators, Lifetime Support Sessions, and Lifestyle Success Toolkit. It can adapt supporting descriptions and SmartBonusVisual framing, but service titles, IDs, asset type, asset identity, asset availability, asset value, and CTA destination are locked."
   },
   {
     label: "Per-coach registration links",

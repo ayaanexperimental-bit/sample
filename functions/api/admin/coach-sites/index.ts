@@ -454,6 +454,8 @@ function getPublishValidationError(site: Partial<CoachSiteRecord>) {
   const slug = normalizeCoachSlug(
     typeof site.slug === "string" && site.slug.trim() ? site.slug : coachName
   );
+  const coachEmail = typeof site.coachEmail === "string" ? site.coachEmail.trim() : "";
+  const coachPhone = typeof site.coachPhone === "string" ? site.coachPhone.trim() : "";
   const googleFormUrl = typeof site.googleFormUrl === "string" ? site.googleFormUrl.trim() : "";
   const heroMediaType =
     site.heroMediaType === "image" ||
@@ -470,8 +472,16 @@ function getPublishValidationError(site: Partial<CoachSiteRecord>) {
     return "Google Form registration link is required before publishing.";
   }
 
-  if (!/^https:\/\/(docs\.google\.com\/forms|forms\.gle)\//i.test(googleFormUrl)) {
+  if (!isSingleGoogleFormUrl(googleFormUrl)) {
     return "Use a valid Google Form registration link before publishing.";
+  }
+
+  if (coachEmail && !isSingleEmailAddress(coachEmail)) {
+    return "Use one valid support email before publishing.";
+  }
+
+  if (coachPhone && !isValidIndianPhoneNumber(coachPhone)) {
+    return "Use one valid 10-digit Indian support phone/WhatsApp number before publishing.";
   }
 
   if (heroMediaType === "image") {
@@ -490,6 +500,32 @@ function getPublishValidationError(site: Partial<CoachSiteRecord>) {
   }
 
   return "";
+}
+
+function isSingleGoogleFormUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed || /\s/.test(trimmed)) return false;
+
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "https:") return false;
+    if (url.hostname === "forms.gle") return url.pathname.length > 1;
+    return url.hostname === "docs.google.com" && url.pathname.startsWith("/forms/");
+  } catch {
+    return false;
+  }
+}
+
+function isSingleEmailAddress(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed || /[\s,;]/.test(trimmed)) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+}
+
+function isValidIndianPhoneNumber(value: string) {
+  const digits = value.replace(/\D/g, "");
+  const normalized = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
+  return /^[6-9]\d{9}$/.test(normalized);
 }
 
 function parseCoachStatus(value: unknown): CoachSiteStatus | null {

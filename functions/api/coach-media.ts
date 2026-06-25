@@ -55,6 +55,8 @@ function isSafeMediaKey(key: string) {
   return (
     key.startsWith(ALLOWED_KEY_PREFIX) &&
     !key.includes("..") &&
-    /^coach-sites\/[a-z0-9-]+\/(image|video)\/[a-z0-9.-]+$/i.test(key)
+    /^coach-sites\/[a-z0-9-]+\/(?:image(?:\/(?:original|cutout))?|video)\/[a-z0-9.-]+$/i.test(
+      key
+    )
   );
 }

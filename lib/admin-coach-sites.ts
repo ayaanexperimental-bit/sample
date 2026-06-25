@@ -306,7 +306,7 @@ export const approvedCoachSites: CoachSiteRecord[] = [
         "A simple next action before joining a more detailed pathway."
       ],
       heroHeadline: "Meet Gyana Ranjan for practical PMOS lifestyle guidance.",
-      brandBadge: "YW Nutritech coach network",
+      brandBadge: "Education-first wellness page",
       brandEyebrow: "Education-first wellness pathway",
       benefitsHeading: "PMOS lifestyle guidance without clutter.",
       subheadline:
@@ -322,11 +322,11 @@ export const approvedCoachSites: CoachSiteRecord[] = [
         "This page is for wellness education and lifestyle coaching support. It is not a substitute for medical advice, diagnosis, or treatment. Results vary based on individual health history, lifestyle, and consistency.",
       heroMediaLabel: "Coach",
       heroMicroTrustText: "Nutrition, habits, lifestyle, education",
-      heroTrustLine: "YW care lens",
+      heroTrustLine: "Education-first wellness guidance",
       introHeading: "Personal PMOS guidance inside a premium wellness-tech ecosystem.",
       introSectionLabel: "Coach Introduction",
       journeyHeading: "One page that moves from trust to action.",
-      journeySectionLabel: "YW Nutritech pathway",
+      journeySectionLabel: "YW Nutritech guidance path",
       journeySteps: [
         {
           label: "Profile",
@@ -336,7 +336,7 @@ export const approvedCoachSites: CoachSiteRecord[] = [
         {
           label: "Focus",
           title: "See the PMOS wellness focus",
-          description: "The page explains the coach lens in a clear, trustworthy tone."
+          description: "The page explains the coach approach in a clear, trustworthy tone."
         },
         {
           label: "Action",
@@ -348,7 +348,7 @@ export const approvedCoachSites: CoachSiteRecord[] = [
         "Gyana's image and video-ready area stay inside the fixed YW Nutritech template while keeping the coach visible.",
       mediaHeading: "Coach image and video-ready area",
       mediaModuleLabel: "Coach media module",
-      mediaSubheading: "YW Nutritech-ready coach media",
+      mediaSubheading: "YW Nutritech coach media",
       problemHeading: "For women who need direction before committing to a bigger program.",
       problemSectionLabel: "Problem to solution",
       problemPoints: [
@@ -388,10 +388,10 @@ export const approvedCoachSites: CoachSiteRecord[] = [
         "Contact details shown here are public coach-site support details, not admin-only data.",
       supportWhatsappButton: "Message coach",
       supportWhatsappLabel: "WhatsApp",
-      stickyCtaContactButton: "Contact Coach",
+      stickyCtaContactButton: "Register Now",
       stickyCtaContext: "PMOS / Women Wellness through YW Nutritech",
       stickyCtaHeading: "Ready to connect with Coach Gyana Ranjan?",
-      stickyCtaLabel: "Free guest registration",
+      stickyCtaLabel: "Registration",
       socialCopy: "Join Gyana Ranjan's PMOS lifestyle guidance page for a clear first step."
     },
     analytics: {
@@ -486,7 +486,7 @@ export function createCoachContentFromForm(form: CoachSiteFormState): CoachSiteC
     benefits,
     benefitsHeading:
       form.benefitsHeading.trim() || `Practical ${niche} support without clutter.`,
-    brandBadge: form.brandBadge.trim() || "YW Nutritech coach network",
+    brandBadge: form.brandBadge.trim() || "Education-first wellness page",
     brandEyebrow: form.brandEyebrow.trim() || "Education-first wellness pathway",
     coachIntroLabel: form.coachIntroLabel.trim() || `Who ${coachName} is`,
     heroHeadline: form.heroHeadline.trim() || `Meet ${coachName} for practical ${niche} guidance.`,
@@ -497,7 +497,7 @@ export function createCoachContentFromForm(form: CoachSiteFormState): CoachSiteC
     ctaSectionLabel: form.ctaSectionLabel.trim() || "Register",
     ctaText: form.ctaText.trim() || form.registerButtonText.trim() || "Register Now",
     faq: parseFaq(form.faqText),
-    faqHeading: form.faqHeading.trim() || "Clean answers before registration.",
+    faqHeading: form.faqHeading.trim() || "Common Questions Before You Register",
     faqSectionLabel: form.faqSectionLabel.trim() || "FAQ",
     footerBrandLine: form.footerBrandLine.trim() || "YW Nutritech Coach Referral",
     footerHeadline: form.footerHeadline.trim() || `${coachName} | Yours Wellness Center`,
@@ -507,14 +507,14 @@ export function createCoachContentFromForm(form: CoachSiteFormState): CoachSiteC
     heroMediaLabel: form.heroMediaLabel.trim() || "Coach",
     heroMicroTrustText:
       form.heroMicroTrustText.trim() || "Nutrition, habits, lifestyle, education",
-    heroTrustLine: form.heroTrustLine.trim() || "YW care lens",
+    heroTrustLine: form.heroTrustLine.trim() || "Education-first wellness guidance",
     introHeading:
       form.introHeading.trim() ||
       `Personal ${niche} guidance inside a premium wellness-tech ecosystem.`,
     introSectionLabel: form.introSectionLabel.trim() || "Coach Introduction",
     journeyHeading:
       form.journeyHeading.trim() || "One page that moves from trust to action.",
-    journeySectionLabel: form.journeySectionLabel.trim() || "YW Nutritech pathway",
+    journeySectionLabel: form.journeySectionLabel.trim() || "YW Nutritech guidance path",
     journeySteps: parseJourneySteps(form.journeyStepsText, coachName, niche),
     mediaBody:
       form.mediaBody.trim() ||
@@ -522,7 +522,7 @@ export function createCoachContentFromForm(form: CoachSiteFormState): CoachSiteC
     mediaHeading: form.mediaHeading.trim() || "Coach image and video-ready area",
     mediaModuleLabel: form.mediaModuleLabel.trim() || "Coach media module",
     mediaSubheading:
-      form.mediaSubheading.trim() || "YW Nutritech-ready coach media",
+      form.mediaSubheading.trim() || "YW Nutritech coach media",
     problemHeading:
       form.problemHeading.trim() ||
       `For guests who need direction before committing to a bigger ${niche} program.`,
@@ -541,12 +541,12 @@ export function createCoachContentFromForm(form: CoachSiteFormState): CoachSiteC
     visionLabel: form.visionLabel.trim() || "Coach mission",
     socialCopy:
       form.socialCopy.trim() || `Join ${coachName}'s ${niche} referral page for a clear first step.`,
-    stickyCtaContactButton: form.stickyCtaContactButton.trim() || "Contact Coach",
+    stickyCtaContactButton: form.stickyCtaContactButton.trim() || "Register Now",
     stickyCtaContext:
       form.stickyCtaContext.trim() || `${niche || "Coach referral"} through YW Nutritech`,
     stickyCtaHeading:
       form.stickyCtaHeading.trim() || `Ready to connect with Coach ${coachName}?`,
-    stickyCtaLabel: form.stickyCtaLabel.trim() || "Free guest registration",
+    stickyCtaLabel: form.stickyCtaLabel.trim() || "Registration",
     supportEmailLabel: form.supportEmailLabel.trim() || "Email",
     supportHeading: form.supportHeading.trim() || "Contact Support",
     supportPhoneLabel: form.supportPhoneLabel.trim() || "Phone",
@@ -585,12 +585,12 @@ function parseJourneySteps(value: string, coachName: string, niche: string) {
         {
           label: "Profile",
           title: `Meet ${coachName}`,
-          description: "Guests understand the coach story, niche, mission, and guidance style."
+          description: "Guests understand the coach story, niche, mission, and practical guidance approach."
         },
         {
           label: "Focus",
           title: `See the ${niche} focus`,
-          description: "The page explains the coach lens in a clear, trustworthy tone."
+          description: "The page explains the coach approach in a clear, trustworthy tone."
         },
         {
           label: "Action",
@@ -712,11 +712,11 @@ export function createFormFromCoachSite(site: CoachSiteRecord): CoachSiteFormSta
     slug: site.slug,
     benefitsSectionLabel: site.content.benefitsSectionLabel,
     socialCopy: site.content.socialCopy,
-    stickyCtaContactButton: site.content.stickyCtaContactButton || "Contact Coach",
+    stickyCtaContactButton: site.content.stickyCtaContactButton || "Register Now",
     stickyCtaContext: site.content.stickyCtaContext || `${site.niche || "Coach referral"} through YW Nutritech`,
     stickyCtaHeading:
       site.content.stickyCtaHeading || `Ready to connect with Coach ${site.coachName}?`,
-    stickyCtaLabel: site.content.stickyCtaLabel || "Free guest registration",
+    stickyCtaLabel: site.content.stickyCtaLabel || "Registration",
     subheadline: site.content.subheadline,
     supportEmailLabel: site.content.supportEmailLabel || "Email",
     supportHeading: site.content.supportHeading || "Contact Support",

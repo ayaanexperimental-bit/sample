@@ -1,0 +1,13 @@
+public/models/*.onnx binary
+public/models/*.onnx.part* binary
+public/ort/*.wasm binary
+public/ort/*.mjs binary
+public/**/*.avif binary
+public/**/*.png binary
+public/**/*.eot binary
+public/**/*.otf binary
+public/**/*.ttf binary
+public/**/*.woff binary
+public/**/*.woff2 binary
+public/wp-content/plugins/elementor/assets/lib/font-awesome/webfonts/*.svg binary
+public/wp-content/plugins/elementor/assets/lib/eicons/fonts/*.svg binary

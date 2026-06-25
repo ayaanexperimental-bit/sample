@@ -125,6 +125,8 @@ const SHOP_SCHEMA_SQL = [
   )`,
   `CREATE INDEX IF NOT EXISTS idx_shop_sites_created_at ON shop_sites (created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_shop_sites_status ON shop_sites (payment_status, site_status)`,
+  `CREATE INDEX IF NOT EXISTS idx_shop_sites_draft_email
+    ON shop_sites (coach_email, payment_status, site_status, updated_at DESC)`,
   `ALTER TABLE shop_sites ADD COLUMN client_access_key TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE shop_sites ADD COLUMN payment_reference TEXT NOT NULL DEFAULT ''`,
   `CREATE INDEX IF NOT EXISTS idx_shop_sites_payment_reference ON shop_sites (payment_reference)`,
@@ -367,10 +369,12 @@ export async function updateShopPaymentSettings({
 }
 
 export async function saveShopDraft({
+  accessKey = "",
   env,
   idempotencyKey,
   state
 }: {
+  accessKey?: string;
   env: ShopEnv;
   idempotencyKey?: string;
   state: Partial<ShopBuilderState>;
@@ -380,15 +384,30 @@ export async function saveShopDraft({
 
   await ensureShopTables(env);
   const normalized = normalizeShopBuilderState(state);
+  const normalizedEmail = sanitizeEmail(normalized.email || normalized.coachEmail);
+  if (!isValidShopDraftEmail(normalizedEmail)) {
+    return { ok: false as const, error: "Enter a valid email before saving this Shop draft." };
+  }
   const cleanIdempotencyKey = sanitizeText(idempotencyKey, 160);
   const existingIdempotentOrder =
     normalized.orderId || !cleanIdempotencyKey
       ? null
       : await getShopOrderByIdempotencyKey(db, cleanIdempotencyKey);
-  const targetOrderId = normalized.orderId || existingIdempotentOrder?.orderId || "";
+  const existingEmailDraft =
+    normalized.orderId || existingIdempotentOrder
+      ? null
+      : await getActiveShopDraftByEmail(db, normalizedEmail);
+  const targetOrderId =
+    normalized.orderId || existingIdempotentOrder?.orderId || existingEmailDraft?.orderId || "";
 
   if (targetOrderId) {
     const existingOrder = await getShopOrder(env, targetOrderId);
+    const isPublishFailedRecovery = Boolean(
+      existingOrder &&
+        existingOrder.siteStatus === "publish_failed" &&
+        (existingOrder.paymentStatus === "paid" || existingOrder.paymentStatus === "publishing") &&
+        !existingOrder.lockedAt
+    );
     if (
       existingOrder &&
       (existingOrder.lockedAt ||
@@ -396,13 +415,26 @@ export async function saveShopDraft({
         existingOrder.paymentStatus === "published" ||
         existingOrder.siteStatus === "publishing" ||
         existingOrder.siteStatus === "published" ||
-        existingOrder.siteStatus === "publish_failed")
+        existingOrder.siteStatus === "publish_failed") &&
+      !isPublishFailedRecovery
     ) {
       return {
         ok: false as const,
         error:
           "This website is already in the paid publishing workflow. For future changes, please contact YWcoach support."
       };
+    }
+
+    if (existingOrder && isPublishFailedRecovery) {
+      const existingAccessKey = await getExistingShopClientAccessKey(db, existingOrder.orderId);
+      const cleanAccessKey = sanitizeText(accessKey, 120);
+      if (!existingAccessKey || !cleanAccessKey || cleanAccessKey !== existingAccessKey) {
+        return {
+          ok: false as const,
+          error:
+            "Use the secure resume link for this paid website before saving publish-failure fixes."
+        };
+      }
     }
   }
 
@@ -416,9 +448,11 @@ export async function saveShopDraft({
     : createClientAccessKey();
   const stateForStorage = normalizeShopBuilderState({
     ...normalized,
+    coachEmail: normalizedEmail,
+    email: normalizedEmail,
     orderId,
     slug,
-    status: "draft"
+    status: targetOrderId ? (await getShopOrder(env, targetOrderId))?.siteStatus || "draft" : "draft"
   });
 
   await db
@@ -447,7 +481,10 @@ export async function saveShopDraft({
         client_access_key = COALESCE(NULLIF(shop_sites.client_access_key, ''), excluded.client_access_key),
         content_json = excluded.content_json,
         builder_json = excluded.builder_json,
-        workflow_stage = 'draft_saved',
+        workflow_stage = CASE
+          WHEN shop_sites.site_status = 'publish_failed' THEN 'publish_failed_draft_saved'
+          ELSE 'draft_saved'
+        END,
         updated_at = excluded.updated_at`
     )
     .bind(
@@ -455,7 +492,7 @@ export async function saveShopDraft({
       orderId,
       key,
       stateForStorage.coachName,
-      stateForStorage.coachEmail || stateForStorage.email,
+      normalizedEmail,
       stateForStorage.coachPhone,
       stateForStorage.niche,
       stateForStorage.location,
@@ -1653,6 +1690,32 @@ async function getShopOrderByIdempotencyKey(db: D1Database, idempotencyKey: stri
   }
 }
 
+async function getActiveShopDraftByEmail(db: D1Database, email: string) {
+  const cleanEmail = sanitizeEmail(email);
+  if (!cleanEmail) return null;
+
+  try {
+    const row = await db
+      .prepare(
+        `SELECT * FROM shop_sites
+         WHERE lower(coach_email) = ?1
+           AND locked_at IS NULL
+           AND (
+             (payment_status IN ('draft', 'incomplete', 'payment_failed')
+               AND site_status IN ('draft', 'incomplete', 'payment_failed'))
+             OR (payment_status = 'pending_payment' AND site_status = 'pending_payment')
+           )
+         ORDER BY updated_at DESC
+         LIMIT 1`
+      )
+      .bind(cleanEmail)
+      .first<ShopSiteRow>();
+    return row ? shopSiteRowToRecord(row) : null;
+  } catch {
+    return null;
+  }
+}
+
 async function findPendingShopOrderConflictForContact(
   db: D1Database,
   state: Pick<ShopBuilderState, "coachEmail" | "coachPhone" | "email">,
@@ -1969,6 +2032,10 @@ function sanitizeText(value: unknown, maxLength: number) {
 
 function sanitizeEmail(value: unknown) {
   return sanitizeText(value, 240).toLowerCase();
+}
+
+function isValidShopDraftEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim().toLowerCase());
 }
 
 function normalizePhoneDigits(value: unknown) {

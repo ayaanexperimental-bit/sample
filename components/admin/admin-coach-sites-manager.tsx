@@ -2,6 +2,7 @@
 
 import {
   memo,
+  type ClipboardEvent,
   type CSSProperties,
   useCallback,
   useEffect,
@@ -25,19 +26,26 @@ import {
   createFormFromCoachSite,
   normalizeCoachSlug
 } from "../../lib/admin-coach-sites";
-import { getCoachTemplateTheme } from "../../lib/coach-template-themes";
+import {
+  coachTemplateThemes,
+  getCoachTemplateTheme,
+  type CoachTemplateThemeId
+} from "../../lib/coach-template-themes";
 import {
   isSupportedVideoSource,
   isUploadedVideoSource,
   normalizeVideoEmbedUrl
 } from "../../lib/video-links";
 import {
+  prepareCoachHeroPhotoForUpload,
+  preloadCoachHeroPhotoBackgroundRemoval
+} from "../../lib/client/coach-photo-background-removal";
+import {
   createSupportErrorReference,
   getPublicSupportErrorCode,
   logWebsiteError,
   type PublicWebsiteErrorCategory
 } from "../../lib/error-reporting";
-import { prepareCoachHeroPhotoForUpload } from "../../lib/client/coach-photo-background-removal";
 import styles from "./admin-dashboard-shell.module.css";
 
 type AdminCoachSitesManagerProps = {
@@ -100,11 +108,25 @@ type MediaUploadApiPayload = {
   configured?: boolean;
   error?: string;
   media?: {
+    cutoutUrl?: string;
+    fallbackMode?: "cutout" | "framed" | "original";
+    mediaType?: "image" | "video";
+    objectKey?: string;
+    originalObjectKey?: string;
+    originalUrl?: string;
+    processingAttemptErrorCodes?: string[];
+    processingErrorCode?: string;
+    processingProvider?: "already-transparent" | "photoroom" | "removebg";
+    processingStatus?: "cutout_ready" | "disabled" | "framed_fallback" | "not_configured";
     publicUrl?: string;
+    qualityStatus?: "failed" | "passed" | "skipped";
+    safeMessage?: string;
     sizeBytes?: number;
   };
   ok?: boolean;
 };
+
+type CoachImageMediaResult = NonNullable<MediaUploadApiPayload["media"]>;
 
 type GeneratedCoachCopy = {
   benefitDescriptions?: string[];
@@ -398,11 +420,27 @@ function getPreviewInspectSlotConfig(
   const scalar = getScalarPreviewInspectSlot(slotKey, form);
   if (scalar) return scalar;
 
-  const benefitMatch = slotKey.match(/^(benefits|bonus)\.items\.(\d+)\.(title|description)$/);
+  const benefitMatch = slotKey.match(/^(benefits|bonus)\.items\.(\d+)\.(displayTitle|title|description)$/);
   if (benefitMatch) {
     const sectionName = benefitMatch[1] === "bonus" ? "bonus" : "benefits";
     const index = Number(benefitMatch[2]);
     const isDescription = benefitMatch[3] === "description";
+    if (sectionName === "bonus" && !isDescription) {
+      return createSlotConfig({
+        aiRegenerationScope: "benefits",
+        apply: () => undefined,
+        fallbackRule:
+          "Universal service titles are locked by the canonical bonus registry. Edit only the supporting description copy.",
+        fieldType: "textarea",
+        label: `Bonus ${index + 1} Service Title`,
+        required: false,
+        section: sectionName,
+        slotKey,
+        validationRule:
+          "Locked service title. The canonical section always uses Life-Long Health Calculators, Lifetime Support Sessions, and Lifestyle Success Toolkit.",
+        value: ""
+      });
+    }
     const field = isDescription ? "benefitDescriptionsText" : "benefitsText";
     const lines = getEditableLines(form[field]);
     return createSlotConfig({
@@ -414,7 +452,7 @@ function getPreviewInspectSlotConfig(
       slotKey,
       validationRule:
         sectionName === "bonus"
-          ? "Editable bonus presentation only. Actual bonus asset, value, and CTA destination stay locked."
+          ? "Editable bonus description only. The canonical section keeps 3 fixed services; actual service titles, assets, availability, values, and CTA destination stay locked."
           : undefined,
       value: lines[index] || ""
     });
@@ -536,10 +574,17 @@ function getScalarPreviewInspectSlot(
       label: "Benefits Section Label",
       section: "benefits"
     },
-    "bonus.ctaText": {
+    "bonus.ctaHelperText": {
       aiRegenerationScope: "benefits",
-      field: "registerButtonText",
-      label: "Bonus CTA Text",
+      field: "trustText",
+      fieldType: "textarea",
+      label: "Bonus CTA Helper Text",
+      section: "bonus"
+    },
+    "bonus.eyebrow": {
+      aiRegenerationScope: "benefits",
+      field: "benefitsSectionLabel",
+      label: "Bonus Eyebrow",
       section: "bonus"
     },
     "bonus.heading": {
@@ -547,12 +592,6 @@ function getScalarPreviewInspectSlot(
       field: "benefitsHeading",
       fieldType: "textarea",
       label: "Bonus Section Heading",
-      section: "bonus"
-    },
-    "bonus.sectionLabel": {
-      aiRegenerationScope: "benefits",
-      field: "benefitsSectionLabel",
-      label: "Bonus Section Label",
       section: "bonus"
     },
     "bonus.subheading": {
@@ -737,10 +776,10 @@ const removalReasons = [
 
 const PHOTO_UPLOAD_ACCEPT =
   ".jpg,.jpeg,.jpe,.jfif,.png,.webp,.avif,.gif,.heic,.heif,.bmp,.tif,.tiff,image/jpeg,image/png,image/webp,image/avif,image/gif,image/heic,image/heif,image/bmp,image/tiff";
-const PHOTO_ORIGINAL_MAX_BYTES = 20 * 1024 * 1024;
-const PHOTO_STORED_MAX_BYTES = 12 * 1024 * 1024;
-const VIDEO_MAX_BYTES = 24 * 1024 * 1024;
-const IMAGE_OPTIMIZE_MAX_EDGE = 2200;
+const VIDEO_UPLOAD_ACCEPT =
+  ".mp4,.m4v,.mov,.webm,.ogv,.ogg,.3gp,.3g2,.mpeg,.mpg,.avi,.wmv,.mkv,video/mp4,application/mp4,video/x-m4v,video/quicktime,video/webm,video/ogg,application/ogg,video/3gpp,video/3gpp2,video/mpeg,video/x-msvideo,video/msvideo,video/x-ms-wmv,video/x-matroska";
+const PHOTO_ORIGINAL_MAX_BYTES = 12 * 1024 * 1024;
+const VIDEO_MAX_BYTES = 70 * 1024 * 1024;
 const PREVIEW_SYNC_DELAY_MS = 180;
 const ALLOWED_PHOTO_EXTENSIONS = new Set([
   ".avif",
@@ -770,6 +809,37 @@ const ALLOWED_PHOTO_MIME_TYPES = new Set([
   "image/webp",
   "image/x-ms-bmp",
   "image/x-png"
+]);
+const ALLOWED_VIDEO_EXTENSIONS = new Set([
+  ".3g2",
+  ".3gp",
+  ".avi",
+  ".m4v",
+  ".mkv",
+  ".mov",
+  ".mp4",
+  ".mpeg",
+  ".mpg",
+  ".ogg",
+  ".ogv",
+  ".webm",
+  ".wmv"
+]);
+const ALLOWED_VIDEO_MIME_TYPES = new Set([
+  "application/mp4",
+  "application/ogg",
+  "video/3gpp",
+  "video/3gpp2",
+  "video/mp4",
+  "video/mpeg",
+  "video/msvideo",
+  "video/ogg",
+  "video/quicktime",
+  "video/webm",
+  "video/x-m4v",
+  "video/x-matroska",
+  "video/x-ms-wmv",
+  "video/x-msvideo"
 ]);
 function applyGeneratedCopyToForm(
   current: CoachSiteFormState,
@@ -995,6 +1065,7 @@ export function AdminCoachSitesManager({
     phase: "idle",
     progress: 0
   });
+  const [mediaProcessingMessage, setMediaProcessingMessage] = useState("");
   const [paidFunnelAnalysis, setPaidFunnelAnalysis] = useState<PaidFunnelAnalysis | null>(null);
   const [paidFunnelAnalysisBusy, setPaidFunnelAnalysisBusy] = useState(false);
   const [paidFunnelAnalysisMessage, setPaidFunnelAnalysisMessage] = useState("");
@@ -1314,8 +1385,18 @@ export function AdminCoachSitesManager({
         return null;
       }
 
-      if (!/^https:\/\/(docs\.google\.com\/forms|forms\.gle)\//i.test(sourceForm.googleFormUrl)) {
+      if (!isSingleGoogleFormUrl(sourceForm.googleFormUrl)) {
         setMessage("Use a valid Google Form registration link before publishing.");
+        return null;
+      }
+
+      if (sourceForm.coachEmail.trim() && !isSingleEmailAddress(sourceForm.coachEmail)) {
+        setMessage("Use one valid support email before publishing.");
+        return null;
+      }
+
+      if (sourceForm.coachPhone.trim() && !isValidIndianPhoneNumber(sourceForm.coachPhone)) {
+        setMessage("Use one valid 10-digit Indian support phone/WhatsApp number before publishing.");
         return null;
       }
 
@@ -1390,7 +1471,7 @@ export function AdminCoachSitesManager({
         sourceForm.problemPointsText || fallbackSite.content.problemPoints.join("\n"),
       socialCopy: sourceForm.socialCopy || fallbackSite.content.socialCopy,
       stickyCtaContactButton:
-        sourceForm.stickyCtaContactButton || fallbackSite.content.stickyCtaContactButton || "Contact Coach",
+        sourceForm.stickyCtaContactButton || fallbackSite.content.stickyCtaContactButton || "Register Now",
       stickyCtaContext:
         sourceForm.stickyCtaContext ||
         fallbackSite.content.stickyCtaContext ||
@@ -1400,7 +1481,7 @@ export function AdminCoachSitesManager({
         fallbackSite.content.stickyCtaHeading ||
         `Ready to connect with Coach ${fallbackSite.coachName}?`,
       stickyCtaLabel:
-        sourceForm.stickyCtaLabel || fallbackSite.content.stickyCtaLabel || "Free guest registration",
+        sourceForm.stickyCtaLabel || fallbackSite.content.stickyCtaLabel || "Registration",
       subheadline: sourceForm.subheadline || fallbackSite.content.subheadline,
       supportEmailLabel: sourceForm.supportEmailLabel || fallbackSite.content.supportEmailLabel || "Email",
       supportHeading: sourceForm.supportHeading || fallbackSite.content.supportHeading || "Contact Support",
@@ -2553,8 +2634,16 @@ export function AdminCoachSitesManager({
       return "Google Form registration link is required before publishing this draft.";
     }
 
-    if (!/^https:\/\/(docs\.google\.com\/forms|forms\.gle)\//i.test(site.googleFormUrl)) {
+    if (!isSingleGoogleFormUrl(site.googleFormUrl)) {
       return "Use a valid Google Form registration link before publishing this draft.";
+    }
+
+    if (site.coachEmail.trim() && !isSingleEmailAddress(site.coachEmail)) {
+      return "Use one valid support email before publishing this draft.";
+    }
+
+    if (site.coachPhone.trim() && !isValidIndianPhoneNumber(site.coachPhone)) {
+      return "Use one valid 10-digit Indian support phone/WhatsApp number before publishing this draft.";
     }
 
     if (site.heroMediaType === "image" && !site.photoUrl.trim() && !site.logoUrl.trim()) {
@@ -2566,6 +2655,32 @@ export function AdminCoachSitesManager({
     }
 
     return "";
+  }
+
+  function isSingleGoogleFormUrl(value: string) {
+    const trimmed = value.trim();
+    if (!trimmed || /\s/.test(trimmed)) return false;
+
+    try {
+      const url = new URL(trimmed);
+      if (url.protocol !== "https:") return false;
+      if (url.hostname === "forms.gle") return url.pathname.length > 1;
+      return url.hostname === "docs.google.com" && url.pathname.startsWith("/forms/");
+    } catch {
+      return false;
+    }
+  }
+
+  function isSingleEmailAddress(value: string) {
+    const trimmed = value.trim();
+    if (!trimmed || /[\s,;]/.test(trimmed)) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+  }
+
+  function isValidIndianPhoneNumber(value: string) {
+    const digits = value.replace(/\D/g, "");
+    const normalized = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
+    return /^[6-9]\d{9}$/.test(normalized);
   }
 
   async function copyPublicLink(site: CoachSiteRecord) {
@@ -3052,6 +3167,7 @@ export function AdminCoachSitesManager({
         paidFunnelAnalysis={paidFunnelAnalysis}
         paidFunnelAnalysisBusy={paidFunnelAnalysisBusy}
         paidFunnelAnalysisMessage={paidFunnelAnalysisMessage}
+        mediaProcessingMessage={mediaProcessingMessage}
         previewSite={previewSite}
         previewPersistenceRevision={previewPersistenceRevision}
         publishProgress={publishProgress}
@@ -3073,6 +3189,7 @@ export function AdminCoachSitesManager({
         setRemoveConfirm={setRemoveConfirm}
         setRemoveOtp={setRemoveOtp}
         setRemoveReason={setRemoveReason}
+        setMediaProcessingMessage={setMediaProcessingMessage}
         setWizardStep={setWizardStep}
         wizardStep={wizardStep}
       />
@@ -3108,6 +3225,7 @@ function CoachDialogRenderer({
   onStatusConfirm,
   onUpdateCoachName,
   onUpdateField,
+  mediaProcessingMessage,
   paidFunnelAnalysis,
   paidFunnelAnalysisBusy,
   paidFunnelAnalysisMessage,
@@ -3127,6 +3245,7 @@ function CoachDialogRenderer({
   statusActionStep,
   statusSubmitting,
   setRemoveConfirm,
+  setMediaProcessingMessage,
   setRemoveOtp,
   setRemoveReason,
   setWizardStep,
@@ -3140,6 +3259,7 @@ function CoachDialogRenderer({
   dialog: CoachDialog | null;
   draftSubmitting: boolean;
   form: CoachSiteFormState;
+  mediaProcessingMessage: string;
   onAnalyzePaidFunnel: () => Promise<PaidFunnelAnalysis | null>;
   onAdminActivity?: (activity: AdminActionActivityInput) => void;
   onClose: () => void;
@@ -3181,6 +3301,7 @@ function CoachDialogRenderer({
   statusActionStep: string;
   statusSubmitting: "" | "paused" | "published";
   setRemoveConfirm: (value: string) => void;
+  setMediaProcessingMessage: (value: string) => void;
   setRemoveOtp: (value: string) => void;
   setRemoveReason: (value: string) => void;
   setWizardStep: (step: number) => void;
@@ -3189,33 +3310,42 @@ function CoachDialogRenderer({
   if (!dialog) return null;
 
   if (dialog.type === "creator") {
+    const mediaProcessing = Boolean(mediaProcessingMessage);
+
     return (
       <AdminActionDialog
         footer={
           <WizardFooter
             aiSubmitting={aiSubmitting}
+            mediaProcessing={mediaProcessing}
             onClose={onClose}
             onGeneratePreview={onGeneratePreview}
             onPublish={onPublish}
             onSaveDraft={onSaveDraft}
+            mediaProcessingMessage={mediaProcessingMessage}
             draftSubmitting={draftSubmitting}
             publishSubmitting={publishProgress.phase === "publishing"}
             setWizardStep={setWizardStep}
             wizardStep={wizardStep}
           />
         }
-        onClose={onClose}
+        onClose={mediaProcessing ? () => undefined : onClose}
         open
         size="large"
         title="Coach Website Creator"
       >
-        <div className={styles.wizardShell}>
+        <div
+          aria-busy={mediaProcessing}
+          className={styles.wizardShell}
+          data-media-busy={mediaProcessing ? "true" : undefined}
+        >
+          {mediaProcessing ? <MediaProcessingOverlay message={mediaProcessingMessage} /> : null}
           <div className={styles.stepIndicator}>
             {wizardSteps.map((step, index) => (
               <button
                 data-active={wizardStep === index ? "true" : "false"}
                 key={step}
-                disabled={aiSubmitting}
+                disabled={aiSubmitting || mediaProcessing}
                 onClick={() => setWizardStep(index)}
                 type="button"
               >
@@ -3254,6 +3384,7 @@ function CoachDialogRenderer({
                 csrfToken={csrfToken}
                 form={form}
                 onAdminActivity={onAdminActivity}
+                onMediaProcessingMessage={setMediaProcessingMessage}
                 onUpdateField={onUpdateField}
               />
             ) : null}
@@ -3310,6 +3441,7 @@ function CoachDialogRenderer({
                   label="Google Form registration link"
                   helper="Register buttons open this link after the click is tracked."
                   onChange={(value) => onUpdateField("googleFormUrl", value)}
+                  sanitizeMode="url"
                   type="url"
                   value={form.googleFormUrl}
                 />
@@ -3317,6 +3449,7 @@ function CoachDialogRenderer({
                   helper="Hidden from the normal public page. Used only on error/unavailable fallback pages."
                   label="Error support WhatsApp link"
                   onChange={(value) => onUpdateField("whatsappLink", value)}
+                  sanitizeMode="url"
                   type="url"
                   value={form.whatsappLink}
                 />
@@ -3324,6 +3457,7 @@ function CoachDialogRenderer({
                   helper="Hidden from the normal public page. Used only on error/unavailable fallback pages."
                   label="Error support email"
                   onChange={(value) => onUpdateField("coachEmail", value)}
+                  sanitizeMode="email"
                   type="email"
                   value={form.coachEmail}
                 />
@@ -3331,6 +3465,7 @@ function CoachDialogRenderer({
                   helper="Hidden from the normal public page. Used only on error/unavailable fallback pages."
                   label="Error support phone"
                   onChange={(value) => onUpdateField("coachPhone", value)}
+                  sanitizeMode="phone"
                   value={form.coachPhone}
                 />
                 <TextField
@@ -4149,6 +4284,10 @@ function PreviewAndEditStep({
             structure stay fixed.
           </p>
         </div>
+        <AdminTemplateSkinPicker
+          onChange={(selectedThemeId) => onUpdateField("selectedThemeId", selectedThemeId)}
+          value={form.selectedThemeId}
+        />
         <div className={styles.copyEditorGrid}>
           <TextAreaField
             label="Hero headline"
@@ -4245,30 +4384,24 @@ function PreviewAndEditStep({
             helper="Each step uses three lines: label, title, description. Separate steps with a blank line."
             label="Journey steps"
             onChange={(value) => onUpdateField("journeyStepsText", value)}
-            placeholder={"Profile\nMeet the coach\nGuests understand the coach story.\n\nFocus\nSee the wellness focus\nThe page explains the coach lens."}
+            placeholder={"Profile\nMeet the coach\nGuests understand the coach story.\n\nFocus\nSee the wellness focus\nThe page explains the coach approach."}
             value={form.journeyStepsText}
           />
           <TextAreaField
-            label="Benefits section heading"
+            label="Bonus section heading"
             onChange={(value) => onUpdateField("benefitsHeading", value)}
             value={form.benefitsHeading}
           />
           <TextField
-            label="Benefits section label"
+            label="Bonus section label"
             onChange={(value) => onUpdateField("benefitsSectionLabel", value)}
             value={form.benefitsSectionLabel}
           />
           <TextAreaField
-            label="Benefits"
-            onChange={(value) => onUpdateField("benefitsText", value)}
-            placeholder="One benefit per line"
-            value={form.benefitsText}
-          />
-          <TextAreaField
-            helper="Optional. One description per benefit card."
-            label="Benefit descriptions"
+            helper="One description per fixed service card. Service titles are locked to Life-Long Health Calculators, Lifetime Support Sessions, and Lifestyle Success Toolkit."
+            label="Bonus service descriptions"
             onChange={(value) => onUpdateField("benefitDescriptionsText", value)}
-            placeholder="One benefit description per line"
+            placeholder="One service description per line"
             value={form.benefitDescriptionsText}
           />
           <TextField
@@ -4374,6 +4507,34 @@ function PreviewAndEditStep({
         </div>
       )}
     </div>
+  );
+}
+
+function AdminTemplateSkinPicker({
+  onChange,
+  value
+}: {
+  onChange: (value: CoachTemplateThemeId) => void;
+  value: CoachTemplateThemeId;
+}) {
+  return (
+    <label className={styles.skinPicker}>
+      <span>Visual skin</span>
+      <select
+        onChange={(event) => onChange(event.target.value as CoachTemplateThemeId)}
+        value={value}
+      >
+        {coachTemplateThemes.map((theme) => (
+          <option key={theme.id} value={theme.id}>
+            {theme.name}
+          </option>
+        ))}
+      </select>
+      <small>
+        Presentation only. The canonical renderer keeps the same sections, CTA destination,
+        Google Form behavior, support, legal links, analytics, inspect rules, and bonus services.
+      </small>
+    </label>
   );
 }
 
@@ -4542,7 +4703,7 @@ function InspectSectionEditor({
               label="Journey steps"
               onChange={(value) => onUpdateField("journeyStepsText", value)}
               placeholder={
-                "Profile\nMeet the coach\nGuests understand the coach story.\n\nFocus\nSee the wellness focus\nThe page explains the coach lens."
+                "Profile\nMeet the coach\nGuests understand the coach story.\n\nFocus\nSee the wellness focus\nThe page explains the coach approach."
               }
               value={form.journeyStepsText}
             />
@@ -4552,26 +4713,20 @@ function InspectSectionEditor({
         {scope === "benefits" ? (
           <>
             <TextField
-              label="Benefits section label"
+              label="Bonus section label"
               onChange={(value) => onUpdateField("benefitsSectionLabel", value)}
               value={form.benefitsSectionLabel}
             />
             <TextAreaField
-              label="Benefits heading"
+              label="Bonus heading"
               onChange={(value) => onUpdateField("benefitsHeading", value)}
               value={form.benefitsHeading}
             />
             <TextAreaField
-              label="Benefits"
-              onChange={(value) => onUpdateField("benefitsText", value)}
-              placeholder="One benefit per line"
-              value={form.benefitsText}
-            />
-            <TextAreaField
-              helper="Optional. One description per benefit card."
-              label="Benefit descriptions"
+              helper="One description per fixed service card. Service titles are locked to Life-Long Health Calculators, Lifetime Support Sessions, and Lifestyle Success Toolkit."
+              label="Bonus service descriptions"
               onChange={(value) => onUpdateField("benefitDescriptionsText", value)}
-              placeholder="One benefit description per line"
+              placeholder="One service description per line"
               value={form.benefitDescriptionsText}
             />
           </>
@@ -4713,15 +4868,35 @@ function CursorInspectIcon() {
   );
 }
 
+function MediaProcessingOverlay({ message }: { message: string }) {
+  return (
+    <div className={styles.mediaProcessingOverlay} role="status" aria-live="polite">
+      <div className={styles.mediaProcessingCard}>
+        <span className={styles.mediaProcessingSpinner} aria-hidden="true" />
+        <p>Preparing transparent coach photo</p>
+        <strong>Please wait. Keep this builder open.</strong>
+        <small>{message || "Creating a clean cutout and saving it securely..."}</small>
+        <ul>
+          <li>Removing the photo background</li>
+          <li>Saving the processed cutout</li>
+          <li>Updating preview and publish data</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 function HeroMediaStep({
   csrfToken,
   form,
   onAdminActivity,
+  onMediaProcessingMessage,
   onUpdateField
 }: {
   csrfToken: string;
   form: CoachSiteFormState;
   onAdminActivity?: (activity: AdminActionActivityInput) => void;
+  onMediaProcessingMessage: (message: string) => void;
   onUpdateField: <Key extends keyof CoachSiteFormState>(
     key: Key,
     value: CoachSiteFormState[Key]
@@ -4729,11 +4904,30 @@ function HeroMediaStep({
 }) {
   const [uploadMessage, setUploadMessage] = useState("");
   const [uploadingMediaType, setUploadingMediaType] = useState<"" | "image" | "video">("");
-  const imagePreviewUrl = form.photoUrl || form.logoUrl;
+  const [coachImageResult, setCoachImageResult] = useState<CoachImageMediaResult | null>(null);
+  const [temporaryImagePreviewUrl, setTemporaryImagePreviewUrl] = useState("");
+  const [temporaryVideoPreviewUrl, setTemporaryVideoPreviewUrl] = useState("");
+  const imagePreviewUrl = temporaryImagePreviewUrl || form.photoUrl || form.logoUrl;
   const videoPreviewUrl = normalizeVideoEmbedUrl(form.videoUrl);
-  const uploadedVideoUrl = isUploadedVideoSource(form.videoUrl) ? form.videoUrl : "";
+  const uploadedVideoUrl =
+    temporaryVideoPreviewUrl || (isUploadedVideoSource(form.videoUrl) ? form.videoUrl : "");
   const videoInvalid =
     form.heroMediaType === "video" && form.videoUrl.trim() && !videoPreviewUrl && !uploadedVideoUrl;
+  const setImageUploadProgress = useCallback(
+    (nextMessage: string) => {
+      setUploadMessage(nextMessage);
+      onMediaProcessingMessage(nextMessage);
+    },
+    [onMediaProcessingMessage]
+  );
+
+  useEffect(() => {
+    const preloadTimer = window.setTimeout(() => {
+      void preloadCoachHeroPhotoBackgroundRemoval();
+    }, 180000);
+
+    return () => window.clearTimeout(preloadTimer);
+  }, []);
 
   async function handleMediaUpload(file: File | undefined, mediaType: "image" | "video") {
     if (!file) return;
@@ -4742,8 +4936,8 @@ function HeroMediaStep({
     if (file.size > maxOriginalBytes) {
       setUploadMessage(
         mediaType === "image"
-          ? "Photo is too large. Upload a photo under 20 MB so it can be optimized before saving."
-          : "Video is too large. Use a video under 24 MB or add a video URL."
+          ? "Photo is too large. Upload an optimized photo under 12 MB."
+          : "Video is too large. Use a video under 70 MB or add a YouTube/video URL."
       );
       return;
     }
@@ -4753,52 +4947,52 @@ function HeroMediaStep({
       return;
     }
 
-    if (mediaType === "video" && !file.type.startsWith("video/")) {
-      setUploadMessage("Upload a video file.");
+    if (mediaType === "video" && !isAllowedVideoFile(file)) {
+      setUploadMessage("Upload a supported video file up to 70 MB, or paste a YouTube/video URL.");
       return;
     }
 
-    setUploadMessage(
-      mediaType === "image" ? `Removing background from ${file.name}...` : `Uploading ${file.name}...`
-    );
     setUploadingMediaType(mediaType);
+    if (mediaType === "image") setCoachImageResult(null);
+    const initialMessage =
+      mediaType === "image" ? "Preparing your coach photo..." : `Uploading ${file.name}...`;
+    setUploadMessage(initialMessage);
+    if (mediaType === "image") onMediaProcessingMessage(initialMessage);
     onAdminActivity?.({
       detail:
         mediaType === "image"
-          ? `${file.name} photo background removal/upload started.`
+          ? `${file.name} coach photo processing started.`
           : `${file.name} video upload started.`,
       label: "Coach Sites",
       status: "working"
     });
 
-    const preparedMedia =
-      mediaType === "image"
-        ? await preparePhotoForUpload(file).catch(() => ({
-            file,
-            message: "Could not remove this photo background safely. Saving the original file.",
-            optimized: false
-          }))
-        : { file, message: "", optimized: false };
-    const uploadFile = preparedMedia.file;
-
-    if (mediaType === "image" && uploadFile.size > PHOTO_STORED_MAX_BYTES) {
-      setUploadMessage(
-        "Photo is still too large after optimization. Use a smaller image or convert it to JPEG/WebP first."
-      );
-      return;
+    const previewUrl = URL.createObjectURL(file);
+    const uploadedFile = file;
+    let cutoutFile: File | null = null;
+    if (mediaType === "image") {
+      setTemporaryImagePreviewUrl(previewUrl);
+      onUpdateField("heroMediaType", "image");
+    } else {
+      setTemporaryVideoPreviewUrl(previewUrl);
+      onUpdateField("heroMediaType", "video");
     }
-
-    const previewUrl = URL.createObjectURL(uploadFile);
-    onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", previewUrl);
-    setUploadMessage(
-      preparedMedia.message
-        ? `${preparedMedia.message} Uploading...`
-        : `Uploading ${uploadFile.name}...`
-    );
+    setUploadMessage(initialMessage);
+    if (mediaType === "image") onMediaProcessingMessage(initialMessage);
 
     try {
+      if (mediaType === "image") {
+        const preparedPhoto = await prepareCoachHeroPhotoForUpload(file, {
+          maxBytes: PHOTO_ORIGINAL_MAX_BYTES,
+          onProgress: setImageUploadProgress
+        });
+        cutoutFile = preparedPhoto.file;
+        setImageUploadProgress("Saving transparent coach photo...");
+      }
+
       const formData = new FormData();
-      formData.append("file", uploadFile);
+      formData.append("file", uploadedFile);
+      if (cutoutFile) formData.append("cutoutFile", cutoutFile);
       formData.append("mediaType", mediaType);
       formData.append("slug", normalizeCoachSlug(form.slug || form.coachName) || "draft-coach");
 
@@ -4814,51 +5008,91 @@ function HeroMediaStep({
       const payload = (await response.json().catch(() => ({}))) as MediaUploadApiPayload;
 
       if (!response.ok || !payload.ok || !payload.media?.publicUrl) {
-        const fallbackPreview = await readFileAsDataUrl(uploadFile);
-        onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", fallbackPreview);
         setUploadMessage(
-          payload.error ||
-            `${uploadFile.name} is preview-only until Cloudflare R2 media storage is enabled.`
+          payload.error || `${file.name} could not be saved. Please try again.`
         );
         onAdminActivity?.({
           detail:
             payload.error ||
-            `${uploadFile.name} saved as preview-only because permanent media storage did not respond.`,
+            `${file.name} could not be saved because permanent media storage did not respond.`,
           label: "Coach Sites",
           status: "error"
         });
         return;
       }
 
-      onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", payload.media.publicUrl);
+      const stableMediaUrl =
+        mediaType === "image"
+          ? payload.media.cutoutUrl || payload.media.publicUrl
+          : payload.media.publicUrl;
+
+      onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", stableMediaUrl);
+      if (mediaType === "image") {
+        setCoachImageResult(payload.media);
+        setTemporaryImagePreviewUrl("");
+        onMediaProcessingMessage("");
+      } else {
+        setTemporaryVideoPreviewUrl("");
+      }
       setUploadMessage(
         mediaType === "image"
-          ? `${uploadFile.name} uploaded to R2 as transparent hero PNG (${formatBytes(uploadFile.size)}). ${preparedMedia.message}`
-          : `${uploadFile.name} uploaded and saved for this coach site.`
+          ? getCoachImageUploadMessage(payload.media, file)
+          : `${uploadedFile.name} uploaded and saved for this coach site.`
       );
       onAdminActivity?.({
         detail:
           mediaType === "image"
-            ? `${uploadFile.name} transparent hero photo uploaded and saved.`
-            : `${uploadFile.name} video uploaded and saved.`,
+            ? getCoachImageAdminActivityMessage(payload.media, file)
+            : `${uploadedFile.name} video uploaded and saved.`,
         label: "Coach Sites",
         status: "success"
       });
-    } catch {
-      const fallbackPreview = await readFileAsDataUrl(uploadFile);
-      onUpdateField(mediaType === "image" ? "photoUrl" : "videoUrl", fallbackPreview);
+    } catch (error) {
+      setTemporaryImagePreviewUrl("");
+      setTemporaryVideoPreviewUrl("");
+      if (mediaType === "image") onMediaProcessingMessage("");
       setUploadMessage(
-        `${uploadFile.name} is preview-only because the upload API was not reachable.`
+        error instanceof Error
+          ? error.message
+          : `${file.name} could not be saved. Please try again.`
       );
       onAdminActivity?.({
-        detail: `${uploadFile.name} upload API was not reachable; preview-only fallback used.`,
+        detail:
+          error instanceof Error
+            ? error.message
+            : `${file.name} upload API was not reachable.`,
         label: "Coach Sites",
         status: "error"
       });
     } finally {
       URL.revokeObjectURL(previewUrl);
+      if (mediaType === "image") {
+        setTemporaryImagePreviewUrl((current) => (current === previewUrl ? "" : current));
+      } else {
+        setTemporaryVideoPreviewUrl((current) => (current === previewUrl ? "" : current));
+      }
       setUploadingMediaType("");
+      if (mediaType === "image") onMediaProcessingMessage("");
     }
+  }
+
+  function handleUseImageUrl(url: string | undefined, label: "cutout" | "original") {
+    if (!url) return;
+    setTemporaryImagePreviewUrl("");
+    onUpdateField("heroMediaType", "image");
+    onUpdateField("photoUrl", url);
+    setUploadMessage(
+      label === "cutout"
+        ? "Using the transparent coach cutout."
+        : "Using the original photo in the portrait frame."
+    );
+  }
+
+  function handleResetImage() {
+    setCoachImageResult(null);
+    setTemporaryImagePreviewUrl("");
+    onUpdateField("photoUrl", "");
+    setUploadMessage("Coach photo cleared. Upload another image when ready.");
   }
 
   return (
@@ -4872,7 +5106,7 @@ function HeroMediaStep({
           value={form.heroMediaType}
         >
           <option value="image">Photo/Image</option>
-          <option value="video">Video Link</option>
+          <option value="video">Video Upload/Link</option>
           <option value="none">No Media</option>
         </select>
         <small>Choose one mode. The fixed template will only show the fields for that mode.</small>
@@ -4897,7 +5131,10 @@ function HeroMediaStep({
           <TextField
             helper="Use a coach photo, logo, or hero image URL."
             label="Coach photo / hero image URL"
-            onChange={(value) => onUpdateField("photoUrl", value)}
+            onChange={(value) => {
+              setCoachImageResult(null);
+              onUpdateField("photoUrl", value);
+            }}
             type="url"
             value={form.photoUrl}
           />
@@ -4916,13 +5153,21 @@ function HeroMediaStep({
               <span>Image preview</span>
             )}
           </div>
-          {imagePreviewUrl ? (
+          {coachImageResult ? (
+            <CoachImageResultPanel
+              activeUrl={form.photoUrl}
+              disabled={uploadingMediaType === "image"}
+              media={coachImageResult}
+              onReset={handleResetImage}
+              onUse={handleUseImageUrl}
+            />
+          ) : imagePreviewUrl ? (
             <button
               className={styles.secondaryAction}
-              onClick={() => onUpdateField("photoUrl", "")}
+              onClick={handleResetImage}
               type="button"
             >
-              Remove Image
+              Reset image
             </button>
           ) : null}
         </div>
@@ -4933,7 +5178,7 @@ function HeroMediaStep({
           <label className={styles.compactField}>
             <span>Upload video</span>
             <input
-              accept="video/*"
+              accept={VIDEO_UPLOAD_ACCEPT}
               disabled={uploadingMediaType === "video"}
               onChange={(event) => void handleMediaUpload(event.target.files?.[0], "video")}
               type="file"
@@ -4941,7 +5186,7 @@ function HeroMediaStep({
             <small>
               {uploadingMediaType === "video"
                 ? "Uploading video. Please wait..."
-                : "Use upload for a local video, or paste a YouTube/video URL below."}
+                : "Upload a supported video up to 70 MB, or paste a YouTube/video URL below."}
             </small>
           </label>
           <TextField
@@ -4951,7 +5196,7 @@ function HeroMediaStep({
             type="url"
             value={form.videoUrl}
           />
-          <div className={styles.mediaPreview} data-state={videoPreviewUrl ? "ready" : "empty"}>
+          <div className={styles.mediaPreview} data-state={videoPreviewUrl || uploadedVideoUrl ? "ready" : "empty"}>
             {videoPreviewUrl ? (
               <iframe
                 allow="accelerometer; autoplay; clipboard-write; compute-pressure; encrypted-media; gyroscope; picture-in-picture"
@@ -4996,6 +5241,8 @@ function HeroMediaStep({
 function WizardFooter({
   aiSubmitting,
   draftSubmitting,
+  mediaProcessing,
+  mediaProcessingMessage,
   onClose,
   onGeneratePreview,
   onPublish,
@@ -5006,6 +5253,8 @@ function WizardFooter({
 }: {
   aiSubmitting: boolean;
   draftSubmitting: boolean;
+  mediaProcessing: boolean;
+  mediaProcessingMessage: string;
   onClose: () => void;
   onGeneratePreview: () => Promise<boolean>;
   onPublish: () => Promise<CoachSiteRecord | null>;
@@ -5019,7 +5268,7 @@ function WizardFooter({
       <button
         className={styles.secondaryAction}
         data-admin-tooltip="Close the website creator"
-        disabled={publishSubmitting}
+        disabled={publishSubmitting || mediaProcessing}
         onClick={onClose}
         type="button"
       >
@@ -5028,7 +5277,7 @@ function WizardFooter({
       <button
         className={styles.secondaryAction}
         data-admin-tooltip="Go back one builder step"
-        disabled={wizardStep === 0 || aiSubmitting || publishSubmitting}
+        disabled={wizardStep === 0 || aiSubmitting || publishSubmitting || mediaProcessing}
         onClick={() => setWizardStep(Math.max(wizardStep - 1, 0))}
         type="button"
       >
@@ -5038,7 +5287,7 @@ function WizardFooter({
         className={styles.secondaryAction}
         data-admin-tooltip="Save progress and continue later from Drafts"
         aria-busy={draftSubmitting}
-        disabled={aiSubmitting || publishSubmitting || draftSubmitting}
+        disabled={aiSubmitting || publishSubmitting || draftSubmitting || mediaProcessing}
         onClick={() => {
           void onSaveDraft();
         }}
@@ -5054,8 +5303,10 @@ function WizardFooter({
               ? "Generate copy and open the preview step"
               : "Continue to the next builder step"
           }
-          disabled={aiSubmitting || publishSubmitting}
+          disabled={aiSubmitting || publishSubmitting || mediaProcessing}
+          aria-describedby={mediaProcessing ? "admin-media-processing-message" : undefined}
           onClick={() => {
+            if (mediaProcessing) return;
             if (wizardStep === 3) {
               void onGeneratePreview();
               return;
@@ -5071,8 +5322,9 @@ function WizardFooter({
         <button
           className={styles.primaryAction}
           data-admin-tooltip="Publish after validation and public-page verification"
-          disabled={aiSubmitting || publishSubmitting}
+          disabled={aiSubmitting || publishSubmitting || mediaProcessing}
           onClick={() => {
+            if (mediaProcessing) return;
             void onPublish();
             setWizardStep(5);
           }}
@@ -5081,6 +5333,11 @@ function WizardFooter({
           {publishSubmitting ? "Publishing..." : "Publish"}
         </button>
       )}
+      {mediaProcessing ? (
+        <span className={styles.footerBusyHint} id="admin-media-processing-message">
+          {mediaProcessingMessage || "Please wait for the photo cutout to finish."}
+        </span>
+      ) : null}
     </>
   );
 }
@@ -5432,6 +5689,7 @@ function TextField({
   label,
   onChange,
   required = false,
+  sanitizeMode,
   type = "text",
   value
 }: {
@@ -5439,14 +5697,25 @@ function TextField({
   label: string;
   onChange: (value: string) => void;
   required?: boolean;
+  sanitizeMode?: "email" | "phone" | "url";
   type?: "email" | "text" | "url";
   value: string;
 }) {
+  function handlePaste(event: ClipboardEvent<HTMLInputElement>) {
+    if (!sanitizeMode) return;
+    const pasted = event.clipboardData.getData("text");
+    const sanitized = sanitizeSingleFieldPaste(pasted, sanitizeMode, value);
+    event.preventDefault();
+    if (sanitized === null) return;
+    onChange(sanitized);
+  }
+
   return (
     <label className={styles.compactField}>
       <span>{label}</span>
       <input
         onChange={(event) => onChange(event.target.value)}
+        onPaste={handlePaste}
         required={required}
         type={type}
         value={value}
@@ -5482,6 +5751,90 @@ function TextAreaField({
   );
 }
 
+function sanitizeSingleFieldPaste(
+  pasted: string,
+  mode: "email" | "phone" | "url",
+  currentValue: string
+) {
+  const raw = pasted.trim();
+  if (!raw) return "";
+
+  if (mode === "url") {
+    const matches = raw.match(/https:\/\/[^\s,;]+/gi) || [];
+    const unique = Array.from(new Set(matches.map((item) => item.trim())));
+    if (unique.length === 1) return unique[0];
+    if (unique.length > 1) return null;
+    return raw;
+  }
+
+  if (mode === "email") {
+    const matches = raw.match(/[^\s,;@]+@[^\s,;@]+\.[^\s,;@]+/gi) || [];
+    const unique = Array.from(new Set(matches.map((item) => item.trim().toLowerCase())));
+    if (unique.length === 1) return unique[0];
+    if (unique.length > 1) return null;
+    return raw.toLowerCase();
+  }
+
+  const digits = raw.replace(/\D/g, "");
+  const normalized = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
+  const currentDigits = currentValue.replace(/\D/g, "");
+  const normalizedCurrent =
+    currentDigits.length === 12 && currentDigits.startsWith("91") ? currentDigits.slice(2) : currentDigits;
+  if (normalized.length === 10 && normalized === normalizedCurrent) return normalized;
+  if (normalized.length === 10) return normalized;
+  return null;
+}
+
+function CoachImageResultPanel({
+  activeUrl,
+  disabled,
+  media,
+  onReset,
+  onUse
+}: {
+  activeUrl: string;
+  disabled: boolean;
+  media: CoachImageMediaResult;
+  onReset: () => void;
+  onUse: (url: string | undefined, label: "cutout" | "original") => void;
+}) {
+  const hasCutout = Boolean(media.cutoutUrl);
+
+  return (
+    <div className={styles.imageResultPanel} data-status={media.processingStatus || "unknown"}>
+      <div>
+        <strong>{getCoachImageResultTitle(media)}</strong>
+        <span>{getCoachImageResultDescription(media)}</span>
+      </div>
+      <div className={styles.imageResultActions}>
+        {hasCutout ? (
+          <button
+            data-active={activeUrl === media.cutoutUrl ? "true" : undefined}
+            disabled={disabled}
+            onClick={() => onUse(media.cutoutUrl, "cutout")}
+            type="button"
+          >
+            Use cutout
+          </button>
+        ) : null}
+        {media.originalUrl ? (
+          <button
+            data-active={activeUrl === media.originalUrl ? "true" : undefined}
+            disabled={disabled}
+            onClick={() => onUse(media.originalUrl, "original")}
+            type="button"
+          >
+            Use original frame
+          </button>
+        ) : null}
+        <button disabled={disabled} onClick={onReset} type="button">
+          Reset image
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function isAllowedPhotoFile(file: File) {
   const contentType = file.type.trim().toLowerCase();
   const extension = getClientFileExtension(file.name);
@@ -5496,11 +5849,17 @@ function isAllowedPhotoFile(file: File) {
   );
 }
 
-async function preparePhotoForUpload(file: File) {
-  return prepareCoachHeroPhotoForUpload(file, {
-    maxBytes: PHOTO_STORED_MAX_BYTES,
-    maxEdge: IMAGE_OPTIMIZE_MAX_EDGE
-  });
+function isAllowedVideoFile(file: File) {
+  const contentType = file.type.trim().toLowerCase();
+  const extension = getClientFileExtension(file.name);
+
+  if (ALLOWED_VIDEO_MIME_TYPES.has(contentType)) return true;
+
+  return (
+    Boolean(extension) &&
+    ALLOWED_VIDEO_EXTENSIONS.has(extension) &&
+    (contentType === "" || contentType === "application/octet-stream" || contentType.startsWith("video/"))
+  );
 }
 
 function getClientFileExtension(fileName: string) {
@@ -5508,18 +5867,67 @@ function getClientFileExtension(fileName: string) {
   return match?.[0] || "";
 }
 
+function getCoachImageUploadMessage(
+  media: NonNullable<MediaUploadApiPayload["media"]>,
+  file?: File
+) {
+  if (media.processingStatus === "cutout_ready") {
+    return `Coach photo is ready${media.sizeBytes || file?.size ? ` (${formatBytes(media.sizeBytes || file?.size || 0)})` : ""}.`;
+  }
+
+  if (media.processingStatus === "not_configured") {
+    return "Photo uploaded, but the transparent cutout was not created. Upload a clearer photo and try again.";
+  }
+
+  if (media.safeMessage) {
+    return media.safeMessage;
+  }
+
+  return `Coach photo uploaded${file?.size ? ` (${formatBytes(file.size)})` : ""}.`;
+}
+
+function getCoachImageAdminActivityMessage(
+  media: NonNullable<MediaUploadApiPayload["media"]>,
+  file?: File
+) {
+  if (media.processingStatus === "cutout_ready") {
+    return file
+      ? `${file.name} coach photo cutout processed and saved.`
+      : "Coach photo cutout processed and saved.";
+  }
+
+  if (media.processingStatus === "not_configured") {
+    return file
+      ? `${file.name} uploaded, but the transparent cutout was not created.`
+      : "Coach photo uploaded, but the transparent cutout was not created.";
+  }
+
+  return file
+    ? `${file.name} coach photo uploaded.`
+    : "Coach photo uploaded.";
+}
+
+function getCoachImageResultTitle(media: CoachImageMediaResult) {
+  if (media.processingStatus === "cutout_ready") return "Cutout ready";
+  if (media.processingStatus === "framed_fallback") return "Original frame active";
+  if (media.processingStatus === "not_configured") return "Cutout not created";
+  if (media.processingStatus === "disabled") return "Original uploaded";
+  return "Coach photo uploaded";
+}
+
+function getCoachImageResultDescription(media: CoachImageMediaResult) {
+  if (media.processingStatus === "cutout_ready") {
+    return "A transparent coach photo is saved. You can still switch back to the original photo.";
+  }
+
+  if (media.safeMessage) return media.safeMessage;
+
+  return "The original photo is stored for this coach site.";
+}
+
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   const kilobytes = bytes / 1024;
   if (kilobytes < 1024) return `${kilobytes.toFixed(1)} KB`;
   return `${(kilobytes / 1024).toFixed(2)} MB`;
-}
-
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.addEventListener("load", () => resolve(String(reader.result || "")));
-    reader.addEventListener("error", () => reject(reader.error));
-    reader.readAsDataURL(file);
-  });
 }

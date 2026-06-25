@@ -5,21 +5,21 @@ import {
   normalizeCoachSlug
 } from "../../lib/admin-coach-sites";
 import {
-  getCoachTemplateCssVariables,
-  getCoachTemplateTheme
-} from "../../lib/coach-template-themes";
-import {
-  CANONICAL_COACH_TEMPLATE_ID,
+  getCanonicalCoachSectionCopy,
   getCanonicalCoachInitials,
   getCanonicalCoachName,
   getCanonicalCoachNiche,
-  getCanonicalHeroDetailCards,
   getCanonicalHeroPackage,
   getCanonicalLegalDisclaimer,
   getCanonicalRegisterLabel,
-  getSafeCoachTemplateCopy,
-  getNicheAdaptiveBonusSection
+  getCanonicalCoachNavbarSections,
+  getSmartBonusVisualCssType,
+  getSmartBonusVisualMark,
+  getNicheAdaptiveBonusSection,
+  type CanonicalHeroInfoCardKind,
+  type NicheAdaptiveBonusItem
 } from "../../lib/coach-canonical-template";
+import { getCoachTemplateTheme } from "../../lib/coach-template-themes";
 import {
   DEFAULT_SUPPORT_EMAIL,
   DEFAULT_SUPPORT_PHONE,
@@ -613,32 +613,36 @@ export async function onRequest({ env, params, request }: PagesContext) {
 }
 
 function renderCoachSiteHtml(site: PublicCoachSiteRecord) {
-  if (String(site.selectedThemeId) === "__legacy_rollback") {
-    return renderLegacyCoachSiteHtml(site);
-  }
-
   return renderCanonicalCoachSiteHtml(site);
+}
+
+function serializeCssVars(cssVars: Record<string, string>) {
+  return Object.entries(cssVars)
+    .map(([key, value]) => `${key}: ${value};`)
+    .join(" ");
 }
 
 function renderCanonicalCoachSiteHtml(site: PublicCoachSiteRecord) {
   const coachName = getCanonicalCoachName(site);
   const coachNiche = getCanonicalCoachNiche(site);
   const heroPackage = getCanonicalHeroPackage(site);
-  const detailCards = getCanonicalHeroDetailCards(site);
   const bonusSection = getNicheAdaptiveBonusSection(site);
   const registerLabel = getCanonicalRegisterLabel(site);
-  const support = getSupportDetails(site);
+  const sectionCopy = getCanonicalCoachSectionCopy(site);
+  const selectedTheme = getCoachTemplateTheme(site.selectedThemeId);
+  const selectedThemeStyle = serializeCssVars(selectedTheme.cssVars);
   const title = `${coachName} | YW Nutritech Coach Circle`;
 
-  return `<!doctype html>
-<html lang="en">
+  return `<!DOCTYPE html>
+<html data-wf-domain="alliahealth.co" data-wf-page="6949580ebefd680afac069c3" data-wf-site="6949580dbefd680afac06955" lang="en-US">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>${escapeHtml(title)}</title>
     <meta name="description" content="${escapeAttribute(heroPackage.subheadline)}" />
-    <link rel="preload" href="/assets/allia-yw-hero-background.avif" as="image" />
-    <link rel="stylesheet" href="/coach-circle-template.css?v=coach-footer-legal-local-style-20260618" />
+    <link rel="stylesheet" href="/external/cdn.prod.website-files.com/6949580dbefd680afac06955/css/allia-health.webflow.shared.d4c5828f3.min.css" type="text/css" />
+    <link data-optimized="2" rel="stylesheet" href="/wp-content/litespeed/css/1e2d793fa3c48bae1a09bb06ed182c7e.css" />
+    <link rel="stylesheet" href="/coach-circle-template.css?v=coach-cutout-optimal-hero-size-20260625" />
     <style>
       :root {
         --font-display: Georgia, Cambria, "Times New Roman", serif;
@@ -655,84 +659,28 @@ function renderCanonicalCoachSiteHtml(site: PublicCoachSiteRecord) {
       ${renderInlineYWLoaderCss()}
     </style>
   </head>
-  <body>
+  <body class="wp-singular page-template page-template-elementor_canvas wp-embed-responsive wp-theme-twentytwentythree elementor-default elementor-template-canvas elementor-kit-11 elementor-page elementor-page-11246 yw-circle-body">
     ${renderInlineYWLoader()}
-    <main
+    <div
       class="yw-circle-site"
       data-coach-site-page="public"
       data-coach-slug="${escapeAttribute(site.slug)}"
-      data-theme="${CANONICAL_COACH_TEMPLATE_ID}"
+      data-theme="${escapeAttribute(selectedTheme.id)}"
+      data-yw-template-theme="${escapeAttribute(selectedTheme.id)}"
+      style="${escapeAttribute(selectedThemeStyle)}"
       id="top"
     >
-      <div class="yw-allia-background" aria-hidden="true"></div>
+      <div class="yw-allia-background" id="background" aria-hidden="true"></div>
       <div class="yw-scroll-progress" aria-hidden="true"><span class="yw-scroll-progress__bar"></span></div>
 
-      <nav class="navbar14_component w-nav" aria-label="Coach page navigation">
-        <div class="navbar14_container">
-          <a class="navbar14_logo-link w-nav-brand yw-navbar-brand" href="#top">
-            <span class="yw-navbar-mark" aria-hidden="true">
-              <img alt="" decoding="async" loading="eager" src="/assets/yw-logo-transparent.png" />
-            </span>
-            <span class="yw-navbar-wordmark"><strong>YWN</strong></span>
-          </a>
-          <div class="navbar14_menu w-nav-menu">
-            <div class="navbar14_menu-links">
-              <a href="#story">About Us</a>
-              <a href="#story">How It Works</a>
-              <a href="#bonus">Quality &amp; Innovation</a>
-              <a href="#bonus">Our Brands</a>
-              <a href="#faq">FAQ</a>
-              <a href="#coach-contact-support">Careers</a>
-              <a href="#coach-contact-support">Contact Us</a>
-            </div>
-          </div>
-          <div class="navbar14_menu-button w-nav-button" aria-hidden="true"><div class="menu-icon2"></div></div>
-        </div>
-      </nav>
+      ${renderCanonicalNavbar(site, registerLabel)}
 
-      <div class="yw-circle-main">
-        <section class="yw-circle-hero" id="hero">
-          <div class="yw-circle-hero__shell">
-            <p class="yw-hero-kicker">${escapeHtml(heroPackage.eyebrow)}</p>
-            <p class="yw-hero-pill">${escapeHtml(site.content.brandEyebrow || `Free coach guidance with ${coachName}`)}</p>
-            <h1 class="yw-circle-title">${escapeHtml(heroPackage.headline)} <span>${escapeHtml(heroPackage.highlight)}</span></h1>
-            <p class="yw-circle-subtitle">${escapeHtml(heroPackage.subheadline)}</p>
-            ${renderRegisterAction(site, "yw-register-button yw-hero-top-register", registerLabel)}
-
-            <div class="yw-hero-grid">
-              <div class="yw-coach-visual" data-media="${escapeAttribute(site.heroMediaType || "image")}">
-                <div class="yw-coach-photo-frame" data-empty="${site.photoUrl || site.logoUrl ? "false" : "true"}">
-                  ${renderCanonicalHeroImageContent(site)}
-                </div>
-                <div class="yw-coach-card">
-                  <h2>${escapeHtml(coachName)}</h2>
-                  <p>${escapeHtml(coachNiche)}</p>
-                </div>
-              </div>
-
-              <div class="yw-details-panel">
-                <h2 class="yw-details-heading">Coach Support Details</h2>
-                <span class="yw-details-line" aria-hidden="true"></span>
-                <p class="yw-audience-label">${escapeHtml(heroPackage.helperText)}</p>
-                <div class="yw-details-grid">
-                  ${detailCards
-                    .map(
-                      (card, index) => `<article class="yw-detail-card">
-                        <span class="yw-detail-icon" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
-                        <span><h3>${escapeHtml(card.label)}</h3><p>${escapeHtml(card.value)}</p></span>
-                      </article>`
-                    )
-                    .join("")}
-                </div>
-                ${renderRegisterAction(site, "yw-register-button", registerLabel)}
-              </div>
-            </div>
-          </div>
-        </section>
+      <main class="yw-circle-main" aria-label="YW Nutritech Circle composite page">
+        ${renderCanonicalElementorHero(site, sectionCopy, registerLabel)}
 
         ${renderCanonicalMarquee(coachName)}
 
-        <section class="yw-story-section" id="story" aria-labelledby="yw-story-title">
+        <section class="yw-story-section" id="story" aria-labelledby="yw-story-title" data-yw-section-key="coach">
           <div class="yw-story-grid">
             <div class="yw-story-media">
               <div class="yw-story-video-card">
@@ -744,9 +692,9 @@ function renderCanonicalCoachSiteHtml(site: PublicCoachSiteRecord) {
               </div>
             </div>
             <div class="yw-story-copy">
-              <h2 id="yw-story-title">${escapeHtml(site.content.introHeading || `Meet Coach ${coachName}`)} <span>${escapeHtml(site.content.visionLabel || "with clarity.")}</span></h2>
-              <p>${escapeHtml(site.content.coachIntro || site.bio)}</p>
-              <p>${escapeHtml(site.content.visionText || site.vision)}</p>
+              <h2 id="yw-story-title">${escapeHtml(sectionCopy.trustHeading)} <span>${escapeHtml(sectionCopy.trustLabel)}</span></h2>
+              <p>${escapeHtml(sectionCopy.trustIntro)}</p>
+              <p>${escapeHtml(sectionCopy.trustMission)}</p>
               <div class="yw-story-stats" aria-label="YW Nutritech coach highlights">
                 <div><strong>50K+</strong><span>Community Members</span></div>
                 <div><strong>1Cr+</strong><span>People Mission</span></div>
@@ -756,12 +704,13 @@ function renderCanonicalCoachSiteHtml(site: PublicCoachSiteRecord) {
           </div>
         </section>
 
-        <section class="yw-sales-section yw-sales-section--cream" aria-labelledby="yw-familiar-title">
+        <section class="yw-growth-suite" aria-label="Coaching blueprint sections">
+        <section class="yw-sales-section yw-sales-section--cream" id="problem" aria-labelledby="yw-familiar-title" data-yw-section-key="problem">
           <div class="yw-sales-shell">
-            <p class="yw-kicker">${escapeHtml(site.content.problemSectionLabel || "Does this sound familiar?")}</p>
-            <h2 id="yw-familiar-title">${escapeHtml(getSafeCoachTemplateCopy(site.content.problemHeading, `You want clearer ${coachNiche} guidance.`))}</h2>
+            <p class="yw-kicker">${escapeHtml(sectionCopy.problemLabel)}</p>
+            <h2 id="yw-familiar-title">${escapeHtml(sectionCopy.problemHeading)}</h2>
             <div class="yw-check-grid">
-              ${getProblemPoints(site)
+              ${sectionCopy.problemPoints
                 .map((point) => `<div class="yw-check-row"><span aria-hidden="true">&#10003;</span><p>${escapeHtml(point)}</p></div>`)
                 .join("")}
             </div>
@@ -769,12 +718,12 @@ function renderCanonicalCoachSiteHtml(site: PublicCoachSiteRecord) {
           </div>
         </section>
 
-        <section class="yw-sales-section yw-sales-section--mint" aria-labelledby="yw-blueprint-title">
+        <section class="yw-sales-section yw-sales-section--mint" id="how-it-works" aria-labelledby="yw-blueprint-title" data-yw-section-key="journey">
           <div class="yw-sales-shell">
-            <p class="yw-kicker">${escapeHtml(site.content.journeySectionLabel || "What you will walk away with")}</p>
-            <h2 id="yw-blueprint-title">${escapeHtml(getSafeCoachTemplateCopy(site.content.journeyHeading, "A complete practical coach-support blueprint."))}</h2>
+            <p class="yw-kicker">${escapeHtml(sectionCopy.journeyLabel)}</p>
+            <h2 id="yw-blueprint-title">${escapeHtml(sectionCopy.journeyHeading)}</h2>
             <div class="yw-blueprint-grid">
-              ${getJourneySteps(site)
+              ${sectionCopy.journeySteps
                 .map(
                   (step, index) => `<article>
                     <strong>${String(index + 1).padStart(2, "0")}</strong>
@@ -788,93 +737,337 @@ function renderCanonicalCoachSiteHtml(site: PublicCoachSiteRecord) {
           </div>
         </section>
 
+        <section class="yw-sales-section yw-sales-section--dark" id="results" aria-labelledby="yw-results-title" data-yw-section-key="results">
+          <div class="yw-sales-shell">
+            <p class="yw-kicker">${escapeHtml(sectionCopy.resultsLabel)}</p>
+            <h2 id="yw-results-title">${escapeHtml(sectionCopy.resultsHeadingMain)} <span>${escapeHtml(sectionCopy.resultsHeadingAccent)}</span></h2>
+            <p class="yw-section-subcopy">${escapeHtml(sectionCopy.resultsSubcopy)}</p>
+            <div class="yw-result-cards">
+              ${sectionCopy.resultsCards
+                .map(
+                  (card) =>
+                    `<article><span>${escapeHtml(card.label)}</span><h3>${escapeHtml(card.title)}</h3><p>${escapeHtml(card.body)}</p><strong>${escapeHtml(card.attribution)}</strong></article>`
+                )
+                .join("")}
+            </div>
+            ${renderRegisterAction(site, "yw-register-strip yw-register-strip--dark", registerLabel)}
+          </div>
+        </section>
+
+        <section class="yw-sales-section yw-sales-section--cream" id="for-you" aria-labelledby="yw-fit-title" data-yw-section-key="fit">
+          <div class="yw-sales-shell">
+            <h2 id="yw-fit-title">${escapeHtml(sectionCopy.fitHeadingMain)} <span>${escapeHtml(sectionCopy.fitHeadingAccent)}</span></h2>
+            <div class="yw-fit-table" aria-label="${escapeAttribute(sectionCopy.fitAriaLabel)}">
+              <div class="yw-fit-col">
+                <h3>This IS for you if...</h3>
+                ${sectionCopy.fitForPoints
+                  .map((point) => `<p><span aria-hidden="true">&#10003;</span> ${escapeHtml(point)}</p>`)
+                  .join("")}
+              </div>
+              <div class="yw-fit-col yw-fit-col--no">
+                <h3>This is NOT for you if...</h3>
+                ${sectionCopy.fitNotForPoints
+                  .map((point) => `<p><span aria-hidden="true">&#215;</span> ${escapeHtml(point)}</p>`)
+                  .join("")}
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section
           class="yw-sales-section yw-sales-section--dark yw-sales-section--bonus yw-niche-bonus"
           data-yw-ai-adaptive="true"
           data-yw-bonus-count="${bonusSection.items.length}"
           data-yw-bonus-source="universalBonusRegistry"
-          data-yw-editable-slots="bonus.heading,bonus.subheading,bonus.items[].title,bonus.items[].description,bonus.ctaText"
-          data-yw-locked-fields="bonus.id,bonus.actualAssetUrl,bonus.actualValue,legal.disclaimer,cta.destination"
+          data-yw-coach-name="${escapeAttribute(coachName)}"
+          data-yw-coach-niche="${escapeAttribute(coachNiche)}"
+          data-yw-editable-slots="bonus.eyebrow,bonus.heading,bonus.subheading,bonus.items[].description,bonus.ctaHelperText"
+          data-yw-locked-fields="bonus.id,bonus.lockedAssetId,bonus.items[].displayTitle,bonus.items[].title,bonus.visualType,bonus.assetType,bonus.actualAssetUrl,bonus.actualValue,bonus.actualAvailability,legal.disclaimer,cta.destination,analytics.tracking"
           data-yw-template-rule="nicheAdaptiveBonusSection"
           id="bonus"
+          data-yw-section-key="bonuses"
           aria-labelledby="yw-bonus-title"
         >
           <div class="yw-sales-shell yw-bonus-shell">
-            <p class="yw-bonus-kicker">Niche-adaptive bonuses</p>
+            <p class="yw-bonus-kicker">${escapeHtml(bonusSection.eyebrow)}</p>
             <h2 id="yw-bonus-title">${escapeHtml(bonusSection.heading)}</h2>
             <p class="yw-section-subcopy">${escapeHtml(bonusSection.subheading)}</p>
             <div class="yw-bonus-grid" data-yw-bonus-grid>
               ${bonusSection.items
                 .map(
-                  (bonus, index) => `<article class="yw-niche-bonus__card" data-bonus-asset-type="${escapeAttribute(bonus.assetType)}" data-bonus-id="${escapeAttribute(bonus.id)}" data-bonus-locked-asset="true">
-                    <div class="yw-bonus-badge">Bonus ${index + 1}</div>
-                    <div class="yw-bonus-visual yw-bonus-visual--${escapeAttribute(bonus.assetType)}" aria-hidden="true"></div>
-                    <p class="yw-bonus-type">${bonus.assetType === "video" ? "Video Training" : "Digital Guide"}</p>
-                    <h3>${escapeHtml(bonus.title)}</h3>
+                  (bonus) => `<article class="yw-niche-bonus__card" data-bonus-asset-type="${escapeAttribute(bonus.assetType)}" data-bonus-id="${escapeAttribute(bonus.id)}" data-bonus-actual-availability="${bonus.actualAvailability ? "true" : "false"}" data-bonus-locked-asset="true" data-bonus-visual-type="${escapeAttribute(bonus.visualType)}" data-yw-registry-source="universalBonusRegistry">
+                    <div class="yw-bonus-card-top">
+                      <div class="yw-bonus-badge">${escapeHtml(bonus.badge)}</div>
+                      <p class="yw-bonus-type">${escapeHtml(bonus.typeLabel)}</p>
+                    </div>
+                    ${renderSmartBonusVisualHtml(bonus, coachNiche, selectedTheme.id)}
+                    <h3>${escapeHtml(bonus.displayTitle)}</h3>
                     <p>${escapeHtml(bonus.description)}</p>
-                    <strong data-yw-locked="actualValue">${escapeHtml(bonus.valueLabel)} - Included Free</strong>
+                    <strong data-yw-locked="actualValue">${escapeHtml(bonus.valueDisplay)}</strong>
                   </article>`
                 )
                 .join("")}
             </div>
-            <p class="yw-bonus-total" data-yw-bonus-total>${escapeHtml(bonusSection.totalValueLabel)}</p>
-            <p class="yw-bonus-cta-copy">${escapeHtml(bonusSection.ctaSupportCopy)}</p>
-            ${renderRegisterAction(site, "yw-register-strip yw-register-strip--dark yw-bonus-cta", bonusSection.ctaText)}
-          </div>
-        </section>
-
-        <section class="yw-sales-section yw-sales-section--cream" aria-labelledby="yw-fit-title">
-          <div class="yw-sales-shell">
-            <h2 id="yw-fit-title">Is this <span>coach support right for you?</span></h2>
-            <div class="yw-fit-table" aria-label="Who this coach support is for">
-              <div class="yw-fit-col">
-                <h3>This IS for you if...</h3>
-                <p><span aria-hidden="true">&#10003;</span> You want education-first guidance before taking the next step.</p>
-                <p><span aria-hidden="true">&#10003;</span> You are open to practical lifestyle habits and consistency.</p>
-                <p><span aria-hidden="true">&#10003;</span> You want to understand the coach's method before registering.</p>
-              </div>
-              <div class="yw-fit-col yw-fit-col--no">
-                <h3>This is NOT for you if...</h3>
-                <p><span aria-hidden="true">&#215;</span> You are looking for instant results or guaranteed outcomes.</p>
-                <p><span aria-hidden="true">&#215;</span> You need emergency, diagnosis, or treatment advice.</p>
-                <p><span aria-hidden="true">&#215;</span> You do not want to take action after learning.</p>
-              </div>
+            <div class="yw-bonus-cta-panel">
+              <p class="yw-bonus-total" data-yw-bonus-total>${escapeHtml(bonusSection.ctaHeading)}</p>
+              <p class="yw-bonus-cta-copy">${escapeHtml(bonusSection.ctaHelperText)}</p>
+              ${renderRegisterAction(site, "yw-register-strip yw-register-strip--dark yw-bonus-cta", bonusSection.ctaButtonText)}
             </div>
           </div>
         </section>
 
-        <section class="yw-circle-faq" id="faq" aria-labelledby="yw-faq-title">
-          <div class="yw-faq-shell">
-            <h2 id="yw-faq-title">${escapeHtml(site.content.faqHeading || "Frequently Asked Questions")}</h2>
-            <div class="yw-faq-list">
-              ${getFaq(site)
-                .map((item) => `<details><summary>${escapeHtml(item.question)}</summary><p>${escapeHtml(item.answer)}</p></details>`)
-                .join("")}
-            </div>
+        <section class="yw-sales-section yw-sales-section--final" aria-labelledby="yw-final-cta-title" data-yw-section-key="final-cta">
+          <div class="yw-sales-shell yw-final-cta">
+            <h2 id="yw-final-cta-title">${escapeHtml(sectionCopy.finalHeadingMain)} <span>${escapeHtml(sectionCopy.finalHeadingAccent)}</span></h2>
+            <p>${escapeHtml(sectionCopy.finalBody)}</p>
+            ${renderRegisterAction(site, "yw-register-strip yw-register-strip--dark", registerLabel)}
           </div>
         </section>
+        </section>
 
-        ${renderCanonicalSupportSection(site, support, registerLabel)}
+        ${renderCanonicalFaq(sectionCopy)}
+
         ${renderCanonicalFooter(site)}
-      </div>
+      </main>
 
-      <aside aria-hidden="true" aria-label="Register for free" class="yw-floating-register-cta" data-yw-sticky-register tabindex="-1">
-        ${renderRegisterAction(site, "yw-register-button", registerLabel)}
-      </aside>
-    </main>
+      ${renderFloatingRegisterAction(site, registerLabel, sectionCopy.stickyCtaEyebrow)}
+    </div>
+    <script src="/external/d3e54v103j8qbb.cloudfront.net/js/jquery-3.5.1.min.dc5e7f18c8__q_site_6949580dbefd680afac06955.js" type="text/javascript"></script>
+    <script src="/external/cdn.prod.website-files.com/6949580dbefd680afac06955/js/webflow.schunk.36b8fb49256177c8.js" type="text/javascript"></script>
+    <script src="/external/cdn.prod.website-files.com/6949580dbefd680afac06955/js/webflow.05ef6ae8.15e2de229fe07c28.js" type="text/javascript"></script>
+    <script>
+      try {
+        sessionStorage.setItem("ywLastCoachLandingPath", "/coach/${escapeJsString(site.slug)}");
+        localStorage.setItem("ywLastCoachLandingPath", "/coach/${escapeJsString(site.slug)}");
+      } catch (_) {}
+    </script>
+    <script src="/coach-circle-lenis.min.js?v=coach-4176-structural-copy-20260619"></script>
+    <script src="/coach-circle-bonus-section.js?v=coach-bonus-universal-services-20260621"></script>
+    <script src="/coach-circle-motion.js?v=coach-mobile-nav-sheet-20260622"></script>
     ${renderCanonicalScript(site.slug)}
   </body>
 </html>`;
+}
+
+function renderCanonicalNavbar(site: PublicCoachSiteRecord, registerLabel: string) {
+  const navLinks = getCanonicalCoachNavbarSections()
+    .map(
+      (section) =>
+        `<a href="${escapeAttribute(section.anchorTarget)}" class="navbar14_link w-nav-link" data-yw-nav-link="true" data-yw-section-key="${escapeAttribute(
+          section.sectionKey
+        )}">${escapeHtml(section.navLabel)}</a>`
+    )
+    .join("");
+
+  return `
+      <div data-collapse="medium" data-animation="default" data-duration="400" data-w-id="ca82c3a1-896f-47be-4f7e-70e88912ab95" data-easing="ease" data-easing2="ease" role="banner" class="navbar14_component w-nav">
+        <div class="navbar14_container">
+          <a href="#home" aria-current="page" class="navbar14_logo-link w-nav-brand w--current yw-navbar-brand" aria-label="YW Nutritech home" data-yw-nav-link="true" data-yw-section-key="hero">
+            <span class="yw-navbar-mark" aria-hidden="true"><img src="/assets/yw-logo-transparent.png" alt="" loading="eager" decoding="async"></span>
+            <span class="yw-navbar-wordmark"><strong>YWN</strong></span>
+          </a>
+          <nav role="navigation" aria-label="Coach page sections" id="w-node-ca82c3a1-896f-47be-4f7e-70e88912ab99-8912ab95" class="navbar14_menu w-nav-menu" data-yw-nav-menu>
+            <div class="navbar14_menu-link-wrapper">
+              <div class="navbar14_menu-links">
+                ${navLinks}
+                ${renderNavbarRegisterAction(site, registerLabel)}
+              </div>
+            </div>
+          </nav>
+          <button class="navbar14_menu-button w-nav-button" type="button" aria-label="Open coach site menu" aria-expanded="false" aria-controls="w-node-ca82c3a1-896f-47be-4f7e-70e88912ab99-8912ab95" data-yw-nav-toggle>
+            <div class="menu-icon2">
+              <div class="menu-icon2_line-top"></div>
+              <div class="menu-icon2_line-middle"><div class="menu-icon1_line-middle-inner"></div></div>
+              <div class="menu-icon2_line-bottom"></div>
+            </div>
+          </button>
+        </div>
+      </div>`;
+}
+
+function renderNavbarRegisterAction(site: PublicCoachSiteRecord, label: string) {
+  const content = `<span class="navbar14_register-icon" aria-hidden="true">${renderRegisterPointerIcon()}</span><span>${escapeHtml(label)}</span>`;
+
+  if (!site.googleFormUrl) {
+    return `<button class="navbar14_register w-nav-link" data-missing-link="true" type="button" aria-disabled="true">Registration link pending</button>`;
+  }
+
+  return `<a class="navbar14_register w-nav-link" data-track="coach_register_click" href="${escapeAttribute(site.googleFormUrl)}" rel="noreferrer" target="_blank">${content}</a>`;
+}
+
+function renderCanonicalElementorHero(
+  site: PublicCoachSiteRecord,
+  sectionCopy: ReturnType<typeof getCanonicalCoachSectionCopy>,
+  registerLabel: string
+) {
+  const coachName = getCanonicalCoachName(site);
+  const coachNiche = getCanonicalCoachNiche(site);
+  const heroTitle = `${escapeHtml(sectionCopy.heroTitleMain)}${
+    sectionCopy.heroTitleAccent
+      ? ` <span class="golden-hoghlight-cu">${escapeHtml(sectionCopy.heroTitleAccent)}</span>`
+      : ""
+  }`;
+
+  return `
+    <div data-elementor-type="wp-page" data-elementor-id="11246" class="elementor elementor-11246 yw-circle-hero" data-elementor-post-type="page" data-yw-section-key="hero" id="home">
+      <section class="elementor-section elementor-top-section elementor-element elementor-element-7b3e225 elementor-section-boxed elementor-section-height-default elementor-section-height-default" data-id="7b3e225" data-element_type="section" data-e-type="section" data-settings="{&quot;background_background&quot;:&quot;classic&quot;}">
+        <div class="elementor-container elementor-column-gap-default">
+          <div class="elementor-column elementor-col-100 elementor-top-column elementor-element elementor-element-0cbc0ab" data-id="0cbc0ab" data-element_type="column" data-e-type="column">
+            <div class="elementor-widget-wrap elementor-element-populated">
+              <div class="elementor-element elementor-element-175afb4 elementor-widget elementor-widget-heading" data-id="175afb4" data-element_type="widget" data-e-type="widget" data-widget_type="heading.default">
+                <div class="elementor-widget-container"><h4 class="elementor-heading-title elementor-size-default">${escapeHtml(sectionCopy.topStrip)}</h4></div>
+              </div>
+              <div class="elementor-element elementor-element-a2d0984 elementor-widget__width-auto elementor-widget elementor-widget-heading" data-id="a2d0984" data-element_type="widget" data-e-type="widget" data-widget_type="heading.default">
+                <div class="elementor-widget-container"><h4 class="elementor-heading-title elementor-size-default">${escapeHtml(sectionCopy.heroEyebrow)}</h4></div>
+              </div>
+              <div class="elementor-element elementor-element-1a369ef elementor-widget elementor-widget-heading" data-id="1a369ef" data-element_type="widget" data-e-type="widget" data-widget_type="heading.default">
+                <div class="elementor-widget-container"><h1 class="elementor-heading-title elementor-size-default">${heroTitle}</h1></div>
+              </div>
+              <div class="elementor-element elementor-element-7217277 elementor-widget__width-initial elementor-widget-mobile__width-inherit elementor-widget elementor-widget-heading" data-id="7217277" data-element_type="widget" data-e-type="widget" data-widget_type="heading.default">
+                <div class="elementor-widget-container"><p class="elementor-heading-title elementor-size-default">${escapeHtml(sectionCopy.heroSubheadline)}</p></div>
+              </div>
+              <section class="elementor-section elementor-inner-section elementor-element elementor-element-6dae30e elementor-section-boxed elementor-section-height-default elementor-section-height-default" data-id="6dae30e" data-element_type="section" data-e-type="section">
+                <div class="elementor-container elementor-column-gap-default">
+                  <div class="elementor-column elementor-col-50 elementor-inner-column elementor-element elementor-element-4da1b83" data-id="4da1b83" data-element_type="column" data-e-type="column">
+                    <div class="elementor-widget-wrap elementor-element-populated">
+                      <div class="elementor-element elementor-element-afb23e5 elementor-widget elementor-widget-image" data-id="afb23e5" data-element_type="widget" data-e-type="widget" data-widget_type="image.default">
+                        <div class="elementor-widget-container">${renderCanonicalHeroImageContent(site)}</div>
+                      </div>
+                      <div class="elementor-element elementor-element-b1105bd elementor-widget__width-initial elementor-widget elementor-widget-icon-box" data-id="b1105bd" data-element_type="widget" data-e-type="widget" data-widget_type="icon-box.default">
+                        <div class="elementor-widget-container"><div class="elementor-icon-box-wrapper"><div class="elementor-icon-box-content"><h5 class="elementor-icon-box-title"><span>${escapeHtml(coachName)}</span></h5><p class="elementor-icon-box-description">${escapeHtml(coachNiche)}</p></div></div></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="elementor-column elementor-col-50 elementor-inner-column elementor-element elementor-element-ca06760" data-id="ca06760" data-element_type="column" data-e-type="column">
+                    <div class="elementor-widget-wrap elementor-element-populated">
+                      <div class="elementor-element elementor-element-1778ab6 elementor-widget__width-initial elementor-widget-mobile__width-inherit elementor-widget elementor-widget-heading" data-id="1778ab6" data-element_type="widget" data-e-type="widget" data-widget_type="heading.default">
+                        <div class="elementor-widget-container"><p class="elementor-heading-title elementor-size-default">${escapeHtml(sectionCopy.detailHeading)}</p></div>
+                      </div>
+                      <div class="elementor-element elementor-element-b0fe8be elementor-widget elementor-widget-image" data-id="b0fe8be" data-element_type="widget" data-e-type="widget" data-widget_type="image.default">
+                        <div class="elementor-widget-container"><img src="/wp-content/uploads/2026/03/Line-11.svg" decoding="async" title="" alt="" width="260" height="18" /></div>
+                      </div>
+                      <div class="elementor-element elementor-element-05fe630 elementor-widget__width-initial elementor-widget-mobile__width-inherit elementor-widget elementor-widget-heading" data-id="05fe630" data-element_type="widget" data-e-type="widget" data-widget_type="heading.default">
+                        <div class="elementor-widget-container"><p class="elementor-heading-title elementor-size-default">${escapeHtml(sectionCopy.detailSubline)}</p></div>
+                      </div>
+                      ${sectionCopy.detailCards
+                        .map((card) =>
+                          renderElementorInfoCard(
+                            card.id,
+                            card.kind,
+                            card.label,
+                            escapeHtml(card.value)
+                          )
+                        )
+                        .join("")}
+                      <div class="elementor-element elementor-element-d43feaa elementor-align-justify elementor-widget__width-initial main_btn elementor-widget elementor-widget-button" data-id="d43feaa" data-element_type="widget" data-e-type="widget" data-widget_type="button.default">
+                        <div class="elementor-widget-container"><div class="elementor-button-wrapper">${renderElementorRegisterAction(site, registerLabel)}</div></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>`;
+}
+
+function renderElementorInfoCard(
+  id: string,
+  kind: CanonicalHeroInfoCardKind,
+  label: string,
+  valueHtml: string
+) {
+  return `<div class="elementor-element elementor-element-${escapeAttribute(id)} pp-info-box-left elementor-widget__width-initial elementor-widget elementor-widget-pp-info-box" data-id="${escapeAttribute(id)}" data-element_type="widget" data-e-type="widget" data-widget_type="pp-info-box.default"><div class="elementor-widget-container"><div class="pp-info-box-container"><div class="pp-info-box"><div class="pp-info-box-icon-wrap"><span class="pp-info-box-icon pp-icon">${renderHeroInfoIcon(kind)}</span></div><div class="pp-info-box-content"><div class="pp-info-box-title-wrap"><div class="pp-info-box-title-container"><h4 class="pp-info-box-title">${escapeHtml(label)}</h4></div><h5 class="pp-info-box-subtitle">${valueHtml}</h5></div></div></div></div></div></div>`;
+}
+
+function renderHeroInfoIcon(kind: CanonicalHeroInfoCardKind) {
+  if (kind === "date") {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><rect class="yw-hero-icon-stroke" x="4" y="5" width="16" height="16" rx="2.25"></rect><line class="yw-hero-icon-stroke" x1="8" y1="3.5" x2="8" y2="7"></line><line class="yw-hero-icon-stroke" x1="16" y1="3.5" x2="16" y2="7"></line><line class="yw-hero-icon-stroke" x1="4.75" y1="9.25" x2="19.25" y2="9.25"></line><circle class="yw-hero-icon-fill" cx="8.15" cy="13.2" r="0.8"></circle><circle class="yw-hero-icon-fill" cx="12" cy="13.2" r="0.8"></circle><circle class="yw-hero-icon-fill" cx="15.85" cy="13.2" r="0.8"></circle><circle class="yw-hero-icon-fill" cx="8.15" cy="16.8" r="0.8"></circle><circle class="yw-hero-icon-fill" cx="12" cy="16.8" r="0.8"></circle></svg>`;
+  }
+
+  if (kind === "time") {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><circle class="yw-hero-icon-stroke" cx="12" cy="12" r="8.45"></circle><line class="yw-hero-icon-stroke" x1="12" y1="7.2" x2="12" y2="12.35"></line><line class="yw-hero-icon-stroke" x1="12" y1="12.35" x2="15.3" y2="15.05"></line></svg>`;
+  }
+
+  if (kind === "duration") {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><line class="yw-hero-icon-stroke" x1="6.2" y1="4.5" x2="17.8" y2="4.5"></line><line class="yw-hero-icon-stroke" x1="6.2" y1="19.5" x2="17.8" y2="19.5"></line><path class="yw-hero-icon-stroke" d="M8 4.5v3.1c0 1.4.78 2.68 2.02 3.32L12 12l1.98-1.08A3.72 3.72 0 0 0 16 7.6V4.5"></path><path class="yw-hero-icon-stroke" d="M8 19.5v-3.1c0-1.4.78-2.68 2.02-3.32L12 12l1.98 1.08A3.72 3.72 0 0 1 16 16.4v3.1"></path></svg>`;
+  }
+
+  if (kind === "focus") {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><circle class="yw-hero-icon-stroke" cx="12" cy="12" r="8.2"></circle><circle class="yw-hero-icon-stroke" cx="12" cy="12" r="3.6"></circle><circle class="yw-hero-icon-fill" cx="12" cy="12" r="1.35"></circle></svg>`;
+  }
+
+  if (kind === "support") {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><path class="yw-hero-icon-stroke" d="M7.2 12.5c-1.55 0-2.8-1.25-2.8-2.8s1.25-2.8 2.8-2.8 2.8 1.25 2.8 2.8-1.25 2.8-2.8 2.8Z"></path><path class="yw-hero-icon-stroke" d="M16.8 12.5c-1.55 0-2.8-1.25-2.8-2.8s1.25-2.8 2.8-2.8 2.8 1.25 2.8 2.8-1.25 2.8-2.8 2.8Z"></path><path class="yw-hero-icon-stroke" d="M3.7 18.5c.72-2.05 1.95-3.08 3.5-3.08s2.78 1.03 3.5 3.08"></path><path class="yw-hero-icon-stroke" d="M13.3 18.5c.72-2.05 1.95-3.08 3.5-3.08s2.78 1.03 3.5 3.08"></path></svg>`;
+  }
+
+  if (kind === "next") {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><path class="yw-hero-icon-stroke" d="M5 12h12.5"></path><path class="yw-hero-icon-stroke" d="m13 7.5 4.5 4.5-4.5 4.5"></path><path class="yw-hero-icon-stroke" d="M4.8 5.2h14.4v13.6H4.8z"></path></svg>`;
+  }
+
+  if (kind === "location") {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><path class="yw-hero-icon-stroke" d="M12 20.5s6.2-5.15 6.2-10.05A6.2 6.2 0 0 0 5.8 10.45C5.8 15.35 12 20.5 12 20.5Z"></path><circle class="yw-hero-icon-stroke" cx="12" cy="10.35" r="2.25"></circle></svg>`;
+  }
+
+  if (kind === "format") {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><rect class="yw-hero-icon-stroke" height="12.5" rx="2" width="16" x="4" y="5.5"></rect><path class="yw-hero-icon-stroke" d="M8 18.5h8"></path><path class="yw-hero-icon-stroke" d="M10 9h4M8.5 12h7"></path></svg>`;
+  }
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><circle class="yw-hero-icon-stroke" cx="12" cy="12" r="8.5"></circle><path class="yw-hero-icon-stroke" d="M4 12h16"></path><path class="yw-hero-icon-stroke" d="M12 3.5c2.15 2.35 3.25 5.18 3.25 8.5S14.15 18.15 12 20.5"></path><path class="yw-hero-icon-stroke" d="M12 3.5C9.85 5.85 8.75 8.68 8.75 12s1.1 6.15 3.25 8.5"></path></svg>`;
+}
+
+function renderElementorRegisterAction(site: PublicCoachSiteRecord, label: string) {
+  const content = `<span class="elementor-button-content-wrapper"><span class="elementor-button-icon" aria-hidden="true">${renderRegisterPointerIcon()}</span><span class="elementor-button-text">${escapeHtml(label)}</span></span>`;
+
+  if (!site.googleFormUrl) {
+    return `<button aria-disabled="true" class="elementor-button elementor-button-link elementor-size-sm" data-missing-link="true" type="button">Registration link pending</button>`;
+  }
+
+  return `<a class="elementor-button elementor-button-link elementor-size-sm" data-track="coach_register_click" href="${escapeAttribute(site.googleFormUrl)}" rel="noreferrer" target="_blank">${content}</a>`;
+}
+
+function renderRegisterPointerIcon() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 227 159" fill="none"><path d="M135.53 61.9503C141.303 70.1296 139.577 81.3622 131.807 87.4932H136.935C145.051 87.4932 151.653 80.8898 151.653 72.7738C151.653 64.6579 145.05 58.0544 136.935 58.0544H132.784L135.53 61.9503Z" fill="black"></path><path d="M104.84 83.5986L91.3346 64.4136C89.6418 66.8553 88.7175 69.746 88.7175 72.774C88.7175 80.891 95.321 87.4934 103.437 87.4934H108.524C107.134 86.3899 105.891 85.0877 104.84 83.5986Z" fill="black"></path><path d="M103.436 91.5522C95.319 91.5522 88.7166 98.1557 88.7166 106.272C88.7166 114.389 95.32 120.991 103.436 120.991H133.584C141.701 120.991 148.303 114.388 148.303 106.272C148.303 98.1547 141.7 91.5522 133.584 91.5522H103.436Z" fill="black"></path><path d="M103.436 125.051C95.3191 125.051 88.7166 131.654 88.7166 139.77C88.7166 147.887 95.3201 154.489 103.436 154.489H130.233C138.35 154.489 144.953 147.886 144.953 139.77C144.953 131.653 138.349 125.051 130.233 125.051H103.436Z" fill="black"></path><path d="M39.8686 14.1858C33.795 15.5357 28.3915 18.5335 24.2424 22.8549C20.854 26.3836 17.7851 30.2463 15.1213 34.3389C6.91087 46.9477 2.57094 61.6019 2.57094 76.7177C2.57094 119.602 37.459 154.49 80.3433 154.49H91.8106C87.461 151.048 84.6569 145.735 84.6569 139.771C84.6569 132.455 88.8703 126.12 94.9896 123.021C88.8703 119.923 84.6569 113.588 84.6569 106.272C84.6569 98.957 88.8703 92.6224 94.9896 89.5232C88.8703 86.4251 84.6569 80.0895 84.6569 72.7741C84.6569 68.4098 86.1471 64.2647 88.8751 60.922L83.7804 53.6846C82.5639 51.9568 80.654 50.977 78.5415 50.9974C76.426 51.0179 74.5327 52.0357 73.3474 53.7907C63.3614 68.5666 48.4968 79.8304 31.4916 85.5057C30.428 85.8602 29.2788 85.2865 28.9233 84.223C28.5648 83.1575 29.1434 82.0101 30.206 81.6546C46.3688 76.2599 60.496 65.5571 69.9843 51.5175C71.9 48.6823 75.0839 46.9711 78.5025 46.938C81.9172 46.9049 85.1312 48.5528 87.0996 51.3471L108.158 81.2592C110.423 84.4703 113.805 86.6082 117.679 87.2773C121.553 87.9464 125.457 87.0669 128.669 84.8005C135.303 80.1207 136.89 70.9168 132.212 64.288L94.8075 11.2405C91.3753 6.37269 85.3991 4.0615 79.5855 5.35394L39.8686 14.1858Z" fill="black"></path><path d="M209.281 53.9952C217.398 53.9952 224 47.3918 224 39.2758C224 31.1598 217.397 24.5564 209.281 24.5564L109.164 24.5564L129.922 53.9952L209.281 53.9952Z" fill="black"></path></svg>`;
+}
+
+function renderFloatingRegisterAction(site: PublicCoachSiteRecord, label: string, eyebrow: string) {
+  if (!site.googleFormUrl) {
+    return `<button aria-hidden="true" class="yw-floating-register-cta" data-missing-link="true" data-yw-sticky-register tabindex="-1" type="button"><span class="yw-floating-register-cta__eyebrow">${escapeHtml(eyebrow)}</span><strong>Registration link pending</strong></button>`;
+  }
+
+  return `<a aria-hidden="true" class="yw-floating-register-cta" data-track="coach_register_click" data-yw-sticky-register href="${escapeAttribute(site.googleFormUrl)}" rel="noreferrer" tabindex="-1" target="_blank"><span class="yw-floating-register-cta__eyebrow">${escapeHtml(eyebrow)}</span><strong>${escapeHtml(label)}</strong></a>`;
 }
 
 function renderCanonicalHeroImageContent(site: PublicCoachSiteRecord) {
   const imageUrl = site.photoUrl || site.logoUrl;
 
   if (imageUrl) {
-    return `<img alt="${escapeAttribute(`${getCanonicalCoachName(site)} profile`)}" decoding="async" src="${escapeAttribute(imageUrl)}" />`;
+    const imageMode = getCanonicalHeroImageMode(imageUrl);
+    const imageModeClass =
+      imageMode === "cutout" ? "yw-coach-hero-image--cutout" : "yw-coach-hero-image--framed";
+    return `<img alt="${escapeAttribute(`${getCanonicalCoachName(site)} profile`)}" class="attachment-full size-full yw-coach-hero-image ${imageModeClass}" data-image-mode="${escapeAttribute(imageMode)}" data-yw-coach-image decoding="async" fetchpriority="high" height="2200" src="${escapeAttribute(imageUrl)}" width="1650" />`;
   }
 
-  return `<span>${escapeHtml(getCanonicalCoachInitials(site))}</span>`;
+  return `<span class="yw-coach-hero-image yw-coach-hero-image--empty">${escapeHtml(getCanonicalCoachInitials(site))}</span>`;
+}
+
+function getCanonicalHeroImageMode(imageUrl: string) {
+  const normalizedUrl = safeDecodeUriComponent(imageUrl).toLowerCase();
+  if (normalizedUrl.includes("/cutout/") || normalizedUrl.includes("-cutout.")) {
+    return "cutout";
+  }
+
+  return "framed";
+}
+
+function safeDecodeUriComponent(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 function renderCanonicalStoryVideoContent(site: PublicCoachSiteRecord) {
@@ -882,11 +1075,11 @@ function renderCanonicalStoryVideoContent(site: PublicCoachSiteRecord) {
   const uploadedVideoUrl = isUploadedVideoSource(site.videoUrl) ? site.videoUrl : "";
 
   if (embedVideoUrl) {
-    return `<iframe allow="accelerometer; autoplay; clipboard-write; compute-pressure; encrypted-media; gyroscope; picture-in-picture" allowfullscreen src="${escapeAttribute(embedVideoUrl)}" title="${escapeAttribute(`${getCanonicalCoachName(site)} story video`)}"></iframe>`;
+    return `<iframe allow="accelerometer; autoplay; clipboard-write; compute-pressure; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="yw-story-video" src="${escapeAttribute(embedVideoUrl)}" title="${escapeAttribute(`${getCanonicalCoachName(site)} story video`)}"></iframe>`;
   }
 
   if (uploadedVideoUrl) {
-    return `<video controls playsinline preload="metadata" src="${escapeAttribute(uploadedVideoUrl)}" title="${escapeAttribute(`${getCanonicalCoachName(site)} story video`)}"></video>`;
+    return `<video class="yw-story-video" controls playsinline preload="metadata" src="${escapeAttribute(uploadedVideoUrl)}" title="${escapeAttribute(`${getCanonicalCoachName(site)} story video`)}"></video>`;
   }
 
   return `<div class="yw-story-video-placeholder" aria-hidden="true"><span class="yw-story-play"><svg viewBox="0 0 24 24" focusable="false"><path d="M9 6.75L17 12L9 17.25V6.75Z"></path></svg></span></div>`;
@@ -894,9 +1087,9 @@ function renderCanonicalStoryVideoContent(site: PublicCoachSiteRecord) {
 
 function renderCanonicalMarquee(coachName: string) {
   return `
-    <section class="circle-marquee" aria-label="YW Nutritech Circle marquee" data-yw-circle-marquee data-yw-marquee-brand="YW NUTRITECH CIRCLE" data-yw-marquee-name="${escapeAttribute(coachName)}">
+    <section id="circle-marquee" class="circle-marquee" aria-label="Coach circle marquee" data-yw-circle-marquee data-yw-marquee-brand="YW NUTRITECH CIRCLE" data-yw-marquee-name="${escapeAttribute(coachName)}" data-yw-marquee-repeats="20">
       <div class="circle-marquee__track">
-        ${Array.from({ length: 16 })
+        ${Array.from({ length: 20 })
           .map(
             () => `<span class="circle-marquee__item"><span class="circle-marquee__brand">YW NUTRITECH CIRCLE</span><span class="circle-marquee__star">&#9733;</span><span class="circle-marquee__name">${escapeHtml(coachName)}</span><span class="circle-marquee__star">&#9733;</span></span>`
           )
@@ -905,32 +1098,55 @@ function renderCanonicalMarquee(coachName: string) {
     </section>`;
 }
 
-function renderCanonicalSupportSection(
-  site: PublicCoachSiteRecord,
-  support: SupportDetails,
-  registerLabel: string
-) {
-  const targetAttribute =
-    support.primaryHref.startsWith("mailto:") || support.primaryHref.startsWith("tel:")
-      ? ""
-      : ` target="_blank" rel="noreferrer"`;
-  const trackAttribute = support.whatsappLink ? ` data-track="coach_whatsapp_click"` : "";
-
+function renderCanonicalFaq(sectionCopy: ReturnType<typeof getCanonicalCoachSectionCopy>) {
   return `
-    <section class="yw-sales-section yw-sales-section--mint" id="coach-contact-support">
-      <div class="yw-sales-shell">
-        <p class="yw-kicker">${escapeHtml(site.content.supportHeading || "Contact Support")}</p>
-        <h2>${escapeHtml(getSafeCoachTemplateCopy(site.content.ctaText, `Ready to connect with ${getCanonicalCoachName(site)}?`))}</h2>
-        <p class="yw-section-subcopy">${escapeHtml(getSafeCoachTemplateCopy(site.content.trustText, "This page is education-first and does not replace medical advice, diagnosis, or treatment."))}</p>
-        ${renderRegisterAction(site, "yw-register-strip", registerLabel)}
-        <a class="yw-register-strip"${trackAttribute} href="${escapeAttribute(support.primaryHref)}"${targetAttribute}>${escapeHtml(site.content.supportPrimaryButton || site.content.stickyCtaContactButton || "Contact Support")}</a>
-      </div>
-    </section>`;
+        <div data-elementor-type="wp-page" data-elementor-id="11246" class="elementor elementor-11246 yw-circle-faq" data-elementor-post-type="page" data-yw-section-key="faq" id="faq">
+          <section class="elementor-section elementor-top-section elementor-element elementor-element-01e9f7a elementor-section-boxed elementor-section-height-default elementor-section-height-default" data-id="01e9f7a" data-element_type="section" data-e-type="section" data-settings="{&quot;background_background&quot;:&quot;classic&quot;}">
+            <div class="elementor-container elementor-column-gap-default">
+              <div class="elementor-column elementor-col-100 elementor-top-column elementor-element elementor-element-3db758d" data-id="3db758d" data-element_type="column" data-e-type="column">
+                <div class="elementor-widget-wrap elementor-element-populated">
+                  <section class="elementor-section elementor-inner-section elementor-element elementor-element-0d3c8f6 elementor-section-boxed elementor-section-height-default elementor-section-height-default" data-id="0d3c8f6" data-element_type="section" data-e-type="section">
+                    <div class="elementor-container elementor-column-gap-default">
+                      <div class="elementor-column elementor-col-100 elementor-inner-column elementor-element elementor-element-07d4fd5" data-id="07d4fd5" data-element_type="column" data-e-type="column">
+                        <div class="elementor-widget-wrap elementor-element-populated">
+                          <div class="elementor-element elementor-element-62d1791 elementor-widget__width-initial elementor-widget elementor-widget-heading" data-id="62d1791" data-element_type="widget" data-e-type="widget" data-widget_type="heading.default">
+                            <div class="elementor-widget-container"><h2 id="yw-faq-title" class="elementor-heading-title elementor-size-default">${escapeHtml(sectionCopy.faqHeading)} <span class="brown-hoghlight-cu">${escapeHtml(sectionCopy.faqLabel)}</span></h2></div>
+                          </div>
+                          <div class="elementor-element elementor-element-75413a5 elementor-widget elementor-widget-accordion" data-id="75413a5" data-element_type="widget" data-e-type="widget" data-widget_type="accordion.default">
+                            <div class="elementor-widget-container">
+                              <div class="elementor-accordion">
+                                ${sectionCopy.faqItems
+                                  .map((item, index) => {
+                                    const tabId = `122${index + 1}`;
+                                    return `<details class="elementor-accordion-item">
+                                      <summary id="elementor-tab-title-${tabId}" class="elementor-tab-title" data-tab="${index + 1}" aria-controls="elementor-tab-content-${tabId}" aria-expanded="false" role="button">
+                                        <span class="elementor-accordion-icon elementor-accordion-icon-right" aria-hidden="true">
+                                          <span class="elementor-accordion-icon-closed">+</span>
+                                          <span class="elementor-accordion-icon-opened">-</span>
+                                        </span>
+                                        <span class="elementor-accordion-title">${escapeHtml(item.question)}</span>
+                                      </summary>
+                                      <div id="elementor-tab-content-${tabId}" class="elementor-tab-content elementor-clearfix" data-tab="${index + 1}" role="region" aria-labelledby="elementor-tab-title-${tabId}" aria-hidden="true"><p>${escapeHtml(item.answer)}</p></div>
+                                    </details>`;
+                                  })
+                                  .join("")}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>`;
 }
 
 function renderCanonicalFooter(site: PublicCoachSiteRecord) {
   return `
-    <footer class="yw-brand-footer" data-preview-section="footer">
+    <footer class="yw-brand-footer" data-preview-section="footer" data-yw-section-key="contact" id="yw-footer">
       <div class="yw-footer-watermark" aria-hidden="true"><span>Y</span><span>W</span><span>N</span></div>
       <div class="yw-footer-content">
         <section class="yw-footer-about" aria-labelledby="yw-footer-title">
@@ -946,9 +1162,9 @@ function renderCanonicalFooter(site: PublicCoachSiteRecord) {
         </div>
         <p class="yw-footer-legal">${escapeHtml(getCanonicalLegalDisclaimer(site))}</p>
         <nav class="yw-footer-legal-links" aria-label="Coach site legal links">
-          <a href="/privacy">Privacy Policy</a>
-          <a href="/terms">Terms &amp; Conditions</a>
-          <a href="/disclaimer">Disclaimer</a>
+          <a href="/privacy?returnTo=${encodeURIComponent(`/coach/${site.slug}`)}">Privacy Policy</a>
+          <a href="/terms?returnTo=${encodeURIComponent(`/coach/${site.slug}`)}">Terms &amp; Conditions</a>
+          <a href="/disclaimer?returnTo=${encodeURIComponent(`/coach/${site.slug}`)}">Disclaimer</a>
         </nav>
         <div class="yw-footer-brand">
           <span class="yw-footer-mark" aria-hidden="true"><img alt="" decoding="async" loading="lazy" src="/assets/yw-logo-transparent.png" /></span>
@@ -991,11 +1207,10 @@ function renderCanonicalScript(slug: string) {
         function getScrollY() { return window.scrollY || root.scrollTop || document.body.scrollTop || 0; }
         function updateStickyRegister(scrollTop) {
           if (!cta || !trigger) return;
-          var triggerTop = trigger.getBoundingClientRect().top;
-          var footer = document.querySelector('.yw-brand-footer');
-          var footerTop = footer ? footer.getBoundingClientRect().top : Number.POSITIVE_INFINITY;
-          var activationPoint = Math.min(140, window.innerHeight * 0.24);
-          var shouldShow = scrollTop > 24 && triggerTop <= activationPoint && footerTop > window.innerHeight * 0.92;
+          var triggerRect = trigger.getBoundingClientRect();
+          var activationPoint = Math.max(120, window.innerHeight - 56);
+          var triggerReached = triggerRect.top <= activationPoint;
+          var shouldShow = scrollTop > 56 && triggerReached;
           root.classList.toggle('yw-sticky-register-visible', shouldShow);
           cta.classList.toggle('is-visible', shouldShow);
           cta.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
@@ -1138,6 +1353,49 @@ function renderCanonicalScript(slug: string) {
           pointerY = 0;
           if (!pointerFrame) pointerFrame = window.requestAnimationFrame(commitPointer);
         }
+        function initFaqAccordions() {
+          Array.prototype.slice.call(document.querySelectorAll('.yw-circle-faq .elementor-accordion')).forEach(function (accordion) {
+            if (accordion.getAttribute('data-yw-faq-ready') === 'true') return;
+            accordion.setAttribute('data-yw-faq-ready', 'true');
+            var items = Array.prototype.slice.call(accordion.querySelectorAll('.elementor-accordion-item'));
+            function sync(item) {
+              var isOpen = item.hasAttribute('open');
+              item.classList.toggle('is-open', isOpen);
+              var summary = item.querySelector('.elementor-tab-title');
+              var content = item.querySelector('.elementor-tab-content');
+              if (summary) summary.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+              if (content) content.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+            }
+            function setOpen(target, shouldOpen) {
+              items.forEach(function (item) {
+                item.removeAttribute('open');
+                item.classList.remove('is-open');
+                sync(item);
+              });
+              if (shouldOpen) {
+                target.setAttribute('open', '');
+                sync(target);
+              }
+            }
+            items.forEach(function (item) {
+              var summary = item.querySelector('.elementor-tab-title');
+              if (!summary) return;
+              summary.setAttribute('role', 'button');
+              sync(item);
+              summary.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                setOpen(item, !item.hasAttribute('open'));
+              });
+              summary.addEventListener('keydown', function (event) {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                event.stopPropagation();
+                setOpen(item, !item.hasAttribute('open'));
+              });
+            });
+          });
+        }
         function getSessionId() {
           try {
             var key = 'yw_analytics_session_id';
@@ -1163,6 +1421,7 @@ function renderCanonicalScript(slug: string) {
             })], { type: 'application/json' }));
           } catch (_) {}
         }
+        initFaqAccordions();
         initReveals();
         updateProgress();
         window.addEventListener('scroll', scheduleProgressUpdate, { passive: true });
@@ -1177,1670 +1436,6 @@ function renderCanonicalScript(slug: string) {
         });
       })();
     </script>`;
-}
-
-function renderLegacyCoachSiteHtml(site: PublicCoachSiteRecord) {
-  const support = getSupportDetails(site);
-  const isPaused = false;
-  const theme = getCoachTemplateTheme(site.selectedThemeId);
-  const themeStyle = createThemeInlineStyle(theme.id);
-  const benefitDescriptions = getBenefitDescriptions(site);
-  const journeySteps = getJourneySteps(site);
-  const benefits = getBenefits(site)
-    .map(
-      (benefit, index) => `
-        <article class="spot-card benefit-card">
-          <span>${String(index + 1).padStart(2, "0")}</span>
-          <h3>${escapeHtml(benefit)}</h3>
-          <p>${escapeHtml(benefitDescriptions[index] || benefitDescriptions[0] || "")}</p>
-        </article>`
-    )
-    .join("");
-  const journey = journeySteps
-    .map(
-      (step, index) => `
-        <article class="spot-card journey-card">
-          <small>${String(index + 1).padStart(2, "0")}</small>
-          <span>${escapeHtml(step.label)}</span>
-          <h3>${escapeHtml(step.title)}</h3>
-          <p>${escapeHtml(step.description)}</p>
-        </article>`
-    )
-    .join("");
-  const problems = getProblemPoints(site)
-    .map(
-      (point) => `
-        <article class="spot-card problem-item">
-          <span aria-hidden="true">+</span>
-          <p>${escapeHtml(point)}</p>
-        </article>`
-    )
-    .join("");
-  const faq = getFaq(site)
-    .map(
-      (item) => `
-        <details class="faq-card">
-          <summary>${escapeHtml(item.question)}</summary>
-          <p>${escapeHtml(item.answer)}</p>
-        </details>`
-    )
-    .join("");
-
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${escapeHtml(site.coachName)} | ${escapeHtml(site.content.footerBrandLine || "YW Nutritech Coach Referral")}</title>
-    <meta name="description" content="${escapeAttribute(site.content.subheadline)}" />
-    <style>
-      :root {
-        color-scheme: light;
-        --font-display: Georgia, Cambria, "Times New Roman", serif;
-        --font-accent: Georgia, Cambria, "Times New Roman", serif;
-        --font-tech-display: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-        --font-conversion: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-        --font-body: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-        --scroll-progress: 0;
-      }
-      * { box-sizing: border-box; }
-      html {
-        min-width: 0;
-        background: #fff8ef;
-        overflow-x: clip;
-        scroll-behavior: smooth;
-      }
-      body {
-        min-height: 100vh;
-        margin: 0;
-        color: #171b2d;
-        font-family: var(--font-body);
-        line-height: 1.5;
-        overflow-x: hidden;
-        text-rendering: optimizeLegibility;
-        -webkit-font-smoothing: antialiased;
-      }
-      a { color: inherit; }
-      h1, h2, h3, p, strong, dd { overflow-wrap: anywhere; }
-      button, a { -webkit-tap-highlight-color: transparent; }
-      html:has([data-coach-site-page="public"]),
-      body:has([data-coach-site-page="public"]) {
-        overflow-x: clip;
-      }
-      ${renderInlineYWLoaderCss()}
-      .page {
-        min-height: 100svh;
-        position: relative;
-        isolation: isolate;
-        overflow-x: clip;
-        background: var(--template-bg);
-        color: var(--template-ink);
-        font-family: var(--template-body-font);
-        padding: 0 0 calc(8.75rem + env(safe-area-inset-bottom));
-        scroll-padding-top: 6rem;
-      }
-      .page::before {
-        content: "";
-        position: fixed;
-        inset: 0;
-        z-index: 0;
-        pointer-events: none;
-        background-image:
-          radial-gradient(circle, rgb(200 184 255 / 0.15) 0 1px, transparent 1.4px),
-          radial-gradient(circle, rgb(216 181 111 / 0.08) 0 1px, transparent 1.4px);
-        background-position: 0 0, 2.5rem 3rem;
-        background-size: 7rem 7rem, 9rem 9rem;
-        opacity: 0.36;
-      }
-      .aurora {
-        position: fixed;
-        top: -18vh;
-        bottom: -18vh;
-        left: 50%;
-        width: 100vw;
-        z-index: 0;
-        pointer-events: none;
-        transform: translate3d(-50%, 0, 0) scaleX(1.36);
-        transform-origin: center;
-        background-image:
-          repeating-linear-gradient(100deg, rgb(255 248 239 / 0.38) 0%, rgb(255 248 239 / 0.38) 7%, transparent 10%, transparent 12%, rgb(255 248 239 / 0.38) 16%),
-          repeating-linear-gradient(100deg, rgb(216 181 111 / 0.2) 10%, rgb(183 93 120 / 0.22) 15%, rgb(200 184 255 / 0.24) 20%, rgb(242 185 166 / 0.2) 25%, rgb(70 191 192 / 0.14) 30%);
-        background-position: 50% 50%, 50% 50%;
-        background-size: 300% 190%, 300% 190%;
-        filter: blur(8px) saturate(1.08);
-        -webkit-mask-image:
-          radial-gradient(ellipse at 46% 20%, black 0 34%, transparent 70%),
-          linear-gradient(180deg, black 0, rgb(0 0 0 / 0.62) 64%, transparent 100%);
-        mask-image:
-          radial-gradient(ellipse at 46% 20%, black 0 34%, transparent 70%),
-          linear-gradient(180deg, black 0, rgb(0 0 0 / 0.62) 64%, transparent 100%);
-        mix-blend-mode: soft-light;
-        opacity: 0.6;
-        animation: aurora 90s linear infinite;
-      }
-      .scroll-line {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 60;
-        height: 3px;
-        background: rgb(255 255 255 / 0.14);
-      }
-      .scroll-line span {
-        display: block;
-        width: 100%;
-        height: 100%;
-        transform: scaleX(var(--scroll-progress));
-        transform-origin: left center;
-        background: var(--template-cta);
-        box-shadow: 0 0 18px var(--template-glow);
-      }
-      .nav,
-      .hero,
-      .hero-metrics,
-      .section,
-      .support,
-      .footer,
-      .unavailable-panel {
-        width: min(calc(100% - 2rem), 84rem);
-        margin-inline: auto;
-      }
-      .nav {
-        position: sticky;
-        top: 0.8rem;
-        z-index: 20;
-        min-height: 4.25rem;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto auto;
-        gap: 1rem;
-        align-items: center;
-        overflow: hidden;
-        border: 1px solid var(--template-card-border);
-        border-radius: var(--template-radius);
-        background: var(--template-nav);
-        box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), var(--template-shadow);
-        color: var(--template-inverted-ink);
-        margin-top: clamp(0.6rem, 2vw, 1.1rem);
-        padding: 0.7rem 1rem;
-        backdrop-filter: blur(14px) saturate(1.18);
-        animation: fade-down 620ms ease both;
-      }
-      .brand {
-        min-width: 0;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.65rem;
-        color: inherit;
-        text-decoration: none;
-      }
-      .brand img {
-        width: 2.2rem;
-        height: 2.2rem;
-        border-radius: 8px;
-        object-fit: contain;
-      }
-      .brand span {
-        min-width: 0;
-        display: grid;
-        gap: 0.05rem;
-      }
-      .brand strong,
-      .brand small {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .brand strong {
-        font-family: var(--template-heading-font);
-        font-size: 0.92rem;
-        font-weight: 950;
-      }
-      .brand small,
-      .kicker,
-      .section-head span,
-      .story-card span,
-      .problem-copy span,
-      .journey-card span,
-      .benefit-card > span,
-      .media-notes span,
-      .register-section span,
-      .footer span,
-      .support-grid span {
-        color: var(--template-accent);
-        font-size: 0.72rem;
-        font-weight: 950;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-      .nav-links {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-      .nav-links a,
-      .button,
-      .sticky-coach-register,
-      .sticky-coach-contact,
-      .footer-links a,
-      .support-actions a {
-        min-height: 2.6rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: var(--template-radius);
-        font-family: var(--template-heading-font);
-        font-size: 0.9rem;
-        font-weight: 900;
-        text-decoration: none;
-        transition:
-          transform 180ms cubic-bezier(0.2, 0.85, 0.2, 1),
-          border-color 180ms ease,
-          box-shadow 180ms ease,
-          background 180ms ease;
-      }
-      .nav-links a {
-        color: inherit;
-        padding: 0 0.7rem;
-      }
-      .button.primary,
-      .sticky-register,
-      .sticky-coach-register,
-      .register-section a {
-        border: 1px solid rgb(216 181 111 / 0.44);
-        background: var(--template-cta);
-        color: var(--template-cta-text);
-        box-shadow: 0 1rem 2.5rem var(--template-glow);
-        padding: 0 1rem;
-      }
-      .button.secondary,
-      .sticky-coach-contact,
-      .support-actions a:last-child {
-        border: 1px solid var(--template-card-border);
-        background: var(--template-card);
-        color: var(--template-ink);
-        padding: 0 1rem;
-      }
-      .button:hover,
-      .nav-links a:hover,
-      .footer-links a:hover,
-      .support-actions a:hover {
-        transform: translate3d(0, -2px, 0);
-      }
-      .button:active,
-      .sticky-register:active {
-        transform: translate3d(0, 1px, 0) scale(0.98);
-      }
-      .button.disabled,
-      .sticky-register.disabled {
-        cursor: not-allowed;
-        opacity: 0.72;
-        pointer-events: none;
-      }
-      .sticky-register {
-        position: fixed;
-        right: clamp(0.8rem, 4vw, 2rem);
-        bottom: clamp(0.8rem, 4vw, 2rem);
-        z-index: 30;
-        min-width: 10rem;
-      }
-      .sticky-coach-cta {
-        position: fixed;
-        right: max(0.85rem, env(safe-area-inset-right));
-        bottom: max(0.85rem, env(safe-area-inset-bottom));
-        left: max(0.85rem, env(safe-area-inset-left));
-        z-index: 32;
-        box-sizing: border-box;
-        width: auto;
-        max-width: 48rem;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 0.9rem;
-        align-items: center;
-        margin-inline: auto;
-        border: 1px solid var(--template-card-border);
-        border-radius: calc(var(--template-radius) + 8px);
-        background:
-          linear-gradient(135deg, rgb(255 255 255 / 0.78), rgb(255 255 255 / 0.48)),
-          var(--template-card-strong);
-        box-shadow:
-          0 1.2rem 4rem rgb(16 23 41 / 0.18),
-          inset 0 1px 0 rgb(255 255 255 / 0.62);
-        color: var(--template-ink);
-        padding: 0.72rem;
-        backdrop-filter: blur(18px) saturate(1.2);
-        -webkit-backdrop-filter: blur(18px) saturate(1.2);
-        transform: translate3d(0, 0, 0);
-        backface-visibility: hidden;
-        contain: layout paint;
-        will-change: transform;
-      }
-      .sticky-coach-context {
-        min-width: 0;
-        display: grid;
-        gap: 0.12rem;
-      }
-      .sticky-coach-context span {
-        color: var(--template-accent);
-        font-size: 0.68rem;
-        font-weight: 950;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-      .sticky-coach-context strong {
-        color: var(--template-ink);
-        font-family: var(--template-heading-font);
-        font-size: clamp(0.98rem, 2.2vw, 1.2rem);
-        line-height: 1.1;
-        overflow-wrap: anywhere;
-      }
-      .sticky-coach-context small {
-        color: var(--template-muted);
-        font-size: 0.78rem;
-        font-weight: 760;
-        line-height: 1.25;
-      }
-      .sticky-coach-actions {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.55rem;
-      }
-      .sticky-coach-register,
-      .sticky-coach-contact {
-        min-height: 2.75rem;
-        white-space: nowrap;
-        padding: 0 1.05rem;
-      }
-      .hero {
-        min-height: min(780px, calc(100svh - 4.5rem));
-        position: relative;
-        z-index: 2;
-        display: grid;
-        grid-template-columns: minmax(0, 1.04fr) minmax(20rem, 0.8fr);
-        gap: clamp(1.4rem, 5vw, 5rem);
-        align-items: center;
-        margin-top: clamp(1rem, 3vw, 2rem);
-        border: 1px solid var(--template-card-border);
-        border-radius: var(--template-radius);
-        background: var(--template-hero-bg);
-        color: var(--template-inverted-ink);
-        padding: clamp(1.1rem, 4vw, 3rem);
-        box-shadow: var(--template-shadow);
-      }
-      .hero[data-media="none"] {
-        grid-template-columns: minmax(0, 48rem);
-      }
-      .trust-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-bottom: 1rem;
-      }
-      .trust-row span,
-      .brand-assurance {
-        border: 1px solid rgb(255 255 255 / 0.16);
-        border-radius: var(--template-radius);
-        background: rgb(255 255 255 / 0.08);
-        color: var(--template-muted-inverted);
-        padding: 0.45rem 0.6rem;
-        backdrop-filter: blur(14px);
-      }
-      .hero h1,
-      .section h2,
-      .footer h2,
-      .support h2,
-      .unavailable-panel h1 {
-        margin: 0;
-        font-family: var(--template-heading-font);
-        letter-spacing: 0;
-        line-height: 0.98;
-      }
-      .hero h1 {
-        max-width: 12.5ch;
-        color: var(--template-inverted-ink);
-        font-size: clamp(2.55rem, 7vw, 6.7rem);
-        animation: fade-up 760ms 110ms ease both;
-      }
-      .kicker {
-        margin: 0 0 0.8rem;
-      }
-      p {
-        color: var(--template-muted);
-        font-size: clamp(0.98rem, 1.5vw, 1.12rem);
-        font-weight: 650;
-        line-height: 1.64;
-      }
-      .hero p,
-      .register-section p,
-      .footer p {
-        color: var(--template-muted-inverted);
-      }
-      .lead {
-        max-width: 44rem;
-        animation: fade-up 760ms 200ms ease both;
-      }
-      .brand-assurance {
-        width: fit-content;
-        max-width: 100%;
-        display: grid;
-        gap: 0.15rem;
-        margin-top: 1.15rem;
-      }
-      .brand-assurance span {
-        color: var(--template-accent);
-        font-size: 0.72rem;
-        font-weight: 950;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-      .brand-assurance strong {
-        color: var(--template-inverted-ink);
-      }
-      .actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.8rem;
-        margin-top: 1.35rem;
-        animation: fade-up 760ms 310ms ease both;
-      }
-      .media-stage {
-        display: grid;
-        gap: 0.9rem;
-        animation: scale-in 820ms 240ms ease both;
-      }
-      .hero-media,
-      .video-frame {
-        position: relative;
-        display: grid;
-        place-items: center;
-        overflow: hidden;
-        border: 1px solid rgb(255 255 255 / 0.26);
-        border-radius: var(--template-radius);
-        background:
-          radial-gradient(circle at 72% 0, var(--template-glow), transparent 14rem),
-          var(--template-card);
-        box-shadow: 0 1.2rem 3rem rgb(0 0 0 / 0.14);
-      }
-      .hero-media {
-        aspect-ratio: 4 / 5;
-        animation: float-card 8s ease-in-out infinite;
-      }
-      .hero-media[data-media="video"],
-      .video-frame[data-media="video"] {
-        aspect-ratio: 16 / 10;
-      }
-      .hero-media img,
-      .hero-media video,
-      .hero-media iframe,
-      .video-frame img,
-      .video-frame video,
-      .video-frame iframe {
-        width: 100%;
-        height: 100%;
-        border: 0;
-        object-fit: cover;
-      }
-      .hero-media > span,
-      .video-frame > em {
-        color: var(--template-accent);
-        font-size: clamp(3rem, 10vw, 6rem);
-        font-style: normal;
-        font-weight: 950;
-      }
-      .hero-media::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        background: linear-gradient(115deg, transparent 0 34%, rgb(255 255 255 / 0.28) 44%, transparent 56% 100%);
-        transform: translateX(-120%);
-        animation: light-sweep 6s 1.2s ease-in-out infinite;
-      }
-      .media-caption {
-        position: absolute;
-        right: 0.85rem;
-        bottom: 0.85rem;
-        left: 0.85rem;
-        display: grid;
-        gap: 0.12rem;
-        border: 1px solid rgb(255 255 255 / 0.24);
-        border-radius: var(--template-radius);
-        background: rgb(8 11 23 / 0.66);
-        color: #fff;
-        padding: 0.85rem;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 0.9rem 2rem rgb(0 0 0 / 0.16);
-        text-shadow: 0 1px 1px rgb(0 0 0 / 0.28);
-      }
-      .media-caption span {
-        color: var(--template-accent);
-        font-size: 0.72rem;
-        font-weight: 950;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-      .media-caption small {
-        color: rgb(255 255 255 / 0.76);
-        font-weight: 750;
-      }
-      .signal-panel {
-        display: grid;
-        gap: 0.2rem;
-        border: 1px solid rgb(255 255 255 / 0.18);
-        border-radius: var(--template-radius);
-        background: linear-gradient(135deg, rgb(8 11 23 / 0.74), rgb(255 255 255 / 0.1));
-        color: var(--template-inverted-ink);
-        padding: 0.95rem;
-        backdrop-filter: blur(10px);
-      }
-      .signal-panel span {
-        color: var(--template-accent);
-        font-size: 0.72rem;
-        font-weight: 950;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-      .signal-panel small {
-        color: var(--template-muted-inverted);
-        font-weight: 750;
-      }
-      .hero-metrics {
-        position: relative;
-        z-index: 2;
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 0.8rem;
-        margin-top: 1rem;
-      }
-      .hero-metrics div,
-      .spot-card,
-      .faq-card,
-      .support-card {
-        position: relative;
-        overflow: hidden;
-        border: 1px solid var(--template-card-border);
-        border-radius: var(--template-radius);
-        background: var(--template-card-strong);
-        box-shadow: var(--template-shadow);
-        color: var(--template-ink);
-      }
-      .hero-metrics div {
-        padding: 0.95rem;
-      }
-      .hero-metrics dt {
-        color: var(--template-accent);
-        font-size: 0.72rem;
-        font-weight: 950;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-      .hero-metrics dd {
-        margin: 0.35rem 0 0;
-        color: var(--template-ink);
-        font-weight: 900;
-      }
-      .section,
-      .support,
-      .footer,
-      .unavailable-panel {
-        position: relative;
-        z-index: 2;
-        margin-top: clamp(1rem, 4vw, 2.5rem);
-      }
-      .section {
-        border: 1px solid var(--template-card-border);
-        border-radius: var(--template-radius);
-        background: var(--template-section);
-        padding: clamp(1.1rem, 4vw, 2.5rem);
-        backdrop-filter: blur(10px);
-      }
-      .section-head {
-        max-width: 52rem;
-        margin-bottom: 1rem;
-      }
-      .section h2,
-      .support h2,
-      .footer h2 {
-        color: var(--template-ink);
-        font-size: clamp(1.7rem, 4vw, 3.8rem);
-      }
-      .intro-grid,
-      .journey-grid,
-      .benefit-grid,
-      .support-grid,
-      .faq-list {
-        display: grid;
-        gap: 0.9rem;
-      }
-      .intro-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-      .journey-grid,
-      .benefit-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-      .spot-card,
-      .faq-card,
-      .support-card {
-        padding: clamp(1rem, 3vw, 1.35rem);
-        transition:
-          transform 180ms cubic-bezier(0.2, 0.85, 0.2, 1),
-          border-color 180ms ease;
-      }
-      .spot-card::before,
-      .support-card::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), var(--template-glow), transparent 74%);
-        opacity: 0;
-        transition: opacity 320ms ease;
-      }
-      .spot-card:hover,
-      .support-card:hover,
-      .faq-card:hover {
-        transform: translate3d(0, -4px, 0);
-        border-color: var(--template-accent);
-        box-shadow: var(--template-shadow), 0 0 0 1px var(--template-glow);
-      }
-      .spot-card:hover::before,
-      .support-card:hover::before {
-        opacity: 0.52;
-      }
-      .spot-card > *,
-      .support-card > * {
-        position: relative;
-        z-index: 2;
-      }
-      .spot-card h3,
-      .faq-card summary {
-        margin: 0.45rem 0 0;
-        color: var(--template-ink);
-        font-family: var(--template-heading-font);
-        font-size: 1.05rem;
-      }
-      .spot-card p {
-        margin-bottom: 0;
-      }
-      .problem-section {
-        display: grid;
-        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-        gap: clamp(1rem, 4vw, 2rem);
-        align-items: start;
-        background:
-          radial-gradient(circle at 88% 20%, var(--template-glow), transparent 18rem),
-          var(--template-hero-bg);
-        color: var(--template-inverted-ink);
-      }
-      .problem-section h2,
-      .problem-section p,
-      .problem-list p {
-        color: var(--template-inverted-ink);
-      }
-      .problem-list {
-        display: grid;
-        gap: 0.8rem;
-      }
-      .problem-item {
-        display: grid;
-        grid-template-columns: auto minmax(0, 1fr);
-        gap: 0.75rem;
-        align-items: center;
-        background: rgb(255 255 255 / 0.1);
-        color: var(--template-inverted-ink);
-      }
-      .problem-item span {
-        width: 2rem;
-        aspect-ratio: 1;
-        display: grid;
-        place-items: center;
-        border-radius: var(--template-radius);
-        background: var(--template-accent);
-        color: #111730;
-        font-weight: 950;
-      }
-      .media-section {
-        display: grid;
-        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-        gap: clamp(1rem, 4vw, 2rem);
-        align-items: center;
-      }
-      .video-frame {
-        min-height: 19rem;
-        color: var(--template-inverted-ink);
-      }
-      .video-frame > span,
-      .video-frame > strong,
-      .video-frame > p {
-        position: relative;
-        z-index: 2;
-        max-width: 24rem;
-        margin-inline: 1rem;
-        text-align: center;
-      }
-      .video-frame > span {
-        color: var(--template-accent);
-        font-size: 0.72rem;
-        font-weight: 950;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-      .video-frame > strong {
-        color: var(--template-inverted-ink);
-        font-family: var(--template-heading-font);
-        font-size: clamp(1.4rem, 3vw, 2.4rem);
-      }
-      .video-frame > p {
-        color: var(--template-muted-inverted);
-      }
-      .register-section {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 1rem;
-        align-items: center;
-        background:
-          radial-gradient(circle at 84% 16%, var(--template-glow), transparent 15rem),
-          var(--template-hero-bg);
-        color: var(--template-inverted-ink);
-      }
-      .register-section h2,
-      .footer h2 {
-        color: var(--template-inverted-ink);
-      }
-      .support-card {
-        padding: clamp(1rem, 4vw, 2rem);
-      }
-      .support-identity {
-        display: grid;
-        grid-template-columns: auto minmax(0, 1fr);
-        gap: 1rem;
-        align-items: center;
-      }
-      .avatar {
-        width: 5.1rem;
-        aspect-ratio: 1;
-        display: grid;
-        place-items: center;
-        overflow: hidden;
-        border: 1px solid var(--template-card-border);
-        border-radius: var(--template-radius);
-        background: var(--template-card-strong);
-        color: var(--template-accent);
-        font-size: 1.5rem;
-        font-weight: 950;
-      }
-      .avatar img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-      .support-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        margin-top: 1rem;
-      }
-      .support-grid a {
-        min-height: 5rem;
-        display: grid;
-        gap: 0.28rem;
-        align-content: center;
-        border: 1px solid var(--template-card-border);
-        border-radius: var(--template-radius);
-        background: var(--template-card-strong);
-        color: var(--template-ink);
-        padding: 0.9rem;
-        text-decoration: none;
-      }
-      .support-grid strong {
-        line-height: 1.25;
-      }
-      .support-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        margin-top: 1rem;
-      }
-      .support-actions a {
-        border: 1px solid var(--template-card-border);
-        background: var(--template-card-strong);
-        color: var(--template-ink);
-        padding: 0 1rem;
-      }
-      .privacy {
-        margin-bottom: 0;
-        color: var(--template-muted);
-        font-size: 0.82rem;
-        font-weight: 750;
-      }
-      .faq-list {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-      .faq-card summary {
-        cursor: pointer;
-        list-style: none;
-      }
-      .faq-card summary::-webkit-details-marker {
-        display: none;
-      }
-      .faq-card summary::after {
-        content: "+";
-        float: right;
-        color: var(--template-accent);
-        transition: transform 180ms ease;
-      }
-      .faq-card[open] summary::after {
-        transform: rotate(45deg);
-      }
-      .faq-card p {
-        margin-bottom: 0;
-        animation: fade-up 220ms ease both;
-      }
-      .footer {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 1rem;
-        align-items: start;
-        border-radius: var(--template-radius);
-        background: linear-gradient(135deg, rgb(255 239 247 / 0.74), rgb(255 249 227 / 0.8), rgb(240 255 236 / 0.62));
-        color: #2a1724;
-        padding: clamp(1.3rem, 4vw, 2.6rem);
-      }
-      .footer h2 {
-        color: #2a1724;
-        font-size: clamp(1.7rem, 4vw, 3rem);
-      }
-      .footer p {
-        color: #6b5866;
-      }
-      .footer-links {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.65rem;
-        justify-content: flex-end;
-      }
-      .footer-links a {
-        border: 1px solid rgb(155 47 95 / 0.16);
-        border-radius: 999px;
-        background: rgb(255 255 255 / 0.32);
-        color: #9b2f5f;
-        padding: 0 0.9rem;
-      }
-      .unavailable-panel {
-        min-height: 70vh;
-        display: grid;
-        align-content: center;
-        gap: 1rem;
-        border: 1px solid var(--template-card-border);
-        border-radius: var(--template-radius);
-        background: var(--template-section);
-        padding: clamp(1.2rem, 5vw, 3rem);
-      }
-      .section,
-      .support,
-      .footer {
-        content-visibility: auto;
-        contain-intrinsic-size: auto 44rem;
-      }
-      @supports (animation-timeline: view()) {
-        .section,
-        .support,
-        .footer {
-          animation: view-rise 1s ease both;
-          animation-timeline: view();
-          animation-range: entry 8% cover 26%;
-        }
-      }
-      @media (max-width: 1080px) {
-        .hero,
-        .problem-section,
-        .media-section,
-        .register-section,
-        .footer {
-          grid-template-columns: 1fr;
-        }
-        .hero {
-          min-height: auto;
-        }
-        .hero-media {
-          width: min(100%, 29rem);
-        }
-        .hero-metrics,
-        .journey-grid,
-        .benefit-grid,
-        .support-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-      }
-      @media (min-width: 761px) and (max-width: 1080px) {
-        .hero {
-          min-height: min(650px, calc(100svh - 4rem));
-          grid-template-columns: minmax(0, 0.98fr) minmax(16.5rem, 0.72fr);
-          gap: 1.2rem;
-          padding: clamp(1rem, 2.6vw, 2rem);
-        }
-        .hero h1 {
-          max-width: 13ch;
-          font-size: clamp(2.05rem, 5.2vw, 3.8rem);
-        }
-        .lead {
-          font-size: 0.96rem;
-          line-height: 1.48;
-        }
-        .brand-assurance {
-          margin-top: 0.85rem;
-        }
-        .actions {
-          margin-top: 0.9rem;
-        }
-        .media-stage {
-          width: min(100%, 21rem);
-          justify-self: center;
-        }
-        .hero-metrics {
-          margin-top: 0.75rem;
-        }
-      }
-      @media (max-width: 760px), (max-height: 520px) and (orientation: landscape) {
-        .nav {
-          position: fixed;
-          top: calc(1rem + env(safe-area-inset-top));
-          left: 1rem;
-          right: 1rem;
-          z-index: 40;
-          width: auto;
-          max-width: 84rem;
-          isolation: isolate;
-          border-color: var(--template-card-border);
-          background: var(--template-nav-mobile, var(--template-nav));
-          background-color: transparent;
-          box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.42), 0 0 0 1px var(--template-card-border), var(--template-shadow);
-          color: var(--template-inverted-ink);
-          margin-top: 0;
-          opacity: 1;
-          transform: translate3d(0, 0, 0);
-          backface-visibility: hidden;
-          animation: none;
-          -webkit-backdrop-filter: blur(22px) saturate(1.24);
-          backdrop-filter: blur(22px) saturate(1.24);
-          will-change: transform;
-        }
-        .nav::before {
-          content: none;
-        }
-        .nav::after {
-          content: none;
-        }
-        .nav > * {
-          position: relative;
-          z-index: 1;
-        }
-      }
-      @media (max-width: 760px) {
-        .page {
-          padding-top: calc(5.35rem + env(safe-area-inset-top));
-          padding-bottom: calc(10.5rem + env(safe-area-inset-bottom));
-          scroll-padding-top: calc(5.4rem + env(safe-area-inset-top));
-        }
-        .nav,
-        .hero,
-        .hero-metrics,
-        .section,
-        .support,
-        .footer,
-        .unavailable-panel {
-          width: min(calc(100% - 1rem), 84rem);
-        }
-        .nav {
-          min-height: 3.25rem;
-          grid-template-columns: minmax(0, 1fr) auto;
-          padding: 0.45rem 0.55rem;
-          width: auto;
-        }
-        .nav-links {
-          display: none;
-        }
-        .button.nav-cta {
-          min-width: 4.8rem;
-          min-height: 2.25rem;
-          padding-inline: 0.65rem;
-          font-size: 0.8rem;
-        }
-        .brand small {
-          font-size: 0.58rem;
-          letter-spacing: 0.06em;
-        }
-        .hero {
-          margin-top: 0.55rem;
-          gap: 0.85rem;
-          padding: 0.8rem;
-        }
-        .aurora {
-          opacity: 0.28;
-          animation: none;
-          filter: blur(5px) saturate(1);
-        }
-        .page::before {
-          display: none;
-        }
-        .trust-row span,
-        .brand-assurance,
-        .signal-panel,
-        .media-caption,
-        .section,
-        .spot-card,
-        .support-card,
-        .faq-card {
-          backdrop-filter: none;
-        }
-        .trust-row {
-          gap: 0.3rem;
-          margin-bottom: 0.5rem;
-        }
-        .trust-row span {
-          padding: 0.3rem 0.42rem;
-          font-size: 0.62rem;
-        }
-        .trust-row span:nth-child(2) {
-          display: none;
-        }
-        .kicker {
-          margin-bottom: 0.35rem;
-          font-size: 0.64rem;
-        }
-        .hero h1 {
-          max-width: 100%;
-          font-size: clamp(1.55rem, 7.8vw, 2.05rem);
-          line-height: 1.04;
-        }
-        .lead {
-          display: -webkit-box;
-          margin: 0.48rem 0 0;
-          overflow: hidden;
-          -webkit-box-orient: vertical;
-          -webkit-line-clamp: 3;
-          font-size: 0.84rem;
-          line-height: 1.38;
-        }
-        .brand-assurance,
-        .signal-panel {
-          display: none;
-        }
-        .actions {
-          margin-top: 0.65rem;
-        }
-        .actions .button {
-          min-height: 2.35rem;
-          font-size: 0.84rem;
-          padding-inline: 0.85rem;
-        }
-        .media-stage {
-          width: min(100%, 16.5rem);
-          justify-self: center;
-          animation: none;
-        }
-        .hero-media {
-          width: 100%;
-          display: block;
-          aspect-ratio: auto;
-          overflow: visible;
-        }
-        .hero-media img,
-        .hero-media video,
-        .hero-media iframe {
-          width: 100%;
-          height: auto;
-          aspect-ratio: 4 / 3.55;
-          overflow: hidden;
-          border-radius: var(--template-radius);
-          object-fit: cover;
-        }
-        .media-caption {
-          position: static;
-          margin-top: 0.45rem;
-          padding: 0.62rem 0.68rem;
-        }
-        .media-caption span {
-          font-size: 0.62rem;
-        }
-        .media-caption strong,
-        .media-caption small {
-          line-height: 1.15;
-        }
-        .intro-grid,
-        .hero-metrics,
-        .journey-grid,
-        .benefit-grid,
-        .support-grid,
-        .faq-list {
-          grid-template-columns: 1fr;
-        }
-        .section h2,
-        .support h2,
-        .footer h2 {
-          font-size: clamp(1.45rem, 7vw, 2rem);
-          line-height: 1.05;
-        }
-        .sticky-coach-cta {
-          grid-template-columns: minmax(0, 1fr) auto;
-          gap: 0.6rem;
-          border-radius: calc(var(--template-radius) + 6px);
-          min-height: 4.7rem;
-          padding: 0.56rem;
-        }
-        .sticky-coach-context {
-          gap: 0.08rem;
-        }
-        .sticky-coach-context span {
-          font-size: 0.6rem;
-        }
-        .sticky-coach-context strong {
-          display: -webkit-box;
-          -webkit-box-orient: vertical;
-          -webkit-line-clamp: 2;
-          font-size: clamp(0.82rem, 2.8vw, 0.92rem);
-          line-height: 1.06;
-          overflow: hidden;
-        }
-        .sticky-coach-context small {
-          display: none;
-        }
-        .sticky-coach-actions {
-          display: inline-flex;
-          gap: 0.45rem;
-          justify-content: flex-end;
-        }
-        .sticky-coach-register,
-        .sticky-coach-contact {
-          min-height: 2.65rem;
-          border-radius: var(--template-radius);
-          font-size: 0.84rem;
-          padding-inline: 0.85rem;
-        }
-      }
-      @media (max-width: 430px) {
-        .page {
-          padding-bottom: calc(11rem + env(safe-area-inset-bottom));
-        }
-        .support-actions {
-          display: grid;
-        }
-        .button,
-        .sticky-register,
-        .support-actions a {
-          width: 100%;
-        }
-        .nav .button,
-        .actions .button {
-          width: auto;
-        }
-        .sticky-register {
-          right: 0.55rem;
-          bottom: 0.55rem;
-          left: auto;
-          width: auto;
-          min-width: 8.4rem;
-          min-height: 2.45rem;
-          font-size: 0.84rem;
-          padding-inline: 0.85rem;
-        }
-        .sticky-coach-cta {
-          right: max(0.55rem, env(safe-area-inset-right));
-          bottom: max(0.55rem, env(safe-area-inset-bottom));
-          left: max(0.55rem, env(safe-area-inset-left));
-          width: auto;
-          min-height: 4.7rem;
-          padding: 0.52rem;
-        }
-        .sticky-coach-actions {
-          display: inline-flex;
-          min-width: max-content;
-        }
-        .sticky-coach-contact {
-          display: none;
-        }
-        .sticky-coach-register {
-          min-width: 7.1rem;
-          min-height: 2.45rem;
-          font-size: 0.82rem;
-          white-space: nowrap;
-        }
-        .support-identity {
-          grid-template-columns: 1fr;
-        }
-      }
-      @media (max-width: 360px) {
-        .nav,
-        .hero,
-        .hero-metrics,
-        .section,
-        .support,
-        .footer,
-        .unavailable-panel {
-          width: min(calc(100% - 0.7rem), 84rem);
-        }
-        .brand strong {
-          font-size: 0.82rem;
-        }
-        .brand small {
-          font-size: 0.54rem;
-        }
-        .nav {
-          left: 0.85rem;
-          right: 0.85rem;
-          width: auto;
-        }
-        .button.nav-cta {
-          min-width: 4.4rem;
-          padding-inline: 0.52rem;
-        }
-        .hero {
-          padding: 0.68rem;
-        }
-        .hero h1 {
-          font-size: clamp(1.42rem, 7.2vw, 1.72rem);
-        }
-        .lead {
-          -webkit-line-clamp: 2;
-          font-size: 0.8rem;
-        }
-        .media-stage {
-          width: min(100%, 14.6rem);
-        }
-      }
-      @media (max-height: 520px) and (orientation: landscape) {
-        .page {
-          padding-top: calc(4.2rem + env(safe-area-inset-top));
-          padding-bottom: calc(6rem + env(safe-area-inset-bottom));
-        }
-        .nav {
-          top: calc(0.7rem + env(safe-area-inset-top));
-          left: 1rem;
-          right: 1rem;
-          min-height: 3rem;
-          padding-block: 0.4rem;
-        }
-        .hero {
-          grid-template-columns: minmax(0, 1fr) minmax(13rem, 0.72fr);
-          gap: 0.8rem;
-          align-items: center;
-        }
-        .hero h1 {
-          font-size: clamp(1.45rem, 4vw, 2rem);
-        }
-        .lead {
-          -webkit-line-clamp: 2;
-        }
-        .media-stage {
-          width: min(100%, 15rem);
-        }
-        .sticky-register {
-          display: none;
-        }
-        .sticky-coach-cta {
-          bottom: max(0.45rem, env(safe-area-inset-bottom));
-          grid-template-columns: minmax(0, 1fr) auto;
-          gap: 0.45rem;
-          min-height: 4.55rem;
-          padding: 0.52rem;
-        }
-        .sticky-coach-context small {
-          display: none;
-        }
-        .sticky-coach-context strong {
-          font-size: 0.78rem;
-          line-height: 1.04;
-        }
-        .sticky-coach-actions {
-          display: inline-flex;
-        }
-        .sticky-coach-register,
-        .sticky-coach-contact {
-          min-height: 2.35rem;
-          font-size: 0.78rem;
-          padding-inline: 0.68rem;
-        }
-      }
-      @media (hover: none), (pointer: coarse) {
-        .spot-card::before,
-        .support-card::before {
-          opacity: 0.18;
-        }
-        .spot-card:hover,
-        .support-card:hover,
-        .faq-card:hover {
-          transform: none;
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        *,
-        *::before,
-        *::after {
-          animation-duration: 1ms !important;
-          animation-iteration-count: 1 !important;
-          scroll-behavior: auto !important;
-          transition-duration: 1ms !important;
-        }
-        .aurora,
-        .hero-media,
-        .hero-media::after {
-          animation: none !important;
-        }
-      }
-      @keyframes aurora {
-        from { background-position: 50% 50%, 50% 50%; }
-        to { background-position: 350% 50%, 350% 50%; }
-      }
-      @keyframes fade-down {
-        from { opacity: 0; transform: translate3d(0, -0.75rem, 0); }
-        to { opacity: 1; transform: translate3d(0, 0, 0); }
-      }
-      @keyframes fade-up {
-        from { opacity: 0; transform: translate3d(0, 1rem, 0); }
-        to { opacity: 1; transform: translate3d(0, 0, 0); }
-      }
-      @keyframes scale-in {
-        from { opacity: 0; transform: scale(0.96) translate3d(0, 1rem, 0); }
-        to { opacity: 1; transform: scale(1) translate3d(0, 0, 0); }
-      }
-      @keyframes float-card {
-        0%, 100% { transform: translate3d(0, 0, 0); }
-        50% { transform: translate3d(0, -0.55rem, 0); }
-      }
-      @keyframes light-sweep {
-        0%, 45% { transform: translateX(-120%); }
-        65%, 100% { transform: translateX(120%); }
-      }
-      @keyframes yw-loader-orbit {
-        to { transform: rotate(360deg); }
-      }
-      @keyframes yw-loader-auto-hide {
-        to {
-          opacity: 0;
-          visibility: hidden;
-          pointer-events: none;
-        }
-      }
-      @keyframes view-rise {
-        from { opacity: 0.2; transform: translate3d(0, 1.4rem, 0); }
-        to { opacity: 1; transform: translate3d(0, 0, 0); }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .yw-global-loader {
-          opacity: 0 !important;
-          visibility: hidden !important;
-          pointer-events: none !important;
-        }
-        .yw-global-loader,
-        .yw-global-loader * {
-          animation: none !important;
-          transition-duration: 80ms !important;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    ${renderInlineYWLoader()}
-    <main
-      class="page"
-      data-coach-site-page="public"
-      data-coach-slug="${escapeAttribute(site.slug)}"
-      data-theme="${escapeAttribute(theme.id)}"
-      style="${escapeAttribute(themeStyle)}"
-    >
-      <div class="aurora" aria-hidden="true"></div>
-      <div class="scroll-line" aria-hidden="true"><span></span></div>
-      ${
-        isPaused
-          ? renderPausedHtml(site, support)
-          : `
-      <nav class="nav" aria-label="Coach page navigation">
-        <a class="brand" href="#top">
-          <img alt="YW Nutritech" src="/images/yw-nutritech-logo.png" />
-          <span>
-            <strong>YW Nutritech</strong>
-            <small>Coach Referral</small>
-          </span>
-        </a>
-        <div class="nav-links">
-          <a href="#journey">Journey</a>
-          <a href="#benefits">Benefits</a>
-        </div>
-        ${renderRegisterAction(site, "button primary nav-cta", site.registerButtonText || site.content.ctaText || "Register")}
-      </nav>
-
-      <section class="hero" data-media="${escapeAttribute(site.heroMediaType || "image")}" id="top">
-        <div class="hero-copy">
-          <div class="trust-row">
-            <span>${escapeHtml(site.content.brandBadge)}</span>
-            <span>${escapeHtml(site.content.brandEyebrow)}</span>
-          </div>
-          <p class="kicker">${escapeHtml(site.niche)}</p>
-          <h1>${escapeHtml(site.content.heroHeadline)}</h1>
-          <p class="lead">${escapeHtml(site.content.subheadline)}</p>
-          <div class="brand-assurance">
-            <span>${escapeHtml(site.content.heroTrustLine)}</span>
-            <strong>${escapeHtml(site.content.heroMicroTrustText)}</strong>
-          </div>
-          <div class="actions">
-            ${renderRegisterAction(site, "button primary", site.registerButtonText || site.content.ctaText || "Register Now")}
-          </div>
-        </div>
-        ${site.heroMediaType !== "none" ? renderHeroMedia(site) : ""}
-      </section>
-
-      <dl class="hero-metrics">
-        <div><dt>Coach</dt><dd>${escapeHtml(site.coachName)}</dd></div>
-        <div><dt>Niche</dt><dd>${escapeHtml(site.niche)}</dd></div>
-        <div><dt>Location</dt><dd>${escapeHtml(site.location || "Yours Wellness")}</dd></div>
-        <div><dt>Referral action</dt><dd>${site.googleFormUrl ? "Google Form registration" : "Registration link pending"}</dd></div>
-      </dl>
-
-      <section class="section intro-section">
-        <div class="section-head">
-          <span>${escapeHtml(site.content.introSectionLabel)}</span>
-          <h2>${escapeHtml(site.content.introHeading)}</h2>
-        </div>
-        <div class="intro-grid">
-          <article class="spot-card story-card">
-            <span>${escapeHtml(site.content.coachIntroLabel)}</span>
-            <h3>${escapeHtml(site.coachName)}</h3>
-            <p>${escapeHtml(site.content.coachIntro)}</p>
-          </article>
-          <article class="spot-card story-card">
-            <span>${escapeHtml(site.content.visionLabel)}</span>
-            <h3>${escapeHtml(site.location || "Yours Wellness Coach")}</h3>
-            <p>${escapeHtml(site.content.visionText || site.vision)}</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="section problem-section">
-        <div class="problem-copy">
-          <span>${escapeHtml(site.content.problemSectionLabel)}</span>
-          <h2>${escapeHtml(site.content.problemHeading)}</h2>
-          <p>${escapeHtml(site.content.trustText)}</p>
-        </div>
-        <div class="problem-list">${problems}</div>
-      </section>
-
-      <section class="section journey-section" id="journey">
-        <div class="section-head">
-          <span>${escapeHtml(site.content.journeySectionLabel)}</span>
-          <h2>${escapeHtml(site.content.journeyHeading)}</h2>
-        </div>
-        <div class="journey-grid">${journey}</div>
-      </section>
-
-      <section class="section benefits-section" id="benefits">
-        <div class="section-head">
-          <span>${escapeHtml(site.content.benefitsSectionLabel)}</span>
-          <h2>${escapeHtml(site.content.benefitsHeading)}</h2>
-        </div>
-        <div class="benefit-grid">${benefits}</div>
-      </section>
-
-      <section class="section register-section" id="register">
-        <div>
-          <span>${escapeHtml(site.content.ctaSectionLabel)}</span>
-          <h2>${escapeHtml(site.content.ctaText || "Ready to take the first step with this coach?")}</h2>
-          <p>${escapeHtml(site.content.trustText)}</p>
-        </div>
-        ${renderRegisterAction(site, "button primary", site.registerButtonText || "Register Now")}
-      </section>
-
-      <section class="section faq-section">
-        <div class="section-head">
-          <span>${escapeHtml(site.content.faqSectionLabel)}</span>
-          <h2>${escapeHtml(site.content.faqHeading)}</h2>
-        </div>
-        <div class="faq-list">${faq}</div>
-      </section>
-
-      ${renderSupportHtml(site, support)}
-      ${renderFooterHtml(site)}
-      ${renderStickyRegisterAction(site)}`
-      }
-    </main>
-    <script>
-      (function () {
-        var loader = document.getElementById('yw-global-loader');
-        var loaderHideStarted = false;
-        function hideGlobalLoader() {
-          if (loaderHideStarted) return;
-          loaderHideStarted = true;
-          if (!loader) return;
-          window.setTimeout(function () {
-            loader.setAttribute('data-state', 'hidden');
-            window.setTimeout(function () {
-              if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
-            }, 280);
-          }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 120 : 520);
-        }
-        if (document.readyState === 'complete' || document.readyState === 'interactive') {
-          window.setTimeout(hideGlobalLoader, 120);
-        } else {
-          document.addEventListener('DOMContentLoaded', function () {
-            window.setTimeout(hideGlobalLoader, 120);
-          }, { once: true });
-          window.addEventListener('load', hideGlobalLoader, { once: true });
-        }
-        window.setTimeout(hideGlobalLoader, 1600);
-        var slug = ${JSON.stringify(site.slug)};
-        var root = document.documentElement;
-        var progressFrame = 0;
-        var pointerFrame = 0;
-        var pointerEvent = null;
-        var pointerSpotlightQuery = window.matchMedia('(hover: none), (pointer: coarse), (prefers-reduced-motion: reduce)');
-        var allowPointerSpotlight = false;
-        function updateProgress() {
-          var max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-          var progress = Math.min(1, Math.max(0, window.scrollY / max));
-          root.style.setProperty('--scroll-progress', progress.toFixed(4));
-          progressFrame = 0;
-        }
-        function scheduleProgressUpdate() {
-          if (progressFrame) return;
-          progressFrame = window.requestAnimationFrame(updateProgress);
-        }
-        function getSessionId() {
-          try {
-            var key = 'yw_analytics_session_id';
-            var current = window.sessionStorage.getItem(key);
-            if (current) return current;
-            var next = window.crypto && window.crypto.randomUUID
-              ? window.crypto.randomUUID()
-              : String(Date.now()) + '-' + String(Math.random()).slice(2);
-            window.sessionStorage.setItem(key, next);
-            return next;
-          } catch (_) {
-            return '';
-          }
-        }
-        function track(eventName) {
-          try {
-            if (!navigator.sendBeacon) return;
-            navigator.sendBeacon('/api/coach-events', new Blob([JSON.stringify({
-              coachSlug: slug,
-              eventName: eventName,
-              pagePath: window.location.pathname + window.location.search,
-              pageUrl: window.location.href,
-              referrer: document.referrer,
-              sessionId: getSessionId()
-            })], { type: 'application/json' }));
-          } catch (_) {}
-        }
-        updateProgress();
-        window.addEventListener('scroll', scheduleProgressUpdate, { passive: true });
-        track('coach_site_view');
-        function handlePointerMove(event) {
-          if (!allowPointerSpotlight) return;
-          pointerEvent = event;
-          if (pointerFrame) return;
-          pointerFrame = window.requestAnimationFrame(function () {
-            pointerFrame = 0;
-            var currentEvent = pointerEvent;
-            if (!currentEvent) return;
-            var card = currentEvent.target && currentEvent.target.closest ? currentEvent.target.closest('.spot-card, .support-card') : null;
-            if (!card) return;
-            var rect = card.getBoundingClientRect();
-            card.style.setProperty('--mouse-x', (currentEvent.clientX - rect.left) + 'px');
-            card.style.setProperty('--mouse-y', (currentEvent.clientY - rect.top) + 'px');
-          });
-        }
-        function syncPointerSpotlight() {
-          var nextAllowed = !pointerSpotlightQuery.matches;
-          if (nextAllowed === allowPointerSpotlight) return;
-          allowPointerSpotlight = nextAllowed;
-          if (allowPointerSpotlight) {
-            document.addEventListener('pointermove', handlePointerMove, { passive: true });
-            return;
-          }
-          document.removeEventListener('pointermove', handlePointerMove);
-          pointerEvent = null;
-          if (pointerFrame) {
-            window.cancelAnimationFrame(pointerFrame);
-            pointerFrame = 0;
-          }
-        }
-        syncPointerSpotlight();
-        if (pointerSpotlightQuery.addEventListener) {
-          pointerSpotlightQuery.addEventListener('change', syncPointerSpotlight);
-        } else if (pointerSpotlightQuery.addListener) {
-          pointerSpotlightQuery.addListener(syncPointerSpotlight);
-        }
-        document.addEventListener('click', function (event) {
-          var target = event.target && event.target.closest ? event.target.closest('[data-track]') : null;
-          if (target) track(target.getAttribute('data-track'));
-        });
-      })();
-    </script>
-  </body>
-</html>`;
-}
-
-function renderPausedHtml(site: PublicCoachSiteRecord, support: SupportDetails) {
-  return `
-    <section class="unavailable-panel">
-      <p class="kicker">Coach Page</p>
-      <h1>This coach page is temporarily unavailable.</h1>
-      <p>The public link remains stable. Please contact support if you need help.</p>
-      ${renderSupportHtml(site, support, true)}
-    </section>`;
-}
-
-function renderSupportHtml(site: PublicCoachSiteRecord, support: SupportDetails, compact = false) {
-  const primarySupportLabel = site.content.supportPrimaryButton || "Contact Support";
-  return `
-    <section class="support" id="coach-contact-support">
-      <article class="support-card">
-        ${renderSupportBody(site, support)}
-        ${
-          compact
-            ? `<div class="support-actions"><a href="${escapeAttribute(support.primaryHref)}">${escapeHtml(primarySupportLabel)}</a><a href="/">Go Back Home</a></div>`
-            : ""
-        }
-      </article>
-    </section>`;
 }
 
 function renderSupportBody(
@@ -2964,58 +1559,6 @@ function renderSupportFallbackHtml({
 </html>`;
 }
 
-function renderFooterHtml(site: PublicCoachSiteRecord) {
-  return `
-    <footer class="footer">
-      <div>
-        <span>${escapeHtml(site.content.footerBrandLine)}</span>
-        <h2>${escapeHtml(site.content.footerHeadline)}</h2>
-        <p><strong>Copyright 2026 | Yours Wellness Center. All rights reserved.</strong></p>
-        <p>${escapeHtml(site.content.footerText)}</p>
-        <p>NOT FACEBOOK: This site is not part of Facebook or Meta Platforms, Inc. It is not endorsed by Facebook in any way. Facebook is a trademark of Meta Platforms, Inc.</p>
-      </div>
-      <div class="footer-links">
-        <a href="/privacy">Privacy Policy</a>
-        <a href="/terms">Terms &amp; Conditions</a>
-        <a href="/disclaimer">Disclaimer</a>
-      </div>
-    </footer>`;
-}
-
-function renderStickyRegisterAction(site: PublicCoachSiteRecord) {
-  const support = getSupportDetails(site);
-  const hasCoachContact = support.name !== DEFAULT_SUPPORT_NAME;
-  const stickyLabel = site.content.stickyCtaLabel || "Free guest registration";
-  const stickyHeading =
-    site.content.stickyCtaHeading || `Ready to connect with Coach ${site.coachName}?`;
-  const stickyContext =
-    site.content.stickyCtaContext || `${site.niche || "Coach referral"} through YW Nutritech`;
-
-  return `
-    <aside class="sticky-coach-cta" aria-label="Coach registration" data-preview-section="sticky-cta">
-      <div class="sticky-coach-context">
-        <span>${escapeHtml(stickyLabel)}</span>
-        <strong>${escapeHtml(stickyHeading)}</strong>
-        <small>${escapeHtml(stickyContext)}</small>
-      </div>
-      <div class="sticky-coach-actions">
-        ${renderRegisterAction(site, "button primary sticky-coach-register", site.registerButtonText || "Register Now")}
-        ${hasCoachContact ? renderStickyCoachContactAction(site, support) : ""}
-      </div>
-    </aside>`;
-}
-
-function renderStickyCoachContactAction(site: PublicCoachSiteRecord, support: SupportDetails) {
-  const trackAttribute = support.whatsappLink ? ` data-track="coach_whatsapp_click"` : "";
-  const targetAttribute =
-    support.primaryHref.startsWith("mailto:") || support.primaryHref.startsWith("tel:")
-      ? ""
-      : ` target="_blank" rel="noreferrer"`;
-  const label = site.content.stickyCtaContactButton || "Contact Coach";
-
-  return `<a class="button secondary sticky-coach-contact"${trackAttribute} href="${escapeAttribute(support.primaryHref)}"${targetAttribute}>${escapeHtml(label)}</a>`;
-}
-
 function renderRegisterAction(
   site: PublicCoachSiteRecord,
   className = "button primary",
@@ -3030,37 +1573,44 @@ function renderRegisterAction(
   return `<a class="${escapeAttribute(className)}" data-track="coach_register_click" href="${escapeAttribute(site.googleFormUrl)}" rel="noreferrer" target="_blank">${escapeHtml(text)}</a>`;
 }
 
-function renderHeroMedia(site: PublicCoachSiteRecord) {
-  return `
-    <div class="media-stage">
-      <div class="hero-media" data-media="${escapeAttribute(site.heroMediaType)}">
-        ${renderHeroMediaContent(site)}
-        <div class="media-caption"><span>${escapeHtml(site.content.heroMediaLabel)}</span><strong>${escapeHtml(site.coachName)}</strong><small>${escapeHtml(site.niche)}</small></div>
-      </div>
+function renderSmartBonusVisualHtml(
+  bonus: NicheAdaptiveBonusItem,
+  coachNiche: string,
+  themeId: string
+) {
+  const visualCssType = getSmartBonusVisualCssType(bonus.visualType);
+  const baseAttributes = [
+    `class="yw-bonus-visual yw-smart-bonus-visual yw-bonus-visual--${escapeAttribute(visualCssType)}"`,
+    `data-yw-asset-type="${escapeAttribute(bonus.assetType)}"`,
+    `data-yw-bonus-id="${escapeAttribute(bonus.id)}"`,
+    `data-yw-niche="${escapeAttribute(coachNiche)}"`,
+    `data-yw-smart-bonus="true"`,
+    `data-yw-template-theme="${escapeAttribute(themeId)}"`,
+    `data-yw-visual-type="${escapeAttribute(bonus.visualType)}"`
+  ];
+
+  if (bonus.imageUrl) {
+    return `<div ${baseAttributes.join(" ")} data-yw-smart-visual="configured-image" role="img" aria-label="${escapeAttribute(
+      bonus.imageAlt || `${bonus.typeLabel} bonus visual`
+    )}" style="background-image: linear-gradient(135deg, rgba(4, 31, 39, 0.16), rgba(33, 230, 193, 0.18)), url('${escapeAttribute(
+      bonus.imageUrl
+    )}')">
+      <span class="yw-bonus-visual__orb yw-bonus-visual__orb--image" aria-hidden="true"></span>
+      <span class="yw-bonus-visual__micro-lines" aria-hidden="true"></span>
+      <span class="yw-bonus-visual__shine" aria-hidden="true"></span>
     </div>`;
-}
-
-function renderHeroMediaContent(site: PublicCoachSiteRecord) {
-  if (site.heroMediaType === "none") return "";
-
-  const imageUrl = site.heroMediaType === "image" ? site.photoUrl || site.logoUrl : "";
-  const embedVideoUrl = site.heroMediaType === "video" ? normalizeVideoEmbedUrl(site.videoUrl) : "";
-  const uploadedVideoUrl =
-    site.heroMediaType === "video" && isUploadedVideoSource(site.videoUrl) ? site.videoUrl : "";
-
-  if (embedVideoUrl) {
-    return `<iframe allow="accelerometer; autoplay; clipboard-write; compute-pressure; encrypted-media; gyroscope; picture-in-picture" allowfullscreen src="${escapeAttribute(embedVideoUrl)}" title="${escapeAttribute(`${site.coachName} hero video`)}"></iframe>`;
   }
 
-  if (uploadedVideoUrl) {
-    return `<video controls src="${escapeAttribute(uploadedVideoUrl)}" title="${escapeAttribute(`${site.coachName} hero video`)}"></video>`;
-  }
-
-  if (imageUrl) {
-    return `<img alt="${escapeAttribute(`${site.coachName} profile`)}" src="${escapeAttribute(imageUrl)}" />`;
-  }
-
-  return `<span>${escapeHtml(site.coachName.slice(0, 2).toUpperCase())}</span>`;
+  return `<div ${baseAttributes.join(" ")} data-yw-fallback-icon="${escapeAttribute(
+    bonus.fallbackIcon
+  )}" data-yw-smart-visual="generated" aria-hidden="true">
+    <span class="yw-bonus-visual__orb"></span>
+    <span class="yw-bonus-visual__product">
+      <span class="yw-bonus-visual__mark">${escapeHtml(getSmartBonusVisualMark(bonus))}</span>
+    </span>
+    <span class="yw-bonus-visual__micro-lines"></span>
+    <span class="yw-bonus-visual__shine"></span>
+  </div>`;
 }
 
 type SupportDetails = ReturnType<typeof getSupportDetails>;
@@ -3084,86 +1634,6 @@ function getSupportDetails(site: PublicCoachSiteRecord | null) {
       (hasCoachContact ? "Need help? Contact your coach directly." : DEFAULT_SUPPORT_TEXT),
     whatsappLink
   };
-}
-
-function createProblemPoints(site: PublicCoachSiteRecord) {
-  return [
-    `Too much conflicting ${site.niche || "wellness"} advice`,
-    "Unsure what daily routine changes matter first",
-    "Need a coach-led starting point before a deeper program",
-    "Want education-friendly guidance that can sit alongside medical care"
-  ];
-}
-
-function getBenefitDescriptions(site: PublicCoachSiteRecord) {
-  const descriptions = site.content.benefitDescriptions.filter(Boolean);
-
-  return descriptions.length > 0
-    ? descriptions
-    : getBenefits(site).map(
-        () => "Coach-led education designed to make the next step calmer and clearer."
-      );
-}
-
-function getBenefits(site: PublicCoachSiteRecord) {
-  return site.content.benefits.length > 0
-    ? site.content.benefits
-    : [
-        `Understand the basics of ${site.niche || "wellness"} with a clear coach introduction.`,
-        "See the coach vision before opening the registration form.",
-        "Move to the admin-provided Google Form only after the register click is tracked."
-      ];
-}
-
-function getJourneySteps(site: PublicCoachSiteRecord) {
-  return site.content.journeySteps.length > 0
-    ? site.content.journeySteps
-    : [
-        {
-          description:
-            "Guests understand the coach story, niche, mission, and guidance style.",
-          label: "Profile",
-          title: `Meet ${site.coachName || "the coach"}`
-        },
-        {
-          description: "The page explains the coach lens in a clear, trustworthy tone.",
-          label: "Focus",
-          title: `See the ${site.niche || "wellness"} focus`
-        },
-        {
-          description:
-            "The CTA sends visitors to the coach registration form when configured.",
-          label: "Action",
-          title: "Open registration"
-        }
-      ];
-}
-
-function getProblemPoints(site: PublicCoachSiteRecord) {
-  const points = site.content.problemPoints.filter(Boolean);
-
-  return points.length > 0 ? points : createProblemPoints(site);
-}
-
-function getFaq(site: PublicCoachSiteRecord) {
-  return site.content.faq.length > 0
-    ? site.content.faq
-    : [
-        {
-          question: "Is this medical treatment?",
-          answer: "No. This coach page is for education and lifestyle guidance only."
-        },
-        {
-          question: "What happens after registration?",
-          answer: "The register button opens the admin-provided Google Form when configured."
-        }
-      ];
-}
-
-function createThemeInlineStyle(themeId: unknown) {
-  return Object.entries(getCoachTemplateCssVariables(themeId))
-    .map(([key, value]) => `${key}: ${value}`)
-    .join("; ");
 }
 
 function createCoachFallbackReferenceId(slug: string) {
@@ -3251,4 +1721,15 @@ function escapeHtml(value: unknown) {
 
 function escapeAttribute(value: unknown) {
   return escapeHtml(value).replace(/`/g, "&#096;");
+}
+
+function escapeJsString(value: unknown) {
+  return String(value ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
 }

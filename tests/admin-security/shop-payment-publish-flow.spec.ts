@@ -2,12 +2,282 @@ import { createHmac } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { onRequest as coachPageRequest } from "../../functions/coach/[slug]";
 import { onRequestPost as shopCheckoutRequest } from "../../functions/api/shop/checkout";
+import { onRequestPost as shopRetryPublishRequest } from "../../functions/api/shop/retry-publish";
 import { onRequest as shopWebhookRequest } from "../../functions/api/shop/razorpay-webhook";
+import { saveShopDraft } from "../../lib/server/shop";
 
 const SHOP_WEBHOOK_SECRET = "local-shop-webhook-secret";
 const SHOP_PAYMENT_PAGE_URL = "https://rzp.io/rzp/webb";
 
 test.describe("shop payment publish flow", () => {
+  test("same normalized email reuses the active unpaid Shop draft", async () => {
+    const harness = createShopPaymentDb();
+    const env = {
+      ADMIN_DB: harness.db,
+      SHOP_PAYMENT_PAGE_URL,
+      SHOP_RAZORPAY_WEBHOOK_SECRET: SHOP_WEBHOOK_SECRET
+    };
+
+    const first = await saveShopDraft({
+      env,
+      idempotencyKey: "same-email-draft-1",
+      state: {
+        coachEmail: "  raj@example.com ",
+        coachName: "Raj First Draft",
+        email: "RAJ@example.com",
+        niche: "General wellness",
+        shortBio: "Practical education-first wellness guidance."
+      }
+    });
+    expect(first).toMatchObject({ ok: true });
+    expect([...harness.shopSites.values()]).toHaveLength(1);
+    expect([...harness.shopSites.values()][0]).toMatchObject({
+      coach_email: "raj@example.com",
+      payment_status: "draft",
+      site_status: "draft"
+    });
+    await expect(
+      (harness.db as { prepare: (sql: string) => { bind: (...values: unknown[]) => { first: <T>() => Promise<T | null> } } })
+        .prepare(
+          `SELECT * FROM shop_sites
+           WHERE lower(coach_email) = ?1
+             AND payment_status = 'draft'
+             AND site_status = 'draft'
+             AND locked_at IS NULL
+           ORDER BY updated_at DESC
+           LIMIT 1`
+        )
+        .bind("raj@example.com")
+        .first()
+    ).resolves.toBeTruthy();
+
+    const second = await saveShopDraft({
+      env,
+      idempotencyKey: "same-email-draft-2",
+      state: {
+        coachEmail: "raj@example.com",
+        coachName: "Raj Updated Draft",
+        email: "raj@example.com",
+        niche: "Gut health",
+        shortBio: "Updated practical wellness guidance."
+      }
+    });
+    expect(second).toMatchObject({ ok: true });
+    expect(second.order?.orderId).toBe(first.order?.orderId);
+    expect(second.accessKey).toBe(first.accessKey);
+    expect([...harness.shopSites.values()]).toHaveLength(1);
+    expect([...harness.shopSites.values()][0]).toMatchObject({
+      coach_email: "raj@example.com",
+      coach_name: "Raj Updated Draft",
+      niche: "Gut health",
+      payment_status: "draft",
+      site_status: "draft"
+    });
+  });
+
+  test("same normalized email reuses recoverable pending or failed unpaid Shop drafts", async () => {
+    const harness = createShopPaymentDb();
+    const env = {
+      ADMIN_DB: harness.db,
+      SHOP_PAYMENT_PAGE_URL,
+      SHOP_RAZORPAY_WEBHOOK_SECRET: SHOP_WEBHOOK_SECRET
+    };
+
+    const first = await saveShopDraft({
+      env,
+      idempotencyKey: "same-email-pending-1",
+      state: {
+        coachEmail: "resume@example.com",
+        coachName: "Resume First Draft",
+        email: "resume@example.com",
+        niche: "Sleep wellness",
+        shortBio: "Practical education-first sleep guidance."
+      }
+    });
+    expect(first).toMatchObject({ ok: true });
+    const orderId = first.order?.orderId || "";
+    expect(orderId).toBeTruthy();
+
+    Object.assign(harness.shopSites.get(orderId) || {}, {
+      payment_status: "pending_payment",
+      site_status: "pending_payment",
+      updated_at: nowSeconds() + 1
+    });
+
+    const resumedPending = await saveShopDraft({
+      env,
+      idempotencyKey: "same-email-pending-2",
+      state: {
+        coachEmail: "resume@example.com",
+        coachName: "Resume Pending Draft",
+        email: "resume@example.com",
+        niche: "Gut health",
+        shortBio: "Updated draft before checkout completion."
+      }
+    });
+    expect(resumedPending).toMatchObject({ ok: true });
+    expect(resumedPending.order?.orderId).toBe(orderId);
+    expect(harness.shopSites.get(orderId)).toMatchObject({
+      coach_name: "Resume Pending Draft",
+      niche: "Gut health",
+      payment_status: "pending_payment",
+      site_status: "pending_payment"
+    });
+
+    Object.assign(harness.shopSites.get(orderId) || {}, {
+      payment_status: "payment_failed",
+      site_status: "payment_failed",
+      updated_at: nowSeconds() + 2
+    });
+
+    const resumedFailed = await saveShopDraft({
+      env,
+      idempotencyKey: "same-email-pending-3",
+      state: {
+        coachEmail: "RESUME@example.com",
+        coachName: "Resume Failed Draft",
+        email: "resume@example.com",
+        niche: "Fitness",
+        shortBio: "Updated draft after a failed payment attempt."
+      }
+    });
+    expect(resumedFailed).toMatchObject({ ok: true });
+    expect(resumedFailed.order?.orderId).toBe(orderId);
+    expect([...harness.shopSites.values()]).toHaveLength(1);
+    expect(harness.shopSites.get(orderId)).toMatchObject({
+      coach_email: "resume@example.com",
+      coach_name: "Resume Failed Draft",
+      niche: "Fitness",
+      payment_status: "payment_failed",
+      site_status: "payment_failed"
+    });
+  });
+
+  test("paid publish-failed Shop order can be edited and retried only with secure access key", async () => {
+    const harness = createShopPaymentDb();
+    const env = {
+      ADMIN_DB: harness.db,
+      SHOP_PAYMENT_PAGE_URL,
+      SHOP_RAZORPAY_WEBHOOK_SECRET: SHOP_WEBHOOK_SECRET
+    };
+
+    const first = await saveShopDraft({
+      env,
+      idempotencyKey: "publish-failed-recovery-1",
+      state: {
+        coachEmail: "paid-failed@example.com",
+        coachName: "Paid Failed Draft",
+        coachPhone: "+919876543210",
+        contactLink: "https://forms.gle/paidFailed",
+        email: "paid-failed@example.com",
+        niche: "General wellness",
+        shortBio: "Original paid publish failed draft."
+      }
+    });
+    expect(first).toMatchObject({ ok: true });
+    const orderId = first.order?.orderId || "";
+    const accessKey = first.accessKey || "";
+    expect(orderId).toBeTruthy();
+    expect(accessKey).toBeTruthy();
+
+    Object.assign(harness.shopSites.get(orderId) || {}, {
+      issue_status: "Publish failed after payment verification.",
+      payment_status: "paid",
+      site_status: "publish_failed",
+      updated_at: nowSeconds() + 1,
+      workflow_stage: "publish_failed"
+    });
+
+    const blockedSave = await saveShopDraft({
+      env,
+      idempotencyKey: "publish-failed-recovery-blocked",
+      state: {
+        coachEmail: "paid-failed@example.com",
+        coachName: "Blocked Recovery Attempt",
+        coachPhone: "+919876543210",
+        contactLink: "https://forms.gle/blocked",
+        email: "paid-failed@example.com",
+        niche: "Gut health",
+        orderId,
+        shortBio: "This should not save without the secure access key.",
+        status: "publish_failed"
+      }
+    });
+    expect(blockedSave).toMatchObject({
+      ok: false,
+      error: "Use the secure resume link for this paid website before saving publish-failure fixes."
+    });
+
+    const saved = await saveShopDraft({
+      accessKey,
+      env,
+      idempotencyKey: "publish-failed-recovery-saved",
+      state: {
+        coachEmail: "paid-failed@example.com",
+        coachName: "Recovered Paid Coach",
+        coachPhone: "+919876543210",
+        contactLink: "https://forms.gle/recoveredPaid",
+        email: "paid-failed@example.com",
+        niche: "Sleep wellness",
+        orderId,
+        shortBio: "Saved fixes after payment without another checkout.",
+        slug: "recovered-paid-coach",
+        status: "publish_failed"
+      }
+    });
+    expect(saved).toMatchObject({ ok: true });
+    expect(saved.order?.orderId).toBe(orderId);
+    expect(harness.shopSites.get(orderId)).toMatchObject({
+      coach_name: "Recovered Paid Coach",
+      contact_link: "https://forms.gle/recoveredPaid",
+      payment_status: "paid",
+      site_status: "publish_failed",
+      workflow_stage: "publish_failed_draft_saved"
+    });
+
+    const wrongRetry = await shopRetryPublishRequest({
+      env,
+      request: jsonRequest("https://ywcoach.com/api/shop/retry-publish", {
+        accessKey: "wrong-access-key",
+        orderId
+      })
+    });
+    expect(wrongRetry.status).toBe(403);
+
+    const retry = await shopRetryPublishRequest({
+      env,
+      request: jsonRequest("https://ywcoach.com/api/shop/retry-publish", {
+        accessKey,
+        orderId
+      })
+    });
+    expect(retry.status).toBe(200);
+    await expect(retry.json()).resolves.toMatchObject({
+      ok: true,
+      order: {
+        orderId,
+        paymentStatus: "published",
+        siteStatus: "published"
+      }
+    });
+    expect(harness.shopSites.get(orderId)).toMatchObject({
+      payment_status: "published",
+      public_url: "/coach/recovered-paid-coach",
+      site_status: "published",
+      workflow_stage: "published_verified"
+    });
+    expect([...harness.coachSites.values()]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          coach_name: "Recovered Paid Coach",
+          google_form_url: "https://forms.gle/recoveredPaid",
+          slug: "recovered-paid-coach",
+          status: "published"
+        })
+      ])
+    );
+  });
+
   test("signed Razorpay webhook publishes the matching Shop order only", async () => {
     const harness = createShopPaymentDb();
     const env = {
@@ -231,10 +501,24 @@ function createShopPaymentDb() {
 
     if (sql.startsWith("insert into shop_sites")) {
       const row = toShopRow(values);
-      shopSites.set(String(row.order_id), {
-        ...shopSites.get(String(row.order_id)),
-        ...row
-      });
+      const existing = shopSites.get(String(row.order_id));
+      shopSites.set(
+        String(row.order_id),
+        existing
+          ? {
+              ...existing,
+              ...row,
+              client_access_key: existing.client_access_key || row.client_access_key,
+              locked_at: existing.locked_at ?? row.locked_at,
+              payment_status: existing.payment_status,
+              site_status: existing.site_status,
+              workflow_stage:
+                existing.site_status === "publish_failed"
+                  ? "publish_failed_draft_saved"
+                  : row.workflow_stage
+            }
+          : row
+      );
       return;
     }
 
@@ -265,6 +549,20 @@ function createShopPaymentDb() {
           site_status: "publishing",
           updated_at: values[0],
           workflow_stage: "payment_verified"
+        });
+      }
+      return;
+    }
+
+    if (sql.startsWith("update shop_sites set site_status = 'publishing'")) {
+      const orderId = String(values[1]);
+      const existing = shopSites.get(orderId);
+      if (existing) {
+        Object.assign(existing, {
+          issue_status: "",
+          site_status: "publishing",
+          updated_at: values[0],
+          workflow_stage: "admin_retry_publish"
         });
       }
       return;
@@ -322,6 +620,20 @@ function createShopPaymentDb() {
     if (sql.includes("from shop_sites where idempotency_key")) {
       return (
         [...shopSites.values()].find((row) => row.idempotency_key === values[0]) || null
+      );
+    }
+
+    if (sql.includes("from shop_sites") && sql.includes("lower(coach_email)")) {
+      const email = String(values[0]).toLowerCase();
+      return (
+        [...shopSites.values()]
+          .filter(
+            (row) =>
+              String(row.coach_email).toLowerCase() === email &&
+              isRecoverableUnpaidDraftRow(row) &&
+              !row.locked_at
+          )
+          .sort((left, right) => Number(right.updated_at || 0) - Number(left.updated_at || 0))[0] || null
       );
     }
 
@@ -415,6 +727,16 @@ function createShopPaymentDb() {
     failures,
     shopSites
   };
+}
+
+function isRecoverableUnpaidDraftRow(row: Record<string, unknown>) {
+  const paymentStatus = String(row.payment_status || "");
+  const siteStatus = String(row.site_status || "");
+  const editableStatuses = ["draft", "incomplete", "payment_failed"];
+  return (
+    (editableStatuses.includes(paymentStatus) && editableStatuses.includes(siteStatus)) ||
+    (paymentStatus === "pending_payment" && siteStatus === "pending_payment")
+  );
 }
 
 function toShopRow(values: unknown[]) {

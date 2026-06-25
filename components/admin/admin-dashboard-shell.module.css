@@ -1371,6 +1371,52 @@
   line-height: 1.45;
 }
 
+.skinPicker {
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid rgb(168 85 137 / 0.14);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.88), rgb(240 253 250 / 0.62)),
+    rgb(255 255 255 / 0.72);
+  padding: 0.85rem;
+}
+
+.skinPicker span {
+  color: #372233;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.skinPicker select {
+  width: 100%;
+  min-height: 2.7rem;
+  border: 1px solid rgb(168 85 137 / 0.16);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 0.82);
+  color: #1d2939;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 820;
+  line-height: 1.35;
+  outline: none;
+  padding: 0 0.82rem;
+}
+
+.skinPicker select:focus {
+  border-color: rgb(8 122 115 / 0.48);
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgb(94 234 212 / 0.14);
+}
+
+.skinPicker small {
+  color: #667085;
+  font-size: 0.76rem;
+  font-weight: 750;
+  line-height: 1.42;
+}
+
 .mediaStep {
   display: grid;
   gap: 0.85rem;
@@ -1407,6 +1453,65 @@
 
 .mediaPreview video {
   object-fit: cover;
+}
+
+.imageResultPanel {
+  display: grid;
+  gap: 0.72rem;
+  border: 1px solid rgb(8 122 115 / 0.2);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at 0% 0%, rgb(20 184 166 / 0.14), transparent 12rem),
+    rgb(255 255 255 / 0.78);
+  color: #372233;
+  padding: 0.82rem;
+}
+
+.imageResultPanel strong {
+  display: block;
+  color: #075f5b;
+  font-size: 0.9rem;
+  font-weight: 950;
+}
+
+.imageResultPanel span {
+  display: block;
+  margin-top: 0.18rem;
+  color: #667085;
+  font-size: 0.82rem;
+  font-weight: 780;
+  line-height: 1.42;
+}
+
+.imageResultActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.imageResultActions button {
+  min-height: 2.3rem;
+  border: 1px solid rgb(168 85 137 / 0.16);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.78);
+  color: #332435;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 920;
+  padding: 0 0.78rem;
+}
+
+.imageResultActions button[data-active="true"] {
+  border-color: rgb(8 122 115 / 0.42);
+  background: linear-gradient(135deg, #075f5b, #139d95);
+  color: #ffffff;
+  box-shadow: 0 0.55rem 1.4rem rgb(8 122 115 / 0.18);
+}
+
+.imageResultActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .tableFooter {
@@ -2677,9 +2782,114 @@
 }
 
 .wizardShell {
+  position: relative;
   display: grid;
   grid-template-columns: 13rem minmax(0, 1fr);
   gap: 1rem;
+}
+
+.wizardShell[data-media-busy="true"] {
+  overflow: hidden;
+}
+
+.mediaProcessingOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 16;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at 50% 42%, rgb(20 184 166 / 0.2), transparent 18rem),
+    rgb(248 252 252 / 0.72);
+  backdrop-filter: blur(14px) saturate(1.08);
+  -webkit-backdrop-filter: blur(14px) saturate(1.08);
+}
+
+.mediaProcessingCard {
+  width: min(100%, 28rem);
+  display: grid;
+  justify-items: center;
+  gap: 0.78rem;
+  border: 1px solid rgb(28 42 59 / 0.12);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 0% 0%, rgb(20 184 166 / 0.14), transparent 12rem),
+    rgb(255 255 255 / 0.94);
+  box-shadow: 0 1.2rem 3.6rem rgb(15 23 42 / 0.16);
+  color: #1d2939;
+  padding: clamp(1rem, 4vw, 1.35rem);
+  text-align: center;
+}
+
+.mediaProcessingSpinner {
+  width: 3.15rem;
+  aspect-ratio: 1;
+  border: 0.34rem solid rgb(8 122 115 / 0.18);
+  border-top-color: #075f5b;
+  border-radius: 999px;
+  animation: adminMediaSpin 900ms linear infinite;
+}
+
+.mediaProcessingCard p,
+.mediaProcessingCard strong,
+.mediaProcessingCard small {
+  margin: 0;
+}
+
+.mediaProcessingCard p {
+  color: #075f5b;
+  font-size: 0.82rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mediaProcessingCard strong {
+  font-size: clamp(1.15rem, 3vw, 1.45rem);
+  line-height: 1.15;
+}
+
+.mediaProcessingCard small {
+  color: #667085;
+  font-size: 0.9rem;
+  font-weight: 820;
+  line-height: 1.45;
+}
+
+.mediaProcessingCard ul {
+  width: 100%;
+  display: grid;
+  gap: 0.44rem;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  list-style: none;
+  color: #475467;
+  font-size: 0.84rem;
+  font-weight: 820;
+  text-align: left;
+}
+
+.mediaProcessingCard li {
+  border: 1px solid rgb(8 122 115 / 0.14);
+  border-radius: 0.72rem;
+  background: rgb(240 253 250 / 0.72);
+  padding: 0.56rem 0.68rem;
+}
+
+.footerBusyHint {
+  width: 100%;
+  color: #075f5b;
+  font-size: 0.78rem;
+  font-weight: 860;
+  text-align: right;
+}
+
+@keyframes adminMediaSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .stepIndicator {
@@ -3648,7 +3858,8 @@
 @media (prefers-reduced-motion: reduce) {
   .aiAssistantButton[data-loading="true"],
   .formActions button[data-loading="true"]::after,
-  .aiAssistantLoading > span {
+  .aiAssistantLoading > span,
+  .mediaProcessingSpinner {
     animation: none;
   }
 

@@ -642,6 +642,18 @@
   object-fit: cover;
 }
 
+.heroMedia img[data-image-mode="cutout"] {
+  object-fit: contain;
+  padding: clamp(0.25rem, 1vw, 0.7rem);
+  filter: drop-shadow(0 1.1rem 1.8rem rgb(3 31 39 / 0.22));
+}
+
+.heroMedia img[data-image-mode="framed"] {
+  object-fit: cover;
+  object-position: var(--yw-coach-image-position, center 38%);
+  padding: 0;
+}
+
 .heroMedia iframe,
 .videoFrame iframe {
   width: 100%;
@@ -1409,6 +1421,11 @@
     overflow: hidden;
     border-radius: var(--template-radius);
     object-fit: cover;
+  }
+
+  .heroMedia > img[data-image-mode="cutout"] {
+    object-fit: contain;
+    padding: 0.25rem;
   }
 
   .mediaCaption {

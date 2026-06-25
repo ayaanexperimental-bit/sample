@@ -132,7 +132,14 @@ const COACH_SITE_TABLES_SQL = [
 const COACH_SITE_MIGRATIONS_SQL = [
   `ALTER TABLE coach_sites ADD COLUMN selected_theme_id TEXT NOT NULL DEFAULT 'canonical-coach-site-template'`,
   `ALTER TABLE coach_sites ADD COLUMN existing_paid_funnel_url TEXT NOT NULL DEFAULT ''`,
-  `ALTER TABLE coach_sites ADD COLUMN paid_funnel_context TEXT NOT NULL DEFAULT ''`
+  `ALTER TABLE coach_sites ADD COLUMN paid_funnel_context TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE coach_site_media ADD COLUMN variant TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE coach_site_media ADD COLUMN original_object_key TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE coach_site_media ADD COLUMN processing_status TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE coach_site_media ADD COLUMN processing_provider TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE coach_site_media ADD COLUMN quality_status TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE coach_site_media ADD COLUMN fallback_mode TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE coach_site_media ADD COLUMN processing_error_code TEXT NOT NULL DEFAULT ''`
 ];
 const coachSiteSchemaCache = new WeakMap<D1Database, D1SchemaCacheEntry>();
 
@@ -430,22 +437,36 @@ export async function insertCoachSiteMedia({
   adminEmail,
   contentType,
   env,
+  fallbackMode = "",
   fileName,
   mediaType,
   objectKey,
+  originalObjectKey = "",
+  processingErrorCode = "",
+  processingProvider = "",
+  processingStatus = "",
   publicUrl,
+  qualityStatus = "",
   sizeBytes,
-  slug
+  slug,
+  variant = ""
 }: {
   adminEmail: string;
   contentType: string;
   env: CoachSiteStorageEnv;
+  fallbackMode?: string;
   fileName: string;
   mediaType: "image" | "video";
   objectKey: string;
+  originalObjectKey?: string;
+  processingErrorCode?: string;
+  processingProvider?: string;
+  processingStatus?: string;
   publicUrl: string;
+  qualityStatus?: string;
   sizeBytes: number;
   slug: string;
+  variant?: string;
 }) {
   if (!env.ADMIN_DB) return;
   await ensureCoachSiteTables(env);
@@ -458,8 +479,10 @@ export async function insertCoachSiteMedia({
   await env.ADMIN_DB.prepare(
     `INSERT INTO coach_site_media (
       id, coach_site_id, slug, media_type, object_key, public_url,
-      file_name, content_type, size_bytes, uploaded_by, created_at
-    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`
+      file_name, content_type, size_bytes, uploaded_by, created_at,
+      variant, original_object_key, processing_status, processing_provider,
+      quality_status, fallback_mode, processing_error_code
+    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)`
   )
     .bind(
       createRecordId("coach-media"),
@@ -472,7 +495,62 @@ export async function insertCoachSiteMedia({
       contentType,
       sizeBytes,
       adminEmail,
-      now
+      now,
+      variant,
+      originalObjectKey,
+      processingStatus,
+      processingProvider,
+      qualityStatus,
+      fallbackMode,
+      processingErrorCode
+    )
+    .run();
+}
+
+export async function updateCoachSiteMediaProcessing({
+  env,
+  fallbackMode = "",
+  objectKey,
+  originalObjectKey = "",
+  processingErrorCode = "",
+  processingProvider = "",
+  processingStatus = "",
+  qualityStatus = "",
+  variant = ""
+}: {
+  env: CoachSiteStorageEnv;
+  fallbackMode?: string;
+  objectKey: string;
+  originalObjectKey?: string;
+  processingErrorCode?: string;
+  processingProvider?: string;
+  processingStatus?: string;
+  qualityStatus?: string;
+  variant?: string;
+}) {
+  if (!env.ADMIN_DB) return;
+  await ensureCoachSiteTables(env);
+
+  await env.ADMIN_DB.prepare(
+    `UPDATE coach_site_media
+      SET variant = ?1,
+        original_object_key = ?2,
+        processing_status = ?3,
+        processing_provider = ?4,
+        quality_status = ?5,
+        fallback_mode = ?6,
+        processing_error_code = ?7
+      WHERE object_key = ?8`
+  )
+    .bind(
+      variant,
+      originalObjectKey,
+      processingStatus,
+      processingProvider,
+      qualityStatus,
+      fallbackMode,
+      processingErrorCode,
+      objectKey
     )
     .run();
 }

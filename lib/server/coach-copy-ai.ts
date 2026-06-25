@@ -1,4 +1,5 @@
 import type { CoachSiteContent } from "../admin-coach-sites";
+import { universalCoachBonuses } from "../coach-canonical-template";
 import { requiredCoachTemplateContentFields } from "../coach-template-content-slots";
 import { getCachedAiResult, setCachedAiResult, createStableAiHash } from "./ai-cache-service";
 import { compressAiContext } from "./ai-context-compressor";
@@ -39,6 +40,8 @@ export type CoachCopyAiInput = {
 };
 
 export type GeneratedCoachSiteCopy = Partial<CoachSiteContent>;
+
+const FIXED_BONUS_SERVICE_TITLES = universalCoachBonuses.map((bonus) => bonus.baseTitle);
 
 export type CoachCopyAiResult =
   | {
@@ -132,8 +135,8 @@ const AI_COPY_SCHEMA = {
           required: ["question", "answer"],
           type: "object"
         },
-        maxItems: 5,
-        minItems: 2,
+        maxItems: 8,
+        minItems: 5,
         type: "array"
       },
       footerHeadline: {
@@ -399,7 +402,7 @@ export async function generateCoachSiteCopyWithAi(
     }
 
     const payload = (await response.json()) as OpenAiResponse;
-    const content = parseCoachCopy(extractResponseText(payload), scope);
+    const content = parseCoachCopy(extractResponseText(payload), scope, normalizedInput);
     if (!content) {
       return {
         configured: true,
@@ -493,8 +496,17 @@ function createCoachCopyPrompt(input: CoachCopyAiInput, scope: CoachCopyScope) {
     "The public page leads to a Google Form register button when configured. Do not claim form submissions are tracked.",
     "Do not generate or alter Google Form URLs. Each coach site uses its own admin/shop-provided registration link.",
     "Do not generate or alter support contact details, public slugs, analytics behavior, payment/security logic, legal link destinations, or YW Nutritech branding placement.",
-    "The benefitsSectionLabel, benefitsHeading, benefits, and benefitDescriptions fields now drive the canonical nicheAdaptiveBonusSection presentation. Adapt their visible copy to the coach niche, but do not invent new bonus assets, fake values, fake scarcity, countdowns, or spots-left claims.",
-    "Universal bonus asset identity, actual value, legal disclaimer, CTA destination, public route, analytics, payment logic, and YW Nutritech branding are locked template rules.",
+    "Universal section copy rule: structure is fixed, copy must adapt to the coach niche, bio, audience, location/language, media, page goal, CTA destination, and safety rules.",
+    "Do not hardcode or reuse these stale phrases: FREE LIVE MASTERCLASS EXCLUSIVELY FOR WOMEN, LIMITED SEATS AVAILABLE, 2-HOUR MASTERCLASS, Masterclass Details, Only for Women, The Coaching Blueprint, This masterclass is free, Is this masterclass right for you, They used this blueprint, Real women, transformation isn't optional, without quitting, profitable coaching business, spots left, secure your seat.",
+    "Do not use women-only, hormone, PMOS, PCOS, diabetes, gut, sleep, fat-loss, or fitness wording unless the current coach niche/bio/context clearly supports that niche.",
+    "Top strip, mini eyebrow, hero title, hero support copy, detail heading/subline, trust section, problem section, process section, proof section, fit-check section, final CTA, and FAQ must each be coach-aware and niche-aware.",
+    "The detail panel must not force date, time, duration, or language cards unless that data is true and relevant. Prefer focus area, support type, next step, location, format, or language when available.",
+    "FAQ requirements: generate at least 5 meaningful FAQs with non-empty answers. Each answer must be safe, clear, useful, and at least one full sentence. Include medical-safety clarification without promising diagnosis, treatment, cures, or prescriptions.",
+    "The canonical nicheAdaptiveBonusSection always contains exactly these fixed service titles in this order: Life-Long Health Calculators, Lifetime Support Sessions, Lifestyle Success Toolkit.",
+    "Only benefitsSectionLabel, benefitsHeading, benefitDescriptions, and helper/framing copy may adapt to the coach niche. Never rename, hide, reorder, or replace the three fixed service titles.",
+    "Do not use the benefits field to create bonus titles. If the schema requires benefits, keep those entries aligned with the exact fixed service titles above.",
+    "Bonus descriptions may adapt by niche, but must fall back to neutral wellness copy when the niche is unclear. Do not leak diabetes wording into PCOS, gut, sleep, fitness, fat-loss, or general wellness coaches unless the coach niche supports it.",
+    "Universal bonus service identity, actual value, legal disclaimer, CTA destination, public route, analytics, payment logic, and YW Nutritech branding are locked template rules. Do not invent new bonus assets, fake values, fake scarcity, countdowns, or spots-left claims.",
     "If paid funnel page context is provided, adapt it into a free guest/referral page. Do not copy paid funnel text word-for-word.",
     "Do not invent coach credentials, medical claims, contact details, or outcomes that are not supported by admin fields or extracted page context.",
     "Do not publish coach phone, email, WhatsApp, or contact-support instructions in normal page copy.",
@@ -537,16 +549,29 @@ function extractResponseText(payload: OpenAiResponse) {
   );
 }
 
-function parseCoachCopy(value: string, scope: CoachCopyScope): GeneratedCoachSiteCopy | null {
+function parseCoachCopy(
+  value: string,
+  scope: CoachCopyScope,
+  input: CoachCopyAiInput
+): GeneratedCoachSiteCopy | null {
   try {
     const parsed = JSON.parse(value) as unknown;
     if (!isCoachGeneratedCopy(parsed, scope)) return null;
-    if (!hasUsableCoachGeneratedCopy(parsed, scope)) return null;
+    if (!hasUsableCoachGeneratedCopy(parsed, scope, input)) return null;
 
-    return parsed;
+    return normalizeGeneratedCoachCopy(parsed);
   } catch {
     return null;
   }
+}
+
+function normalizeGeneratedCoachCopy(value: GeneratedCoachSiteCopy): GeneratedCoachSiteCopy {
+  if (!Array.isArray(value.benefits)) return value;
+
+  return {
+    ...value,
+    benefits: FIXED_BONUS_SERVICE_TITLES
+  };
 }
 
 function isCoachGeneratedCopy(
@@ -593,7 +618,11 @@ function isCoachGeneratedCopy(
   });
 }
 
-function hasUsableCoachGeneratedCopy(value: GeneratedCoachSiteCopy, scope: CoachCopyScope) {
+function hasUsableCoachGeneratedCopy(
+  value: GeneratedCoachSiteCopy,
+  scope: CoachCopyScope,
+  input: CoachCopyAiInput
+) {
   return COPY_SCOPE_FIELDS[scope].every((field) => {
     const fieldValue = value[field];
 
@@ -603,7 +632,7 @@ function hasUsableCoachGeneratedCopy(value: GeneratedCoachSiteCopy, scope: Coach
       return (
         Array.isArray(items) &&
         items.length > 0 &&
-        items.every((item) => isUsableCopyText(item))
+        items.every((item) => isUsableCopyText(item, input))
       );
     }
 
@@ -614,7 +643,7 @@ function hasUsableCoachGeneratedCopy(value: GeneratedCoachSiteCopy, scope: Coach
         Array.isArray(items) &&
         items.length > 0 &&
         items.every(
-          (item) => isUsableCopyText(item.question) && isUsableCopyText(item.answer)
+          (item) => isUsableCopyText(item.question, input) && isUsableCopyText(item.answer, input)
         )
       );
     }
@@ -627,24 +656,78 @@ function hasUsableCoachGeneratedCopy(value: GeneratedCoachSiteCopy, scope: Coach
         items.length > 0 &&
         items.every(
           (item) =>
-            isUsableCopyText(item.label) &&
-            isUsableCopyText(item.title) &&
-            isUsableCopyText(item.description)
+            isUsableCopyText(item.label, input) &&
+            isUsableCopyText(item.title, input) &&
+            isUsableCopyText(item.description, input)
         )
       );
     }
 
-    return typeof fieldValue === "string" && isUsableCopyText(fieldValue);
+    return typeof fieldValue === "string" && isUsableCopyText(fieldValue, input);
   });
 }
 
-function isUsableCopyText(value: string) {
+function isUsableCopyText(value: string, input: CoachCopyAiInput) {
   const normalized = value.trim().toLowerCase();
   if (normalized.length < 3) return false;
+  if (isForbiddenGeneratedCopy(normalized)) return false;
+  if (hasUnsupportedNicheLeakage(normalized, input)) return false;
 
   return !/\b(coach name|wellness niche|template media|placeholder|lorem ipsum|insert here|registration link pending)\b/i.test(
     normalized
   );
+}
+
+function isForbiddenGeneratedCopy(value: string) {
+  if (
+    /\b(free live masterclass|limited seats?|2[-\s]?hour masterclass|only for women|women only|exclusively for women|the coaching blueprint|this masterclass is free|masterclass right for you|real women|they used this blueprint|complete blueprint|nothing held back|transformation isn't optional|without quitting|coaching business|profitable coaching|spots? left|secure your seat)\b/i.test(
+      value
+    )
+  ) {
+    return true;
+  }
+
+  if (/\bmasterclass\b/i.test(value) && !/\bguest session|support session|registration session\b/i.test(value)) {
+    return true;
+  }
+
+  return /\b(guaranteed\s+(?:result|results|outcome|outcomes|reversal|transformation)|stop\s+(?:medicine|medicines|medication)|replace\s+(?:your\s+)?doctor|cure\s+(?:your|diabetes|pcos|pcod|pmos|condition|disease))\b/i.test(
+    value
+  );
+}
+
+function hasUnsupportedNicheLeakage(value: string, input: CoachCopyAiInput) {
+  const context = [input.niche, input.bio, input.vision, input.paidFunnelContext]
+    .join(" ")
+    .toLowerCase();
+  const nicheGuards: Array<{ pattern: RegExp; support: RegExp }> = [
+    {
+      pattern: /\b(women|woman|female|pcos|pcod|pmos|hormone|hormonal)\b/i,
+      support: /\b(women|woman|female|pcos|pcod|pmos|hormone|hormonal)\b/i
+    },
+    {
+      pattern: /\b(diabetes|diabetic|blood sugar|glucose|insulin|metabolic)\b/i,
+      support: /\b(diabetes|diabetic|blood sugar|glucose|insulin|metabolic)\b/i
+    },
+    {
+      pattern: /\b(gut|digestion|digestive|bloating|acidity)\b/i,
+      support: /\b(gut|digestion|digestive|bloating|acidity)\b/i
+    },
+    {
+      pattern: /\b(sleep|insomnia|recovery|rest)\b/i,
+      support: /\b(sleep|insomnia|recovery|rest)\b/i
+    },
+    {
+      pattern: /\b(fat loss|weight loss|weight-management|weight management|slimming)\b/i,
+      support: /\b(fat loss|weight loss|weight-management|weight management|slimming)\b/i
+    },
+    {
+      pattern: /\b(fitness|strength|workout|training|movement)\b/i,
+      support: /\b(fitness|strength|workout|training|movement)\b/i
+    }
+  ];
+
+  return nicheGuards.some((guard) => guard.pattern.test(value) && !guard.support.test(context));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

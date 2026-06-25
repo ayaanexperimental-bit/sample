@@ -8,7 +8,12 @@ const eslintConfig = [
       ".wrangler/**",
       ".cloudflare-pages-build/**",
       ".cloudflare-pages-worker/**",
-      "out/**"
+      "out/**",
+      "public/coach-circle-lenis.min.js",
+      "public/external/**",
+      "public/ort/**",
+      "public/uploads/**",
+      "public/wp-content/**"
     ]
   },
   ...nextVitals,

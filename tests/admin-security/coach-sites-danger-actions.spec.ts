@@ -61,6 +61,129 @@ test.describe("coach site dangerous actions", () => {
       ok: false
     });
 
+    const duplicateFormPublish = await coachSitesRequest({
+      env,
+      request: jsonRequest(
+        "http://127.0.0.1/api/admin/coach-sites",
+        {
+          site: {
+            coachEmail: "pipeline@example.com",
+            coachName: "Pipeline Coach",
+            coachPhone: "+919876543210",
+            content: {
+              benefits: ["Benefit one", "Benefit two", "Benefit three"],
+              coachIntro: "Pipeline intro",
+              ctaText: "Register Now",
+              faq: [{ answer: "Answer", question: "Question" }],
+              heroHeadline: "Pipeline headline",
+              socialCopy: "Pipeline social copy",
+              subheadline: "Pipeline subheadline",
+              trustText: "Pipeline trust",
+              visionText: "Pipeline vision"
+            },
+            googleFormUrl: "https://forms.gle/pipelineCoach https://forms.gle/duplicateCoach",
+            heroMediaType: "none",
+            id: "coach-site-pipeline",
+            niche: "Pipeline Wellness",
+            publicUrl: "/coach/pipeline-coach",
+            registerButtonText: "Register Now",
+            selectedThemeId: "canonical-coach-site-template",
+            slug: "pipeline-coach",
+            status: "published"
+          }
+        },
+        { cookie, "x-yw-admin-csrf": csrfToken },
+        "POST"
+      )
+    });
+    expect(duplicateFormPublish.status).toBe(400);
+    expect(await duplicateFormPublish.json()).toMatchObject({
+      error: "Use a valid Google Form registration link before publishing.",
+      ok: false
+    });
+
+    const duplicateEmailPublish = await coachSitesRequest({
+      env,
+      request: jsonRequest(
+        "http://127.0.0.1/api/admin/coach-sites",
+        {
+          site: {
+            coachEmail: "pipeline@example.com, second@example.com",
+            coachName: "Pipeline Coach",
+            coachPhone: "+919876543210",
+            content: {
+              benefits: ["Benefit one", "Benefit two", "Benefit three"],
+              coachIntro: "Pipeline intro",
+              ctaText: "Register Now",
+              faq: [{ answer: "Answer", question: "Question" }],
+              heroHeadline: "Pipeline headline",
+              socialCopy: "Pipeline social copy",
+              subheadline: "Pipeline subheadline",
+              trustText: "Pipeline trust",
+              visionText: "Pipeline vision"
+            },
+            googleFormUrl: "https://forms.gle/pipelineCoach",
+            heroMediaType: "none",
+            id: "coach-site-pipeline",
+            niche: "Pipeline Wellness",
+            publicUrl: "/coach/pipeline-coach",
+            registerButtonText: "Register Now",
+            selectedThemeId: "canonical-coach-site-template",
+            slug: "pipeline-coach",
+            status: "published"
+          }
+        },
+        { cookie, "x-yw-admin-csrf": csrfToken },
+        "POST"
+      )
+    });
+    expect(duplicateEmailPublish.status).toBe(400);
+    expect(await duplicateEmailPublish.json()).toMatchObject({
+      error: "Use one valid support email before publishing.",
+      ok: false
+    });
+
+    const invalidPhonePublish = await coachSitesRequest({
+      env,
+      request: jsonRequest(
+        "http://127.0.0.1/api/admin/coach-sites",
+        {
+          site: {
+            coachEmail: "pipeline@example.com",
+            coachName: "Pipeline Coach",
+            coachPhone: "09938999448",
+            content: {
+              benefits: ["Benefit one", "Benefit two", "Benefit three"],
+              coachIntro: "Pipeline intro",
+              ctaText: "Register Now",
+              faq: [{ answer: "Answer", question: "Question" }],
+              heroHeadline: "Pipeline headline",
+              socialCopy: "Pipeline social copy",
+              subheadline: "Pipeline subheadline",
+              trustText: "Pipeline trust",
+              visionText: "Pipeline vision"
+            },
+            googleFormUrl: "https://forms.gle/pipelineCoach",
+            heroMediaType: "none",
+            id: "coach-site-pipeline",
+            niche: "Pipeline Wellness",
+            publicUrl: "/coach/pipeline-coach",
+            registerButtonText: "Register Now",
+            selectedThemeId: "canonical-coach-site-template",
+            slug: "pipeline-coach",
+            status: "published"
+          }
+        },
+        { cookie, "x-yw-admin-csrf": csrfToken },
+        "POST"
+      )
+    });
+    expect(invalidPhonePublish.status).toBe(400);
+    expect(await invalidPhonePublish.json()).toMatchObject({
+      error: "Use one valid 10-digit Indian support phone/WhatsApp number before publishing.",
+      ok: false
+    });
+
     const saveDraft = await coachSitesRequest({
       env,
       request: jsonRequest(
@@ -69,7 +192,7 @@ test.describe("coach site dangerous actions", () => {
           site: {
             coachEmail: "pipeline@example.com",
             coachName: "Pipeline Coach",
-            coachPhone: "+911234567890",
+            coachPhone: "+919876543210",
             content: {
               benefits: ["Benefit one", "Benefit two", "Benefit three"],
               coachIntro: "Pipeline intro",
@@ -90,7 +213,7 @@ test.describe("coach site dangerous actions", () => {
             selectedThemeId: "canonical-coach-site-template",
             slug: "pipeline-coach",
             status: "draft",
-            whatsappLink: "https://wa.me/911234567890"
+            whatsappLink: "https://wa.me/919876543210"
           }
         },
         { cookie, "x-yw-admin-csrf": csrfToken },
@@ -138,7 +261,7 @@ test.describe("coach site dangerous actions", () => {
           site: {
             coachEmail: "pipeline@example.com",
             coachName: "Pipeline Coach",
-            coachPhone: "+911234567890",
+            coachPhone: "+919876543210",
             content: {
               benefits: ["Updated benefit one", "Updated benefit two", "Updated benefit three"],
               coachIntro: "Updated pipeline intro",
@@ -159,7 +282,7 @@ test.describe("coach site dangerous actions", () => {
             selectedThemeId: "canonical-coach-site-template",
             slug: "pipeline-coach",
             status: "draft",
-            whatsappLink: "https://wa.me/911234567890"
+            whatsappLink: "https://wa.me/919876543210"
           }
         },
         { cookie, "x-yw-admin-csrf": csrfToken },
@@ -251,8 +374,12 @@ test.describe("coach site dangerous actions", () => {
     });
     expect(publicPage.status).toBe(200);
     const html = await publicPage.text();
-    expect(html).toContain("YW Nutritech coach network");
-    expect(html).toContain("Updated pipeline headline");
+    expect(html).toContain("Pipeline Coach");
+    expect(html).toContain("Updated Pipeline Wellness");
+    expect(html).toContain('data-track="coach_register_click"');
+    expect(html).not.toContain("Updated pipeline headline");
+    expect(html).not.toContain("FREE LIVE MASTERCLASS EXCLUSIVELY FOR WOMEN");
+    expect(html).not.toContain("LIMITED SEATS AVAILABLE");
     expect(html).toContain("https://forms.gle/pipelineCoach");
     expect(html).not.toContain("Something went wrong");
   });

@@ -101,7 +101,7 @@
 
 .entryGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 28rem);
   gap: 0.75rem;
 }
 
@@ -366,10 +366,107 @@
 }
 
 .workspace {
+  position: relative;
   display: grid;
   gap: 1rem;
   border-radius: 1.2rem;
   padding: 1rem;
+}
+
+.workspace[data-media-busy="true"] {
+  overflow: hidden;
+}
+
+.mediaProcessingOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 50% 42%, rgb(20 184 166 / 0.2), transparent 18rem),
+    rgb(248 252 252 / 0.72);
+  backdrop-filter: blur(14px) saturate(1.08);
+  -webkit-backdrop-filter: blur(14px) saturate(1.08);
+}
+
+.mediaProcessingCard {
+  width: min(100%, 28rem);
+  display: grid;
+  justify-items: center;
+  gap: 0.78rem;
+  border: 1px solid rgb(20 31 48 / 0.12);
+  border-radius: 1.1rem;
+  background:
+    radial-gradient(circle at 0% 0%, rgb(20 184 166 / 0.14), transparent 12rem),
+    rgb(255 255 255 / 0.94);
+  box-shadow: 0 1.2rem 3.6rem rgb(15 23 42 / 0.16);
+  color: #172134;
+  padding: clamp(1rem, 4vw, 1.35rem);
+  text-align: center;
+}
+
+.mediaProcessingSpinner {
+  width: 3.15rem;
+  aspect-ratio: 1;
+  border: 0.34rem solid rgb(20 184 166 / 0.18);
+  border-top-color: #0d5d61;
+  border-radius: 999px;
+  animation: shopMediaSpin 900ms linear infinite;
+}
+
+.mediaProcessingCard p,
+.mediaProcessingCard strong,
+.mediaProcessingCard small {
+  margin: 0;
+}
+
+.mediaProcessingCard p {
+  color: #0d5d61;
+  font-size: 0.82rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mediaProcessingCard strong {
+  font-size: clamp(1.15rem, 3vw, 1.45rem);
+  line-height: 1.15;
+}
+
+.mediaProcessingCard small {
+  color: #526072;
+  font-size: 0.9rem;
+  font-weight: 820;
+  line-height: 1.45;
+}
+
+.mediaProcessingCard ul {
+  width: 100%;
+  display: grid;
+  gap: 0.44rem;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  list-style: none;
+  color: #475467;
+  font-size: 0.84rem;
+  font-weight: 820;
+  text-align: left;
+}
+
+.mediaProcessingCard li {
+  border: 1px solid rgb(20 184 166 / 0.14);
+  border-radius: 0.72rem;
+  background: rgb(236 253 245 / 0.72);
+  padding: 0.56rem 0.68rem;
+}
+
+@keyframes shopMediaSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .topbar {
@@ -638,6 +735,43 @@
   resize: vertical;
 }
 
+.skinPicker {
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid rgb(20 31 48 / 0.12);
+  border-radius: 0.95rem;
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.96), rgb(240 253 250 / 0.86)),
+    #ffffff;
+  padding: 0.85rem;
+}
+
+.skinPicker span {
+  color: #304054;
+  font-weight: 900;
+}
+
+.skinPicker select {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid rgb(20 31 48 / 0.14);
+  border-radius: 0.85rem;
+  background: rgb(255 255 255 / 0.94);
+  color: #172134;
+  font: inherit;
+  font-size: 0.94rem;
+  font-weight: 820;
+  line-height: 1.35;
+  padding: 0 0.82rem;
+}
+
+.skinPicker small {
+  color: #657187;
+  font-size: 0.8rem;
+  font-weight: 720;
+  line-height: 1.42;
+}
+
 .mediaTypeToggle {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -725,6 +859,65 @@
 
 .mediaPreview iframe {
   aspect-ratio: 16 / 9;
+}
+
+.imageResultPanel {
+  display: grid;
+  gap: 0.72rem;
+  border: 1px solid rgb(20 184 166 / 0.22);
+  border-radius: 0.9rem;
+  background:
+    radial-gradient(circle at 0% 0%, rgb(20 184 166 / 0.14), transparent 12rem),
+    rgb(255 255 255 / 0.86);
+  color: #314052;
+  padding: 0.82rem;
+}
+
+.imageResultPanel strong {
+  display: block;
+  color: #0d5d61;
+  font-size: 0.9rem;
+  font-weight: 950;
+}
+
+.imageResultPanel span {
+  display: block;
+  margin-top: 0.18rem;
+  color: #526072;
+  font-size: 0.82rem;
+  font-weight: 780;
+  line-height: 1.42;
+}
+
+.imageResultActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.imageResultActions button {
+  min-height: 2.3rem;
+  border: 1px solid rgb(20 31 48 / 0.12);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.82);
+  color: #172134;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 920;
+  padding: 0 0.78rem;
+}
+
+.imageResultActions button[data-active="true"] {
+  border-color: rgb(20 184 166 / 0.4);
+  background: linear-gradient(135deg, #0d5d61, #14b8a6);
+  color: #ffffff;
+  box-shadow: 0 0.55rem 1.4rem rgb(20 184 166 / 0.2);
+}
+
+.imageResultActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .inlineActions button[data-active="true"] {
@@ -860,6 +1053,59 @@
   overscroll-behavior: contain;
 }
 
+.previewCanvas :global([data-coach-site-page="preview"]) {
+  position: relative;
+  min-height: 100%;
+  isolation: isolate;
+  overflow: clip;
+}
+
+.previewCanvas :global([data-coach-site-page="preview"] .yw-allia-background),
+.previewCanvas :global([data-coach-site-page="preview"] #background.yw-allia-background) {
+  position: absolute;
+  inset: 0;
+  min-height: 100%;
+  z-index: -1;
+}
+
+.previewCanvas :global([data-coach-site-page="preview"] .yw-scroll-progress) {
+  position: absolute;
+  top: 0;
+  z-index: 42;
+}
+
+.previewCanvas :global([data-coach-site-page="preview"] .navbar14_component) {
+  position: sticky !important;
+  top: 0.75rem !important;
+  left: auto !important;
+  right: auto !important;
+  z-index: 44 !important;
+  width: min(calc(100% - 1rem), 84rem) !important;
+  margin: 0.75rem auto 0 !important;
+  transform: none !important;
+}
+
+.previewCanvas :global([data-coach-site-page="preview"] .yw-floating-register-cta) {
+  position: sticky !important;
+  right: auto !important;
+  bottom: 0.75rem !important;
+  left: auto !important;
+  z-index: 45 !important;
+  width: min(calc(100% - 1rem), 22rem) !important;
+  max-width: calc(100% - 1rem) !important;
+  margin: 1rem auto 0 !important;
+  transform: none !important;
+}
+
+.previewCanvas :global([data-coach-site-page="preview"] .yw-floating-register-cta.is-visible),
+.previewCanvas :global([data-coach-site-page="preview"].yw-sticky-register-visible .yw-floating-register-cta) {
+  transform: none !important;
+}
+
+.previewCanvas :global([data-coach-site-page="preview"] .yw-circle-main) {
+  padding-top: 1rem;
+}
+
 .previewCanvas :global(main[data-preview="true"]) {
   min-height: auto;
   padding-top: 0;
@@ -901,6 +1147,37 @@
 .previewFrame[data-size="mobile"] .previewCanvas :global(main[data-preview="true"]) {
   padding-top: 0;
   padding-bottom: calc(10.5rem + env(safe-area-inset-bottom));
+}
+
+.previewFrame[data-size="mobile"] .previewCanvas :global([data-coach-site-page="preview"] .navbar14_component),
+.previewFrame[data-size="tablet"] .previewCanvas :global([data-coach-site-page="preview"] .navbar14_component) {
+  top: 0.5rem !important;
+  width: min(calc(100% - 0.75rem), 100%) !important;
+  margin-top: 0.5rem !important;
+}
+
+.previewFrame[data-size="mobile"] .previewCanvas :global([data-coach-site-page="preview"] .navbar14_container),
+.previewFrame[data-size="tablet"] .previewCanvas :global([data-coach-site-page="preview"] .navbar14_container) {
+  min-height: 3.35rem;
+  padding: 0.48rem 0.58rem;
+}
+
+.previewFrame[data-size="mobile"] .previewCanvas :global([data-coach-site-page="preview"] .navbar14_menu),
+.previewFrame[data-size="tablet"] .previewCanvas :global([data-coach-site-page="preview"] .navbar14_menu) {
+  display: none !important;
+}
+
+.previewFrame[data-size="mobile"] .previewCanvas :global([data-coach-site-page="preview"] .navbar14_menu-button),
+.previewFrame[data-size="tablet"] .previewCanvas :global([data-coach-site-page="preview"] .navbar14_menu-button) {
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.previewFrame[data-size="mobile"] .previewCanvas :global([data-coach-site-page="preview"] .yw-navbar-wordmark small),
+.previewFrame[data-size="tablet"] .previewCanvas :global([data-coach-site-page="preview"] .yw-navbar-wordmark small) {
+  display: none;
 }
 
 .previewFrame[data-size="mobile"] .previewCanvas :global(main[data-preview="true"] nav[aria-label="Coach page navigation"]) {
@@ -1145,7 +1422,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .mediaProcessingSpinner,
   .progressTrack i {
+    animation: none;
     transition: none;
   }
 }

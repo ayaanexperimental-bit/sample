@@ -14,6 +14,7 @@ type PagesContext = {
 };
 
 type DraftBody = {
+  accessKey?: unknown;
   idempotencyKey?: unknown;
   state?: Partial<ShopBuilderState>;
 };
@@ -21,6 +22,10 @@ type DraftBody = {
 export async function onRequestPost({ request, env }: PagesContext) {
   const body = await readJsonBody<DraftBody>(request);
   const result = await saveShopDraft({
+    accessKey:
+      typeof body?.accessKey === "string"
+        ? body.accessKey
+        : request.headers.get("x-shop-access-key") || undefined,
     env,
     idempotencyKey: typeof body?.idempotencyKey === "string" ? body.idempotencyKey : undefined,
     state: body?.state || {}
