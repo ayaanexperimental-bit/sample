@@ -19,7 +19,11 @@ import {
   universalCoachBonuses
 } from "../../lib/coach-canonical-template";
 import { EMPTY_COACH_SITE_FORM, createCoachContentFromForm } from "../../lib/admin-coach-sites";
-import { buildCoachSiteFromShopState, normalizeShopBuilderState, validateShopBuilderState } from "../../lib/shop-builder";
+import {
+  buildCoachSiteFromShopState,
+  normalizeShopBuilderState,
+  validateShopBuilderState
+} from "../../lib/shop-builder";
 import { onRequest as handleCoachMediaRequest } from "../../functions/api/coach-media";
 
 const EXPECTED_ACTIVE_SKIN_IDS = [
@@ -40,9 +44,9 @@ const EXPECTED_LEGACY_SKIN_NORMALIZATION = {
   "not-a-real-template": CANONICAL_COACH_TEMPLATE_THEME_ID,
   "premium-feminine-wellness": "soft-feminine"
 } as const;
-const LEGACY_THEME_IDS = Object.keys(
-  EXPECTED_LEGACY_SKIN_NORMALIZATION
-) as Array<keyof typeof EXPECTED_LEGACY_SKIN_NORMALIZATION>;
+const LEGACY_THEME_IDS = Object.keys(EXPECTED_LEGACY_SKIN_NORMALIZATION) as Array<
+  keyof typeof EXPECTED_LEGACY_SKIN_NORMALIZATION
+>;
 
 const UNSAFE_HEALTH_COPY =
   /\b(cure|guarantee(?:d)?|reverse(?:d|s)?|reversal|without medicines?|stop(?:ping)? medicines?|diagnos(?:e|is)|treat(?:ment|s|ed)?|heal(?:s|ed|ing)? disease)\b/i;
@@ -69,10 +73,14 @@ test.describe("canonical coach template rules", () => {
     expect(COACH_TEMPLATE_THEME_IDS).toEqual(EXPECTED_ACTIVE_SKIN_IDS);
     expect(coachTemplateThemes.map((theme) => theme.id)).toEqual(EXPECTED_ACTIVE_SKIN_IDS);
     expect(coachTemplateThemes[0].id).toBe(CANONICAL_COACH_TEMPLATE_THEME_ID);
-    expect(new Set(coachTemplateThemes.map((theme) => theme.id)).size).toBe(coachTemplateThemes.length);
+    expect(new Set(coachTemplateThemes.map((theme) => theme.id)).size).toBe(
+      coachTemplateThemes.length
+    );
 
     for (const themeId of LEGACY_THEME_IDS) {
-      expect(normalizeCoachTemplateThemeId(themeId)).toBe(EXPECTED_LEGACY_SKIN_NORMALIZATION[themeId]);
+      expect(normalizeCoachTemplateThemeId(themeId)).toBe(
+        EXPECTED_LEGACY_SKIN_NORMALIZATION[themeId]
+      );
       expect(normalizeShopBuilderState({ selectedThemeId: themeId }).selectedThemeId).toBe(
         EXPECTED_LEGACY_SKIN_NORMALIZATION[themeId]
       );
@@ -80,10 +88,19 @@ test.describe("canonical coach template rules", () => {
   });
 
   test("theme skins are presentation-only and use the shared background layer", () => {
-    const skinRule = canonicalCoachTemplateRules.find((item) => item.ruleKey === "themeSkinPresentationOnly");
-    const parityRule = canonicalCoachTemplateRules.find((item) => item.ruleKey === "previewPublicRendererParity");
-    const copyRule = canonicalCoachTemplateRules.find((item) => item.ruleKey === "coachCopyQualityGuard");
-    const rendererSource = readFileSync(join(REPO_ROOT, "components/coach/public-coach-site-page.tsx"), "utf8");
+    const skinRule = canonicalCoachTemplateRules.find(
+      (item) => item.ruleKey === "themeSkinPresentationOnly"
+    );
+    const parityRule = canonicalCoachTemplateRules.find(
+      (item) => item.ruleKey === "previewPublicRendererParity"
+    );
+    const copyRule = canonicalCoachTemplateRules.find(
+      (item) => item.ruleKey === "coachCopyQualityGuard"
+    );
+    const rendererSource = readFileSync(
+      join(REPO_ROOT, "components/coach/public-coach-site-page.tsx"),
+      "utf8"
+    );
     const cssSource = readFileSync(join(REPO_ROOT, "public/coach-circle-template.css"), "utf8");
 
     expect(skinRule).toBeTruthy();
@@ -143,6 +160,25 @@ test.describe("canonical coach template rules", () => {
     expect(cssSource).toContain('.yw-allia-background[data-variant="aurora"]::before');
     expect(cssSource).toContain('.yw-allia-background[data-motion-level="none"]::before');
     expect(cssSource).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(cssSource).toContain("Canonical template skin layer");
+    expect(cssSource).toContain("--template-nav-surface");
+    expect(cssSource).toContain("--template-section-cream");
+    expect(cssSource).toContain("--template-section-dark");
+    expect(cssSource).toContain("--template-cta");
+
+    for (const themeId of EXPECTED_ACTIVE_SKIN_IDS) {
+      expect(cssSource).toContain(`.yw-circle-site[data-yw-template-theme="${themeId}"]`);
+      expect(cssSource).toContain(`.yw-allia-background[data-theme="${themeId}"]`);
+    }
+
+    const navSurfaces = new Set(
+      coachTemplateThemes.map((theme) => theme.cssVars["--yw-theme-nav"])
+    );
+    const ctaSurfaces = new Set(
+      coachTemplateThemes.map((theme) => theme.cssVars["--yw-theme-cta"])
+    );
+    expect(navSurfaces.size).toBe(coachTemplateThemes.length);
+    expect(ctaSurfaces.size).toBe(coachTemplateThemes.length);
   });
 
   test("canonical navbar is generated from real coach-site section registry", () => {
@@ -157,8 +193,12 @@ test.describe("canonical coach template rules", () => {
       "FAQ",
       "Contact"
     ]);
-    expect(navbarSections.every((section) => section.anchorTarget === `#${section.sectionId}`)).toBe(true);
-    expect(navbarSections.every((section) => section.enabled && section.visibleInNavbar)).toBe(true);
+    expect(
+      navbarSections.every((section) => section.anchorTarget === `#${section.sectionId}`)
+    ).toBe(true);
+    expect(navbarSections.every((section) => section.enabled && section.visibleInNavbar)).toBe(
+      true
+    );
     expect(canonicalCoachSectionRegistry.map((section) => section.sectionId)).toEqual([
       "home",
       "story",
@@ -171,11 +211,16 @@ test.describe("canonical coach template rules", () => {
       "yw-footer"
     ]);
 
-    const componentSource = readFileSync(join(REPO_ROOT, "components/coach/public-coach-site-page.tsx"), "utf8");
+    const componentSource = readFileSync(
+      join(REPO_ROOT, "components/coach/public-coach-site-page.tsx"),
+      "utf8"
+    );
     const staticRendererSource = readFileSync(join(REPO_ROOT, "functions/coach/[slug].ts"), "utf8");
     const combined = `${componentSource}\n${staticRendererSource}`;
 
-    expect(combined).not.toMatch(/About Us|Quality & Innovation|Our Brands|Careers|Contact Us|Who We Are|Our Team|A note from our founder/);
+    expect(combined).not.toMatch(
+      /About Us|Quality & Innovation|Our Brands|Careers|Contact Us|Who We Are|Our Team|A note from our founder/
+    );
     expect(combined).toContain("getCanonicalCoachNavbarSections");
     for (const section of navbarSections) {
       expect(combined).toContain(`id="${section.sectionId}"`);
@@ -248,7 +293,10 @@ test.describe("canonical coach template rules", () => {
   });
 
   test("Shop input normalization preserves typed URLs while validation/build enforce safe values", () => {
-    const shopClientSource = readFileSync(join(REPO_ROOT, "app/shop/shop-builder-client.tsx"), "utf8");
+    const shopClientSource = readFileSync(
+      join(REPO_ROOT, "app/shop/shop-builder-client.tsx"),
+      "utf8"
+    );
     const partial = normalizeShopBuilderState({
       coachName: "Asha Sharma",
       contactLink: "h",
@@ -263,7 +311,9 @@ test.describe("canonical coach template rules", () => {
     expect(partial.contactLink).toBe("h");
     expect(partial.photoUrl).toBe("https://cdn.example.com/photo.png");
     expect(partial.videoUrl).toBe("https://youtube.com/watch?v=abc123");
-    expect(shopClientSource).not.toContain('placeholder="https://forms.gle/... or https://wa.me/..."');
+    expect(shopClientSource).not.toContain(
+      'placeholder="https://forms.gle/... or https://wa.me/..."'
+    );
     expect(shopClientSource).toContain("Paste one public HTTPS registration link only.");
     expect(validateShopBuilderState(partial, { requirePaymentReady: true })).toEqual(
       expect.arrayContaining([
@@ -287,7 +337,11 @@ test.describe("canonical coach template rules", () => {
       ])
     );
 
-    const invalidPhone = normalizeShopBuilderState({ ...partial, coachPhone: "1234567", contactLink: "https://forms.gle/one" });
+    const invalidPhone = normalizeShopBuilderState({
+      ...partial,
+      coachPhone: "1234567",
+      contactLink: "https://forms.gle/one"
+    });
     expect(validateShopBuilderState(invalidPhone, { requirePaymentReady: true })).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -316,7 +370,11 @@ test.describe("canonical coach template rules", () => {
       coachPhone: "+91 98765 43210",
       contactLink: "https://forms.gle/one"
     });
-    expect(validateShopBuilderState(safePhone, { requirePaymentReady: true }).filter((issue) => issue.severity === "error")).toEqual([]);
+    expect(
+      validateShopBuilderState(safePhone, { requirePaymentReady: true }).filter(
+        (issue) => issue.severity === "error"
+      )
+    ).toEqual([]);
 
     const unsafePublicSite = buildCoachSiteFromShopState({
       state: {
@@ -332,21 +390,31 @@ test.describe("canonical coach template rules", () => {
   });
 
   test("Shop draft entry is email-first while publish keeps complete coach validation", () => {
-    const shopClientSource = readFileSync(join(REPO_ROOT, "app/shop/shop-builder-client.tsx"), "utf8");
+    const shopClientSource = readFileSync(
+      join(REPO_ROOT, "app/shop/shop-builder-client.tsx"),
+      "utf8"
+    );
     const shopServerSource = readFileSync(join(REPO_ROOT, "lib/server/shop.ts"), "utf8");
 
-    expect(shopClientSource).toContain("Enter a valid email first so we can save and recover this draft.");
+    expect(shopClientSource).toContain(
+      "Enter a valid email first so we can save and recover this draft."
+    );
     expect(shopClientSource).toContain("Coach details come next inside the builder.");
     expect(shopClientSource).toContain("return isValidShopEmail(state.email || state.coachEmail);");
     const entryShellStart = shopClientSource.indexOf("styles.entryShell");
-    const entryShellEnd = shopClientSource.indexOf("We create a secure server draft", entryShellStart);
+    const entryShellEnd = shopClientSource.indexOf(
+      "We create a secure server draft",
+      entryShellStart
+    );
     const entryShellSource = shopClientSource.slice(entryShellStart, entryShellEnd);
     expect(entryShellSource).not.toContain('label="Coach name"');
     expect(entryShellSource).not.toContain('label="Niche"');
     expect(shopClientSource).not.toContain("Coach name is required before saving a draft.");
     expect(shopServerSource).toContain("Enter a valid email before saving this Shop draft.");
     expect(shopServerSource).toContain("function isValidShopDraftEmail");
-    expect(shopServerSource).toContain("payment_status IN ('draft', 'incomplete', 'payment_failed')");
+    expect(shopServerSource).toContain(
+      "payment_status IN ('draft', 'incomplete', 'payment_failed')"
+    );
     expect(shopServerSource).toContain("payment_status = 'pending_payment'");
 
     const emailOnlyDraft = normalizeShopBuilderState({
@@ -420,7 +488,7 @@ test.describe("canonical coach template rules", () => {
               servedKeys.push(objectKey);
               return {
                 body: new Uint8Array([1, 2, 3]),
-                httpEtag: "\"test-media\"",
+                httpEtag: '"test-media"',
                 httpMetadata: {
                   contentType: "image/png"
                 }
@@ -428,9 +496,7 @@ test.describe("canonical coach template rules", () => {
             }
           }
         },
-        request: new Request(
-          `https://ywcoach.com/api/coach-media?key=${encodeURIComponent(key)}`
-        )
+        request: new Request(`https://ywcoach.com/api/coach-media?key=${encodeURIComponent(key)}`)
       } as unknown as Parameters<typeof handleCoachMediaRequest>[0]);
 
     const cutoutResponse = await makeRequest(
@@ -468,9 +534,18 @@ test.describe("canonical coach template rules", () => {
   });
 
   test("Admin and Shop hero media support YouTube links plus uploaded videos up to 70 MB", () => {
-    const adminClientSource = readFileSync(join(REPO_ROOT, "components/admin/admin-coach-sites-manager.tsx"), "utf8");
-    const shopClientSource = readFileSync(join(REPO_ROOT, "app/shop/shop-builder-client.tsx"), "utf8");
-    const adminMediaApiSource = readFileSync(join(REPO_ROOT, "functions/api/admin/coach-sites/media.ts"), "utf8");
+    const adminClientSource = readFileSync(
+      join(REPO_ROOT, "components/admin/admin-coach-sites-manager.tsx"),
+      "utf8"
+    );
+    const shopClientSource = readFileSync(
+      join(REPO_ROOT, "app/shop/shop-builder-client.tsx"),
+      "utf8"
+    );
+    const adminMediaApiSource = readFileSync(
+      join(REPO_ROOT, "functions/api/admin/coach-sites/media.ts"),
+      "utf8"
+    );
     const shopMediaApiSource = readFileSync(join(REPO_ROOT, "functions/api/shop/media.ts"), "utf8");
 
     expect(adminClientSource).toContain("VIDEO_MAX_BYTES = 70 * 1024 * 1024");
@@ -494,21 +569,39 @@ test.describe("canonical coach template rules", () => {
   });
 
   test("coach photo uploads use local browser cutout processing with no paid provider fallback", () => {
-    const adminClientSource = readFileSync(join(REPO_ROOT, "components/admin/admin-coach-sites-manager.tsx"), "utf8");
-    const shopClientSource = readFileSync(join(REPO_ROOT, "app/shop/shop-builder-client.tsx"), "utf8");
-    const adminMediaApiSource = readFileSync(join(REPO_ROOT, "functions/api/admin/coach-sites/media.ts"), "utf8");
+    const adminClientSource = readFileSync(
+      join(REPO_ROOT, "components/admin/admin-coach-sites-manager.tsx"),
+      "utf8"
+    );
+    const shopClientSource = readFileSync(
+      join(REPO_ROOT, "app/shop/shop-builder-client.tsx"),
+      "utf8"
+    );
+    const adminMediaApiSource = readFileSync(
+      join(REPO_ROOT, "functions/api/admin/coach-sites/media.ts"),
+      "utf8"
+    );
     const shopMediaApiSource = readFileSync(join(REPO_ROOT, "functions/api/shop/media.ts"), "utf8");
     const adminReprocessSource = readFileSync(
       join(REPO_ROOT, "functions/api/admin/coach-sites/media-reprocess.ts"),
       "utf8"
     );
-    const shopReprocessSource = readFileSync(join(REPO_ROOT, "functions/api/shop/media-reprocess.ts"), "utf8");
+    const shopReprocessSource = readFileSync(
+      join(REPO_ROOT, "functions/api/shop/media-reprocess.ts"),
+      "utf8"
+    );
     const clientProcessingSource = readFileSync(
       join(REPO_ROOT, "lib/client/coach-photo-background-removal.ts"),
       "utf8"
     );
-    const mediaStorageSource = readFileSync(join(REPO_ROOT, "lib/server/coach-site-storage.ts"), "utf8");
-    const reactSource = readFileSync(join(REPO_ROOT, "components/coach/public-coach-site-page.tsx"), "utf8");
+    const mediaStorageSource = readFileSync(
+      join(REPO_ROOT, "lib/server/coach-site-storage.ts"),
+      "utf8"
+    );
+    const reactSource = readFileSync(
+      join(REPO_ROOT, "components/coach/public-coach-site-page.tsx"),
+      "utf8"
+    );
     const publicRouteSource = readFileSync(join(REPO_ROOT, "functions/coach/[slug].ts"), "utf8");
 
     for (const source of [adminClientSource, shopClientSource]) {
@@ -528,7 +621,9 @@ test.describe("canonical coach template rules", () => {
     expect(clientProcessingSource).toContain('REMBG_MODEL_NAME = "u2netp"');
     expect(clientProcessingSource).toContain('REMBG_MODEL_BASE_URL = "/models"');
     expect(clientProcessingSource).toContain('ORT_WASM_BASE_URL = "/ort/"');
-    expect(clientProcessingSource).not.toMatch(/PHOTOROOM_API_KEY|REMOVEBG_API_KEY|remove\.bg|photoroom/i);
+    expect(clientProcessingSource).not.toMatch(
+      /PHOTOROOM_API_KEY|REMOVEBG_API_KEY|remove\.bg|photoroom/i
+    );
 
     for (const source of [adminMediaApiSource, shopMediaApiSource]) {
       expect(source).toContain("rawCutoutFile");
@@ -567,13 +662,28 @@ test.describe("canonical coach template rules", () => {
 
   test("canonical hero and bonus copy stay niche-adaptive without unsafe health claims", () => {
     const niches = [
-      { value: "PCOS and hormone wellness", expectedDescriptionTerm: /cycle patterns|hormone-supportive/i },
-      { value: "Diabetes metabolic habits", expectedDescriptionTerm: /HbA1c|Insulin Resistance|eGFR/i },
+      {
+        value: "PCOS and hormone wellness",
+        expectedDescriptionTerm: /cycle patterns|hormone-supportive/i
+      },
+      {
+        value: "Diabetes metabolic habits",
+        expectedDescriptionTerm: /HbA1c|Insulin Resistance|eGFR/i
+      },
       { value: "Gut health and digestion", expectedDescriptionTerm: /digestion|gut-friendly/i },
-      { value: "Sleep recovery coaching", expectedDescriptionTerm: /sleep routine|evening routines/i },
+      {
+        value: "Sleep recovery coaching",
+        expectedDescriptionTerm: /sleep routine|evening routines/i
+      },
       { value: "Fat loss habits", expectedDescriptionTerm: /BMI|BMR|meal-planning/i },
-      { value: "Fitness and strength habits", expectedDescriptionTerm: /performance habit|workout habit/i },
-      { value: "General wellness", expectedDescriptionTerm: /wellness indicators|guided support sessions/i }
+      {
+        value: "Fitness and strength habits",
+        expectedDescriptionTerm: /performance habit|workout habit/i
+      },
+      {
+        value: "General wellness",
+        expectedDescriptionTerm: /wellness indicators|guided support sessions/i
+      }
     ];
 
     for (const niche of niches) {
@@ -651,7 +761,9 @@ test.describe("canonical coach template rules", () => {
         expect(text).not.toMatch(UNSAFE_HEALTH_COPY);
         expect(text).not.toMatch(/niche[-\s]?adaptive/i);
       }
-      expect(bonus.items.map((item) => item.description).join(" ")).toMatch(niche.expectedDescriptionTerm);
+      expect(bonus.items.map((item) => item.description).join(" ")).toMatch(
+        niche.expectedDescriptionTerm
+      );
     }
   });
 
@@ -665,7 +777,8 @@ test.describe("canonical coach template rules", () => {
       },
       {
         expectedTitle: /Metabolic|Clarity Path/i,
-        forbidden: /\b(PCOS|PMOS|women only|exclusively for women|hormone-supportive|gut|sleep|fat-loss|workout)\b/i,
+        forbidden:
+          /\b(PCOS|PMOS|women only|exclusively for women|hormone-supportive|gut|sleep|fat-loss|workout)\b/i,
         niche: "Diabetes metabolic wellness"
       },
       {
@@ -690,7 +803,8 @@ test.describe("canonical coach template rules", () => {
       },
       {
         expectedTitle: /Lifestyle|Clarity System/i,
-        forbidden: /\b(PCOS|PMOS|women only|diabetes|HbA1c|gut digestion|sleep routine|fat-loss|workout)\b/i,
+        forbidden:
+          /\b(PCOS|PMOS|women only|diabetes|HbA1c|gut digestion|sleep routine|fat-loss|workout)\b/i,
         niche: "General wellness"
       }
     ];
@@ -713,9 +827,11 @@ test.describe("canonical coach template rules", () => {
             heroHeadline: "The Coaching Blueprint",
             heroMediaLabel: "Masterclass Details",
             heroTrustLine: "Only for Women",
-            introHeading: "Personal PMOS / Women Wellness guidance inside a premium wellness-tech ecosystem.",
+            introHeading:
+              "Personal PMOS / Women Wellness guidance inside a premium wellness-tech ecosystem.",
             journeyHeading: "The complete blueprint. Nothing held back.",
-            problemHeading: "For guests who need direction before committing to a bigger PMOS / Women Wellness program.",
+            problemHeading:
+              "For guests who need direction before committing to a bigger PMOS / Women Wellness program.",
             problemPoints: [
               "Too much conflicting PMOS / Women Wellness advice",
               "HbA1c and Insulin Resistance diabetes leakage",
@@ -760,12 +876,22 @@ test.describe("canonical coach template rules", () => {
         ...faqItems.flatMap((faq) => [faq.question, faq.answer])
       ].join(" ");
 
-      expect(`${sectionCopy.heroTitleMain} ${sectionCopy.heroTitleAccent}`).toMatch(item.expectedTitle);
+      expect(`${sectionCopy.heroTitleMain} ${sectionCopy.heroTitleAccent}`).toMatch(
+        item.expectedTitle
+      );
       expect(renderedText).not.toMatch(STALE_SECTION_COPY);
       expect(renderedText).not.toMatch(UNSAFE_PROMISE_COPY);
-      if (!item.allowedWomenContext) expect(renderedText).not.toMatch(/\b(women only|exclusively for women|PMOS|PCOS|hormone-supportive)\b/i);
+      if (!item.allowedWomenContext)
+        expect(renderedText).not.toMatch(
+          /\b(women only|exclusively for women|PMOS|PCOS|hormone-supportive)\b/i
+        );
       expect(renderedText).not.toMatch(item.forbidden);
-      expect(sectionCopy.detailCards.map((card) => card.label)).not.toEqual(["DATE", "TIME", "DURATION", "Language"]);
+      expect(sectionCopy.detailCards.map((card) => card.label)).not.toEqual([
+        "DATE",
+        "TIME",
+        "DURATION",
+        "Language"
+      ]);
       expect(faqItems.length).toBeGreaterThanOrEqual(5);
       for (const faq of faqItems) {
         expect(faq.question).toBeTruthy();
@@ -777,13 +903,20 @@ test.describe("canonical coach template rules", () => {
   });
 
   test("public renderers no longer hardcode stale masterclass section copy", () => {
-    const reactSource = readFileSync(join(REPO_ROOT, "components/coach/public-coach-site-page.tsx"), "utf8");
+    const reactSource = readFileSync(
+      join(REPO_ROOT, "components/coach/public-coach-site-page.tsx"),
+      "utf8"
+    );
     const publicRouteSource = readFileSync(join(REPO_ROOT, "functions/coach/[slug].ts"), "utf8");
 
     for (const source of [reactSource, publicRouteSource]) {
-      expect(source).not.toMatch(/FREE LIVE MASTERCLASS EXCLUSIVELY FOR WOMEN|LIMITED SEATS AVAILABLE/i);
+      expect(source).not.toMatch(
+        /FREE LIVE MASTERCLASS EXCLUSIVELY FOR WOMEN|LIMITED SEATS AVAILABLE/i
+      );
       expect(source).not.toMatch(/2-Hour Masterclass by|Masterclass Details|Only for Women/i);
-      expect(source).not.toMatch(/Real results\. Real women\.|They used this blueprint|This masterclass is free/i);
+      expect(source).not.toMatch(
+        /Real results\. Real women\.|They used this blueprint|This masterclass is free/i
+      );
       expect(source).not.toMatch(/Free live masterclass|masterclass right for you/i);
       expect(source).toContain("getCanonicalCoachSectionCopy");
       expect(source).toContain("sectionCopy.faqItems");
@@ -923,12 +1056,17 @@ test.describe("canonical coach template rules", () => {
     const renderedDescriptions = bonus.items.map((item) => item.description).join(" ");
 
     expect(renderedDescriptions).toMatch(/cycle patterns|hormone-supportive/i);
-    expect(renderedDescriptions).not.toMatch(/\b(HbA1c|diabetes|gut digestion|sleep routine|workout|fat-loss)\b/i);
+    expect(renderedDescriptions).not.toMatch(
+      /\b(HbA1c|diabetes|gut digestion|sleep routine|workout|fat-loss)\b/i
+    );
   });
 
   test("public route source cannot opt into the removed legacy template renderer", () => {
     const source = readFileSync(join(REPO_ROOT, "functions/coach/[slug].ts"), "utf8");
-    const renderWrapper = source.match(/function renderCoachSiteHtml\(site: PublicCoachSiteRecord\) \{[\s\S]*?\n\}/)?.[0] || "";
+    const renderWrapper =
+      source.match(
+        /function renderCoachSiteHtml\(site: PublicCoachSiteRecord\) \{[\s\S]*?\n\}/
+      )?.[0] || "";
 
     expect(source).not.toContain("__legacy_rollback");
     expect(renderWrapper).toContain("return renderCanonicalCoachSiteHtml(site);");
@@ -936,22 +1074,33 @@ test.describe("canonical coach template rules", () => {
   });
 
   test("coach legal return links cannot fall back to the root redirect domain", () => {
-    const legalSource = readFileSync(join(REPO_ROOT, "components/coach/coach-legal-page.tsx"), "utf8");
+    const legalSource = readFileSync(
+      join(REPO_ROOT, "components/coach/coach-legal-page.tsx"),
+      "utf8"
+    );
     const publicRouteSource = readFileSync(join(REPO_ROOT, "functions/coach/[slug].ts"), "utf8");
 
-    expect(legalSource).toContain('href={returnHref}');
+    expect(legalSource).toContain("href={returnHref}");
     expect(legalSource).not.toContain('data-yw-return-link href="/"');
     expect(legalSource).not.toContain('href="/"');
     expect(legalSource).toContain("const landingPath = useSyncExternalStore");
     expect(legalSource).toContain('const returnHref = landingPath || "#"');
     expect(legalSource).toContain('next.searchParams.set("returnTo", landingPath)');
     expect(legalSource).toContain("window.sessionStorage.setItem(storageKey, landingPath)");
-    expect(publicRouteSource).toContain('/privacy?returnTo=${encodeURIComponent(`/coach/${site.slug}`)}');
-    expect(publicRouteSource).toContain('/terms?returnTo=${encodeURIComponent(`/coach/${site.slug}`)}');
-    expect(publicRouteSource).toContain('/disclaimer?returnTo=${encodeURIComponent(`/coach/${site.slug}`)}');
+    expect(publicRouteSource).toContain(
+      "/privacy?returnTo=${encodeURIComponent(`/coach/${site.slug}`)}"
+    );
+    expect(publicRouteSource).toContain(
+      "/terms?returnTo=${encodeURIComponent(`/coach/${site.slug}`)}"
+    );
+    expect(publicRouteSource).toContain(
+      "/disclaimer?returnTo=${encodeURIComponent(`/coach/${site.slug}`)}"
+    );
   });
 
-  test("browser bonus helper cannot preserve old titles, wrong niche descriptions, or old CTA labels", async ({ page }) => {
+  test("browser bonus helper cannot preserve old titles, wrong niche descriptions, or old CTA labels", async ({
+    page
+  }) => {
     await page.setContent(`
       <section
         data-yw-template-rule="nicheAdaptiveBonusSection"
@@ -980,7 +1129,9 @@ test.describe("canonical coach template rules", () => {
     const rendered = await page.evaluate(() => {
       const section = document.querySelector("[data-yw-template-rule='nicheAdaptiveBonusSection']");
       const bonusWindow = window as typeof window & {
-        ywAdaptBonusSectionCopy?: (options: { niche: string }) => { items?: Array<{ description: string }> };
+        ywAdaptBonusSectionCopy?: (options: { niche: string }) => {
+          items?: Array<{ description: string }>;
+        };
       };
       const pmosModel = bonusWindow.ywAdaptBonusSectionCopy?.({ niche: "PMOS / Women Wellness" });
       const imageVisuals = Array.from(
@@ -993,11 +1144,13 @@ test.describe("canonical coach template rules", () => {
 
       return {
         cta: section?.querySelector(".yw-bonus-cta")?.textContent?.trim(),
-        descriptions: Array.from(section?.querySelectorAll(".yw-niche-bonus__card > p:not(.yw-bonus-type)") || []).map(
-          (node) => node.textContent?.trim() || ""
-        ),
+        descriptions: Array.from(
+          section?.querySelectorAll(".yw-niche-bonus__card > p:not(.yw-bonus-type)") || []
+        ).map((node) => node.textContent?.trim() || ""),
         imageVisuals,
-        pmosDescriptions: pmosModel?.items?.map((item: { description: string }) => item.description).join(" ") || "",
+        pmosDescriptions:
+          pmosModel?.items?.map((item: { description: string }) => item.description).join(" ") ||
+          "",
         titles: Array.from(section?.querySelectorAll(".yw-niche-bonus__card h3") || []).map(
           (node) => node.textContent?.trim() || ""
         )
@@ -1009,15 +1162,25 @@ test.describe("canonical coach template rules", () => {
     expect(rendered.descriptions.join(" ")).not.toMatch(
       /\b(HbA1c|A1C|insulin|eGFR|diabetes|glucose|PCOS|PMOS|hormone|menstrual|women only|gut digestion|sleep routine|fat-loss|workout|strength training|reversal)\b/i
     );
-    expect(rendered.descriptions.join(" ")).toMatch(/wellness indicators|guided support sessions|lifestyle checklists/i);
+    expect(rendered.descriptions.join(" ")).toMatch(
+      /wellness indicators|guided support sessions|lifestyle checklists/i
+    );
     expect(rendered.pmosDescriptions).toMatch(/cycle patterns|hormone-supportive/i);
-    expect(rendered.pmosDescriptions).not.toMatch(/\b(HbA1c|diabetes|gut digestion|sleep routine|workout|fat-loss)\b/i);
+    expect(rendered.pmosDescriptions).not.toMatch(
+      /\b(HbA1c|diabetes|gut digestion|sleep routine|workout|fat-loss)\b/i
+    );
     expect(rendered.imageVisuals).toHaveLength(3);
-    expect(rendered.imageVisuals.every((visual) => visual.hasOrb && visual.hasMicroLines && visual.hasShine)).toBe(true);
+    expect(
+      rendered.imageVisuals.every(
+        (visual) => visual.hasOrb && visual.hasMicroLines && visual.hasShine
+      )
+    ).toBe(true);
   });
 
   test("canonical bonus inspect and lock rules match the production template contract", () => {
-    const rule = canonicalCoachTemplateRules.find((item) => item.ruleKey === "nicheAdaptiveBonusSection");
+    const rule = canonicalCoachTemplateRules.find(
+      (item) => item.ruleKey === "nicheAdaptiveBonusSection"
+    );
     expect(rule).toBeTruthy();
     expect(rule?.enabled).toBe(true);
     expect(rule?.aiAdaptive).toBe(true);
@@ -1060,7 +1223,9 @@ test.describe("canonical coach template rules", () => {
       "lifetime-support-sessions",
       "lifestyle-success-toolkit"
     ]);
-    expect(universalCoachBonuses.map((bonus) => bonus.baseTitle)).toEqual(FIXED_BONUS_SERVICE_TITLES);
+    expect(universalCoachBonuses.map((bonus) => bonus.baseTitle)).toEqual(
+      FIXED_BONUS_SERVICE_TITLES
+    );
     expect(universalCoachBonuses.map((bonus) => bonus.imageUrl)).toEqual(FIXED_BONUS_IMAGE_URLS);
     expect(universalCoachBonuses.every((bonus) => bonus.actualAssetUrl === "")).toBe(true);
     expect(universalCoachBonuses.map((bonus) => bonus.actualValue)).toEqual([3200, 3200, 3599]);
@@ -1068,14 +1233,22 @@ test.describe("canonical coach template rules", () => {
   });
 
   test("configured bonus image visuals keep the canonical motion chrome in every renderer", () => {
-    const reactSource = readFileSync(join(REPO_ROOT, "components/coach/public-coach-site-page.tsx"), "utf8");
+    const reactSource = readFileSync(
+      join(REPO_ROOT, "components/coach/public-coach-site-page.tsx"),
+      "utf8"
+    );
     const publicRouteSource = readFileSync(join(REPO_ROOT, "functions/coach/[slug].ts"), "utf8");
-    const browserHelperSource = readFileSync(join(REPO_ROOT, "public/coach-circle-bonus-section.js"), "utf8");
+    const browserHelperSource = readFileSync(
+      join(REPO_ROOT, "public/coach-circle-bonus-section.js"),
+      "utf8"
+    );
     const cssSource = readFileSync(join(REPO_ROOT, "public/coach-circle-template.css"), "utf8");
 
     expect(reactSource).toContain('data-yw-smart-visual="configured-image"');
     expect(publicRouteSource).toContain('data-yw-smart-visual="configured-image"');
-    expect(browserHelperSource).toContain('wrapper.dataset.ywSmartVisual = item.imageUrl ? "configured-image" : "generated"');
+    expect(browserHelperSource).toContain(
+      'wrapper.dataset.ywSmartVisual = item.imageUrl ? "configured-image" : "generated"'
+    );
 
     for (const source of [reactSource, publicRouteSource, browserHelperSource]) {
       expect(source).toContain("yw-bonus-visual__orb yw-bonus-visual__orb--image");
