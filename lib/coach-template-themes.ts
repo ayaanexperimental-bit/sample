@@ -78,6 +78,19 @@ export type CoachTemplateBackgroundConfig = {
   type: CoachTemplateBackgroundType;
 };
 
+export type CoachTemplateFeatureFlags = {
+  enableCoachTemplateSkins: boolean;
+  enableHeavyMotionBackgrounds: boolean;
+  enableReactBitsBackgrounds: boolean;
+  enableTemplateSkinDebugPanel: boolean;
+  enableWebglBackgrounds: boolean;
+};
+
+export type CoachTemplateRegistryOptions = {
+  featureFlags?: CoachTemplateFeatureFlags;
+  includeInternal?: boolean;
+};
+
 export type CoachTemplateTheme = {
   id: ActiveCoachTemplateThemeId;
   name: string;
@@ -591,6 +604,15 @@ export const coachTemplateBackgroundRegistry: Record<CoachTemplateBackgroundType
     ssrSafe: false
   }
 };
+
+export function isKnownCoachTemplateBackgroundType(
+  value: unknown
+): value is CoachTemplateBackgroundType {
+  return (
+    typeof value === "string" &&
+    Object.prototype.hasOwnProperty.call(coachTemplateBackgroundRegistry, value)
+  );
+}
 
 function createColorTokens(theme: {
   colors: CoachTemplateTheme["colors"];
@@ -1774,6 +1796,34 @@ const legacyThemeMap: Record<string, ActiveCoachTemplateThemeId> = {
   "soft-feminine-wellness": "soft-feminine"
 };
 
+function readCoachTemplateEnvFlag(name: string, defaultValue: boolean) {
+  const envValue =
+    typeof process === "undefined" || !process.env ? undefined : process.env[name];
+  if (envValue === undefined || envValue === "") return defaultValue;
+  return ["1", "true", "yes", "on"].includes(envValue.toLowerCase());
+}
+
+export function getCoachTemplateFeatureFlags(): CoachTemplateFeatureFlags {
+  return {
+    enableCoachTemplateSkins: readCoachTemplateEnvFlag("ENABLE_COACH_TEMPLATE_SKINS", true),
+    enableHeavyMotionBackgrounds: readCoachTemplateEnvFlag(
+      "ENABLE_HEAVY_MOTION_BACKGROUNDS",
+      true
+    ),
+    enableReactBitsBackgrounds: readCoachTemplateEnvFlag(
+      "ENABLE_REACT_BITS_BACKGROUNDS",
+      true
+    ),
+    enableTemplateSkinDebugPanel: readCoachTemplateEnvFlag(
+      "ENABLE_TEMPLATE_SKIN_DEBUG_PANEL",
+      false
+    ),
+    enableWebglBackgrounds: readCoachTemplateEnvFlag("ENABLE_WEBGL_BACKGROUNDS", false)
+  };
+}
+
+export const coachTemplateFeatureFlags = getCoachTemplateFeatureFlags();
+
 export function isKnownCoachTemplateThemeId(value: unknown): value is CoachTemplateThemeId {
   return COACH_TEMPLATE_THEME_IDS.includes(value as CoachTemplateThemeId);
 }
@@ -1794,7 +1844,18 @@ export function getCoachTemplateCssVariables(value: unknown): Record<string, str
   return getCoachTemplateTheme(value).cssVars;
 }
 
-export function getProductionReadyCoachTemplateThemes(options: { includeInternal?: boolean } = {}) {
+function getRegistryFeatureFlags(options: CoachTemplateRegistryOptions = {}) {
+  return options.featureFlags || coachTemplateFeatureFlags;
+}
+
+export function getProductionReadyCoachTemplateThemes(
+  options: CoachTemplateRegistryOptions = {}
+) {
+  const featureFlags = getRegistryFeatureFlags(options);
+  if (!featureFlags.enableCoachTemplateSkins) {
+    return coachTemplateThemes.filter((theme) => theme.id === CANONICAL_COACH_TEMPLATE_THEME_ID);
+  }
+
   return coachTemplateThemes.filter((theme) => {
     if (theme.status === "production_ready") return true;
     return Boolean(options.includeInternal && theme.status !== "deprecated" && theme.status !== "hidden");
@@ -1803,18 +1864,40 @@ export function getProductionReadyCoachTemplateThemes(options: { includeInternal
 
 export const productionReadyCoachTemplateThemes = getProductionReadyCoachTemplateThemes();
 
-export function getSkinsForAdminSelector() {
-  return productionReadyCoachTemplateThemes.filter((theme) => theme.visibleInAdmin);
+export function getSkinsForAdminSelector(options: CoachTemplateRegistryOptions = {}) {
+  return getProductionReadyCoachTemplateThemes(options).filter((theme) => theme.visibleInAdmin);
 }
 
-export function getSkinsForShopSelector() {
-  return productionReadyCoachTemplateThemes.filter((theme) => theme.visibleInShop);
+export function getSkinsForShopSelector(options: CoachTemplateRegistryOptions = {}) {
+  return getProductionReadyCoachTemplateThemes(options).filter((theme) => theme.visibleInShop);
 }
 
-export function getTemplateBackgroundConfig(value: unknown): CoachTemplateBackgroundConfig {
+export function getTemplateBackgroundConfig(
+  value: unknown,
+  options: CoachTemplateRegistryOptions = {}
+): CoachTemplateBackgroundConfig {
   const theme = getCoachTemplateTheme(value);
   const background = coachTemplateBackgroundRegistry[theme.background.type];
   if (!background) return getCoachTemplateTheme(CANONICAL_COACH_TEMPLATE_THEME_ID).background;
+  const featureFlags = getRegistryFeatureFlags(options);
+  const shouldUseFallback =
+    (theme.background.requiresReactBits && !featureFlags.enableReactBitsBackgrounds) ||
+    (theme.background.performanceMode === "standard" && !featureFlags.enableHeavyMotionBackgrounds) ||
+    (theme.background.type === "webgl-subtle" && !featureFlags.enableWebglBackgrounds);
+  if (shouldUseFallback) {
+    const fallbackType =
+      coachTemplateBackgroundRegistry[theme.background.fallbackType]?.id ||
+      coachTemplateBackgroundRegistry[background.fallback]?.id ||
+      getCoachTemplateTheme(CANONICAL_COACH_TEMPLATE_THEME_ID).background.type;
+    return {
+      ...theme.background,
+      intensity: Math.min(theme.background.intensity, 0.55),
+      mobileIntensity: Math.min(theme.background.mobileIntensity, 0.4),
+      performanceMode: theme.background.performanceMode === "disabled" ? "disabled" : "low",
+      requiresReactBits: false,
+      type: fallbackType
+    };
+  }
   return theme.background;
 }
 

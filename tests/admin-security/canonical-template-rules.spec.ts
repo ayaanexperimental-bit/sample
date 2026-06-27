@@ -5,8 +5,10 @@ import {
   CANONICAL_COACH_TEMPLATE_THEME_ID,
   COACH_TEMPLATE_THEME_IDS,
   calculateVisualDifferenceScore,
+  coachTemplateFeatureFlags,
   coachTemplateBackgroundRegistry,
   coachTemplateThemes,
+  getProductionReadyCoachTemplateThemes,
   getSkinsForAdminSelector,
   getSkinsForShopSelector,
   getTemplateBackgroundConfig,
@@ -104,12 +106,56 @@ test.describe("canonical coach template rules", () => {
     const validation = validateCoachTemplateSkinRegistry();
     const adminSkins = getSkinsForAdminSelector();
     const shopSkins = getSkinsForShopSelector();
+    const disabledSkinFlags = {
+      ...coachTemplateFeatureFlags,
+      enableCoachTemplateSkins: false
+    };
 
     expect(validation.errors).toEqual([]);
     expect(adminSkins.map((theme) => theme.id)).toEqual(EXPECTED_ACTIVE_SKIN_IDS);
     expect(shopSkins.map((theme) => theme.id)).toEqual(EXPECTED_ACTIVE_SKIN_IDS);
     expect(adminSkins.every((theme) => theme.status === "production_ready")).toBe(true);
     expect(shopSkins.every((theme) => theme.status === "production_ready")).toBe(true);
+    expect(coachTemplateFeatureFlags).toEqual(
+      expect.objectContaining({
+        enableCoachTemplateSkins: true,
+        enableHeavyMotionBackgrounds: true,
+        enableReactBitsBackgrounds: true,
+        enableTemplateSkinDebugPanel: false,
+        enableWebglBackgrounds: false
+      })
+    );
+    expect(
+      getProductionReadyCoachTemplateThemes({ featureFlags: disabledSkinFlags }).map(
+        (theme) => theme.id
+      )
+    ).toEqual([CANONICAL_COACH_TEMPLATE_THEME_ID]);
+    expect(getSkinsForAdminSelector({ featureFlags: disabledSkinFlags }).map((theme) => theme.id)).toEqual([
+      CANONICAL_COACH_TEMPLATE_THEME_ID
+    ]);
+    expect(getSkinsForShopSelector({ featureFlags: disabledSkinFlags }).map((theme) => theme.id)).toEqual([
+      CANONICAL_COACH_TEMPLATE_THEME_ID
+    ]);
+
+    expect(Object.values(coachTemplateBackgroundRegistry).every((entry) => typeof entry.requiresReactBits === "boolean")).toBe(
+      true
+    );
+
+    const heavyMotionTheme = coachTemplateThemes.find(
+      (theme) => theme.background.performanceMode === "standard"
+    );
+    if (!heavyMotionTheme) throw new Error("Expected at least one standard-motion skin background");
+    const fallbackConfig = getTemplateBackgroundConfig(heavyMotionTheme.id, {
+      featureFlags: {
+        ...coachTemplateFeatureFlags,
+        enableHeavyMotionBackgrounds: false,
+        enableReactBitsBackgrounds: false,
+        enableWebglBackgrounds: false
+      }
+    });
+    expect(fallbackConfig.type).toBe(heavyMotionTheme.background.fallbackType);
+    expect(fallbackConfig.performanceMode).toBe("low");
+    expect(fallbackConfig.requiresReactBits).toBe(false);
 
     for (const theme of coachTemplateThemes) {
       expect(theme.publicName).toBeTruthy();

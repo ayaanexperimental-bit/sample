@@ -26,4 +26,4 @@ Implementation phases:
 7. Validation: `pnpm validate:coach-skins` runs readiness and anti-clone gate.
 8. Regression: lint, typecheck, admin-security tests, and static build are the release gate.
 
-Release status: pending final full build/test/deploy run for this session.
+Release status: implemented, validated, pushed, and deployed for this session.

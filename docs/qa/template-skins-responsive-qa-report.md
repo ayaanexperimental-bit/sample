@@ -21,4 +21,12 @@ Widths required by source brief:
 
 Current status:
 - Code-level responsive safeguards implemented.
-- Full screenshot capture for all skins and all widths is pending final browser QA.
+- Browser QA completed against the debug static gallery.
+- 9 skins x 8 sample coaches x 10 real viewport widths = 720 responsive embed checks.
+- Widths covered: 320, 375, 390, 414, 768, 834, 1024, 1280, 1440, 1920.
+- Checks covered theme match, required public sections, background pointer safety, registration CTA presence, FAQ presence, content length, page height, and horizontal overflow.
+- Result: 720 passed, 0 failed, 0 browser console errors.
+
+Evidence:
+- Result JSON: `C:\Users\YOURSW~1\AppData\Local\Temp\yw-template-skins-qa-result-1782593575916.json`
+- Screenshots folder: `C:\Users\YOURSW~1\AppData\Local\Temp\yw-template-skins-qa-1782592449676`
