@@ -19,7 +19,11 @@ import {
   type CanonicalHeroInfoCardKind,
   type NicheAdaptiveBonusItem
 } from "../../lib/coach-canonical-template";
-import { getCoachTemplateTheme } from "../../lib/coach-template-themes";
+import {
+  getCoachTemplateTheme,
+  getTemplateBackgroundConfig,
+  type CoachTemplateBackgroundType
+} from "../../lib/coach-template-themes";
 import type { PublicCoachSiteRecord } from "../../lib/admin-coach-sites";
 import {
   createSupportErrorReference,
@@ -64,65 +68,71 @@ type SmartBonusVisualProps = {
 };
 
 type TemplateBackgroundLayerProps = {
+  backgroundType?: CoachTemplateBackgroundType;
+  childrenAbove?: ReactNode;
+  childrenBehind?: ReactNode;
+  className?: string;
   intensity?: number;
   motionLevel?: "none" | "soft" | "dynamic";
   opacity?: number;
+  performanceMode?: "disabled" | "low" | "standard";
   reducedMotion?: boolean;
   themeId: string;
-  variant?: "aurora" | "mesh" | "prism" | "spotlight" | "static";
 };
 
 function TemplateBackgroundLayer({
+  backgroundType = "mesh-gradient",
+  childrenAbove,
+  childrenBehind,
+  className,
   intensity = 1,
   motionLevel = "soft",
   opacity = 1,
+  performanceMode = "standard",
   reducedMotion = false,
-  themeId,
-  variant = "mesh"
+  themeId
 }: TemplateBackgroundLayerProps) {
   const backgroundStyle = {
     "--yw-template-background-intensity": String(intensity),
     "--yw-template-background-opacity": String(opacity)
   } as CSSProperties;
+  const variant = getTemplateBackgroundVariant(backgroundType, reducedMotion || performanceMode === "disabled");
 
   return (
     <div
       aria-hidden="true"
-      className="yw-allia-background"
+      className={["yw-allia-background", className].filter(Boolean).join(" ")}
+      data-background-type={backgroundType}
       data-motion-level={reducedMotion ? "none" : motionLevel}
+      data-performance-mode={performanceMode}
       data-reduced-motion={reducedMotion ? "true" : "false"}
       data-theme={themeId}
-      data-variant={reducedMotion ? "static" : variant}
+      data-variant={variant}
       id="background"
       style={backgroundStyle}
-    />
+    >
+      {childrenBehind}
+      {childrenAbove}
+    </div>
   );
 }
 
-function getTemplateBackgroundVariant(themeId: string): NonNullable<TemplateBackgroundLayerProps["variant"]> {
-  if (themeId === "liquid-glass") return "aurora";
-  if (themeId === "prism-aurora") return "prism";
-  if (themeId === "dark-luxury") return "spotlight";
-  if (themeId === "minimal-premium") return "static";
+function getTemplateBackgroundVariant(
+  backgroundType: CoachTemplateBackgroundType,
+  forceStatic: boolean
+): "aurora" | "grid-glow" | "light-rays" | "liquid-glass" | "mesh" | "particles" | "prism" | "spotlight" | "static" {
+  if (forceStatic) return "static";
+  if (backgroundType === "aurora") return "aurora";
+  if (backgroundType === "grid-glow") return "grid-glow";
+  if (backgroundType === "light-rays") return "light-rays";
+  if (backgroundType === "liquid-glass") return "liquid-glass";
+  if (backgroundType === "particle-field") return "particles";
+  if (backgroundType === "prism") return "prism";
+  if (backgroundType === "spotlight") return "spotlight";
+  if (backgroundType === "none" || backgroundType === "noise-texture" || backgroundType === "static-gradient") {
+    return "static";
+  }
   return "mesh";
-}
-
-function getTemplateBackgroundMotionLevel(themeId: string): NonNullable<TemplateBackgroundLayerProps["motionLevel"]> {
-  if (themeId === "minimal-premium") return "none";
-  if (themeId === "prism-aurora" || themeId === "performance-energy") return "dynamic";
-  return "soft";
-}
-
-function getTemplateBackgroundIntensity(themeId: string) {
-  if (themeId === "minimal-premium") return 0.45;
-  if (themeId === "prism-aurora" || themeId === "performance-energy") return 1.12;
-  return 0.9;
-}
-
-function getTemplateBackgroundOpacity(themeId: string) {
-  if (themeId === "dark-luxury") return 0.88;
-  if (themeId === "minimal-premium") return 0.54;
-  return 1;
 }
 
 function SmartBonusVisual({ bonus, index, niche, themeId }: SmartBonusVisualProps) {
@@ -195,6 +205,7 @@ export function PublicCoachSitePage({
   const bonusSection = getNicheAdaptiveBonusSection(site);
   const selectedTheme = getCoachTemplateTheme(site.selectedThemeId);
   const selectedThemeStyle = selectedTheme.cssVars as CSSProperties;
+  const backgroundConfig = getTemplateBackgroundConfig(selectedTheme.id);
   const sectionCopy = useMemo(() => getCanonicalCoachSectionCopy(site), [site]);
   const coachLandingPath = `/coach/${site.slug}`;
   const referenceId = createCoachFallbackReferenceId(site.slug);
@@ -904,6 +915,7 @@ export function PublicCoachSitePage({
         className="yw-circle-site"
         data-coach-site-page={previewMode ? "preview" : "public"}
         data-coach-slug={site.slug}
+        data-yw-inspect-mode={inspectMode ? "true" : "false"}
         data-preview={previewMode ? "true" : "false"}
         data-sticky-scope={stickyMode}
         data-theme={selectedTheme.id}
@@ -912,11 +924,12 @@ export function PublicCoachSitePage({
         style={selectedThemeStyle}
       >
         <TemplateBackgroundLayer
-          intensity={getTemplateBackgroundIntensity(selectedTheme.id)}
-          motionLevel={getTemplateBackgroundMotionLevel(selectedTheme.id)}
-          opacity={getTemplateBackgroundOpacity(selectedTheme.id)}
+          backgroundType={backgroundConfig.type}
+          intensity={backgroundConfig.intensity}
+          motionLevel={selectedTheme.motion.level}
+          opacity={backgroundConfig.opacity}
+          performanceMode={backgroundConfig.performanceMode}
           themeId={selectedTheme.id}
-          variant={getTemplateBackgroundVariant(selectedTheme.id)}
         />
         <div className="yw-scroll-progress" aria-hidden="true">
           <span className="yw-scroll-progress__bar" />

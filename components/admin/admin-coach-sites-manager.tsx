@@ -27,7 +27,7 @@ import {
   normalizeCoachSlug
 } from "../../lib/admin-coach-sites";
 import {
-  coachTemplateThemes,
+  getSkinsForAdminSelector,
   getCoachTemplateTheme,
   type CoachTemplateThemeId
 } from "../../lib/coach-template-themes";
@@ -4821,6 +4821,9 @@ function AdminTemplateSkinPicker({
   onChange: (value: CoachTemplateThemeId) => void;
   value: CoachTemplateThemeId;
 }) {
+  const skins = getSkinsForAdminSelector();
+  const selectedSkin = skins.find((theme) => theme.id === value) || skins[0];
+
   return (
     <label className={styles.skinPicker}>
       <span>Visual skin</span>
@@ -4828,15 +4831,17 @@ function AdminTemplateSkinPicker({
         onChange={(event) => onChange(event.target.value as CoachTemplateThemeId)}
         value={value}
       >
-        {coachTemplateThemes.map((theme) => (
+        {skins.map((theme) => (
           <option key={theme.id} value={theme.id}>
-            {theme.name}
+            {theme.publicName}
           </option>
         ))}
       </select>
       <small>
-        Presentation only. The canonical renderer keeps the same sections, CTA destination, Google
-        Form behavior, support, legal links, analytics, inspect rules, and bonus services.
+        {selectedSkin.publicName}: {selectedSkin.designStory.oneLine} Background{" "}
+        {selectedSkin.background.type}, motion {selectedSkin.motion.level}, tested mobile-safe.
+        Presentation only; sections, CTA destination, Google Form behavior, support, legal links,
+        analytics, inspect rules, and bonus services stay canonical.
       </small>
     </label>
   );

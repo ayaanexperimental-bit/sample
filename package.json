@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "check:links": "node scripts/check-production-links.mjs",
     "test:admin-security": "playwright test --config=playwright.admin-security.config.ts",
+    "validate:coach-skins": "playwright test --config=playwright.admin-security.config.ts --grep \"template skin registry gates\"",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "format": "prettier --write .",

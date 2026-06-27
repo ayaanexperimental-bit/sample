@@ -19,7 +19,11 @@ import {
   type CanonicalHeroInfoCardKind,
   type NicheAdaptiveBonusItem
 } from "../../lib/coach-canonical-template";
-import { getCoachTemplateTheme } from "../../lib/coach-template-themes";
+import {
+  getCoachTemplateTheme,
+  getTemplateBackgroundConfig,
+  type CoachTemplateBackgroundType
+} from "../../lib/coach-template-themes";
 import {
   DEFAULT_SUPPORT_EMAIL,
   DEFAULT_SUPPORT_PHONE,
@@ -622,6 +626,28 @@ function serializeCssVars(cssVars: Record<string, string>) {
     .join(" ");
 }
 
+function getStaticTemplateBackgroundVariant(
+  backgroundType: CoachTemplateBackgroundType,
+  forceStatic: boolean
+) {
+  if (forceStatic) return "static";
+  if (backgroundType === "aurora") return "aurora";
+  if (backgroundType === "grid-glow") return "grid-glow";
+  if (backgroundType === "light-rays") return "light-rays";
+  if (backgroundType === "liquid-glass") return "liquid-glass";
+  if (backgroundType === "particle-field") return "particles";
+  if (backgroundType === "prism") return "prism";
+  if (backgroundType === "spotlight") return "spotlight";
+  if (
+    backgroundType === "none" ||
+    backgroundType === "noise-texture" ||
+    backgroundType === "static-gradient"
+  ) {
+    return "static";
+  }
+  return "mesh";
+}
+
 function renderCanonicalCoachSiteHtml(site: PublicCoachSiteRecord) {
   const coachName = getCanonicalCoachName(site);
   const coachNiche = getCanonicalCoachNiche(site);
@@ -631,6 +657,11 @@ function renderCanonicalCoachSiteHtml(site: PublicCoachSiteRecord) {
   const sectionCopy = getCanonicalCoachSectionCopy(site);
   const selectedTheme = getCoachTemplateTheme(site.selectedThemeId);
   const selectedThemeStyle = serializeCssVars(selectedTheme.cssVars);
+  const backgroundConfig = getTemplateBackgroundConfig(selectedTheme.id);
+  const selectedThemeBackgroundVariant = getStaticTemplateBackgroundVariant(
+    backgroundConfig.type,
+    backgroundConfig.performanceMode === "disabled"
+  );
   const title = `${coachName} | YW Nutritech Coach Circle`;
 
   return `<!DOCTYPE html>
@@ -665,12 +696,24 @@ function renderCanonicalCoachSiteHtml(site: PublicCoachSiteRecord) {
       class="yw-circle-site"
       data-coach-site-page="public"
       data-coach-slug="${escapeAttribute(site.slug)}"
+      data-yw-inspect-mode="false"
       data-theme="${escapeAttribute(selectedTheme.id)}"
       data-yw-template-theme="${escapeAttribute(selectedTheme.id)}"
       style="${escapeAttribute(selectedThemeStyle)}"
       id="top"
     >
-      <div class="yw-allia-background" id="background" aria-hidden="true"></div>
+      <div
+        class="yw-allia-background"
+        id="background"
+        aria-hidden="true"
+        data-background-type="${escapeAttribute(backgroundConfig.type)}"
+        data-motion-level="${escapeAttribute(selectedTheme.motion.level)}"
+        data-performance-mode="${escapeAttribute(backgroundConfig.performanceMode)}"
+        data-reduced-motion="false"
+        data-theme="${escapeAttribute(selectedTheme.id)}"
+        data-variant="${escapeAttribute(selectedThemeBackgroundVariant)}"
+        style="--yw-template-background-intensity: ${escapeAttribute(String(backgroundConfig.intensity))}; --yw-template-background-opacity: ${escapeAttribute(String(backgroundConfig.opacity))};"
+      ></div>
       <div class="yw-scroll-progress" aria-hidden="true"><span class="yw-scroll-progress__bar"></span></div>
 
       ${renderCanonicalNavbar(site, registerLabel)}

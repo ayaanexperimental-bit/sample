@@ -4,8 +4,14 @@ import { join } from "node:path";
 import {
   CANONICAL_COACH_TEMPLATE_THEME_ID,
   COACH_TEMPLATE_THEME_IDS,
+  calculateVisualDifferenceScore,
+  coachTemplateBackgroundRegistry,
   coachTemplateThemes,
-  normalizeCoachTemplateThemeId
+  getSkinsForAdminSelector,
+  getSkinsForShopSelector,
+  getTemplateBackgroundConfig,
+  normalizeCoachTemplateThemeId,
+  validateCoachTemplateSkinRegistry
 } from "../../lib/coach-template-themes";
 import {
   canonicalCoachSectionRegistry,
@@ -39,9 +45,16 @@ const EXPECTED_ACTIVE_SKIN_IDS = [
 ];
 const EXPECTED_LEGACY_SKIN_NORMALIZATION = {
   "apple-liquid-glass": "liquid-glass",
+  "creator-brand-profile": "creator-brand",
   "dark-luxury-wellness": "dark-luxury",
   default: CANONICAL_COACH_TEMPLATE_THEME_ID,
+  "editorial-wellness-journey": "editorial-wellness",
+  "liquid-glass-health-tech": "liquid-glass",
+  "minimal-premium-clarity": "minimal-premium",
   "not-a-real-template": CANONICAL_COACH_TEMPLATE_THEME_ID,
+  "premium-feminine": "soft-feminine",
+  "prism-aurora-immersive": "prism-aurora",
+  "soft-feminine-wellness": "soft-feminine",
   "premium-feminine-wellness": "soft-feminine"
 } as const;
 const LEGACY_THEME_IDS = Object.keys(EXPECTED_LEGACY_SKIN_NORMALIZATION) as Array<
@@ -84,6 +97,53 @@ test.describe("canonical coach template rules", () => {
       expect(normalizeShopBuilderState({ selectedThemeId: themeId }).selectedThemeId).toBe(
         EXPECTED_LEGACY_SKIN_NORMALIZATION[themeId]
       );
+    }
+  });
+
+  test("template skin registry gates selectors and rejects clone-like production skins", () => {
+    const validation = validateCoachTemplateSkinRegistry();
+    const adminSkins = getSkinsForAdminSelector();
+    const shopSkins = getSkinsForShopSelector();
+
+    expect(validation.errors).toEqual([]);
+    expect(adminSkins.map((theme) => theme.id)).toEqual(EXPECTED_ACTIVE_SKIN_IDS);
+    expect(shopSkins.map((theme) => theme.id)).toEqual(EXPECTED_ACTIVE_SKIN_IDS);
+    expect(adminSkins.every((theme) => theme.status === "production_ready")).toBe(true);
+    expect(shopSkins.every((theme) => theme.status === "production_ready")).toBe(true);
+
+    for (const theme of coachTemplateThemes) {
+      expect(theme.publicName).toBeTruthy();
+      expect(theme.designStory.oneLine).toBeTruthy();
+      expect(theme.skinDesignContract.heroComposition).toBeTruthy();
+      expect(theme.previewThumbnail.description).toBeTruthy();
+      expect(theme.readiness).toEqual(
+        expect.objectContaining({
+          backgroundClickSafe: true,
+          buildSafe: true,
+          inspectSafe: true,
+          mobileSafe: true,
+          previewPublicParity: true,
+          reducedMotionSafe: true,
+          stickyCtaSafe: true
+        })
+      );
+
+      const backgroundConfig = getTemplateBackgroundConfig(theme.id);
+      const backgroundRegistryEntry = coachTemplateBackgroundRegistry[backgroundConfig.type];
+      expect(backgroundRegistryEntry).toBeTruthy();
+      expect(backgroundRegistryEntry.pointerEventsNone).toBe(true);
+      expect(coachTemplateBackgroundRegistry[backgroundConfig.reducedMotionFallback]).toBeTruthy();
+
+      if (theme.id === CANONICAL_COACH_TEMPLATE_THEME_ID) continue;
+
+      const score = calculateVisualDifferenceScore(theme);
+      expect(score.changedCategories).toBeGreaterThanOrEqual(8);
+      expect(score.total).toBeGreaterThanOrEqual(28);
+      expect(theme.visualDifference.scores.heroVariant).toBeGreaterThanOrEqual(2);
+      expect(theme.visualDifference.scores.backgroundType).toBeGreaterThanOrEqual(2);
+      expect(theme.visualDifference.scores.cardStyle).toBeGreaterThanOrEqual(2);
+      expect(theme.visualDifference.scores.bonusVariant).toBeGreaterThanOrEqual(2);
+      expect(theme.visualDifference.scores.faqVariant).toBeGreaterThanOrEqual(2);
     }
   });
 
@@ -152,15 +212,20 @@ test.describe("canonical coach template rules", () => {
     );
 
     expect(rendererSource).toContain("function TemplateBackgroundLayer");
+    expect(rendererSource).toContain("backgroundType={backgroundConfig.type}");
+    expect(rendererSource).toContain("getTemplateBackgroundConfig(selectedTheme.id)");
     expect(rendererSource).toContain("data-motion-level");
     expect(rendererSource).toContain("data-variant");
-    expect(rendererSource).toContain("getTemplateBackgroundVariant(selectedTheme.id)");
+    expect(rendererSource).toContain("data-yw-inspect-mode");
     expect(cssSource).toContain("--yw-template-background-intensity");
     expect(cssSource).toContain("--yw-template-background-opacity");
     expect(cssSource).toContain('.yw-allia-background[data-variant="aurora"]::before');
+    expect(cssSource).toContain('.yw-allia-background[data-variant="light-rays"]::before');
+    expect(cssSource).toContain('.yw-allia-background[data-variant="grid-glow"]::before');
     expect(cssSource).toContain('.yw-allia-background[data-motion-level="none"]::before');
     expect(cssSource).toContain("@media (prefers-reduced-motion: reduce)");
     expect(cssSource).toContain("Canonical template skin layer");
+    expect(cssSource).toContain("Non-clone composition layer");
     expect(cssSource).toContain("--template-nav-surface");
     expect(cssSource).toContain("--template-section-cream");
     expect(cssSource).toContain("--template-section-dark");
@@ -179,6 +244,19 @@ test.describe("canonical coach template rules", () => {
     );
     expect(navSurfaces.size).toBe(coachTemplateThemes.length);
     expect(ctaSurfaces.size).toBe(coachTemplateThemes.length);
+
+    const shopClientSource = readFileSync(
+      join(REPO_ROOT, "app/shop/shop-builder-client.tsx"),
+      "utf8"
+    );
+    const adminManagerSource = readFileSync(
+      join(REPO_ROOT, "components/admin/admin-coach-sites-manager.tsx"),
+      "utf8"
+    );
+    expect(shopClientSource).toContain("getSkinsForShopSelector");
+    expect(adminManagerSource).toContain("getSkinsForAdminSelector");
+    expect(shopClientSource).not.toContain("coachTemplateThemes.map");
+    expect(adminManagerSource).not.toContain("coachTemplateThemes.map");
   });
 
   test("canonical navbar is generated from real coach-site section registry", () => {

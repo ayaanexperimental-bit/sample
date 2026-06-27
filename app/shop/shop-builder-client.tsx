@@ -21,7 +21,7 @@ import {
   prepareCoachHeroPhotoForUpload,
   preloadCoachHeroPhotoBackgroundRemoval
 } from "../../lib/client/coach-photo-background-removal";
-import { coachTemplateThemes, type CoachTemplateThemeId } from "../../lib/coach-template-themes";
+import { getSkinsForShopSelector, type CoachTemplateThemeId } from "../../lib/coach-template-themes";
 import { isUploadedVideoSource, normalizeVideoEmbedUrl } from "../../lib/video-links";
 import styles from "./shop-builder.module.css";
 
@@ -1241,6 +1241,9 @@ function TemplateSkinPicker({
   onChange: (value: CoachTemplateThemeId) => void;
   value: CoachTemplateThemeId;
 }) {
+  const skins = getSkinsForShopSelector();
+  const selectedSkin = skins.find((theme) => theme.id === value) || skins[0];
+
   return (
     <label className={styles.skinPicker}>
       <span>Visual skin</span>
@@ -1248,15 +1251,16 @@ function TemplateSkinPicker({
         onChange={(event) => onChange(event.target.value as CoachTemplateThemeId)}
         value={value}
       >
-        {coachTemplateThemes.map((theme) => (
+        {skins.map((theme) => (
           <option key={theme.id} value={theme.id}>
-            {theme.name}
+            {theme.publicName}
           </option>
         ))}
       </select>
       <small>
-        Changes only color, typography, background, and card styling. Content, links, legal,
-        analytics, and bonus rules stay locked to the canonical template.
+        {selectedSkin.publicName}: {selectedSkin.designStory.oneLine} Background{" "}
+        {selectedSkin.background.type}, motion {selectedSkin.motion.level}, mobile safe. Content,
+        links, legal, analytics, and bonus rules stay locked to the canonical template.
       </small>
     </label>
   );
