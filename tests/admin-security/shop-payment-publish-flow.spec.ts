@@ -4,7 +4,7 @@ import { onRequest as coachPageRequest } from "../../functions/coach/[slug]";
 import { onRequestPost as shopCheckoutRequest } from "../../functions/api/shop/checkout";
 import { onRequestPost as shopRetryPublishRequest } from "../../functions/api/shop/retry-publish";
 import { onRequest as shopWebhookRequest } from "../../functions/api/shop/razorpay-webhook";
-import { saveShopDraft } from "../../lib/server/shop";
+import { archiveShopDraft, createShopReportCsv, saveShopDraft } from "../../lib/server/shop";
 
 const SHOP_WEBHOOK_SECRET = "local-shop-webhook-secret";
 const SHOP_PAYMENT_PAGE_URL = "https://rzp.io/rzp/webb";
@@ -51,7 +51,29 @@ test.describe("shop payment publish flow", () => {
         .first()
     ).resolves.toBeTruthy();
 
+    const blockedDifferentDevice = await saveShopDraft({
+      env,
+      idempotencyKey: "same-email-draft-unknown-device",
+      state: {
+        coachEmail: "raj@example.com",
+        coachName: "Raj Unknown Device",
+        email: "raj@example.com",
+        niche: "Gut health",
+        shortBio: "This should not overwrite without secure access."
+      }
+    });
+    expect(blockedDifferentDevice).toMatchObject({
+      ok: false,
+      resumeRequired: true
+    });
+    expect([...harness.shopSites.values()]).toHaveLength(1);
+    expect([...harness.shopSites.values()][0]).toMatchObject({
+      coach_name: "Raj First Draft",
+      niche: "General wellness"
+    });
+
     const second = await saveShopDraft({
+      accessKey: first.accessKey,
       env,
       idempotencyKey: "same-email-draft-2",
       state: {
@@ -73,6 +95,115 @@ test.describe("shop payment publish flow", () => {
       payment_status: "draft",
       site_status: "draft"
     });
+  });
+
+  test("start fresh archives the previous active draft before a new draft is created", async () => {
+    const harness = createShopPaymentDb();
+    const env = {
+      ADMIN_DB: harness.db,
+      SHOP_PAYMENT_PAGE_URL,
+      SHOP_RAZORPAY_WEBHOOK_SECRET: SHOP_WEBHOOK_SECRET
+    };
+
+    const first = await saveShopDraft({
+      env,
+      idempotencyKey: "start-fresh-1",
+      state: {
+        coachEmail: "fresh@example.com",
+        coachName: "Fresh First Draft",
+        email: "fresh@example.com",
+        niche: "General wellness",
+        shortBio: "Original draft before starting fresh."
+      }
+    });
+    expect(first).toMatchObject({ ok: true });
+    const orderId = first.order?.orderId || "";
+    expect(orderId).toBeTruthy();
+
+    const blockedArchive = await archiveShopDraft({
+      env,
+      orderId,
+      reason: "start_fresh"
+    });
+    expect(blockedArchive).toMatchObject({
+      ok: false,
+      error:
+        "Open the secure resume link or continue on the same device before archiving this draft."
+    });
+
+    const archived = await archiveShopDraft({
+      accessKey: first.accessKey,
+      env,
+      orderId,
+      reason: "start_fresh"
+    });
+    expect(archived).toMatchObject({ ok: true });
+    expect(harness.shopSites.get(orderId)).toMatchObject({
+      payment_status: "archived",
+      site_status: "archived",
+      workflow_stage: "draft_archived_start_fresh"
+    });
+
+    const second = await saveShopDraft({
+      env,
+      idempotencyKey: "start-fresh-2",
+      state: {
+        coachEmail: "fresh@example.com",
+        coachName: "Fresh Second Draft",
+        email: "fresh@example.com",
+        niche: "Sleep wellness",
+        shortBio: "New active draft after archive."
+      }
+    });
+    expect(second).toMatchObject({ ok: true });
+    expect(second.order?.orderId).not.toBe(orderId);
+    expect([...harness.shopSites.values()]).toHaveLength(2);
+  });
+
+  test("Shop admin reports flag legacy invalid inputs and duplicate active drafts", async () => {
+    const harness = createShopPaymentDb();
+    const env = {
+      ADMIN_DB: harness.db,
+      SHOP_PAYMENT_PAGE_URL,
+      SHOP_RAZORPAY_WEBHOOK_SECRET: SHOP_WEBHOOK_SECRET
+    };
+
+    const first = await saveShopDraft({
+      accessKey: "",
+      env,
+      idempotencyKey: "legacy-report-1",
+      state: {
+        coachEmail: "legacy@example.com",
+        coachName: "Legacy Report Draft",
+        email: "legacy@example.com",
+        niche: "General wellness",
+        shortBio: "Valid draft before legacy mutation."
+      }
+    });
+    expect(first).toMatchObject({ ok: true });
+    const original = harness.shopSites.get(first.order?.orderId || "");
+    expect(original).toBeTruthy();
+
+    if (original) {
+      original.contact_link = "https://forms.gle/a https://forms.gle/b";
+      harness.shopSites.set("shop-order-legacy-duplicate", {
+        ...original,
+        contact_link: "https://forms.gle/c",
+        id: "shop-site-legacy-duplicate",
+        idempotency_key: "legacy-report-2",
+        order_id: "shop-order-legacy-duplicate",
+        updated_at: nowSeconds() + 5
+      });
+    }
+
+    const inputAuditCsv = await createShopReportCsv(env, "input-audit");
+    expect(inputAuditCsv).toContain("legacy@example.com");
+    expect(inputAuditCsv).toContain("Enter one valid HTTPS registration/contact link only.");
+
+    const duplicateDraftsCsv = await createShopReportCsv(env, "duplicate-drafts");
+    expect(duplicateDraftsCsv).toContain("legacy@example.com");
+    expect(duplicateDraftsCsv).toContain("shop-order-legacy-duplicate");
+    expect(duplicateDraftsCsv).toContain("archive older duplicate");
   });
 
   test("same normalized email reuses recoverable pending or failed unpaid Shop drafts", async () => {
@@ -105,6 +236,7 @@ test.describe("shop payment publish flow", () => {
     });
 
     const resumedPending = await saveShopDraft({
+      accessKey: first.accessKey,
       env,
       idempotencyKey: "same-email-pending-2",
       state: {
@@ -131,6 +263,7 @@ test.describe("shop payment publish flow", () => {
     });
 
     const resumedFailed = await saveShopDraft({
+      accessKey: first.accessKey,
       env,
       idempotencyKey: "same-email-pending-3",
       state: {
@@ -228,6 +361,7 @@ test.describe("shop payment publish flow", () => {
     expect(saved).toMatchObject({ ok: true });
     expect(saved.order?.orderId).toBe(orderId);
     expect(harness.shopSites.get(orderId)).toMatchObject({
+      coach_phone: "9876543210",
       coach_name: "Recovered Paid Coach",
       contact_link: "https://forms.gle/recoveredPaid",
       payment_status: "paid",
@@ -549,6 +683,21 @@ function createShopPaymentDb() {
           site_status: "publishing",
           updated_at: values[0],
           workflow_stage: "payment_verified"
+        });
+      }
+      return;
+    }
+
+    if (sql.startsWith("update shop_sites set payment_status = 'archived'")) {
+      const orderId = String(values[3]);
+      const existing = shopSites.get(orderId);
+      if (existing) {
+        Object.assign(existing, {
+          issue_status: values[1],
+          payment_status: "archived",
+          site_status: "archived",
+          updated_at: values[2],
+          workflow_stage: values[0]
         });
       }
       return;

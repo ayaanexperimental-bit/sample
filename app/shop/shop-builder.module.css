@@ -1000,6 +1000,10 @@
 .previewColumn {
   position: sticky;
   top: 1rem;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 0.4rem;
+  scrollbar-gutter: stable both-edges;
 }
 
 .previewFrame {
@@ -1085,6 +1089,63 @@
   transform: none !important;
 }
 
+.previewCanvas :global([data-coach-site-page="preview"] .navbar14_container) {
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 3.35rem;
+  padding: 0.48rem 0.58rem;
+}
+
+.previewCanvas :global([data-coach-site-page="preview"] .navbar14_logo-link) {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.previewCanvas :global([data-coach-site-page="preview"] .navbar14_menu) {
+  display: none !important;
+}
+
+.previewCanvas :global([data-coach-site-page="preview"] .navbar14_menu-button) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 2.75rem !important;
+  width: 2.75rem !important;
+  min-width: 2.75rem !important;
+  height: 2.75rem !important;
+  min-height: 2.75rem !important;
+  margin-left: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  color: inherit !important;
+}
+
+.previewCanvas :global([data-coach-site-page="preview"] .menu-icon2) {
+  display: flex !important;
+  width: 1.35rem !important;
+  height: 1rem !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+}
+
+.previewCanvas :global([data-coach-site-page="preview"] .menu-icon2_line-top),
+.previewCanvas :global([data-coach-site-page="preview"] .menu-icon2_line-middle),
+.previewCanvas :global([data-coach-site-page="preview"] .menu-icon2_line-bottom),
+.previewCanvas :global([data-coach-site-page="preview"] .menu-icon1_line-middle-inner) {
+  display: block !important;
+  width: 100% !important;
+  height: 2px !important;
+  min-height: 2px !important;
+  border-radius: 999px !important;
+  background: currentColor !important;
+  opacity: 1 !important;
+}
+
+.previewCanvas :global([data-coach-site-page="preview"] .yw-navbar-wordmark small) {
+  display: none;
+}
+
 .previewCanvas :global([data-coach-site-page="preview"] .yw-floating-register-cta) {
   position: sticky !important;
   right: auto !important;
@@ -1135,12 +1196,14 @@
 }
 
 .previewFrame[data-size="mobile"] {
-  max-width: min(24rem, 100%);
+  width: 24rem;
+  max-width: none;
   margin-inline: auto;
 }
 
 .previewFrame[data-size="tablet"] {
-  max-width: min(38rem, 100%);
+  width: 48rem;
+  max-width: none;
   margin-inline: auto;
 }
 
@@ -1158,6 +1221,8 @@
 
 .previewFrame[data-size="mobile"] .previewCanvas :global([data-coach-site-page="preview"] .navbar14_container),
 .previewFrame[data-size="tablet"] .previewCanvas :global([data-coach-site-page="preview"] .navbar14_container) {
+  justify-content: space-between;
+  gap: 0.5rem;
   min-height: 3.35rem;
   padding: 0.48rem 0.58rem;
 }
@@ -1170,6 +1235,14 @@
 .previewFrame[data-size="mobile"] .previewCanvas :global([data-coach-site-page="preview"] .navbar14_menu-button),
 .previewFrame[data-size="tablet"] .previewCanvas :global([data-coach-site-page="preview"] .navbar14_menu-button) {
   display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 2.75rem !important;
+  width: 2.75rem !important;
+  min-width: 2.75rem !important;
+  height: 2.75rem !important;
+  min-height: 2.75rem !important;
+  margin-left: auto !important;
   visibility: visible !important;
   opacity: 1 !important;
   pointer-events: auto !important;

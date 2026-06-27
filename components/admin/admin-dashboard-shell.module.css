@@ -1607,7 +1607,8 @@
   display: grid;
   gap: 0.8rem;
   min-width: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
   border: 1px solid rgb(234 211 226);
   border-radius: var(--radius-md);
   background:
@@ -1696,12 +1697,14 @@
 }
 
 .productionPreviewFrame[data-size="tablet"] {
-  width: min(48rem, 100%);
+  width: 48rem;
+  max-width: none;
   margin-inline: auto;
 }
 
 .productionPreviewFrame[data-size="mobile"] {
-  width: min(24rem, 100%);
+  width: 24rem;
+  max-width: none;
   margin-inline: auto;
 }
 
@@ -1918,6 +1921,63 @@
   margin-inline: auto;
 }
 
+.productionPreviewFrame :global([data-coach-site-page="preview"] .navbar14_container) {
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 3.35rem;
+  padding: 0.48rem 0.58rem;
+}
+
+.productionPreviewFrame :global([data-coach-site-page="preview"] .navbar14_logo-link) {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.productionPreviewFrame :global([data-coach-site-page="preview"] .navbar14_menu) {
+  display: none !important;
+}
+
+.productionPreviewFrame :global([data-coach-site-page="preview"] .navbar14_menu-button) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 2.75rem !important;
+  width: 2.75rem !important;
+  min-width: 2.75rem !important;
+  height: 2.75rem !important;
+  min-height: 2.75rem !important;
+  margin-left: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  color: inherit !important;
+}
+
+.productionPreviewFrame :global([data-coach-site-page="preview"] .menu-icon2) {
+  display: flex !important;
+  width: 1.35rem !important;
+  height: 1rem !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+}
+
+.productionPreviewFrame :global([data-coach-site-page="preview"] .menu-icon2_line-top),
+.productionPreviewFrame :global([data-coach-site-page="preview"] .menu-icon2_line-middle),
+.productionPreviewFrame :global([data-coach-site-page="preview"] .menu-icon2_line-bottom),
+.productionPreviewFrame :global([data-coach-site-page="preview"] .menu-icon1_line-middle-inner) {
+  display: block !important;
+  width: 100% !important;
+  height: 2px !important;
+  min-height: 2px !important;
+  border-radius: 999px !important;
+  background: currentColor !important;
+  opacity: 1 !important;
+}
+
+.productionPreviewFrame :global([data-coach-site-page="preview"] .yw-navbar-wordmark small) {
+  display: none;
+}
+
 .productionPreviewFrame[data-size="mobile"]
   :global([data-coach-site-page="preview"] .navbar14_component),
 .productionPreviewFrame[data-size="tablet"]
@@ -1932,6 +1992,8 @@
   :global([data-coach-site-page="preview"] .navbar14_container),
 .productionPreviewFrame[data-size="tablet"]
   :global([data-coach-site-page="preview"] .navbar14_container) {
+  justify-content: space-between;
+  gap: 0.5rem;
   min-height: 3.35rem;
   padding: 0.48rem 0.58rem;
 }
@@ -1948,6 +2010,14 @@
 .productionPreviewFrame[data-size="tablet"]
   :global([data-coach-site-page="preview"] .navbar14_menu-button) {
   display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 2.75rem !important;
+  width: 2.75rem !important;
+  min-width: 2.75rem !important;
+  height: 2.75rem !important;
+  min-height: 2.75rem !important;
+  margin-left: auto !important;
   visibility: visible !important;
   opacity: 1 !important;
   pointer-events: auto !important;

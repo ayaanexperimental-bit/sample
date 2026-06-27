@@ -15,6 +15,7 @@ import {
 } from "./coach-template-themes";
 
 export type ShopBuilderStatus =
+  | "abandoned"
   | "archived"
   | "draft"
   | "paid"
@@ -347,7 +348,7 @@ export function normalizeShopBuilderState(input: ShopBuilderStateInput): ShopBui
     bio: shortBio,
     coachEmail: sanitizeText(input.coachEmail || input.email, 180),
     coachName,
-    coachPhone: sanitizeText(input.coachPhone, 60),
+    coachPhone: normalizeShopPhoneForStorage(input.coachPhone),
     contactLink: sanitizeText(input.contactLink, 500),
     currentStep: clampStep(input.currentStep),
     email: sanitizeText(input.email || input.coachEmail, 180),
@@ -491,7 +492,7 @@ export function validateShopBuilderState(
   if (!normalized.slug) {
     issues.push({ field: "slug", message: "A public URL slug is required.", severity: "error" });
   }
-  if (normalized.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized.email)) {
+  if (normalized.email && !isSingleEmailAddress(normalized.email)) {
     issues.push({ field: "email", message: "Enter a valid email address.", severity: "error" });
   }
   if (normalized.coachPhone && !isValidIndianPhoneNumber(normalized.coachPhone)) {
@@ -549,7 +550,7 @@ export function validateShopDraftContactFields(
   const issues: ShopValidationIssue[] = [];
   const primaryEmail = (normalized.email || normalized.coachEmail).trim().toLowerCase();
 
-  if (primaryEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(primaryEmail)) {
+  if (primaryEmail && !isSingleEmailAddress(primaryEmail)) {
     issues.push({
       field: "email",
       message: "Enter one valid email address before saving this Shop draft.",
@@ -586,12 +587,25 @@ export function validateShopDraftContactFields(
 
 function hasUsableShopPaymentContact(email: string, phone: string) {
   const cleanEmail = email.trim().toLowerCase();
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail) || isValidIndianPhoneNumber(phone);
+  return isSingleEmailAddress(cleanEmail) || isValidIndianPhoneNumber(phone);
+}
+
+function isSingleEmailAddress(value: string) {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || /[\s,;]/.test(trimmed)) return false;
+  if ((trimmed.match(/@/g) || []).length !== 1) return false;
+  return /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(trimmed);
 }
 
 function isValidIndianPhoneNumber(value: string) {
   const digits = normalizeIndianPhoneDigits(value);
   return /^[6-9]\d{9}$/.test(digits);
+}
+
+function normalizeShopPhoneForStorage(value: unknown) {
+  const cleaned = sanitizeText(value, 60);
+  if (!cleaned) return "";
+  return isValidIndianPhoneNumber(cleaned) ? normalizeIndianPhoneDigits(cleaned) : cleaned;
 }
 
 function normalizeIndianPhoneDigits(value: string) {
@@ -640,13 +654,17 @@ function normalizeStringArray(value: unknown, fallback: string[]) {
 
 function normalizeShopStatus(value: unknown): ShopBuilderStatus {
   if (
+    value === "abandoned" ||
+    value === "archived" ||
     value === "draft" ||
     value === "paid" ||
     value === "payment_failed" ||
     value === "pending_payment" ||
+    value === "paused" ||
     value === "publish_failed" ||
     value === "published" ||
-    value === "publishing"
+    value === "publishing" ||
+    value === "removed"
   ) {
     return value;
   }
@@ -712,5 +730,6 @@ function isSingleSafePublicUrl(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return false;
   if (/\s/.test(trimmed)) return false;
+  if ((trimmed.match(/https?:\/\//gi) || []).length !== 1) return false;
   return isSafePublicUrl(trimmed);
 }

@@ -452,16 +452,19 @@ export function ShopBuilderClient() {
       }
 
       try {
-        const response = await fetch("/api/shop/draft", {
-          body: JSON.stringify({
-            accessKey: getStoredOrderAccessKey(),
-            idempotencyKey: getStableShopIdempotencyKey(snapshot.orderId),
-            state: snapshot
-          }),
-          cache: "no-store",
-          headers: { "content-type": "application/json" },
-          method: "POST"
-        });
+        const response = await fetch(
+          mode === "start" ? "/api/shop/drafts/find-or-create" : "/api/shop/drafts/save",
+          {
+            body: JSON.stringify({
+              accessKey: getStoredOrderAccessKey(),
+              idempotencyKey: getStableShopIdempotencyKey(snapshot.orderId),
+              state: snapshot
+            }),
+            cache: "no-store",
+            headers: { "content-type": "application/json" },
+            method: "POST"
+          }
+        );
         const payload = (await response.json().catch(() => ({}))) as CheckoutResponse;
         if (!response.ok || !payload.ok) {
           const error =
@@ -588,7 +591,47 @@ export function ShopBuilderClient() {
     );
   }
 
-  function startFreshBuilder() {
+  async function startFreshBuilder() {
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(
+        "Starting fresh will archive your previous draft. You can still ask support to recover it later. Continue?"
+      )
+    ) {
+      return;
+    }
+
+    const existingOrderId = normalizedState.orderId.trim();
+    const existingAccessKey = getStoredOrderAccessKey();
+    if (existingOrderId && existingAccessKey) {
+      setStartingBuilder(true);
+      setMessage("Archiving your previous draft before starting fresh...");
+      try {
+        const response = await fetch("/api/shop/drafts/start-fresh", {
+          body: JSON.stringify({
+            accessKey: existingAccessKey,
+            orderId: existingOrderId
+          }),
+          cache: "no-store",
+          headers: { "content-type": "application/json" },
+          method: "POST"
+        });
+        const payload = (await response.json().catch(() => ({}))) as { error?: string; ok?: boolean };
+        if (!response.ok || !payload.ok) {
+          setMessage(
+            payload.error ||
+              "Could not safely archive the previous draft. Use the secure resume link or contact support."
+          );
+          return;
+        }
+      } catch {
+        setMessage("Network issue while archiving the previous draft. Please try again.");
+        return;
+      } finally {
+        setStartingBuilder(false);
+      }
+    }
+
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
       window.localStorage.removeItem(CHECKOUT_IDEMPOTENCY_STORAGE_KEY);
@@ -930,7 +973,7 @@ export function ShopBuilderClient() {
                     : "Start Builder"}
               </button>
               {hasRecoverableDraft ? (
-                <button onClick={startFreshBuilder} type="button">
+                <button onClick={() => void startFreshBuilder()} type="button">
                   Start Fresh
                 </button>
               ) : null}
@@ -1799,7 +1842,7 @@ function sanitizeSingleFieldPaste(
   if (!raw) return "";
 
   if (mode === "url") {
-    const matches = raw.match(/https:\/\/[^\s,;]+/gi) || [];
+    const matches = raw.match(/https:\/\/(?:(?!https?:\/\/)[^\s,;])+/gi) || [];
     const unique = Array.from(new Set(matches.map((item) => item.trim())));
     if (unique.length === 1) return unique[0];
     if (unique.length > 1) return null;
@@ -1903,7 +1946,10 @@ function getEntryValidationIssues(state: ShopBuilderState): ShopValidationIssue[
 }
 
 function isValidShopEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim().toLowerCase());
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || /[\s,;]/.test(trimmed)) return false;
+  if ((trimmed.match(/@/g) || []).length !== 1) return false;
+  return /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(trimmed);
 }
 
 function isPublishFailedRecovery(state: ShopBuilderState) {

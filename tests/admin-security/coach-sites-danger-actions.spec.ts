@@ -57,7 +57,7 @@ test.describe("coach site dangerous actions", () => {
     });
     expect(missingFormPublish.status).toBe(400);
     expect(await missingFormPublish.json()).toMatchObject({
-      error: "Google Form registration link is required before publishing.",
+      error: "Registration/contact link is required before publishing.",
       ok: false
     });
 
@@ -98,7 +98,48 @@ test.describe("coach site dangerous actions", () => {
     });
     expect(duplicateFormPublish.status).toBe(400);
     expect(await duplicateFormPublish.json()).toMatchObject({
-      error: "Use a valid Google Form registration link before publishing.",
+      error: "Use a valid HTTPS registration/contact link before publishing.",
+      ok: false
+    });
+
+    const gluedDuplicateFormPublish = await coachSitesRequest({
+      env,
+      request: jsonRequest(
+        "http://127.0.0.1/api/admin/coach-sites",
+        {
+          site: {
+            coachEmail: "pipeline@example.com",
+            coachName: "Pipeline Coach",
+            coachPhone: "+919876543210",
+            content: {
+              benefits: ["Benefit one", "Benefit two", "Benefit three"],
+              coachIntro: "Pipeline intro",
+              ctaText: "Register Now",
+              faq: [{ answer: "Answer", question: "Question" }],
+              heroHeadline: "Pipeline headline",
+              socialCopy: "Pipeline social copy",
+              subheadline: "Pipeline subheadline",
+              trustText: "Pipeline trust",
+              visionText: "Pipeline vision"
+            },
+            googleFormUrl: "https://forms.gle/pipelineCoachhttps://forms.gle/duplicateCoach",
+            heroMediaType: "none",
+            id: "coach-site-pipeline",
+            niche: "Pipeline Wellness",
+            publicUrl: "/coach/pipeline-coach",
+            registerButtonText: "Register Now",
+            selectedThemeId: "canonical-coach-site-template",
+            slug: "pipeline-coach",
+            status: "published"
+          }
+        },
+        { cookie, "x-yw-admin-csrf": csrfToken },
+        "POST"
+      )
+    });
+    expect(gluedDuplicateFormPublish.status).toBe(400);
+    expect(await gluedDuplicateFormPublish.json()).toMatchObject({
+      error: "Use a valid HTTPS registration/contact link before publishing.",
       ok: false
     });
 
@@ -184,6 +225,41 @@ test.describe("coach site dangerous actions", () => {
       ok: false
     });
 
+    const invalidPhoneDraft = await coachSitesRequest({
+      env,
+      request: jsonRequest(
+        "http://127.0.0.1/api/admin/coach-sites",
+        {
+          site: {
+            coachEmail: "pipeline@example.com",
+            coachName: "Pipeline Coach",
+            coachPhone: "09938999448",
+            content: {
+              ctaText: "Register Now",
+              heroHeadline: "Pipeline headline",
+              subheadline: "Pipeline subheadline"
+            },
+            googleFormUrl: "",
+            heroMediaType: "none",
+            id: "coach-site-invalid-draft",
+            niche: "Pipeline Wellness",
+            publicUrl: "/coach/pipeline-coach",
+            registerButtonText: "Register Now",
+            selectedThemeId: "canonical-coach-site-template",
+            slug: "pipeline-coach",
+            status: "draft"
+          }
+        },
+        { cookie, "x-yw-admin-csrf": csrfToken },
+        "POST"
+      )
+    });
+    expect(invalidPhoneDraft.status).toBe(400);
+    expect(await invalidPhoneDraft.json()).toMatchObject({
+      error: "Use one valid 10-digit Indian support phone/WhatsApp number.",
+      ok: false
+    });
+
     const saveDraft = await coachSitesRequest({
       env,
       request: jsonRequest(
@@ -223,6 +299,7 @@ test.describe("coach site dangerous actions", () => {
     expect(saveDraft.status).toBe(200);
     expect(await saveDraft.json()).toMatchObject({
       coachSite: {
+        coachPhone: "9876543210",
         publicUrl: "/coach/pipeline-coach",
         slug: "pipeline-coach",
         status: "draft"

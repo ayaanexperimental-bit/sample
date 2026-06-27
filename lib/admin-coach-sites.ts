@@ -290,7 +290,7 @@ export const approvedCoachSites: CoachSiteRecord[] = [
     logoUrl: "",
     videoUrl:
       "https://www.youtube.com/embed/gBQoms47fB8?playsinline=1&controls=1&rel=0&modestbranding=1",
-    googleFormUrl: "https://forms.gle/nsY5F1mcjZnZBbVo9",
+    googleFormUrl: "",
     heroMediaType: "image",
     slug: "gyana-ranjan",
     publicUrl: "/coach/gyana-ranjan",
@@ -613,7 +613,7 @@ export function createCoachSiteFromForm(input: {
     bio: input.form.bio.trim(),
     vision: input.form.vision.trim(),
     coachEmail: input.form.coachEmail.trim(),
-    coachPhone: input.form.coachPhone.trim(),
+    coachPhone: normalizeCoachPhoneForStorage(input.form.coachPhone),
     existingPaidFunnelUrl: input.form.existingPaidFunnelUrl.trim(),
     archivedAt: input.status === "archived" || input.status === "removed" ? now : undefined,
     createdAt: now,
@@ -740,6 +740,19 @@ function parseLines(value: string, fallback: string[]) {
     .filter(Boolean);
 
   return lines.length > 0 ? lines : fallback;
+}
+
+function normalizeCoachPhoneForStorage(value: string) {
+  const cleaned = value.trim();
+  if (!cleaned) return "";
+  const normalized = normalizeIndianPhoneDigits(cleaned);
+  return /^[6-9]\d{9}$/.test(normalized) ? normalized : cleaned;
+}
+
+function normalizeIndianPhoneDigits(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
+  return digits;
 }
 
 function parseFaq(value: string) {

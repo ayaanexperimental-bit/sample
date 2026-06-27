@@ -259,6 +259,7 @@ test.describe("canonical coach template rules", () => {
           faqHeading: "Questions before connecting",
           footerBrandLine: "YW Nutritech Premium Coach Website",
           heroHeadline: "Asha Sharma: premium gut health support",
+          heroMediaLabel: "Support Details",
           heroTrustLine: "YW Nutritech care lens",
           journeySteps: [
             {
@@ -283,6 +284,7 @@ test.describe("canonical coach template rules", () => {
       rendered.heroTitleMain,
       rendered.heroTitleAccent,
       rendered.heroSubheadline,
+      rendered.detailHeading,
       rendered.faqHeading,
       rendered.stickyCtaEyebrow,
       rendered.trustHeading,
@@ -290,6 +292,7 @@ test.describe("canonical coach template rules", () => {
     ].join(" ");
 
     expect(renderedText).not.toMatch(STALE_DETERMINISTIC_DEFAULT_COPY);
+    expect(rendered.detailHeading).toBe("Before You Register");
   });
 
   test("Shop input normalization preserves typed URLs while validation/build enforce safe values", () => {
@@ -337,6 +340,33 @@ test.describe("canonical coach template rules", () => {
       ])
     );
 
+    const gluedDuplicateLink = normalizeShopBuilderState({
+      ...partial,
+      contactLink: "https://forms.gle/onehttps://forms.gle/one"
+    });
+    expect(validateShopBuilderState(gluedDuplicateLink, { requirePaymentReady: true })).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "contactLink",
+          message: "Enter one valid HTTPS registration/contact link only."
+        })
+      ])
+    );
+
+    const commaTailEmail = normalizeShopBuilderState({
+      ...partial,
+      contactLink: "https://forms.gle/one",
+      email: "asha@example.com,extra"
+    });
+    expect(validateShopBuilderState(commaTailEmail, { requirePaymentReady: true })).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "email",
+          message: "Enter a valid email address."
+        })
+      ])
+    );
+
     const invalidPhone = normalizeShopBuilderState({
       ...partial,
       coachPhone: "1234567",
@@ -370,6 +400,7 @@ test.describe("canonical coach template rules", () => {
       coachPhone: "+91 98765 43210",
       contactLink: "https://forms.gle/one"
     });
+    expect(safePhone.coachPhone).toBe("9876543210");
     expect(
       validateShopBuilderState(safePhone, { requirePaymentReady: true }).filter(
         (issue) => issue.severity === "error"
@@ -400,6 +431,7 @@ test.describe("canonical coach template rules", () => {
       "Enter a valid email first so we can save and recover this draft."
     );
     expect(shopClientSource).toContain("Coach details come next inside the builder.");
+    expect(shopClientSource).toContain("/api/shop/drafts/find-or-create");
     expect(shopClientSource).toContain("return isValidShopEmail(state.email || state.coachEmail);");
     const entryShellStart = shopClientSource.indexOf("styles.entryShell");
     const entryShellEnd = shopClientSource.indexOf(

@@ -1663,27 +1663,28 @@ export function AdminCoachSitesManager({
       return null;
     }
 
+    if (
+      sourceForm.googleFormUrl.trim() &&
+      !isSingleRegistrationContactUrl(sourceForm.googleFormUrl)
+    ) {
+      setMessage("Use one valid HTTPS registration/contact link.");
+      return null;
+    }
+
+    if (sourceForm.coachEmail.trim() && !isSingleEmailAddress(sourceForm.coachEmail)) {
+      setMessage("Use one valid support email.");
+      return null;
+    }
+
+    if (sourceForm.coachPhone.trim() && !isValidIndianPhoneNumber(sourceForm.coachPhone)) {
+      setMessage("Use one valid 10-digit Indian support phone/WhatsApp number.");
+      return null;
+    }
+
     if (status === "published") {
       if (!sourceForm.googleFormUrl.trim()) {
-        setMessage("Google Form registration link is required before publishing.");
-        setStorageMessage("Save as draft until the coach-specific Google Form link is added.");
-        return null;
-      }
-
-      if (!isSingleGoogleFormUrl(sourceForm.googleFormUrl)) {
-        setMessage("Use a valid Google Form registration link before publishing.");
-        return null;
-      }
-
-      if (sourceForm.coachEmail.trim() && !isSingleEmailAddress(sourceForm.coachEmail)) {
-        setMessage("Use one valid support email before publishing.");
-        return null;
-      }
-
-      if (sourceForm.coachPhone.trim() && !isValidIndianPhoneNumber(sourceForm.coachPhone)) {
-        setMessage(
-          "Use one valid 10-digit Indian support phone/WhatsApp number before publishing."
-        );
+      setMessage("Registration/contact link is required before publishing.");
+        setStorageMessage("Save as draft until the coach-specific registration/contact link is added.");
         return null;
       }
 
@@ -1699,6 +1700,9 @@ export function AdminCoachSitesManager({
 
     return {
       ...sourceForm,
+      coachPhone: sourceForm.coachPhone.trim()
+        ? normalizeIndianPhoneDigits(sourceForm.coachPhone)
+        : "",
       slug
     };
   }
@@ -2921,11 +2925,11 @@ export function AdminCoachSitesManager({
     }
 
     if (!site.googleFormUrl.trim()) {
-      return "Google Form registration link is required before publishing this draft.";
+      return "Registration/contact link is required before publishing this draft.";
     }
 
-    if (!isSingleGoogleFormUrl(site.googleFormUrl)) {
-      return "Use a valid Google Form registration link before publishing this draft.";
+    if (!isSingleRegistrationContactUrl(site.googleFormUrl)) {
+      return "Use a valid HTTPS registration/contact link before publishing this draft.";
     }
 
     if (site.coachEmail.trim() && !isSingleEmailAddress(site.coachEmail)) {
@@ -2947,15 +2951,16 @@ export function AdminCoachSitesManager({
     return "";
   }
 
-  function isSingleGoogleFormUrl(value: string) {
+  function isSingleRegistrationContactUrl(value: string) {
     const trimmed = value.trim();
     if (!trimmed || /\s/.test(trimmed)) return false;
+    if ((trimmed.match(/https?:\/\//gi) || []).length !== 1) return false;
 
     try {
       const url = new URL(trimmed);
       if (url.protocol !== "https:") return false;
-      if (url.hostname === "forms.gle") return url.pathname.length > 1;
-      return url.hostname === "docs.google.com" && url.pathname.startsWith("/forms/");
+      if (url.hostname.includes("localhost")) return false;
+      return url.pathname.length > 0;
     } catch {
       return false;
     }
@@ -2964,13 +2969,18 @@ export function AdminCoachSitesManager({
   function isSingleEmailAddress(value: string) {
     const trimmed = value.trim();
     if (!trimmed || /[\s,;]/.test(trimmed)) return false;
+    if ((trimmed.match(/@/g) || []).length !== 1) return false;
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
   }
 
   function isValidIndianPhoneNumber(value: string) {
+    return /^[6-9]\d{9}$/.test(normalizeIndianPhoneDigits(value));
+  }
+
+  function normalizeIndianPhoneDigits(value: string) {
     const digits = value.replace(/\D/g, "");
-    const normalized = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
-    return /^[6-9]\d{9}$/.test(normalized);
+    if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
+    return digits;
   }
 
   async function copyPublicLink(site: CoachSiteRecord) {
@@ -3728,8 +3738,8 @@ function CoachDialogRenderer({
             {wizardStep === 3 ? (
               <div className={styles.formGrid}>
                 <TextField
-                  label="Google Form registration link"
-                  helper="Register buttons open this link after the click is tracked."
+                  label="Registration/contact link"
+                  helper="Paste one Google Form, WhatsApp, or HTTPS registration/contact link."
                   onChange={(value) => onUpdateField("googleFormUrl", value)}
                   sanitizeMode="url"
                   type="url"
@@ -5730,8 +5740,8 @@ function PublishPanel({
       <code>{site.publicUrl}</code>
       {!site.googleFormUrl ? (
         <p className={styles.linkWarning}>
-          Google Form link missing. Public register buttons stay disabled until a registration link
-          is added.
+          Registration/contact link missing. Public register buttons stay disabled until a link is
+          added.
         </p>
       ) : null}
     </div>
@@ -6080,7 +6090,7 @@ function sanitizeSingleFieldPaste(
   if (!raw) return "";
 
   if (mode === "url") {
-    const matches = raw.match(/https:\/\/[^\s,;]+/gi) || [];
+    const matches = raw.match(/https:\/\/(?:(?!https?:\/\/)[^\s,;])+/gi) || [];
     const unique = Array.from(new Set(matches.map((item) => item.trim())));
     if (unique.length === 1) return unique[0];
     if (unique.length > 1) return null;

@@ -416,6 +416,7 @@ export async function saveShopDraft({
     };
   }
   const cleanIdempotencyKey = sanitizeText(idempotencyKey, 160);
+  const cleanAccessKey = sanitizeText(accessKey, 120);
   const existingIdempotentOrder =
     normalized.orderId || !cleanIdempotencyKey
       ? null
@@ -435,6 +436,24 @@ export async function saveShopDraft({
       (existingOrder.paymentStatus === "paid" || existingOrder.paymentStatus === "publishing") &&
       !existingOrder.lockedAt
     );
+
+    if (existingOrder) {
+      const existingAccessKey = await getExistingShopClientAccessKey(db, existingOrder.orderId);
+      const authorizedByIdempotency = existingIdempotentOrder?.orderId === existingOrder.orderId;
+      const authorizedByAccessKey = Boolean(
+        cleanAccessKey && existingAccessKey && cleanAccessKey === existingAccessKey
+      );
+
+      if (!isPublishFailedRecovery && !authorizedByIdempotency && !authorizedByAccessKey) {
+        return {
+          ok: false as const,
+          error:
+            "A saved draft exists for this email. Continue from the same device, open your secure resume link, or contact YWcoach support.",
+          resumeRequired: true as const
+        };
+      }
+    }
+
     if (
       existingOrder &&
       (existingOrder.lockedAt ||
@@ -454,7 +473,6 @@ export async function saveShopDraft({
 
     if (existingOrder && isPublishFailedRecovery) {
       const existingAccessKey = await getExistingShopClientAccessKey(db, existingOrder.orderId);
-      const cleanAccessKey = sanitizeText(accessKey, 120);
       if (!existingAccessKey || !cleanAccessKey || cleanAccessKey !== existingAccessKey) {
         return {
           ok: false as const,
@@ -877,6 +895,79 @@ export async function getPublicShopOrder({
     state: hasClientAccess ? order.state : undefined,
     workflowStage: order.workflowStage
   };
+}
+
+export async function archiveShopDraft({
+  accessKey,
+  env,
+  orderId,
+  reason = "start_fresh"
+}: {
+  accessKey?: string;
+  env: ShopEnv;
+  orderId: string;
+  reason?: "archive" | "start_fresh";
+}) {
+  const db = env.ADMIN_DB;
+  if (!db) return { ok: false as const, error: "Shop database is not configured." };
+  await ensureShopTables(env);
+
+  const cleanOrderId = sanitizeText(orderId, 160);
+  const order = cleanOrderId ? await getShopOrder(env, cleanOrderId) : null;
+  if (!order) return { ok: false as const, error: "Draft was not found." };
+
+  const existingAccessKey = await getExistingShopClientAccessKey(db, order.orderId);
+  const cleanAccessKey = sanitizeText(accessKey, 120);
+  if (!existingAccessKey || !cleanAccessKey || cleanAccessKey !== existingAccessKey) {
+    return {
+      ok: false as const,
+      error:
+        "Open the secure resume link or continue on the same device before archiving this draft."
+    };
+  }
+
+  const canArchive =
+    order.paymentStatus === "draft" ||
+    order.paymentStatus === "payment_failed" ||
+    order.siteStatus === "draft" ||
+    order.siteStatus === "payment_failed";
+  if (!canArchive || order.paymentStatus === "pending_payment" || order.siteStatus === "pending_payment") {
+    return {
+      ok: false as const,
+      error:
+        "This draft is already in payment or publishing. Finish or recover that flow before starting fresh."
+    };
+  }
+  if (order.paymentStatus === "published" || order.siteStatus === "published") {
+    return {
+      ok: false as const,
+      error: "This website is already published. Future changes are handled through YWcoach support."
+    };
+  }
+
+  const now = getNowSeconds();
+  const workflowStage = reason === "start_fresh" ? "draft_archived_start_fresh" : "draft_archived";
+  await db
+    .prepare(
+      `UPDATE shop_sites
+       SET payment_status = 'archived',
+           site_status = 'archived',
+           workflow_stage = ?1,
+           issue_status = ?2,
+           updated_at = ?3
+       WHERE order_id = ?4`
+    )
+    .bind(
+      workflowStage,
+      reason === "start_fresh"
+        ? "Archived by coach before starting a fresh website draft."
+        : "Archived by coach.",
+      now,
+      order.orderId
+    )
+    .run();
+
+  return { ok: true as const, order: await getShopOrder(env, order.orderId) };
 }
 
 export async function listShopAdminSnapshot(env: ShopEnv): Promise<ShopAdminSnapshot> {
@@ -1422,6 +1513,8 @@ export async function recordShopFailure({
 
 export async function createShopReportCsv(env: ShopEnv, report: string) {
   const snapshot = await listShopAdminSnapshot(env);
+  if (report === "duplicate-drafts") return createDuplicateDraftsCsv(snapshot.sites);
+  if (report === "input-audit") return createInputAuditCsv(snapshot.sites);
   if (report === "settings") return createPaymentAuditCsv(snapshot.audits);
   if (report === "failures") return createFailureCsv(snapshot.failures);
   if (report === "analytics") return createAnalyticsSummaryCsv(snapshot.sites);
@@ -1495,6 +1588,100 @@ function createSitesCsv(sites: ShopSiteRecord[]) {
         .join(",")
     )
   ].join("\n");
+}
+
+function createInputAuditCsv(sites: ShopSiteRecord[]) {
+  const headers = [
+    "order_id",
+    "coach_name",
+    "coach_email",
+    "field",
+    "issue",
+    "current_value",
+    "status",
+    "updated_at"
+  ];
+  const rows = sites.flatMap((site) => {
+    const issues = validateShopDraftContactFields({
+      ...site.state,
+      coachEmail: site.coachEmail,
+      coachPhone: site.coachPhone,
+      contactLink: site.contactLink,
+      email: site.coachEmail
+    });
+
+    return issues.map((issue) => [
+      site.orderId,
+      site.coachName,
+      site.coachEmail,
+      issue.field,
+      issue.message,
+      getShopAuditFieldValue(site, String(issue.field)),
+      "needs_review",
+      site.updatedAt
+    ]);
+  });
+
+  return [headers.join(","), ...rows.map((row) => row.map(csvEscape).join(","))].join("\n");
+}
+
+function createDuplicateDraftsCsv(sites: ShopSiteRecord[]) {
+  const headers = [
+    "coach_email",
+    "active_draft_count",
+    "kept_order_id",
+    "duplicate_order_id",
+    "duplicate_status",
+    "duplicate_updated_at",
+    "recommendation"
+  ];
+  const activeDrafts = sites.filter(isActiveUnfinishedShopDraft);
+  const grouped = new Map<string, ShopSiteRecord[]>();
+  activeDrafts.forEach((site) => {
+    const email = sanitizeEmail(site.coachEmail || site.state.email);
+    if (!email) return;
+    const list = grouped.get(email) || [];
+    list.push(site);
+    grouped.set(email, list);
+  });
+
+  const rows: string[][] = [];
+  grouped.forEach((group, email) => {
+    if (group.length < 2) return;
+    const sorted = [...group].sort(
+      (left, right) => Date.parse(right.updatedAt || "") - Date.parse(left.updatedAt || "")
+    );
+    const kept = sorted[0];
+    sorted.slice(1).forEach((duplicate) => {
+      rows.push([
+        email,
+        String(group.length),
+        kept?.orderId || "",
+        duplicate.orderId,
+        `${duplicate.paymentStatus}/${duplicate.siteStatus}`,
+        duplicate.updatedAt,
+        "Keep latest active draft; archive older duplicate after manual review."
+      ]);
+    });
+  });
+
+  return [headers.join(","), ...rows.map((row) => row.map(csvEscape).join(","))].join("\n");
+}
+
+function getShopAuditFieldValue(site: ShopSiteRecord, field: string) {
+  if (field === "coachPhone") return site.coachPhone;
+  if (field === "contactLink" || field === "whatsappLink") return site.contactLink;
+  if (field === "email" || field === "coachEmail") return site.coachEmail;
+  return "";
+}
+
+function isActiveUnfinishedShopDraft(site: ShopSiteRecord) {
+  return (
+    !site.lockedAt &&
+    ((site.paymentStatus === "draft" && site.siteStatus === "draft") ||
+      (site.paymentStatus === "payment_failed" && site.siteStatus === "payment_failed") ||
+      (site.paymentStatus === "pending_payment" && site.siteStatus === "pending_payment"))
+  );
 }
 
 function createFailureCsv(failures: ShopFailureRecord[]) {
@@ -1743,10 +1930,19 @@ async function getShopOrderByIdempotencyKey(db: D1Database, idempotencyKey: stri
       .prepare(`SELECT * FROM shop_sites WHERE idempotency_key = ?1 LIMIT 1`)
       .bind(sanitizeText(idempotencyKey, 160))
       .first<ShopSiteRow>();
-    return row ? shopSiteRowToRecord(row) : null;
+    const order = row ? shopSiteRowToRecord(row) : null;
+    return order && isAutoResumableShopDraft(order) ? order : null;
   } catch {
     return null;
   }
+}
+
+function isAutoResumableShopDraft(order: ShopSiteRecord) {
+  return (
+    (order.paymentStatus === "draft" && order.siteStatus === "draft") ||
+    (order.paymentStatus === "payment_failed" && order.siteStatus === "payment_failed") ||
+    (order.paymentStatus === "pending_payment" && order.siteStatus === "pending_payment")
+  );
 }
 
 async function getActiveShopDraftByEmail(db: D1Database, email: string) {
@@ -2050,6 +2246,7 @@ function parseJson<T>(value: string, fallback: T): T {
 
 function normalizeStatus(value: unknown): ShopBuilderStatus {
   if (
+    value === "abandoned" ||
     value === "archived" ||
     value === "draft" ||
     value === "paid" ||

@@ -562,6 +562,7 @@ body.yw-circle-body {
 .circle-marquee {
   position: relative;
   z-index: 1;
+  contain: inline-size layout paint;
   overflow: hidden;
   border-top: 1px solid rgba(208, 245, 240, 0.38);
   border-bottom: 1px solid rgba(208, 245, 240, 0.38);
@@ -915,12 +916,24 @@ body.yw-circle-body {
 .yw-circle-hero .elementor-button,
 .yw-circle-hero .elementor-button:visited,
 .yw-circle-hero a.elementor-button {
+  max-width: 100%;
+  min-width: 0;
   border: 1px solid rgba(208, 245, 240, 0.82) !important;
   background: linear-gradient(110deg, #031a23, #00677c 48%, #12bfae) !important;
   box-shadow:
     0 1.1rem 2.8rem rgba(2, 25, 32, 0.38),
     inset 0 1px rgba(255, 255, 255, 0.18);
   color: var(--circle-aqua-strong) !important;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.yw-circle-hero .elementor-button-content-wrapper,
+.yw-circle-hero .elementor-button-text {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .yw-circle-hero .elementor-element-b1105bd .elementor-widget-container,
@@ -2133,14 +2146,19 @@ body.yw-circle-body {
 .yw-niche-bonus .yw-bonus-grid strong {
   position: relative;
   z-index: 1;
+  display: block;
   margin: auto -1rem 0;
   padding: 1rem 1.1rem;
   overflow: hidden;
   background: linear-gradient(110deg, #053747 0%, #0b94a4 54%, #21e6c1 100%);
   color: #e8fff9;
-  font-size: 0.76rem;
-  letter-spacing: 0.03em;
+  font-size: clamp(0.68rem, 2.6vw, 0.76rem);
+  line-height: 1.25;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+  text-align: center;
   text-transform: uppercase;
+  white-space: normal;
 }
 
 .yw-niche-bonus .yw-bonus-grid strong::after {

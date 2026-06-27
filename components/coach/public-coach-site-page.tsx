@@ -810,7 +810,7 @@ export function PublicCoachSitePage({
       category: "link_missing",
       message: "We could not open the registration step. Please contact support for help.",
       referenceId: createSupportErrorReference("link_missing", site.slug),
-      safeMessage: "Google Form registration link missing.",
+      safeMessage: "Registration/contact link missing.",
       userAction: "coach_register_link_missing"
     });
   }

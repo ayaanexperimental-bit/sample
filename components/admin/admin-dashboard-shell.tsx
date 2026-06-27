@@ -1466,7 +1466,7 @@ function buildOverviewAnalytics(
     ]),
     dataQualityWarnings: [
       missingFormRows.length
-        ? `${missingFormRows.length} free coach site${missingFormRows.length === 1 ? "" : "s"} missing Google Form link.`
+        ? `${missingFormRows.length} free coach site${missingFormRows.length === 1 ? "" : "s"} missing registration/contact link.`
         : "All current free coach sites have Google Form status resolved.",
       missingSupportRows.length
         ? `${missingSupportRows.length} coach site${missingSupportRows.length === 1 ? "" : "s"} using default support fallback.`
@@ -4716,6 +4716,8 @@ function ShopView({
     ["Purchases", "purchases"],
     ["Published sites", "published"],
     ["Failures", "failures"],
+    ["Input audit", "input-audit"],
+    ["Duplicate drafts", "duplicate-drafts"],
     ["Payment settings audit", "settings"],
     ["Analytics summary", "analytics"]
   ];

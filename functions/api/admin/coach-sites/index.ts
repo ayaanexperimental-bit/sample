@@ -93,6 +93,13 @@ export async function onRequest({ request, env }: PagesContext) {
       return adminJson({ ok: false, error: "Coach site payload is required." }, 400);
     }
 
+    const contactError = getCoachContactValidationError(site, site.status === "published");
+    if (contactError) {
+      return adminJson({ ok: false, error: contactError }, 400);
+    }
+
+    normalizeCoachContactFields(site);
+
     if (site.status === "published") {
       const publishError = getPublishValidationError(site);
       if (publishError) {
@@ -448,6 +455,42 @@ function parseCoachSiteBody(value: unknown): Partial<CoachSiteRecord> | null {
   return value && typeof value === "object" ? (value as Partial<CoachSiteRecord>) : null;
 }
 
+function getCoachContactValidationError(site: Partial<CoachSiteRecord>, requireGoogleForm: boolean) {
+  const coachEmail = typeof site.coachEmail === "string" ? site.coachEmail.trim() : "";
+  const coachPhone = typeof site.coachPhone === "string" ? site.coachPhone.trim() : "";
+  const googleFormUrl = typeof site.googleFormUrl === "string" ? site.googleFormUrl.trim() : "";
+
+  if (requireGoogleForm && !googleFormUrl) {
+    return "Registration/contact link is required before publishing.";
+  }
+
+  if (googleFormUrl && !isSingleRegistrationContactUrl(googleFormUrl)) {
+    return requireGoogleForm
+      ? "Use a valid HTTPS registration/contact link before publishing."
+      : "Use one valid HTTPS registration/contact link.";
+  }
+
+  if (coachEmail && !isSingleEmailAddress(coachEmail)) {
+    return requireGoogleForm
+      ? "Use one valid support email before publishing."
+      : "Use one valid support email.";
+  }
+
+  if (coachPhone && !isValidIndianPhoneNumber(coachPhone)) {
+    return requireGoogleForm
+      ? "Use one valid 10-digit Indian support phone/WhatsApp number before publishing."
+      : "Use one valid 10-digit Indian support phone/WhatsApp number.";
+  }
+
+  return "";
+}
+
+function normalizeCoachContactFields(site: Partial<CoachSiteRecord>) {
+  if (typeof site.coachPhone === "string" && site.coachPhone.trim()) {
+    site.coachPhone = normalizeIndianPhoneDigits(site.coachPhone);
+  }
+}
+
 function getPublishValidationError(site: Partial<CoachSiteRecord>) {
   const coachName = typeof site.coachName === "string" ? site.coachName.trim() : "";
   const niche = typeof site.niche === "string" ? site.niche.trim() : "";
@@ -469,11 +512,11 @@ function getPublishValidationError(site: Partial<CoachSiteRecord>) {
   }
 
   if (!googleFormUrl) {
-    return "Google Form registration link is required before publishing.";
+    return "Registration/contact link is required before publishing.";
   }
 
-  if (!isSingleGoogleFormUrl(googleFormUrl)) {
-    return "Use a valid Google Form registration link before publishing.";
+  if (!isSingleRegistrationContactUrl(googleFormUrl)) {
+    return "Use a valid HTTPS registration/contact link before publishing.";
   }
 
   if (coachEmail && !isSingleEmailAddress(coachEmail)) {
@@ -502,15 +545,16 @@ function getPublishValidationError(site: Partial<CoachSiteRecord>) {
   return "";
 }
 
-function isSingleGoogleFormUrl(value: string) {
+function isSingleRegistrationContactUrl(value: string) {
   const trimmed = value.trim();
   if (!trimmed || /\s/.test(trimmed)) return false;
+  if ((trimmed.match(/https?:\/\//gi) || []).length !== 1) return false;
 
   try {
     const url = new URL(trimmed);
     if (url.protocol !== "https:") return false;
-    if (url.hostname === "forms.gle") return url.pathname.length > 1;
-    return url.hostname === "docs.google.com" && url.pathname.startsWith("/forms/");
+    if (url.hostname.includes("localhost")) return false;
+    return url.pathname.length > 0;
   } catch {
     return false;
   }
@@ -519,13 +563,18 @@ function isSingleGoogleFormUrl(value: string) {
 function isSingleEmailAddress(value: string) {
   const trimmed = value.trim();
   if (!trimmed || /[\s,;]/.test(trimmed)) return false;
+  if ((trimmed.match(/@/g) || []).length !== 1) return false;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
 }
 
 function isValidIndianPhoneNumber(value: string) {
+  return /^[6-9]\d{9}$/.test(normalizeIndianPhoneDigits(value));
+}
+
+function normalizeIndianPhoneDigits(value: string) {
   const digits = value.replace(/\D/g, "");
-  const normalized = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
-  return /^[6-9]\d{9}$/.test(normalized);
+  if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
+  return digits;
 }
 
 function parseCoachStatus(value: unknown): CoachSiteStatus | null {

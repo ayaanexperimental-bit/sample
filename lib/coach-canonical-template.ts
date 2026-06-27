@@ -684,7 +684,7 @@ export function getCanonicalCoachSectionCopy(site: PublicCoachSiteRecord): Canon
   return {
     allowsWomenSpecificCopy,
     detailCards: getCanonicalAdaptiveDetailCards(site, profile.label),
-    detailHeading: sanitizeAdaptiveCopy(site.content.heroMediaLabel, "Support Details", allowsWomenSpecificCopy),
+    detailHeading: sanitizeAdaptiveCopy(site.content.heroMediaLabel, "Before You Register", allowsWomenSpecificCopy),
     detailSubline: sanitizeAdaptiveCopy(
       site.content.heroTrustLine,
       profileCopy.detailSubline,
@@ -999,7 +999,7 @@ function sanitizeAdaptiveCopy(value: string | undefined, fallback: string, allow
 }
 
 function isWeakSectionCopy(value: string) {
-  return /^(coach|register|register now|cta|contact coach|contact support|free guest registration|yw care lens|coach referral|yw nutritech coach network|yw nutritech premium coach profile|built for client-ready referrals|ready to work with this coach\??|questions before connecting|yw nutritech premium coach website|coach media spotlight|photo and video-ready profile)$/i.test(
+  return /^(coach|register|register now|cta|contact coach|contact support|free guest registration|support details|yw care lens|coach referral|yw nutritech coach network|yw nutritech premium coach profile|built for client-ready referrals|ready to work with this coach\??|questions before connecting|yw nutritech premium coach website|coach media spotlight|photo and video-ready profile)$/i.test(
     value.trim()
   ) || /\b(support style|care lens|premium\s+[a-z0-9 /&-]+\s+support)\b/i.test(value);
 }

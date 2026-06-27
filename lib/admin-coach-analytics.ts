@@ -429,7 +429,7 @@ function getLowActivityReasons({
 
   if (!hasFreeGuestLink && !hasPaidMasterclass) reasons.push("No funnel connected yet");
   if (hasFreeGuestLink && freeMetrics.googleFormStatus === "missing") {
-    reasons.push("Google Form link is missing");
+    reasons.push("Registration/contact link is missing");
   }
   if (hasFreeGuestLink && freeMetrics.supportStatus === "fallback support used") {
     reasons.push("Coach-specific fallback support is missing");
