@@ -1416,5 +1416,8 @@ test.describe("canonical coach template rules", () => {
     expect(cssSource).toContain("@keyframes yw-bonus-grid-drift");
     expect(cssSource).toContain("@keyframes yw-bonus-shine-pass");
     expect(cssSource).toContain(".yw-bonus-visual--image .yw-bonus-visual__orb");
+    expect(cssSource).toContain(".yw-circle-site .yw-bonus-visual:not(.yw-bonus-visual--image)");
+    expect(cssSource).toContain(".yw-circle-site .yw-bonus-visual--image");
+    expect(cssSource).not.toContain(".yw-circle-site .yw-bonus-visual {\n  background:");
   });
 });

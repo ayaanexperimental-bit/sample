@@ -2012,11 +2012,20 @@ body.yw-circle-body {
 
 .yw-bonus-visual--image {
   min-height: 11.5rem;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+}
+
+.yw-circle-site .yw-bonus-visual--image {
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
 }
 
 .yw-bonus-visual--image::before,
 .yw-bonus-visual--image::after {
-  opacity: 0.14;
+  opacity: 0.08;
 }
 
 .yw-bonus-visual--image .yw-bonus-visual__orb {
@@ -4228,7 +4237,7 @@ body.yw-circle-body {
   color: color-mix(in srgb, var(--template-bg-deep) 86%, black);
 }
 
-.yw-circle-site .yw-bonus-visual {
+.yw-circle-site .yw-bonus-visual:not(.yw-bonus-visual--image) {
   background:
     radial-gradient(
       circle at 22% 18%,
