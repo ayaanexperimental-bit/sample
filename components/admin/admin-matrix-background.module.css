@@ -3,6 +3,7 @@
   inset: 0;
   overflow: hidden;
   pointer-events: none;
+  contain: paint;
 }
 
 .canvas {
@@ -12,6 +13,8 @@
   opacity: 0.74;
   filter: saturate(1.36) contrast(1.26) brightness(1.08);
   mix-blend-mode: screen;
+  transform: translate3d(0, 0, 0);
+  will-change: contents;
 }
 
 .vignette {
