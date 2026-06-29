@@ -12,6 +12,7 @@ import styles from "./border-glow.module.css";
 type BorderGlowStyle = CSSProperties & Record<`--${string}`, string | number>;
 
 export type BorderGlowProps = HTMLAttributes<HTMLDivElement> & {
+  animationDelayMs?: number;
   backgroundColor?: string;
   borderRadius?: number;
   colors?: string[];
@@ -111,24 +112,38 @@ function animateValue({
   start?: number;
 }) {
   const startTime = performance.now() + delay;
+  let animationFrame = 0;
+  let timeout = 0;
+  let cancelled = false;
 
   function tick() {
+    if (cancelled) return;
+
     const elapsed = performance.now() - startTime;
     const progress = Math.min(elapsed / duration, 1);
     onUpdate(start + (end - start) * ease(progress));
 
     if (progress < 1) {
-      window.requestAnimationFrame(tick);
+      animationFrame = window.requestAnimationFrame(tick);
     } else {
       onEnd?.();
     }
   }
 
-  window.setTimeout(() => window.requestAnimationFrame(tick), delay);
+  timeout = window.setTimeout(() => {
+    animationFrame = window.requestAnimationFrame(tick);
+  }, delay);
+
+  return () => {
+    cancelled = true;
+    window.clearTimeout(timeout);
+    window.cancelAnimationFrame(animationFrame);
+  };
 }
 
 export function BorderGlow({
   animated = false,
+  animationDelayMs = 0,
   backgroundColor = "#120f17",
   borderRadius = 28,
   children,
@@ -199,17 +214,32 @@ export function BorderGlow({
     if (!animated || !cardRef.current) return;
 
     const card = cardRef.current;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const coarsePointer = window.matchMedia("(max-width: 700px), (pointer: coarse)").matches;
+    if (reducedMotion) return;
+
     const angleStart = 110;
     const angleEnd = 465;
+    const startDelay = coarsePointer ? Math.max(animationDelayMs, 360) : animationDelayMs;
+    const introDuration = coarsePointer ? 420 : 500;
+    const angleIntroDuration = coarsePointer ? 1100 : 1500;
+    const angleExitDuration = coarsePointer ? 1500 : 2250;
+    const fadeDuration = coarsePointer ? 900 : 1500;
+    const fadeDelay = startDelay + (coarsePointer ? 1700 : 2500);
+    const peakEdge = 100;
+    const cancelAnimations: Array<() => void> = [];
     card.classList.add(styles.sweepActive);
     card.style.setProperty("--cursor-angle", `${angleStart}deg`);
 
-    animateValue({
-      duration: 500,
+    cancelAnimations.push(animateValue({
+      delay: startDelay,
+      duration: introDuration,
+      end: peakEdge,
       onUpdate: (value) => card.style.setProperty("--edge-proximity", `${value}`)
-    });
-    animateValue({
-      duration: 1500,
+    }));
+    cancelAnimations.push(animateValue({
+      delay: startDelay,
+      duration: angleIntroDuration,
       ease: easeInCubic,
       end: 50,
       onUpdate: (value) => {
@@ -218,12 +248,12 @@ export function BorderGlow({
           `${(angleEnd - angleStart) * (value / 100) + angleStart}deg`
         );
       }
-    });
-    animateValue({
-      delay: 1500,
-      duration: 2250,
+    }));
+    cancelAnimations.push(animateValue({
+      delay: startDelay + angleIntroDuration,
+      duration: angleExitDuration,
       ease: easeOutCubic,
-      end: 100,
+      end: peakEdge,
       start: 50,
       onUpdate: (value) => {
         card.style.setProperty(
@@ -231,17 +261,24 @@ export function BorderGlow({
           `${(angleEnd - angleStart) * (value / 100) + angleStart}deg`
         );
       }
-    });
-    animateValue({
-      delay: 2500,
-      duration: 1500,
+    }));
+    cancelAnimations.push(animateValue({
+      delay: fadeDelay,
+      duration: fadeDuration,
       ease: easeInCubic,
       end: 0,
       onEnd: () => card.classList.remove(styles.sweepActive),
       onUpdate: (value) => card.style.setProperty("--edge-proximity", `${value}`),
-      start: 100
-    });
-  }, [animated]);
+      start: peakEdge
+    }));
+
+    return () => {
+      for (const cancel of cancelAnimations) {
+        cancel();
+      }
+      card.classList.remove(styles.sweepActive);
+    };
+  }, [animated, animationDelayMs]);
 
   const glowVars = buildGlowVars(glowColor, glowIntensity);
   const gradientVars = buildGradientVars(colors);

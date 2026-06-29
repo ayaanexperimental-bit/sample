@@ -647,12 +647,16 @@
   --od-font-ui: "IBM Plex Sans", Aptos, "Segoe UI", system-ui, sans-serif;
   --od-font-mono: "JetBrains Mono", "IBM Plex Mono", "Cascadia Code", ui-monospace,
     SFMono-Regular, Menlo, monospace;
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
   place-items: center;
   background:
     linear-gradient(90deg, color-mix(in oklch, var(--od-border) 20%, transparent) 1px, transparent 1px),
     linear-gradient(0deg, color-mix(in oklch, var(--od-border) 18%, transparent) 1px, transparent 1px),
     radial-gradient(circle at 52% 0%, color-mix(in oklch, var(--od-accent-2) 13%, transparent), transparent 34rem),
     var(--od-bg);
+  background-color: var(--od-bg);
   background-size: 56px 56px, 56px 56px, auto, auto;
   color: var(--od-fg);
   font-family: var(--od-font-ui);
@@ -660,6 +664,13 @@
 
 .matrixBackgroundLayer {
   z-index: 0;
+}
+
+.adminPage:not(.adminDashboardPage) .matrixBackgroundLayer {
+  position: fixed;
+  inset: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .adminPage:not(.adminDashboardPage) .backdrop {

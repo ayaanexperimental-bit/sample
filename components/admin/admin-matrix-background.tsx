@@ -32,6 +32,8 @@ const GLYPHS =
 
 const DESKTOP_FRAME_MS = 40;
 const MOBILE_FRAME_MS = 48;
+const DESKTOP_STARTUP_DELAY_MS = 120;
+const MOBILE_STARTUP_DELAY_MS = 650;
 const DESKTOP_DPR_LIMIT = 1.25;
 const MOBILE_DPR_LIMIT = 1;
 const TRACER_SHADOW_BLUR = 14;
@@ -57,6 +59,7 @@ export function AdminMatrixBackground({ className = "" }: MatrixBackgroundProps)
     const coarseQuery = window.matchMedia("(max-width: 700px), (pointer: coarse)");
     let animationFrame = 0;
     let resizeFrame = 0;
+    let startupTimer = 0;
     let lastFrameAt = 0;
     let frameIntervalMs = DESKTOP_FRAME_MS;
     let canvasWidth = 0;
@@ -65,6 +68,7 @@ export function AdminMatrixBackground({ className = "" }: MatrixBackgroundProps)
     let isCanvasVisible = true;
     let isPageVisible = document.visibilityState === "visible";
     let reduceMotion = motionQuery.matches;
+    let startupComplete = false;
 
     function buildGrid(width: number, height: number, dpr: number): MatrixGrid {
       const cellWidth = width < 700 ? 14 : 17;
@@ -238,15 +242,32 @@ export function AdminMatrixBackground({ className = "" }: MatrixBackgroundProps)
     }
 
     function startAnimation() {
-      if (animationFrame || reduceMotion || !isPageVisible || !isCanvasVisible) {
+      if (animationFrame || reduceMotion || !startupComplete || !isPageVisible || !isCanvasVisible) {
         return;
       }
 
       animationFrame = window.requestAnimationFrame(animate);
     }
 
+    function startAnimationAfterFirstPaint() {
+      if (reduceMotion) return;
+
+      window.clearTimeout(startupTimer);
+      startupTimer = window.setTimeout(
+        () => {
+          startupComplete = true;
+          lastFrameAt = 0;
+          startAnimation();
+        },
+        coarseQuery.matches ? MOBILE_STARTUP_DELAY_MS : DESKTOP_STARTUP_DELAY_MS
+      );
+    }
+
     function handleMotionChange(event: MediaQueryListEvent) {
       reduceMotion = event.matches;
+      if (!reduceMotion) {
+        startupComplete = true;
+      }
       const grid = gridRef.current;
       if (grid) {
         paintAmbientLayer(grid);
@@ -291,7 +312,7 @@ export function AdminMatrixBackground({ className = "" }: MatrixBackgroundProps)
 
     resize();
     draw(performance.now());
-    startAnimation();
+    startAnimationAfterFirstPaint();
     observer?.observe(activeCanvas);
     window.addEventListener("resize", scheduleResize, { passive: true });
     motionQuery.addEventListener("change", handleMotionChange);
@@ -301,6 +322,7 @@ export function AdminMatrixBackground({ className = "" }: MatrixBackgroundProps)
     return () => {
       window.cancelAnimationFrame(animationFrame);
       window.cancelAnimationFrame(resizeFrame);
+      window.clearTimeout(startupTimer);
       window.removeEventListener("resize", scheduleResize);
       motionQuery.removeEventListener("change", handleMotionChange);
       coarseQuery.removeEventListener("change", scheduleResize);
