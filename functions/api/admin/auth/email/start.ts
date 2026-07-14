@@ -2,7 +2,10 @@ import type { D1Database } from "@cloudflare/workers-types";
 import {
   adminJson,
   GENERIC_ADMIN_AUTH_ERROR,
+  getAdminRoleForEmail,
+  isAdminDemoAuthEnabled,
   isValidAdminEmail,
+  isValidOtp,
   normalizeAdminEmail,
   readJsonBody
 } from "../../../../../lib/server/admin-auth";
@@ -11,7 +14,9 @@ import { checkAdminRateLimit } from "../../../../../lib/server/admin-rate-limit"
 
 type Env = {
   ADMIN_ALLOWED_EMAILS?: string;
+  ADMIN_AUTH_DEMO_ENABLED?: string;
   ADMIN_DB?: D1Database;
+  ADMIN_DEV_OTP?: string;
   ADMIN_EMAIL_OTP_ENABLED?: string;
   ADMIN_EMAIL_OTP_FROM?: string;
   ADMIN_EMAIL_OTP_FROM_NAME?: string;
@@ -65,6 +70,14 @@ export async function onRequest({ request, env }: PagesContext) {
     }
 
     if (!result.ok && result.reason === "not_configured") {
+      if (await canUseLocalDemoEmailOtp({ email, env, request })) {
+        return adminJson({
+          message: GENERIC_SENT_MESSAGE,
+          nextStep: "otp",
+          ok: true
+        });
+      }
+
       return adminJson({ ok: false, error: GENERIC_ADMIN_AUTH_ERROR }, 503);
     }
 
@@ -76,4 +89,50 @@ export async function onRequest({ request, env }: PagesContext) {
   } catch {
     return adminJson({ ok: false, error: GENERIC_ADMIN_AUTH_ERROR }, 502);
   }
+}
+
+async function canUseLocalDemoEmailOtp({
+  email,
+  env,
+  request
+}: {
+  email: string;
+  env: Env;
+  request: Request;
+}) {
+  const localDevOtp = env.ADMIN_DEV_OTP?.trim() || "";
+
+  return (
+    isAdminDemoAuthEnabled(env) &&
+    isLocalDemoRequest(request) &&
+    isValidOtp(localDevOtp) &&
+    Boolean(await getAdminRoleForEmail(email, env))
+  );
+}
+
+function isLocalDemoRequest(request: Request) {
+  const urlHostname = new URL(request.url).hostname.toLowerCase();
+  const headerHostname = getHostHeaderHostname(request.headers.get("host"));
+
+  return isLocalHostname(urlHostname) && isLocalHostname(headerHostname);
+}
+
+function getHostHeaderHostname(hostHeader: string | null) {
+  const normalized = (hostHeader || "").trim().toLowerCase();
+  if (normalized.startsWith("[")) {
+    const closingBracketIndex = normalized.indexOf("]");
+
+    return closingBracketIndex >= 0 ? normalized.slice(0, closingBracketIndex + 1) : normalized;
+  }
+
+  return normalized.split(":")[0] || "";
+}
+
+function isLocalHostname(hostname: string) {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname === "[::1]"
+  );
 }

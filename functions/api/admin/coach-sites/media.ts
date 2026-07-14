@@ -1,10 +1,9 @@
 import type { D1Database, R2Bucket } from "@cloudflare/workers-types";
 import { normalizeCoachSlug } from "../../../../lib/admin-coach-sites";
 import { adminJson, requireAdmin } from "../../../../lib/server/admin-auth";
-import {
-  insertCoachSiteMedia,
-  updateCoachSiteMediaProcessing
-} from "../../../../lib/server/coach-site-storage";
+import { processAndPersistCoachImage } from "../../../../lib/server/coach-image-processing";
+import { hasSupportedCoachImageSignature } from "../../../../lib/server/coach-media-file-validation";
+import { insertCoachSiteMedia } from "../../../../lib/server/coach-site-storage";
 
 type Env = {
   ADMIN_ALLOWED_EMAILS?: string;
@@ -14,6 +13,11 @@ type Env = {
   ADMIN_REQUIRE_DB_ADMIN_ROLES?: string;
   ADMIN_SESSION_SECRET?: string;
   COACH_MEDIA_BUCKET?: R2Bucket;
+  IMAGE_BG_REMOVAL_ENABLED?: string;
+  IMAGE_BG_REMOVAL_PROVIDER?: string;
+  IMAGE_BG_REMOVAL_QUALITY_THRESHOLD?: string;
+  PHOTOROOM_API_KEY?: string;
+  REMOVEBG_API_KEY?: string;
 };
 
 type PagesContext = {
@@ -123,6 +127,10 @@ export async function onRequest({ request, env }: PagesContext) {
   let clientCutoutFile =
     mediaType === "image" && rawCutoutFile instanceof File ? rawCutoutFile : null;
 
+  if (file.size <= 0) {
+    return adminJson({ ok: false, error: "Upload a non-empty media file." }, 400);
+  }
+
   if (file.size > maxBytes) {
     return adminJson(
       {
@@ -136,7 +144,10 @@ export async function onRequest({ request, env }: PagesContext) {
     );
   }
 
-  if (mediaType === "image" && !isAllowedImageFile(file)) {
+  if (
+    mediaType === "image" &&
+    (!isAllowedImageFile(file) || !(await hasSupportedCoachImageSignature(file)))
+  ) {
     return adminJson(
       {
         ok: false,
@@ -165,17 +176,6 @@ export async function onRequest({ request, env }: PagesContext) {
     );
   }
 
-  if (mediaType === "image" && !clientCutoutFile) {
-    return adminJson(
-      {
-        ok: false,
-        error:
-          "Transparent coach cutout is required. Re-upload a clearer JPEG/PNG/WebP photo and wait for the cutout to finish."
-      },
-      422
-    );
-  }
-
   const objectKey = createMediaObjectKey({
     fileName: file.name,
     mediaType,
@@ -184,106 +184,39 @@ export async function onRequest({ request, env }: PagesContext) {
   });
   const contentType = getSafeContentType(file, mediaType);
   const body = await file.arrayBuffer();
-  await env.COACH_MEDIA_BUCKET.put(objectKey, body, {
-    httpMetadata: {
-      contentType
-    }
-  });
-
   const mediaUrl = `/api/coach-media?key=${encodeURIComponent(objectKey)}`;
-  await insertCoachSiteMedia({
-    adminEmail: admin.admin.email,
-    contentType,
-    env,
-    fileName: file.name,
-    mediaType,
-    objectKey,
-    publicUrl: mediaUrl,
-    sizeBytes: file.size,
-    slug,
-    variant: mediaType === "image" ? "original" : ""
-  });
+  try {
+    await env.COACH_MEDIA_BUCKET.put(objectKey, body, {
+      httpMetadata: { contentType }
+    });
+    await insertCoachSiteMedia({
+      adminEmail: admin.admin.email,
+      contentType,
+      env,
+      fileName: file.name,
+      mediaType,
+      objectKey,
+      processingStatus: mediaType === "image" ? "processing" : "",
+      publicUrl: mediaUrl,
+      sizeBytes: file.size,
+      slug,
+      variant: mediaType === "image" ? "original" : ""
+    });
+  } catch {
+    return adminJson({ ok: false, error: "Coach media could not be stored safely." }, 503);
+  }
 
   if (mediaType === "image") {
-    if (clientCutoutFile) {
-      const cutoutBody = await clientCutoutFile.arrayBuffer();
-      const cutoutContentType = getSafeContentType(clientCutoutFile, "image");
-      const cutoutFileName = replaceFileExtension(file.name, ".png");
-      const cutoutObjectKey = createMediaObjectKey({
-        extensionOverride: ".png",
-        fileName: cutoutFileName,
-        mediaType,
-        slug,
-        variant: "cutout"
-      });
-
-      await env.COACH_MEDIA_BUCKET.put(cutoutObjectKey, cutoutBody, {
-        httpMetadata: {
-          contentType: cutoutContentType
-        }
-      });
-
-      const cutoutUrl = `/api/coach-media?key=${encodeURIComponent(cutoutObjectKey)}`;
-      await updateCoachSiteMediaProcessing({
-        env,
-        fallbackMode: "cutout",
-        objectKey,
-        originalObjectKey: objectKey,
-        processingErrorCode: "",
-        processingProvider: "already-transparent",
-        processingStatus: "cutout_ready",
-        qualityStatus: "passed",
-        variant: "original"
-      });
-      await insertCoachSiteMedia({
-        adminEmail: admin.admin.email,
-        contentType: cutoutContentType,
-        env,
-        fileName: cutoutFileName,
-        mediaType,
-        objectKey: cutoutObjectKey,
-        publicUrl: cutoutUrl,
-        fallbackMode: "cutout",
-        originalObjectKey: objectKey,
-        processingErrorCode: "",
-        processingProvider: "already-transparent",
-        processingStatus: "cutout_ready",
-        qualityStatus: "passed",
-        sizeBytes: clientCutoutFile.size,
-        slug,
-        variant: "cutout"
-      });
-
-      return adminJson({
-        configured: true,
-        media: {
-          cutoutUrl,
-          fallbackMode: "cutout",
-          mediaType,
-          objectKey: cutoutObjectKey,
-          originalObjectKey: objectKey,
-          originalUrl: mediaUrl,
-          processingAttemptErrorCodes: [],
-          processingErrorCode: "",
-          processingProvider: "already-transparent",
-          processingStatus: "cutout_ready",
-          publicUrl: cutoutUrl,
-          qualityStatus: "passed",
-          safeMessage: "Coach photo is ready.",
-          sizeBytes: clientCutoutFile.size
-        },
-        ok: true
-      });
-    }
-
-    return adminJson(
-      {
-        ok: false,
-        error:
-          "Transparent coach cutout is required. Re-upload the photo and wait for the cutout to finish."
-      },
-      422
-    );
+    const media = await processAndPersistCoachImage({
+      clientCutoutFile,
+      env,
+      originalFile: file,
+      originalObjectKey: objectKey,
+      originalUrl: mediaUrl,
+      slug,
+      uploadedBy: admin.admin.email,
+    });
+    return adminJson({ configured: true, media, ok: true });
   }
 
   return adminJson({
@@ -299,19 +232,17 @@ export async function onRequest({ request, env }: PagesContext) {
 }
 
 function createMediaObjectKey({
-  extensionOverride,
   fileName,
   mediaType,
   slug,
   variant
 }: {
-  extensionOverride?: ".png" | ".webp";
   fileName: string;
   mediaType: "image" | "video";
   slug: string;
   variant?: "cutout" | "original";
 }) {
-  const extension = extensionOverride || getSafeExtension(fileName, mediaType);
+  const extension = getSafeExtension(fileName, mediaType);
   const timestamp = new Date()
     .toISOString()
     .replace(/[^0-9]/g, "")
@@ -429,11 +360,6 @@ function contentTypeFromExtension(extension: string, mediaType: "image" | "video
 function getFileExtension(fileName: string) {
   const match = fileName.toLowerCase().match(/\.[a-z0-9]+$/);
   return match?.[0] || "";
-}
-
-function replaceFileExtension(fileName: string, extension: ".png" | ".webp") {
-  const baseName = fileName.replace(/\.[a-z0-9]+$/i, "") || "coach-photo";
-  return `${baseName}-cutout${extension}`;
 }
 
 function normalizeContentType(contentType: string) {

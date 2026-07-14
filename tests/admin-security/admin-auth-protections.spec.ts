@@ -2,7 +2,10 @@ import { expect, test } from "@playwright/test";
 import { onRequest as middlewareRequest } from "../../functions/_middleware";
 import { onRequest as backupCleanupRequest } from "../../functions/api/admin/backup-cleanup";
 import { onRequest as dashboardOverviewRequest } from "../../functions/api/admin/dashboard/overview";
-import { onRequest as errorReportsRequest } from "../../functions/api/admin/error-reports";
+import {
+  filterAdminErrorReportTechnicalDetails,
+  onRequest as errorReportsRequest
+} from "../../functions/api/admin/error-reports";
 import { onRequest as forgotPasswordRequest } from "../../functions/api/admin/auth/forgot-password";
 import { onRequest as loginRequest } from "../../functions/api/admin/auth/login";
 import { onRequest as logoutRequest } from "../../functions/api/admin/auth/logout";
@@ -12,6 +15,7 @@ import { onRequest as resetPasswordRequest } from "../../functions/api/admin/aut
 import { onRequest as sessionRequest } from "../../functions/api/admin/auth/session";
 import { onRequest as verifyOtpRequest } from "../../functions/api/admin/auth/verify-otp";
 import { onRequest as publicErrorReportRequest } from "../../functions/api/error-report";
+import type { AdminErrorReport } from "../../lib/admin-control-center";
 import { createAdminSessionCookie, getAdminRoleForEmail } from "../../lib/server/admin-auth";
 
 const ADMIN_EMAIL = "admin@example.com";
@@ -30,6 +34,34 @@ const env = {
 type JsonRecord = Record<string, unknown>;
 
 test.describe("admin auth security protections", () => {
+  test("redacts technical error-report context unless the explicit permission is present", () => {
+    const report: AdminErrorReport = {
+      browser: "Browser/1.0",
+      category: "API error",
+      createdAt: "2026-07-14T00:00:00.000Z",
+      deviceType: "desktop",
+      pagePath: "/admin/reports",
+      referenceId: "YW-ERR-2001-TEST",
+      referrer: "https://private.example/path?token=masked",
+      safeMessage: "The request could not complete.",
+      screenSize: "1440x900",
+      sessionId: "masked-session-id",
+      severity: "medium",
+      status: "New",
+      technicalDetails: "masked_internal_detail",
+      userAction: "Open reports"
+    };
+
+    expect(filterAdminErrorReportTechnicalDetails(report, false)).toMatchObject({
+      browser: "Restricted",
+      referrer: "Restricted",
+      screenSize: "Restricted",
+      sessionId: "Restricted",
+      technicalDetails: ""
+    });
+    expect(filterAdminErrorReportTechnicalDetails(report, true)).toBe(report);
+  });
+
   test("blocks demo OTP session creation in production-like mode", async () => {
     const response = await verifyOtpRequest({
       env,
@@ -606,7 +638,11 @@ function createEmptyErrorReportsDb() {
   };
 }
 
-function createAdminRoleDb(role: string, status = "active", email = role === "viewer" ? "viewer@example.com" : `${role}@example.com`) {
+function createAdminRoleDb(
+  role: string,
+  status = "active",
+  email = role === "viewer" ? "viewer@example.com" : `${role}@example.com`
+) {
   return {
     prepare: () => {
       const stmt = {

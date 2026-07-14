@@ -3,6 +3,7 @@
   position: relative;
   display: grid;
   place-items: center;
+  isolation: isolate;
   overflow-x: hidden;
   padding: clamp(1rem, 3vw, 2.5rem);
   background:
@@ -21,6 +22,7 @@
 .backdrop {
   position: absolute;
   inset: 0;
+  z-index: 1;
   pointer-events: none;
   background-image:
     linear-gradient(rgb(37 24 34 / 0.045) 1px, transparent 1px),
@@ -31,7 +33,7 @@
 
 .shell {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   width: min(100%, 68rem);
   display: grid;
   grid-template-columns: minmax(15rem, 0.74fr) minmax(20rem, 1fr);
@@ -99,6 +101,15 @@
   width: 68%;
   height: auto;
   object-fit: contain;
+  position: relative;
+  z-index: 1;
+  filter:
+    brightness(0.68)
+    contrast(1.28)
+    saturate(1.18)
+    drop-shadow(0 0 0.55rem color-mix(in oklch, var(--od-accent) 26%, transparent))
+    drop-shadow(0 0.45rem 0.75rem rgb(0 0 0 / 0.32));
+  transform: translateZ(0);
 }
 
 .brandKicker,
@@ -614,4 +625,534 @@
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* Open Design console fidelity pass: visual-only, auth flow unchanged. */
+.adminPage {
+  --od-bg: oklch(10% 0.014 250);
+  --od-bg-2: oklch(13% 0.018 250);
+  --od-surface: oklch(16% 0.018 250);
+  --od-surface-2: oklch(19% 0.02 250);
+  --od-surface-3: oklch(23% 0.025 250);
+  --od-fg: oklch(93% 0.014 245);
+  --od-muted: oklch(66% 0.028 245);
+  --od-dim: oklch(48% 0.026 245);
+  --od-border: oklch(29% 0.018 250);
+  --od-border-soft: oklch(24% 0.016 250);
+  --od-accent: oklch(74% 0.17 154);
+  --od-accent-2: oklch(72% 0.14 218);
+  --od-warn: oklch(78% 0.16 82);
+  --od-danger: oklch(68% 0.19 28);
+  --od-radius: 8px;
+  --od-font-ui: "IBM Plex Sans", Aptos, "Segoe UI", system-ui, sans-serif;
+  --od-font-mono: "JetBrains Mono", "IBM Plex Mono", "Cascadia Code", ui-monospace,
+    SFMono-Regular, Menlo, monospace;
+  place-items: center;
+  background:
+    linear-gradient(90deg, color-mix(in oklch, var(--od-border) 20%, transparent) 1px, transparent 1px),
+    linear-gradient(0deg, color-mix(in oklch, var(--od-border) 18%, transparent) 1px, transparent 1px),
+    radial-gradient(circle at 52% 0%, color-mix(in oklch, var(--od-accent-2) 13%, transparent), transparent 34rem),
+    var(--od-bg);
+  background-size: 56px 56px, 56px 56px, auto, auto;
+  color: var(--od-fg);
+  font-family: var(--od-font-ui);
+}
+
+.matrixBackgroundLayer {
+  z-index: 0;
+}
+
+.adminDashboardPage {
+  place-items: start stretch;
+  justify-items: stretch;
+  align-items: start;
+  background:
+    linear-gradient(90deg, color-mix(in oklch, var(--od-border) 20%, transparent) 1px, transparent 1px),
+    linear-gradient(0deg, color-mix(in oklch, var(--od-border) 18%, transparent) 1px, transparent 1px),
+    radial-gradient(circle at 52% 0%, color-mix(in oklch, var(--od-accent-2) 13%, transparent), transparent 34rem),
+    var(--od-bg);
+  background-size: 56px 56px, 56px 56px, auto, auto;
+}
+
+.backdrop,
+.adminDashboardPage .backdrop {
+  background-image:
+    radial-gradient(circle at 20% 18%, color-mix(in oklch, var(--od-accent) 8%, transparent), transparent 26rem),
+    radial-gradient(circle at 80% 8%, color-mix(in oklch, var(--od-accent-2) 9%, transparent), transparent 28rem);
+  background-size: auto;
+  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.72), transparent 88%);
+}
+
+.shell {
+  width: min(100%, 72rem);
+  grid-template-columns: minmax(14rem, 0.62fr) minmax(22rem, 1fr);
+  gap: 10px;
+}
+
+.shellDashboard {
+  width: 100%;
+  max-width: none;
+  justify-self: stretch;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.brandPanel,
+.authPanel,
+.dashboardPanel,
+.shellDashboard .dashboardPanel {
+  border: 1px solid var(--od-border);
+  border-radius: var(--od-radius);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--od-surface-2) 88%, white 2%),
+    var(--od-surface)
+  );
+  box-shadow: 0 24px 70px rgb(0 0 0 / 0.34);
+  backdrop-filter: none;
+}
+
+.brandPanel,
+.authPanel {
+  min-height: 34rem;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.panelGlow {
+  height: 100%;
+  min-width: 0;
+}
+
+.panelGlow .brandPanel,
+.panelGlow .authPanel {
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.logoMark {
+  width: 4.8rem;
+  position: relative;
+  isolation: isolate;
+  border: 1px solid color-mix(in oklch, var(--od-accent) 55%, var(--od-border));
+  border-radius: var(--od-radius);
+  background:
+    radial-gradient(circle at 34% 22%, rgb(255 255 255 / 0.22), transparent 22%),
+    linear-gradient(135deg, color-mix(in oklch, var(--od-accent) 34%, transparent), transparent 72%),
+    color-mix(in oklch, var(--od-surface-3) 72%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--od-accent) 16%, transparent),
+    0 0.95rem 2rem rgb(0 0 0 / 0.44),
+    0 0 1.8rem color-mix(in oklch, var(--od-accent) 24%, transparent),
+    inset 0 0 18px color-mix(in oklch, var(--od-accent) 22%, transparent),
+    inset 0 -18px 34px rgb(0 0 0 / 0.2);
+  transform-origin: center;
+  animation: admin-logo-float 4.8s ease-in-out infinite, admin-logo-hue 7.6s ease-in-out infinite;
+}
+
+.logoMark::before,
+.logoMark::after {
+  content: "";
+  position: absolute;
+  inset: -0.45rem;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.logoMark::before {
+  border: 1px solid color-mix(in oklch, var(--od-accent) 42%, transparent);
+  background:
+    linear-gradient(90deg, transparent 48%, color-mix(in oklch, var(--od-accent) 38%, transparent) 50%, transparent 52%),
+    linear-gradient(0deg, transparent 48%, color-mix(in oklch, var(--od-accent-2) 28%, transparent) 50%, transparent 52%);
+  box-shadow:
+    0 0 1.2rem color-mix(in oklch, var(--od-accent) 34%, transparent),
+    inset 0 0 1.1rem color-mix(in oklch, var(--od-accent) 16%, transparent);
+  opacity: 0.58;
+  animation: admin-logo-orbit 3.4s ease-in-out infinite, admin-logo-reticle 8s linear infinite;
+}
+
+.logoMark::after {
+  inset: 0;
+  background: linear-gradient(115deg, transparent 0 28%, rgb(255 255 255 / 0.28) 42%, transparent 58% 100%);
+  mix-blend-mode: screen;
+  opacity: 0;
+  transform: translateX(-120%);
+  animation: admin-logo-shine 5.8s ease-in-out infinite;
+}
+
+.logoAura,
+.logoOrbit,
+.logoScan,
+.logoPips {
+  position: absolute;
+  pointer-events: none;
+}
+
+.logoAura {
+  inset: -1rem;
+  z-index: -2;
+  border-radius: inherit;
+  background:
+    conic-gradient(
+      from 0deg,
+      transparent,
+      color-mix(in oklch, var(--od-accent) 42%, transparent),
+      transparent,
+      color-mix(in oklch, var(--od-accent-2) 34%, transparent),
+      transparent
+    );
+  filter: blur(9px);
+  opacity: 0.52;
+  animation: admin-logo-aura 5.2s linear infinite;
+}
+
+.logoOrbit {
+  inset: -0.75rem;
+  z-index: -1;
+  border: 1px solid color-mix(in oklch, var(--od-accent) 28%, transparent);
+  border-radius: inherit;
+  transform-style: preserve-3d;
+  animation: admin-logo-tilted-orbit 4.2s linear infinite;
+}
+
+.logoOrbit::before,
+.logoOrbit::after {
+  content: "";
+  position: absolute;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--od-accent) 92%, white);
+  box-shadow:
+    0 0 0.45rem color-mix(in oklch, var(--od-accent) 72%, transparent),
+    0 0 1rem color-mix(in oklch, var(--od-accent) 38%, transparent);
+}
+
+.logoOrbit::before {
+  top: -0.2rem;
+  left: 46%;
+}
+
+.logoOrbit::after {
+  right: -0.2rem;
+  bottom: 28%;
+  background: color-mix(in oklch, var(--od-accent-2) 86%, white);
+}
+
+.logoScan {
+  inset: 0.38rem;
+  z-index: 2;
+  overflow: hidden;
+  border-radius: calc(var(--od-radius) - 2px);
+}
+
+.logoScan::before {
+  content: "";
+  position: absolute;
+  inset: -40% 0 auto;
+  height: 55%;
+  background:
+    linear-gradient(180deg, transparent, rgb(255 255 255 / 0.16), transparent),
+    linear-gradient(90deg, transparent, color-mix(in oklch, var(--od-accent) 62%, transparent), transparent);
+  transform: translateY(-90%);
+  animation: admin-logo-scanline 3.3s cubic-bezier(0.64, 0, 0.16, 1) infinite;
+}
+
+.logoPips {
+  inset: 0;
+  z-index: 3;
+}
+
+.logoPips::before {
+  content: "";
+  position: absolute;
+  width: 0.22rem;
+  height: 0.22rem;
+  border-radius: 999px;
+  background: var(--od-accent);
+  box-shadow:
+    3.7rem 0.55rem 0 color-mix(in oklch, var(--od-accent) 86%, white),
+    3.1rem 3.55rem 0 color-mix(in oklch, var(--od-accent-2) 86%, white),
+    0.62rem 3.78rem 0 color-mix(in oklch, var(--od-accent) 78%, white),
+    1.12rem 0.9rem 0 color-mix(in oklch, var(--od-accent-2) 76%, white);
+  filter: drop-shadow(0 0 0.45rem color-mix(in oklch, var(--od-accent) 72%, transparent));
+  opacity: 0.78;
+  animation: admin-logo-pips 2.8s steps(4, end) infinite;
+}
+
+.brandKicker,
+.eyebrow {
+  color: var(--od-accent);
+  font: 700 10px/1.2 var(--od-font-mono);
+  letter-spacing: 0.09em;
+}
+
+.brandPanel h2,
+.title {
+  max-width: 18ch;
+  color: var(--od-fg);
+  font-family: var(--od-font-ui);
+  font-size: clamp(2rem, 4.2vw, 3.35rem);
+  font-weight: 750;
+  line-height: 1.02;
+}
+
+.brandPanel p:last-child,
+.subtitle,
+.securityNotice {
+  color: var(--od-muted);
+  font-family: var(--od-font-ui);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.form,
+.authDivider {
+  gap: 10px;
+}
+
+.authDivider {
+  color: var(--od-dim);
+  font: 700 11px/1 var(--od-font-mono);
+}
+
+.authDivider span {
+  background: var(--od-border-soft);
+}
+
+.field {
+  color: var(--od-muted);
+  font: 700 11px/1.2 var(--od-font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.field input,
+.googleButton,
+.primaryButton,
+.secondaryButton,
+.linkButton,
+.textLink,
+.inlineButton {
+  border-radius: var(--od-radius);
+  font-family: var(--od-font-ui);
+}
+
+.field input {
+  min-height: 3rem;
+  border: 1px solid var(--od-border);
+  background: color-mix(in oklch, var(--od-surface) 82%, transparent);
+  color: var(--od-fg);
+}
+
+.field input:focus {
+  border-color: color-mix(in oklch, var(--od-accent) 48%, var(--od-border));
+  background: var(--od-surface-2);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--od-accent) 18%, transparent);
+}
+
+.googleButton,
+.secondaryButton,
+.linkButton {
+  border: 1px solid var(--od-border);
+  background: var(--od-surface);
+  color: var(--od-fg);
+  box-shadow: none;
+}
+
+.googleButton:hover,
+.secondaryButton:hover,
+.linkButton:hover {
+  border-color: color-mix(in oklch, var(--od-accent-2) 45%, var(--od-border));
+  background: var(--od-surface-2);
+}
+
+.primaryButton {
+  border: 1px solid color-mix(in oklch, var(--od-accent) 55%, var(--od-border));
+  background: color-mix(in oklch, var(--od-accent) 18%, transparent);
+  color: var(--od-accent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--od-accent) 22%, transparent);
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--od-accent) 24%, transparent);
+  box-shadow: 0 0 24px color-mix(in oklch, var(--od-accent) 18%, transparent);
+}
+
+.statusMessage {
+  border-color: color-mix(in oklch, var(--od-danger) 48%, var(--od-border));
+  background: color-mix(in oklch, var(--od-danger) 10%, transparent);
+  color: color-mix(in oklch, var(--od-danger) 76%, white);
+}
+
+.shellDashboard .dashboardPanel {
+  background: color-mix(in oklch, var(--od-bg) 90%, transparent);
+  width: 100%;
+  max-width: none;
+  overflow: visible;
+}
+
+@keyframes admin-logo-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  45% {
+    transform: translateY(-4px) scale(1.035);
+  }
+}
+
+@keyframes admin-logo-orbit {
+  0%,
+  100% {
+    opacity: 0.34;
+    transform: scale(0.92) rotate(0deg);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.06) rotate(4deg);
+  }
+}
+
+@keyframes admin-logo-reticle {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes admin-logo-aura {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes admin-logo-tilted-orbit {
+  0% {
+    transform: rotateX(58deg) rotateZ(0deg) scale(1.02);
+    opacity: 0.52;
+  }
+
+  50% {
+    transform: rotateX(58deg) rotateZ(180deg) scale(1.08);
+    opacity: 0.9;
+  }
+
+  100% {
+    transform: rotateX(58deg) rotateZ(360deg) scale(1.02);
+    opacity: 0.52;
+  }
+}
+
+@keyframes admin-logo-scanline {
+  0%,
+  34%,
+  100% {
+    opacity: 0;
+    transform: translateY(-90%);
+  }
+
+  48% {
+    opacity: 0.88;
+  }
+
+  66% {
+    opacity: 0;
+    transform: translateY(190%);
+  }
+}
+
+@keyframes admin-logo-pips {
+  0%,
+  100% {
+    opacity: 0.42;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes admin-logo-hue {
+  0%,
+  100% {
+    filter: saturate(1) brightness(1);
+  }
+
+  50% {
+    filter: saturate(1.32) brightness(1.08);
+  }
+}
+
+@keyframes admin-logo-shine {
+  0%,
+  62%,
+  100% {
+    opacity: 0;
+    transform: translateX(-120%);
+  }
+
+  72% {
+    opacity: 0.7;
+  }
+
+  84% {
+    opacity: 0;
+    transform: translateX(120%);
+  }
+}
+
+@media (max-width: 640px) {
+  .adminDashboardPage {
+    padding: 0;
+  }
+
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .brandPanel {
+    display: none;
+  }
+
+  .shellDashboard .dashboardPanel {
+    border-radius: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logoMark,
+  .logoMark::before,
+  .logoMark::after,
+  .logoAura,
+  .logoOrbit,
+  .logoScan::before,
+  .logoPips::before {
+    animation: none !important;
+  }
+}
+
+.adminDashboardPage {
+  min-height: 100vh;
+  padding: 0;
+}
+
+.adminDashboardPage .backdrop {
+  display: none;
+}
+
+.shellDashboard {
+  width: 100%;
+  min-height: 100vh;
+}
+
+.dashboardPanel,
+.shellDashboard .dashboardPanel {
+  width: 100%;
+  min-height: 100vh;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }

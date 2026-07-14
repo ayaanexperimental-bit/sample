@@ -1,6 +1,11 @@
 "use client";
 
-import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, MouseEvent, ReactNode } from "react";
+import type {
+  CSSProperties,
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent,
+  ReactNode
+} from "react";
 import Link from "next/link";
 import Script from "next/script";
 import { useEffect, useMemo, useState } from "react";
@@ -96,7 +101,10 @@ function TemplateBackgroundLayer({
     "--yw-template-background-intensity": String(intensity),
     "--yw-template-background-opacity": String(opacity)
   } as CSSProperties;
-  const variant = getTemplateBackgroundVariant(backgroundType, reducedMotion || performanceMode === "disabled");
+  const variant = getTemplateBackgroundVariant(
+    backgroundType,
+    reducedMotion || performanceMode === "disabled"
+  );
 
   return (
     <div
@@ -120,7 +128,16 @@ function TemplateBackgroundLayer({
 function getTemplateBackgroundVariant(
   backgroundType: CoachTemplateBackgroundType,
   forceStatic: boolean
-): "aurora" | "grid-glow" | "light-rays" | "liquid-glass" | "mesh" | "particles" | "prism" | "spotlight" | "static" {
+):
+  | "aurora"
+  | "grid-glow"
+  | "light-rays"
+  | "liquid-glass"
+  | "mesh"
+  | "particles"
+  | "prism"
+  | "spotlight"
+  | "static" {
   if (forceStatic) return "static";
   if (backgroundType === "aurora") return "aurora";
   if (backgroundType === "grid-glow") return "grid-glow";
@@ -129,7 +146,11 @@ function getTemplateBackgroundVariant(
   if (backgroundType === "particle-field") return "particles";
   if (backgroundType === "prism") return "prism";
   if (backgroundType === "spotlight") return "spotlight";
-  if (backgroundType === "none" || backgroundType === "noise-texture" || backgroundType === "static-gradient") {
+  if (
+    backgroundType === "none" ||
+    backgroundType === "noise-texture" ||
+    backgroundType === "static-gradient"
+  ) {
     return "static";
   }
   return "mesh";
@@ -225,15 +246,17 @@ export function PublicCoachSitePage({
   }, [enableTracking, site.slug]);
 
   useEffect(() => {
+    if (previewMode) return;
     try {
       window.sessionStorage.setItem("ywLastCoachLandingPath", coachLandingPath);
       window.localStorage.setItem("ywLastCoachLandingPath", coachLandingPath);
     } catch {
       // Browser storage can be unavailable; legal links still carry returnTo.
     }
-  }, [coachLandingPath]);
+  }, [coachLandingPath, previewMode]);
 
   useEffect(() => {
+    if (previewMode) return;
     const bodyClasses = [
       "wp-singular",
       "page-template",
@@ -259,9 +282,10 @@ export function PublicCoachSitePage({
       document.documentElement.removeAttribute("data-wf-page");
       document.documentElement.removeAttribute("data-wf-site");
     };
-  }, []);
+  }, [previewMode]);
 
   useEffect(() => {
+    if (previewMode) return;
     const root = document.documentElement;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const progressBar = document.querySelector<HTMLElement>(".yw-scroll-progress__bar");
@@ -434,7 +458,10 @@ export function PublicCoachSitePage({
         target.classList.add("yw-allia-effect");
         target.style.setProperty("--yw-reveal-delay", `${Math.min(520, index * 36)}ms`);
       });
-      document.querySelectorAll<HTMLElement>(".yw-coach-photo-frame,.yw-story-video-card,.yw-footer-brand")
+      document
+        .querySelectorAll<HTMLElement>(
+          ".yw-coach-photo-frame,.yw-story-video-card,.yw-footer-brand"
+        )
         .forEach((target) => target.classList.add("yw-allia-float"));
 
       const allTargets = [...revealTargets, ...effectTargets];
@@ -504,14 +531,19 @@ export function PublicCoachSitePage({
         "--yw-pointer-y"
       ].forEach((property) => root.style.removeProperty(property));
     };
-  }, []);
+  }, [previewMode]);
 
   useEffect(() => {
-    const accordions = Array.from(document.querySelectorAll<HTMLElement>(".yw-circle-faq .elementor-accordion"));
+    if (previewMode) return;
+    const accordions = Array.from(
+      document.querySelectorAll<HTMLElement>(".yw-circle-faq .elementor-accordion")
+    );
     const cleanupHandlers: Array<() => void> = [];
 
     accordions.forEach((accordion) => {
-      const items = Array.from(accordion.querySelectorAll<HTMLDetailsElement>(".elementor-accordion-item"));
+      const items = Array.from(
+        accordion.querySelectorAll<HTMLDetailsElement>(".elementor-accordion-item")
+      );
 
       function sync(item: HTMLDetailsElement) {
         const isOpen = item.open;
@@ -567,9 +599,10 @@ export function PublicCoachSitePage({
     return () => {
       cleanupHandlers.forEach((cleanup) => cleanup());
     };
-  }, [sectionCopy.faqItems]);
+  }, [previewMode, sectionCopy.faqItems]);
 
   useEffect(() => {
+    if (previewMode) return;
     const windowWithNavbar = window as Window & { ywSectionSyncedNavbarReady?: boolean };
     if (windowWithNavbar.ywSectionSyncedNavbarReady) return undefined;
     windowWithNavbar.ywSectionSyncedNavbarReady = true;
@@ -622,7 +655,10 @@ export function PublicCoachSitePage({
       const navRect = navbar.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
       const localBlock = menu.closest(".navbar14_container") ? containerRect : { left: 0, top: 0 };
-      const viewportWidth = Math.max(320, window.innerWidth || document.documentElement.clientWidth || 0);
+      const viewportWidth = Math.max(
+        320,
+        window.innerWidth || document.documentElement.clientWidth || 0
+      );
       const desiredLeft = Math.max(12, Math.min(containerRect.left, viewportWidth - 24));
       const width = Math.max(240, Math.min(containerRect.width, viewportWidth - desiredLeft - 12));
       const desiredTop = Math.max(72, Math.min(navRect.bottom + 12, window.innerHeight - 96));
@@ -659,22 +695,24 @@ export function PublicCoachSitePage({
       if (!nextId || nextId === activeId) return;
 
       activeId = nextId;
-      Array.from(document.querySelectorAll<HTMLAnchorElement>("[data-yw-nav-link]")).forEach((link) => {
-        const href = link.getAttribute("href") || "";
-        const id = href.startsWith("#") ? decodeURIComponent(href.slice(1)) : "";
-        const isActive = id === nextId;
-        if (link.classList.contains("navbar14_logo-link")) {
-          link.classList.remove("is-active");
-          link.removeAttribute("aria-current");
-          return;
+      Array.from(document.querySelectorAll<HTMLAnchorElement>("[data-yw-nav-link]")).forEach(
+        (link) => {
+          const href = link.getAttribute("href") || "";
+          const id = href.startsWith("#") ? decodeURIComponent(href.slice(1)) : "";
+          const isActive = id === nextId;
+          if (link.classList.contains("navbar14_logo-link")) {
+            link.classList.remove("is-active");
+            link.removeAttribute("aria-current");
+            return;
+          }
+          link.classList.toggle("is-active", isActive);
+          if (isActive) {
+            link.setAttribute("aria-current", "true");
+          } else {
+            link.removeAttribute("aria-current");
+          }
         }
-        link.classList.toggle("is-active", isActive);
-        if (isActive) {
-          link.setAttribute("aria-current", "true");
-        } else {
-          link.removeAttribute("aria-current");
-        }
-      });
+      );
     }
 
     function updateActive() {
@@ -778,13 +816,15 @@ export function PublicCoachSitePage({
       root.style.removeProperty("--yw-nav-menu-top");
       root.style.removeProperty("--yw-nav-menu-left");
       root.style.removeProperty("--yw-nav-menu-width");
-      Array.from(document.querySelectorAll<HTMLAnchorElement>("[data-yw-nav-link]")).forEach((link) => {
-        link.classList.remove("is-active");
-        link.removeAttribute("aria-current");
-      });
+      Array.from(document.querySelectorAll<HTMLAnchorElement>("[data-yw-nav-link]")).forEach(
+        (link) => {
+          link.classList.remove("is-active");
+          link.removeAttribute("aria-current");
+        }
+      );
       windowWithNavbar.ywSectionSyncedNavbarReady = false;
     };
-  }, [site.slug]);
+  }, [previewMode, site.slug]);
 
   if (site.status === "paused" || site.status === "archived") {
     return (
@@ -895,8 +935,14 @@ export function PublicCoachSitePage({
         rel="stylesheet"
       />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link href="/coach-circle-template.css?v=coach-cutout-optimal-hero-size-20260625" rel="stylesheet" />
-      <Script src="/coach-circle-lenis.min.js?v=coach-4176-structural-copy-20260619" strategy="afterInteractive" />
+      <link
+        href="/coach-circle-template.css?v=coach-cutout-optimal-hero-size-20260625"
+        rel="stylesheet"
+      />
+      <Script
+        src="/coach-circle-lenis.min.js?v=coach-4176-structural-copy-20260619"
+        strategy="afterInteractive"
+      />
       <Script
         src="/external/d3e54v103j8qbb.cloudfront.net/js/jquery-3.5.1.min.dc5e7f18c8__q_site_6949580dbefd680afac06955.js"
         strategy="afterInteractive"
@@ -909,8 +955,14 @@ export function PublicCoachSitePage({
         src="/external/cdn.prod.website-files.com/6949580dbefd680afac06955/js/webflow.05ef6ae8.15e2de229fe07c28.js"
         strategy="afterInteractive"
       />
-      <Script src="/coach-circle-bonus-section.js?v=coach-bonus-universal-services-20260621" strategy="afterInteractive" />
-      <Script src="/coach-circle-motion.js?v=coach-mobile-nav-sheet-20260622" strategy="afterInteractive" />
+      <Script
+        src="/coach-circle-bonus-section.js?v=coach-bonus-universal-services-20260621"
+        strategy="afterInteractive"
+      />
+      <Script
+        src="/coach-circle-motion.js?v=coach-mobile-nav-sheet-20260622"
+        strategy="afterInteractive"
+      />
       <div
         className="yw-circle-site"
         data-coach-site-page={previewMode ? "preview" : "public"}
@@ -1008,7 +1060,10 @@ export function PublicCoachSitePage({
                             <>
                               {" "}
                               <span className="golden-hoghlight-cu">
-                                {renderInspectableText("hero.trustLabel", sectionCopy.heroTitleAccent)}
+                                {renderInspectableText(
+                                  "hero.trustLabel",
+                                  sectionCopy.heroTitleAccent
+                                )}
                               </span>
                             </>
                           ) : null}
@@ -1091,7 +1146,10 @@ export function PublicCoachSitePage({
                             >
                               <div className="elementor-widget-container">
                                 <p className="elementor-heading-title elementor-size-default">
-                                  {renderInspectableText("hero.detailHeading", sectionCopy.detailHeading)}
+                                  {renderInspectableText(
+                                    "hero.detailHeading",
+                                    sectionCopy.detailHeading
+                                  )}
                                 </p>
                               </div>
                             </div>
@@ -1104,7 +1162,13 @@ export function PublicCoachSitePage({
                             >
                               <div className="elementor-widget-container">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img alt="" decoding="async" height="18" src="/wp-content/uploads/2026/03/Line-11.svg" width="260" />
+                                <img
+                                  alt=""
+                                  decoding="async"
+                                  height="18"
+                                  src="/wp-content/uploads/2026/03/Line-11.svg"
+                                  width="260"
+                                />
                               </div>
                             </div>
                             <div
@@ -1116,7 +1180,10 @@ export function PublicCoachSitePage({
                             >
                               <div className="elementor-widget-container">
                                 <p className="elementor-heading-title elementor-size-default">
-                                  {renderInspectableText("hero.detailSubline", sectionCopy.detailSubline)}
+                                  {renderInspectableText(
+                                    "hero.detailSubline",
+                                    sectionCopy.detailSubline
+                                  )}
                                 </p>
                               </div>
                             </div>
@@ -1125,8 +1192,14 @@ export function PublicCoachSitePage({
                                 id={card.id}
                                 key={card.id}
                                 kind={card.kind}
-                                label={renderInspectableText(`hero.detailCards.${index}.label`, card.label)}
-                                value={renderInspectableText(`hero.detailCards.${index}.value`, card.value)}
+                                label={renderInspectableText(
+                                  `hero.detailCards.${index}.label`,
+                                  card.label
+                                )}
+                                value={renderInspectableText(
+                                  `hero.detailCards.${index}.value`,
+                                  card.value
+                                )}
                               />
                             ))}
                             <div
@@ -1143,7 +1216,9 @@ export function PublicCoachSitePage({
                                     onMissingRegisterLink={showMissingRegisterFallback}
                                     site={site}
                                   >
-                                    <ElementorRegisterButtonContent>{registerLabel}</ElementorRegisterButtonContent>
+                                    <ElementorRegisterButtonContent>
+                                      {registerLabel}
+                                    </ElementorRegisterButtonContent>
                                   </RegisterAction>
                                 </div>
                               </div>
@@ -1160,7 +1235,12 @@ export function PublicCoachSitePage({
 
           <Marquee coachName={coachName} />
 
-          <section className="yw-story-section" id="story" aria-labelledby="yw-story-title" data-yw-section-key="coach">
+          <section
+            className="yw-story-section"
+            id="story"
+            aria-labelledby="yw-story-title"
+            data-yw-section-key="coach"
+          >
             <div className="yw-story-grid">
               <div className="yw-story-media">
                 <div className="yw-story-video-card">
@@ -1212,233 +1292,268 @@ export function PublicCoachSitePage({
           </section>
 
           <section className="yw-growth-suite" aria-label="Coaching blueprint sections">
-          <section
-            className="yw-sales-section yw-sales-section--cream"
-            id="problem"
-            aria-labelledby="yw-familiar-title"
-            data-yw-section-key="problem"
-          >
-            <div
-              className={getPreviewInspectClassName("yw-sales-shell")}
-              data-preview-section="problem"
-              {...getPreviewInspectProps("problem")}
+            <section
+              className="yw-sales-section yw-sales-section--cream"
+              id="problem"
+              aria-labelledby="yw-familiar-title"
+              data-yw-section-key="problem"
             >
-              {renderInspectHotspot("problem")}
-              <p className="yw-kicker">
-                {renderInspectableText("problem.sectionLabel", sectionCopy.problemLabel)}
-              </p>
-              <h2 id="yw-familiar-title">
-                {renderInspectableText("problem.heading", sectionCopy.problemHeading)}
-              </h2>
-              <div className="yw-check-grid">
-                {sectionCopy.problemPoints.map((point, index) => (
-                  <div className="yw-check-row" key={`${point}-${index}`}>
-                    <span aria-hidden="true">✓</span>
-                    <p>{renderInspectableText(`problem.points.${index}`, point)}</p>
-                  </div>
-                ))}
-              </div>
-              <RegisterAction
-                className="yw-register-strip"
-                onMissingRegisterLink={showMissingRegisterFallback}
-                site={site}
+              <div
+                className={getPreviewInspectClassName("yw-sales-shell")}
+                data-preview-section="problem"
+                {...getPreviewInspectProps("problem")}
               >
-                {registerLabel}
-              </RegisterAction>
-            </div>
-          </section>
-
-          <section
-            className="yw-sales-section yw-sales-section--mint"
-            id="how-it-works"
-            aria-labelledby="yw-blueprint-title"
-            data-yw-section-key="journey"
-          >
-            <div
-              className={getPreviewInspectClassName("yw-sales-shell")}
-              data-preview-section="journey"
-              {...getPreviewInspectProps("journey")}
-            >
-              {renderInspectHotspot("journey")}
-              <p className="yw-kicker">
-                {renderInspectableText("journey.sectionLabel", sectionCopy.journeyLabel)}
-              </p>
-              <h2 id="yw-blueprint-title">
-                {renderInspectableText("journey.heading", sectionCopy.journeyHeading)}
-              </h2>
-              <div className="yw-blueprint-grid">
-                {sectionCopy.journeySteps.map((step, index) => (
-                  <article key={`${step.label}-${step.title}`}>
-                    <strong>{String(index + 1).padStart(2, "0")}</strong>
-                    <h3>{renderInspectableText(`journey.steps.${index}.title`, step.title)}</h3>
-                    <p>{renderInspectableText(`journey.steps.${index}.description`, step.description)}</p>
-                  </article>
-                ))}
-              </div>
-              <RegisterAction
-                className="yw-register-strip"
-                onMissingRegisterLink={showMissingRegisterFallback}
-                site={site}
-              >
-                {registerLabel}
-              </RegisterAction>
-            </div>
-          </section>
-
-          <section
-            className="yw-sales-section yw-sales-section--dark"
-            id="results"
-            aria-labelledby="yw-results-title"
-            data-yw-section-key="results"
-          >
-            <div className="yw-sales-shell">
-              <p className="yw-kicker">{renderInspectableText("results.sectionLabel", sectionCopy.resultsLabel)}</p>
-              <h2 id="yw-results-title">
-                {renderInspectableText("results.heading", sectionCopy.resultsHeadingMain)}{" "}
-                <span>{renderInspectableText("results.highlight", sectionCopy.resultsHeadingAccent)}</span>
-              </h2>
-              <p className="yw-section-subcopy">
-                {renderInspectableText("results.subcopy", sectionCopy.resultsSubcopy)}
-              </p>
-              <div className="yw-result-cards">
-                {sectionCopy.resultsCards.map((card, index) => (
-                  <article key={`${card.title}-${index}`}>
-                    <span>{renderInspectableText(`results.cards.${index}.label`, card.label)}</span>
-                    <h3>{renderInspectableText(`results.cards.${index}.title`, card.title)}</h3>
-                    <p>{renderInspectableText(`results.cards.${index}.body`, card.body)}</p>
-                    <strong>{renderInspectableText(`results.cards.${index}.attribution`, card.attribution)}</strong>
-                  </article>
-                ))}
-              </div>
-              <RegisterAction
-                className="yw-register-strip yw-register-strip--dark"
-                onMissingRegisterLink={showMissingRegisterFallback}
-                site={site}
-              >
-                {registerLabel}
-              </RegisterAction>
-            </div>
-          </section>
-
-          <section
-            className="yw-sales-section yw-sales-section--cream"
-            id="for-you"
-            aria-labelledby="yw-fit-title"
-            data-yw-section-key="fit"
-          >
-            <div className="yw-sales-shell">
-              <h2 id="yw-fit-title">
-                {renderInspectableText("fit.heading", sectionCopy.fitHeadingMain)}{" "}
-                <span>{renderInspectableText("fit.highlight", sectionCopy.fitHeadingAccent)}</span>
-              </h2>
-              <div className="yw-fit-table" aria-label={sectionCopy.fitAriaLabel}>
-                <div className="yw-fit-col">
-                  <h3>This IS for you if...</h3>
-                  {sectionCopy.fitForPoints.map((point, index) => (
-                    <p key={`${point}-${index}`}>
-                      <span aria-hidden="true">{"\u2713"}</span> {renderInspectableText(`fit.for.${index}`, point)}
-                    </p>
-                  ))}
-                </div>
-                <div className="yw-fit-col yw-fit-col--no">
-                  <h3>This is NOT for you if...</h3>
-                  {sectionCopy.fitNotForPoints.map((point, index) => (
-                    <p key={`${point}-${index}`}>
-                      <span aria-hidden="true">{"\u00d7"}</span> {renderInspectableText(`fit.notFor.${index}`, point)}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section
-            className="yw-sales-section yw-sales-section--dark yw-sales-section--bonus yw-niche-bonus"
-            data-yw-ai-adaptive="true"
-            data-yw-bonus-count={bonusSection.items.length}
-            data-yw-bonus-source="universalBonusRegistry"
-            data-yw-coach-name={coachName}
-            data-yw-coach-niche={coachNiche}
-            data-yw-editable-slots="bonus.eyebrow,bonus.heading,bonus.subheading,bonus.items[].description,bonus.ctaHelperText"
-            data-yw-locked-fields="bonus.id,bonus.lockedAssetId,bonus.items[].displayTitle,bonus.items[].title,bonus.visualType,bonus.assetType,bonus.actualAssetUrl,bonus.actualValue,bonus.actualAvailability,legal.disclaimer,cta.destination,analytics.tracking"
-            data-yw-template-rule="nicheAdaptiveBonusSection"
-            id="bonus"
-            aria-labelledby="yw-bonus-title"
-            data-yw-section-key="bonuses"
-          >
-            <div
-              className={getPreviewInspectClassName("yw-sales-shell yw-bonus-shell")}
-              data-preview-section="bonus"
-              {...getPreviewInspectProps("bonus")}
-            >
-              {renderInspectHotspot("bonus")}
-              <p className="yw-bonus-kicker">{renderInspectableText("bonus.eyebrow", bonusSection.eyebrow)}</p>
-              <h2 id="yw-bonus-title">{renderInspectableText("bonus.heading", bonusSection.heading)}</h2>
-              <p className="yw-section-subcopy">
-                {renderInspectableText("bonus.subheading", bonusSection.subheading)}
-              </p>
-              <div className="yw-bonus-grid" data-yw-bonus-grid>
-                {bonusSection.items.map((bonus, index) => (
-                  <article
-                    className="yw-niche-bonus__card"
-                    data-bonus-asset-type={bonus.assetType}
-                    data-bonus-id={bonus.id}
-                    data-bonus-actual-availability={bonus.actualAvailability ? "true" : "false"}
-                    data-bonus-locked-asset="true"
-                    data-bonus-visual-type={bonus.visualType}
-                    data-yw-registry-source="universalBonusRegistry"
-                    key={bonus.id}
-                  >
-                    <div className="yw-bonus-card-top">
-                      <div className="yw-bonus-badge">{bonus.badge}</div>
-                      <p className="yw-bonus-type">{bonus.typeLabel}</p>
+                {renderInspectHotspot("problem")}
+                <p className="yw-kicker">
+                  {renderInspectableText("problem.sectionLabel", sectionCopy.problemLabel)}
+                </p>
+                <h2 id="yw-familiar-title">
+                  {renderInspectableText("problem.heading", sectionCopy.problemHeading)}
+                </h2>
+                <div className="yw-check-grid">
+                  {sectionCopy.problemPoints.map((point, index) => (
+                    <div className="yw-check-row" key={`${point}-${index}`}>
+                      <span aria-hidden="true">✓</span>
+                      <p>{renderInspectableText(`problem.points.${index}`, point)}</p>
                     </div>
-                    <SmartBonusVisual
-                      bonus={bonus}
-                      index={index}
-                      niche={coachNiche}
-                      themeId={selectedTheme.id}
-                    />
-                    <h3>{bonus.displayTitle}</h3>
-                    <p>{renderInspectableText(`bonus.items.${index}.description`, bonus.description)}</p>
-                    <strong data-yw-locked="actualValue">{bonus.valueDisplay}</strong>
-                  </article>
-                ))}
-              </div>
-              <div className="yw-bonus-cta-panel">
-                <p className="yw-bonus-total" data-yw-bonus-total>
-                  {bonusSection.ctaHeading}
-                </p>
-                <p className="yw-bonus-cta-copy">
-                  {renderInspectableText("bonus.ctaHelperText", bonusSection.ctaHelperText)}
-                </p>
+                  ))}
+                </div>
                 <RegisterAction
-                  className="yw-register-strip yw-register-strip--dark yw-bonus-cta"
+                  className="yw-register-strip"
                   onMissingRegisterLink={showMissingRegisterFallback}
                   site={site}
                 >
-                  {bonusSection.ctaButtonText}
+                  {registerLabel}
                 </RegisterAction>
               </div>
-            </div>
-          </section>
+            </section>
 
-          <section className="yw-sales-section yw-sales-section--final" aria-labelledby="yw-final-cta-title" data-yw-section-key="final-cta">
-            <div className="yw-sales-shell yw-final-cta">
-              <h2 id="yw-final-cta-title">
-                {renderInspectableText("cta.heading", sectionCopy.finalHeadingMain)}{" "}
-                <span>{renderInspectableText("cta.highlight", sectionCopy.finalHeadingAccent)}</span>
-              </h2>
-              <p>{renderInspectableText("cta.body", sectionCopy.finalBody)}</p>
-              <RegisterAction
-                className="yw-register-strip yw-register-strip--dark"
-                onMissingRegisterLink={showMissingRegisterFallback}
-                site={site}
+            <section
+              className="yw-sales-section yw-sales-section--mint"
+              id="how-it-works"
+              aria-labelledby="yw-blueprint-title"
+              data-yw-section-key="journey"
+            >
+              <div
+                className={getPreviewInspectClassName("yw-sales-shell")}
+                data-preview-section="journey"
+                {...getPreviewInspectProps("journey")}
               >
-                {registerLabel}
-              </RegisterAction>
-            </div>
-          </section>
+                {renderInspectHotspot("journey")}
+                <p className="yw-kicker">
+                  {renderInspectableText("journey.sectionLabel", sectionCopy.journeyLabel)}
+                </p>
+                <h2 id="yw-blueprint-title">
+                  {renderInspectableText("journey.heading", sectionCopy.journeyHeading)}
+                </h2>
+                <div className="yw-blueprint-grid">
+                  {sectionCopy.journeySteps.map((step, index) => (
+                    <article key={`${step.label}-${step.title}`}>
+                      <strong>{String(index + 1).padStart(2, "0")}</strong>
+                      <h3>{renderInspectableText(`journey.steps.${index}.title`, step.title)}</h3>
+                      <p>
+                        {renderInspectableText(
+                          `journey.steps.${index}.description`,
+                          step.description
+                        )}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+                <RegisterAction
+                  className="yw-register-strip"
+                  onMissingRegisterLink={showMissingRegisterFallback}
+                  site={site}
+                >
+                  {registerLabel}
+                </RegisterAction>
+              </div>
+            </section>
+
+            <section
+              className="yw-sales-section yw-sales-section--dark"
+              id="results"
+              aria-labelledby="yw-results-title"
+              data-yw-section-key="results"
+            >
+              <div className="yw-sales-shell">
+                <p className="yw-kicker">
+                  {renderInspectableText("results.sectionLabel", sectionCopy.resultsLabel)}
+                </p>
+                <h2 id="yw-results-title">
+                  {renderInspectableText("results.heading", sectionCopy.resultsHeadingMain)}{" "}
+                  <span>
+                    {renderInspectableText("results.highlight", sectionCopy.resultsHeadingAccent)}
+                  </span>
+                </h2>
+                <p className="yw-section-subcopy">
+                  {renderInspectableText("results.subcopy", sectionCopy.resultsSubcopy)}
+                </p>
+                <div className="yw-result-cards">
+                  {sectionCopy.resultsCards.map((card, index) => (
+                    <article key={`${card.title}-${index}`}>
+                      <span>
+                        {renderInspectableText(`results.cards.${index}.label`, card.label)}
+                      </span>
+                      <h3>{renderInspectableText(`results.cards.${index}.title`, card.title)}</h3>
+                      <p>{renderInspectableText(`results.cards.${index}.body`, card.body)}</p>
+                      <strong>
+                        {renderInspectableText(
+                          `results.cards.${index}.attribution`,
+                          card.attribution
+                        )}
+                      </strong>
+                    </article>
+                  ))}
+                </div>
+                <RegisterAction
+                  className="yw-register-strip yw-register-strip--dark"
+                  onMissingRegisterLink={showMissingRegisterFallback}
+                  site={site}
+                >
+                  {registerLabel}
+                </RegisterAction>
+              </div>
+            </section>
+
+            <section
+              className="yw-sales-section yw-sales-section--cream"
+              id="for-you"
+              aria-labelledby="yw-fit-title"
+              data-yw-section-key="fit"
+            >
+              <div className="yw-sales-shell">
+                <h2 id="yw-fit-title">
+                  {renderInspectableText("fit.heading", sectionCopy.fitHeadingMain)}{" "}
+                  <span>
+                    {renderInspectableText("fit.highlight", sectionCopy.fitHeadingAccent)}
+                  </span>
+                </h2>
+                <div className="yw-fit-table" aria-label={sectionCopy.fitAriaLabel}>
+                  <div className="yw-fit-col">
+                    <h3>This IS for you if...</h3>
+                    {sectionCopy.fitForPoints.map((point, index) => (
+                      <p key={`${point}-${index}`}>
+                        <span aria-hidden="true">{"\u2713"}</span>{" "}
+                        {renderInspectableText(`fit.for.${index}`, point)}
+                      </p>
+                    ))}
+                  </div>
+                  <div className="yw-fit-col yw-fit-col--no">
+                    <h3>This is NOT for you if...</h3>
+                    {sectionCopy.fitNotForPoints.map((point, index) => (
+                      <p key={`${point}-${index}`}>
+                        <span aria-hidden="true">{"\u00d7"}</span>{" "}
+                        {renderInspectableText(`fit.notFor.${index}`, point)}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section
+              className="yw-sales-section yw-sales-section--dark yw-sales-section--bonus yw-niche-bonus"
+              data-yw-ai-adaptive="true"
+              data-yw-bonus-count={bonusSection.items.length}
+              data-yw-bonus-source="universalBonusRegistry"
+              data-yw-coach-name={coachName}
+              data-yw-coach-niche={coachNiche}
+              data-yw-editable-slots="bonus.eyebrow,bonus.heading,bonus.subheading,bonus.items[].description,bonus.ctaHelperText"
+              data-yw-locked-fields="bonus.id,bonus.lockedAssetId,bonus.items[].displayTitle,bonus.items[].title,bonus.visualType,bonus.assetType,bonus.actualAssetUrl,bonus.actualValue,bonus.actualAvailability,legal.disclaimer,cta.destination,analytics.tracking"
+              data-yw-template-rule="nicheAdaptiveBonusSection"
+              id="bonus"
+              aria-labelledby="yw-bonus-title"
+              data-yw-section-key="bonuses"
+            >
+              <div
+                className={getPreviewInspectClassName("yw-sales-shell yw-bonus-shell")}
+                data-preview-section="bonus"
+                {...getPreviewInspectProps("bonus")}
+              >
+                {renderInspectHotspot("bonus")}
+                <p className="yw-bonus-kicker">
+                  {renderInspectableText("bonus.eyebrow", bonusSection.eyebrow)}
+                </p>
+                <h2 id="yw-bonus-title">
+                  {renderInspectableText("bonus.heading", bonusSection.heading)}
+                </h2>
+                <p className="yw-section-subcopy">
+                  {renderInspectableText("bonus.subheading", bonusSection.subheading)}
+                </p>
+                <div className="yw-bonus-grid" data-yw-bonus-grid>
+                  {bonusSection.items.map((bonus, index) => (
+                    <article
+                      className="yw-niche-bonus__card"
+                      data-bonus-asset-type={bonus.assetType}
+                      data-bonus-id={bonus.id}
+                      data-bonus-actual-availability={bonus.actualAvailability ? "true" : "false"}
+                      data-bonus-locked-asset="true"
+                      data-bonus-visual-type={bonus.visualType}
+                      data-yw-registry-source="universalBonusRegistry"
+                      key={bonus.id}
+                    >
+                      <div className="yw-bonus-card-top">
+                        <div className="yw-bonus-badge">{bonus.badge}</div>
+                        <p className="yw-bonus-type">{bonus.typeLabel}</p>
+                      </div>
+                      <SmartBonusVisual
+                        bonus={bonus}
+                        index={index}
+                        niche={coachNiche}
+                        themeId={selectedTheme.id}
+                      />
+                      <h3>{bonus.displayTitle}</h3>
+                      <p>
+                        {renderInspectableText(
+                          `bonus.items.${index}.description`,
+                          bonus.description
+                        )}
+                      </p>
+                      <strong data-yw-locked="actualValue">{bonus.valueDisplay}</strong>
+                    </article>
+                  ))}
+                </div>
+                <div className="yw-bonus-cta-panel">
+                  <p className="yw-bonus-total" data-yw-bonus-total>
+                    {bonusSection.ctaHeading}
+                  </p>
+                  <p className="yw-bonus-cta-copy">
+                    {renderInspectableText("bonus.ctaHelperText", bonusSection.ctaHelperText)}
+                  </p>
+                  <RegisterAction
+                    className="yw-register-strip yw-register-strip--dark yw-bonus-cta"
+                    onMissingRegisterLink={showMissingRegisterFallback}
+                    site={site}
+                  >
+                    {bonusSection.ctaButtonText}
+                  </RegisterAction>
+                </div>
+              </div>
+            </section>
+
+            <section
+              className="yw-sales-section yw-sales-section--final"
+              aria-labelledby="yw-final-cta-title"
+              data-yw-section-key="final-cta"
+            >
+              <div className="yw-sales-shell yw-final-cta">
+                <h2 id="yw-final-cta-title">
+                  {renderInspectableText("cta.heading", sectionCopy.finalHeadingMain)}{" "}
+                  <span>
+                    {renderInspectableText("cta.highlight", sectionCopy.finalHeadingAccent)}
+                  </span>
+                </h2>
+                <p>{renderInspectableText("cta.body", sectionCopy.finalBody)}</p>
+                <RegisterAction
+                  className="yw-register-strip yw-register-strip--dark"
+                  onMissingRegisterLink={showMissingRegisterFallback}
+                  site={site}
+                >
+                  {registerLabel}
+                </RegisterAction>
+              </div>
+            </section>
           </section>
 
           <div
@@ -1489,10 +1604,16 @@ export function PublicCoachSitePage({
                               data-widget_type="heading.default"
                             >
                               <div className="elementor-widget-container">
-                                <h2 className="elementor-heading-title elementor-size-default" id="yw-faq-title">
+                                <h2
+                                  className="elementor-heading-title elementor-size-default"
+                                  id="yw-faq-title"
+                                >
                                   {renderInspectableText("faq.heading", sectionCopy.faqHeading)}{" "}
                                   <span className="brown-hoghlight-cu">
-                                    {renderInspectableText("faq.sectionLabel", sectionCopy.faqLabel)}
+                                    {renderInspectableText(
+                                      "faq.sectionLabel",
+                                      sectionCopy.faqLabel
+                                    )}
                                   </span>
                                 </h2>
                               </div>
@@ -1507,7 +1628,10 @@ export function PublicCoachSitePage({
                               <div className="elementor-widget-container">
                                 <div className="elementor-accordion">
                                   {sectionCopy.faqItems.map((item, index) => (
-                                    <details className="elementor-accordion-item" key={`${item.question}-${index}`}>
+                                    <details
+                                      className="elementor-accordion-item"
+                                      key={`${item.question}-${index}`}
+                                    >
                                       <summary
                                         aria-controls={`elementor-tab-content-122${index + 1}`}
                                         aria-expanded={false}
@@ -1516,12 +1640,18 @@ export function PublicCoachSitePage({
                                         id={`elementor-tab-title-122${index + 1}`}
                                         role="button"
                                       >
-                                        <span className="elementor-accordion-icon elementor-accordion-icon-right" aria-hidden="true">
+                                        <span
+                                          className="elementor-accordion-icon elementor-accordion-icon-right"
+                                          aria-hidden="true"
+                                        >
                                           <span className="elementor-accordion-icon-closed">+</span>
                                           <span className="elementor-accordion-icon-opened">-</span>
                                         </span>
                                         <span className="elementor-accordion-title">
-                                          {renderInspectableText(`faq.items.${index}.question`, item.question)}
+                                          {renderInspectableText(
+                                            `faq.items.${index}.question`,
+                                            item.question
+                                          )}
                                         </span>
                                       </summary>
                                       <div
@@ -1532,7 +1662,12 @@ export function PublicCoachSitePage({
                                         id={`elementor-tab-content-122${index + 1}`}
                                         role="region"
                                       >
-                                        <p>{renderInspectableText(`faq.items.${index}.answer`, item.answer)}</p>
+                                        <p>
+                                          {renderInspectableText(
+                                            `faq.items.${index}.answer`,
+                                            item.answer
+                                          )}
+                                        </p>
                                       </div>
                                     </details>
                                   ))}
@@ -1573,8 +1708,8 @@ export function PublicCoachSitePage({
                 </p>
                 <p>
                   Through community learning, simple health-tech tools, and coach referral
-                  experiences, YW Nutritech helps coaches connect with people in a clearer,
-                  more trusted way.
+                  experiences, YW Nutritech helps coaches connect with people in a clearer, more
+                  trusted way.
                 </p>
                 <p>
                   We aim to make wellness support more accessible, consistent, and human while
@@ -1596,20 +1731,28 @@ export function PublicCoachSitePage({
                 </div>
               </div>
               <p className="yw-footer-legal">
-                {renderInspectableText(
-                  "footer.text",
-                  getCanonicalLegalDisclaimer(site)
-                )}
+                {renderInspectableText("footer.text", getCanonicalLegalDisclaimer(site))}
               </p>
               <nav className="yw-footer-legal-links" aria-label="Coach site legal links">
-                <Link href={`/privacy?returnTo=${encodeURIComponent(coachLandingPath)}`}>Privacy Policy</Link>
-                <Link href={`/terms?returnTo=${encodeURIComponent(coachLandingPath)}`}>Terms &amp; Conditions</Link>
-                <Link href={`/disclaimer?returnTo=${encodeURIComponent(coachLandingPath)}`}>Disclaimer</Link>
+                <Link href={`/privacy?returnTo=${encodeURIComponent(coachLandingPath)}`}>
+                  Privacy Policy
+                </Link>
+                <Link href={`/terms?returnTo=${encodeURIComponent(coachLandingPath)}`}>
+                  Terms &amp; Conditions
+                </Link>
+                <Link href={`/disclaimer?returnTo=${encodeURIComponent(coachLandingPath)}`}>
+                  Disclaimer
+                </Link>
               </nav>
               <div className="yw-footer-brand">
                 <span className="yw-footer-mark" aria-hidden="true">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img alt="" decoding="async" loading="lazy" src="/assets/yw-logo-transparent.png" />
+                  <img
+                    alt=""
+                    decoding="async"
+                    loading="lazy"
+                    src="/assets/yw-logo-transparent.png"
+                  />
                 </span>
                 <span className="yw-footer-brand-text">
                   <strong>YW Nutritech</strong>
@@ -1632,7 +1775,9 @@ export function PublicCoachSitePage({
             tabIndex={floatingCtaVisible ? 0 : -1}
             target="_blank"
           >
-            <span className="yw-floating-register-cta__eyebrow">{sectionCopy.stickyCtaEyebrow}</span>
+            <span className="yw-floating-register-cta__eyebrow">
+              {sectionCopy.stickyCtaEyebrow}
+            </span>
             <strong>{registerLabel}</strong>
           </a>
         ) : (
@@ -1648,7 +1793,9 @@ export function PublicCoachSitePage({
             tabIndex={floatingCtaVisible ? 0 : -1}
             type="button"
           >
-            <span className="yw-floating-register-cta__eyebrow">{sectionCopy.stickyCtaEyebrow}</span>
+            <span className="yw-floating-register-cta__eyebrow">
+              {sectionCopy.stickyCtaEyebrow}
+            </span>
             <strong>Registration link pending</strong>
           </button>
         )}
@@ -1816,7 +1963,13 @@ function ElementorHeroInfoCard({
 function HeroInfoIcon({ kind }: { kind: CanonicalHeroInfoCardKind }) {
   if (kind === "date") {
     return (
-      <svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+      <svg
+        fill="none"
+        height="24"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
         <rect className="yw-hero-icon-stroke" height="16" rx="2.25" width="16" x="4" y="5" />
         <line className="yw-hero-icon-stroke" x1="8" x2="8" y1="3.5" y2="7" />
         <line className="yw-hero-icon-stroke" x1="16" x2="16" y1="3.5" y2="7" />
@@ -1832,7 +1985,13 @@ function HeroInfoIcon({ kind }: { kind: CanonicalHeroInfoCardKind }) {
 
   if (kind === "time") {
     return (
-      <svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+      <svg
+        fill="none"
+        height="24"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
         <circle className="yw-hero-icon-stroke" cx="12" cy="12" r="8.45" />
         <line className="yw-hero-icon-stroke" x1="12" x2="12" y1="7.2" y2="12.35" />
         <line className="yw-hero-icon-stroke" x1="12" x2="15.3" y1="12.35" y2="15.05" />
@@ -1842,18 +2001,36 @@ function HeroInfoIcon({ kind }: { kind: CanonicalHeroInfoCardKind }) {
 
   if (kind === "duration") {
     return (
-      <svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+      <svg
+        fill="none"
+        height="24"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
         <line className="yw-hero-icon-stroke" x1="6.2" x2="17.8" y1="4.5" y2="4.5" />
         <line className="yw-hero-icon-stroke" x1="6.2" x2="17.8" y1="19.5" y2="19.5" />
-        <path className="yw-hero-icon-stroke" d="M8 4.5v3.1c0 1.4.78 2.68 2.02 3.32L12 12l1.98-1.08A3.72 3.72 0 0 0 16 7.6V4.5" />
-        <path className="yw-hero-icon-stroke" d="M8 19.5v-3.1c0-1.4.78-2.68 2.02-3.32L12 12l1.98 1.08A3.72 3.72 0 0 1 16 16.4v3.1" />
+        <path
+          className="yw-hero-icon-stroke"
+          d="M8 4.5v3.1c0 1.4.78 2.68 2.02 3.32L12 12l1.98-1.08A3.72 3.72 0 0 0 16 7.6V4.5"
+        />
+        <path
+          className="yw-hero-icon-stroke"
+          d="M8 19.5v-3.1c0-1.4.78-2.68 2.02-3.32L12 12l1.98 1.08A3.72 3.72 0 0 1 16 16.4v3.1"
+        />
       </svg>
     );
   }
 
   if (kind === "focus") {
     return (
-      <svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+      <svg
+        fill="none"
+        height="24"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
         <circle className="yw-hero-icon-stroke" cx="12" cy="12" r="8.2" />
         <circle className="yw-hero-icon-stroke" cx="12" cy="12" r="3.6" />
         <circle className="yw-hero-icon-fill" cx="12" cy="12" r="1.35" />
@@ -1863,18 +2040,42 @@ function HeroInfoIcon({ kind }: { kind: CanonicalHeroInfoCardKind }) {
 
   if (kind === "support") {
     return (
-      <svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
-        <path className="yw-hero-icon-stroke" d="M7.2 12.5c-1.55 0-2.8-1.25-2.8-2.8s1.25-2.8 2.8-2.8 2.8 1.25 2.8 2.8-1.25 2.8-2.8 2.8Z" />
-        <path className="yw-hero-icon-stroke" d="M16.8 12.5c-1.55 0-2.8-1.25-2.8-2.8s1.25-2.8 2.8-2.8 2.8 1.25 2.8 2.8-1.25 2.8-2.8 2.8Z" />
-        <path className="yw-hero-icon-stroke" d="M3.7 18.5c.72-2.05 1.95-3.08 3.5-3.08s2.78 1.03 3.5 3.08" />
-        <path className="yw-hero-icon-stroke" d="M13.3 18.5c.72-2.05 1.95-3.08 3.5-3.08s2.78 1.03 3.5 3.08" />
+      <svg
+        fill="none"
+        height="24"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          className="yw-hero-icon-stroke"
+          d="M7.2 12.5c-1.55 0-2.8-1.25-2.8-2.8s1.25-2.8 2.8-2.8 2.8 1.25 2.8 2.8-1.25 2.8-2.8 2.8Z"
+        />
+        <path
+          className="yw-hero-icon-stroke"
+          d="M16.8 12.5c-1.55 0-2.8-1.25-2.8-2.8s1.25-2.8 2.8-2.8 2.8 1.25 2.8 2.8-1.25 2.8-2.8 2.8Z"
+        />
+        <path
+          className="yw-hero-icon-stroke"
+          d="M3.7 18.5c.72-2.05 1.95-3.08 3.5-3.08s2.78 1.03 3.5 3.08"
+        />
+        <path
+          className="yw-hero-icon-stroke"
+          d="M13.3 18.5c.72-2.05 1.95-3.08 3.5-3.08s2.78 1.03 3.5 3.08"
+        />
       </svg>
     );
   }
 
   if (kind === "next") {
     return (
-      <svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+      <svg
+        fill="none"
+        height="24"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
         <path className="yw-hero-icon-stroke" d="M5 12h12.5" />
         <path className="yw-hero-icon-stroke" d="m13 7.5 4.5 4.5-4.5 4.5" />
         <path className="yw-hero-icon-stroke" d="M4.8 5.2h14.4v13.6H4.8z" />
@@ -1884,8 +2085,17 @@ function HeroInfoIcon({ kind }: { kind: CanonicalHeroInfoCardKind }) {
 
   if (kind === "location") {
     return (
-      <svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
-        <path className="yw-hero-icon-stroke" d="M12 20.5s6.2-5.15 6.2-10.05A6.2 6.2 0 0 0 5.8 10.45C5.8 15.35 12 20.5 12 20.5Z" />
+      <svg
+        fill="none"
+        height="24"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          className="yw-hero-icon-stroke"
+          d="M12 20.5s6.2-5.15 6.2-10.05A6.2 6.2 0 0 0 5.8 10.45C5.8 15.35 12 20.5 12 20.5Z"
+        />
         <circle className="yw-hero-icon-stroke" cx="12" cy="10.35" r="2.25" />
       </svg>
     );
@@ -1893,7 +2103,13 @@ function HeroInfoIcon({ kind }: { kind: CanonicalHeroInfoCardKind }) {
 
   if (kind === "format") {
     return (
-      <svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+      <svg
+        fill="none"
+        height="24"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
         <rect className="yw-hero-icon-stroke" height="12.5" rx="2" width="16" x="4" y="5.5" />
         <path className="yw-hero-icon-stroke" d="M8 18.5h8" />
         <path className="yw-hero-icon-stroke" d="M10 9h4M8.5 12h7" />
@@ -1905,8 +2121,14 @@ function HeroInfoIcon({ kind }: { kind: CanonicalHeroInfoCardKind }) {
     <svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
       <circle className="yw-hero-icon-stroke" cx="12" cy="12" r="8.5" />
       <path className="yw-hero-icon-stroke" d="M4 12h16" />
-      <path className="yw-hero-icon-stroke" d="M12 3.5c2.15 2.35 3.25 5.18 3.25 8.5S14.15 18.15 12 20.5" />
-      <path className="yw-hero-icon-stroke" d="M12 3.5C9.85 5.85 8.75 8.68 8.75 12s1.1 6.15 3.25 8.5" />
+      <path
+        className="yw-hero-icon-stroke"
+        d="M12 3.5c2.15 2.35 3.25 5.18 3.25 8.5S14.15 18.15 12 20.5"
+      />
+      <path
+        className="yw-hero-icon-stroke"
+        d="M12 3.5C9.85 5.85 8.75 8.68 8.75 12s1.1 6.15 3.25 8.5"
+      />
     </svg>
   );
 }
@@ -1924,13 +2146,37 @@ function ElementorRegisterButtonContent({ children }: { children: ReactNode }) {
 
 function RegisterPointerIcon() {
   return (
-    <svg fill="none" height="24" viewBox="0 0 227 159" width="24" xmlns="http://www.w3.org/2000/svg">
-      <path d="M135.53 61.9503C141.303 70.1296 139.577 81.3622 131.807 87.4932H136.935C145.051 87.4932 151.653 80.8898 151.653 72.7738C151.653 64.6579 145.05 58.0544 136.935 58.0544H132.784L135.53 61.9503Z" fill="black" />
-      <path d="M104.84 83.5986L91.3346 64.4136C89.6418 66.8553 88.7175 69.746 88.7175 72.774C88.7175 80.891 95.321 87.4934 103.437 87.4934H108.524C107.134 86.3899 105.891 85.0877 104.84 83.5986Z" fill="black" />
-      <path d="M103.436 91.5522C95.319 91.5522 88.7166 98.1557 88.7166 106.272C88.7166 114.389 95.32 120.991 103.436 120.991H133.584C141.701 120.991 148.303 114.388 148.303 106.272C148.303 98.1547 141.7 91.5522 133.584 91.5522H103.436Z" fill="black" />
-      <path d="M103.436 125.051C95.3191 125.051 88.7166 131.654 88.7166 139.77C88.7166 147.887 95.3201 154.489 103.436 154.489H130.233C138.35 154.489 144.953 147.886 144.953 139.77C144.953 131.653 138.349 125.051 130.233 125.051H103.436Z" fill="black" />
-      <path d="M39.8686 14.1858C33.795 15.5357 28.3915 18.5335 24.2424 22.8549C20.854 26.3836 17.7851 30.2463 15.1213 34.3389C6.91087 46.9477 2.57094 61.6019 2.57094 76.7177C2.57094 119.602 37.459 154.49 80.3433 154.49H91.8106C87.461 151.048 84.6569 145.735 84.6569 139.771C84.6569 132.455 88.8703 126.12 94.9896 123.021C88.8703 119.923 84.6569 113.588 84.6569 106.272C84.6569 98.957 88.8703 92.6224 94.9896 89.5232C88.8703 86.4251 84.6569 80.0895 84.6569 72.7741C84.6569 68.4098 86.1471 64.2647 88.8751 60.922L83.7804 53.6846C82.5639 51.9568 80.654 50.977 78.5415 50.9974C76.426 51.0179 74.5327 52.0357 73.3474 53.7907C63.3614 68.5666 48.4968 79.8304 31.4916 85.5057C30.428 85.8602 29.2788 85.2865 28.9233 84.223C28.5648 83.1575 29.1434 82.0101 30.206 81.6546C46.3688 76.2599 60.496 65.5571 69.9843 51.5175C71.9 48.6823 75.0839 46.9711 78.5025 46.938C81.9172 46.9049 85.1312 48.5528 87.0996 51.3471L108.158 81.2592C110.423 84.4703 113.805 86.6082 117.679 87.2773C121.553 87.9464 125.457 87.0669 128.669 84.8005C135.303 80.1207 136.89 70.9168 132.212 64.288L94.8075 11.2405C91.3753 6.37269 85.3991 4.0615 79.5855 5.35394L39.8686 14.1858Z" fill="black" />
-      <path d="M209.281 53.9952C217.398 53.9952 224 47.3918 224 39.2758C224 31.1598 217.397 24.5564 209.281 24.5564L109.164 24.5564L129.922 53.9952L209.281 53.9952Z" fill="black" />
+    <svg
+      fill="none"
+      height="24"
+      viewBox="0 0 227 159"
+      width="24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M135.53 61.9503C141.303 70.1296 139.577 81.3622 131.807 87.4932H136.935C145.051 87.4932 151.653 80.8898 151.653 72.7738C151.653 64.6579 145.05 58.0544 136.935 58.0544H132.784L135.53 61.9503Z"
+        fill="black"
+      />
+      <path
+        d="M104.84 83.5986L91.3346 64.4136C89.6418 66.8553 88.7175 69.746 88.7175 72.774C88.7175 80.891 95.321 87.4934 103.437 87.4934H108.524C107.134 86.3899 105.891 85.0877 104.84 83.5986Z"
+        fill="black"
+      />
+      <path
+        d="M103.436 91.5522C95.319 91.5522 88.7166 98.1557 88.7166 106.272C88.7166 114.389 95.32 120.991 103.436 120.991H133.584C141.701 120.991 148.303 114.388 148.303 106.272C148.303 98.1547 141.7 91.5522 133.584 91.5522H103.436Z"
+        fill="black"
+      />
+      <path
+        d="M103.436 125.051C95.3191 125.051 88.7166 131.654 88.7166 139.77C88.7166 147.887 95.3201 154.489 103.436 154.489H130.233C138.35 154.489 144.953 147.886 144.953 139.77C144.953 131.653 138.349 125.051 130.233 125.051H103.436Z"
+        fill="black"
+      />
+      <path
+        d="M39.8686 14.1858C33.795 15.5357 28.3915 18.5335 24.2424 22.8549C20.854 26.3836 17.7851 30.2463 15.1213 34.3389C6.91087 46.9477 2.57094 61.6019 2.57094 76.7177C2.57094 119.602 37.459 154.49 80.3433 154.49H91.8106C87.461 151.048 84.6569 145.735 84.6569 139.771C84.6569 132.455 88.8703 126.12 94.9896 123.021C88.8703 119.923 84.6569 113.588 84.6569 106.272C84.6569 98.957 88.8703 92.6224 94.9896 89.5232C88.8703 86.4251 84.6569 80.0895 84.6569 72.7741C84.6569 68.4098 86.1471 64.2647 88.8751 60.922L83.7804 53.6846C82.5639 51.9568 80.654 50.977 78.5415 50.9974C76.426 51.0179 74.5327 52.0357 73.3474 53.7907C63.3614 68.5666 48.4968 79.8304 31.4916 85.5057C30.428 85.8602 29.2788 85.2865 28.9233 84.223C28.5648 83.1575 29.1434 82.0101 30.206 81.6546C46.3688 76.2599 60.496 65.5571 69.9843 51.5175C71.9 48.6823 75.0839 46.9711 78.5025 46.938C81.9172 46.9049 85.1312 48.5528 87.0996 51.3471L108.158 81.2592C110.423 84.4703 113.805 86.6082 117.679 87.2773C121.553 87.9464 125.457 87.0669 128.669 84.8005C135.303 80.1207 136.89 70.9168 132.212 64.288L94.8075 11.2405C91.3753 6.37269 85.3991 4.0615 79.5855 5.35394L39.8686 14.1858Z"
+        fill="black"
+      />
+      <path
+        d="M209.281 53.9952C217.398 53.9952 224 47.3918 224 39.2758C224 31.1598 217.397 24.5564 209.281 24.5564L109.164 24.5564L129.922 53.9952L209.281 53.9952Z"
+        fill="black"
+      />
     </svg>
   );
 }
@@ -2029,7 +2275,9 @@ function HeroImageContent({
 
   if (heroMedia.imageUrl && !mediaFailed) {
     const imageModeClass =
-      heroMedia.imageMode === "cutout" ? "yw-coach-hero-image--cutout" : "yw-coach-hero-image--framed";
+      heroMedia.imageMode === "cutout"
+        ? "yw-coach-hero-image--cutout"
+        : "yw-coach-hero-image--framed";
 
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -2048,7 +2296,11 @@ function HeroImageContent({
     );
   }
 
-  return <span className="yw-coach-hero-image yw-coach-hero-image--empty">{getCanonicalCoachInitials(site)}</span>;
+  return (
+    <span className="yw-coach-hero-image yw-coach-hero-image--empty">
+      {getCanonicalCoachInitials(site)}
+    </span>
+  );
 }
 
 function HeroVideoContent({
@@ -2108,7 +2360,8 @@ function HeroVideoContent({
 
 function getHeroMedia(site: PublicCoachSiteRecord) {
   const heroMediaType = site.heroMediaType || "image";
-  const imageUrl = heroMediaType === "image" ? site.photoUrl || site.logoUrl : site.photoUrl || site.logoUrl;
+  const imageUrl =
+    heroMediaType === "image" ? site.photoUrl || site.logoUrl : site.photoUrl || site.logoUrl;
   const embedVideoUrl = heroMediaType === "video" ? normalizeVideoEmbedUrl(site.videoUrl) : "";
   const uploadedVideoUrl =
     heroMediaType === "video" && isUploadedVideoSource(site.videoUrl) ? site.videoUrl : "";
@@ -2158,7 +2411,10 @@ export function createCoachFallbackReferenceId(
   category: PublicWebsiteErrorCategory = "coach_site_issue"
 ) {
   const code = getPublicSupportErrorCode(category);
-  const safeSeed = slug.replace(/[^a-z0-9]/gi, "").slice(0, 6).toUpperCase();
+  const safeSeed = slug
+    .replace(/[^a-z0-9]/gi, "")
+    .slice(0, 6)
+    .toUpperCase();
 
   return safeSeed ? `${code}-${safeSeed}-SUPPORT` : `${code}-SUPPORT`;
 }

@@ -32,6 +32,14 @@
   padding: 1rem;
 }
 
+.adminMainWithAddon {
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+}
+
+.adminShellAddon {
+  min-width: 0;
+}
+
 .sidebar {
   position: sticky;
   top: 0;
@@ -326,6 +334,7 @@
 }
 
 .logoutButton,
+.themeToggleButton,
 .quickActions a,
 .quickActions button,
 .table a,
@@ -360,12 +369,19 @@
   stroke-width: 2.1;
 }
 
-.logoutButton {
+.logoutButton,
+.themeToggleButton {
   border: 1px solid rgb(168 85 137 / 0.18);
   background: rgb(255 255 255 / 0.78);
   color: #332435;
   cursor: pointer;
   padding: 0 0.9rem;
+}
+
+.themeToggleButton[aria-pressed="true"] {
+  border-color: rgb(8 122 115 / 0.22);
+  background: rgb(8 122 115 / 0.1);
+  color: #075f5b;
 }
 
 .adminApp [data-admin-tooltip] {
@@ -569,6 +585,24 @@
   font-weight: 900;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.metricCard em[data-detail-tone="positive"] {
+  border-color: rgb(20 184 166 / 0.28);
+  background: rgb(20 184 166 / 0.12);
+  color: #0f766e;
+}
+
+.metricCard em[data-detail-tone="negative"] {
+  border-color: rgb(225 29 72 / 0.28);
+  background: rgb(225 29 72 / 0.1);
+  color: #be123c;
+}
+
+.metricCard em[data-detail-tone="neutral"] {
+  border-color: rgb(117 96 108 / 0.12);
+  background: rgb(117 96 108 / 0.08);
+  color: #755c6c;
 }
 
 .metricCard[data-tone="success"] {
@@ -1023,6 +1057,7 @@
 .compactField {
   display: grid;
   gap: 0.4rem;
+  position: relative;
   color: #372233;
   font-size: 0.82rem;
   font-weight: 900;
@@ -1062,6 +1097,75 @@
   border-color: rgb(8 122 115 / 0.48);
   background: #ffffff;
   box-shadow: 0 0 0 4px rgb(94 234 212 / 0.14);
+}
+
+.searchCombobox {
+  position: relative;
+  min-width: 0;
+}
+
+.searchCombobox label,
+.searchCombobox > span {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
+.searchSuggestionList {
+  position: absolute;
+  right: 0;
+  left: 0;
+  top: calc(100% + 0.38rem);
+  z-index: 120;
+  display: grid;
+  max-height: min(19rem, 52vh);
+  overflow: auto;
+  border: 1px solid rgb(8 122 115 / 0.2);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 0.98);
+  box-shadow: 0 1.2rem 2.8rem rgb(16 24 40 / 0.16);
+  padding: 0.35rem;
+  scrollbar-width: thin;
+}
+
+.searchSuggestionButton {
+  display: grid;
+  gap: 0.2rem;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius-md) - 0.2rem);
+  background: transparent;
+  color: #251822;
+  cursor: pointer;
+  padding: 0.68rem 0.75rem;
+  text-align: left;
+}
+
+.searchSuggestionButton:hover,
+.searchSuggestionButton:focus-visible,
+.searchSuggestionButton[data-active="true"] {
+  border-color: rgb(8 122 115 / 0.18);
+  background: rgb(8 122 115 / 0.08);
+  outline: none;
+}
+
+.searchSuggestionButton strong {
+  color: #251822;
+  font-size: 0.88rem;
+  line-height: 1.2;
+}
+
+.searchSuggestionMeta,
+.searchSuggestionEmpty {
+  color: #667085;
+  font-size: 0.76rem;
+  font-weight: 760;
+  line-height: 1.35;
+}
+
+.searchSuggestionEmpty {
+  padding: 0.8rem 0.75rem;
 }
 
 .statusBadge {
@@ -4332,7 +4436,8 @@
 }
 
 .chartRangeTabs button,
-.chartCompareToggle {
+.chartCompareToggle,
+.chartResetButton {
   min-height: 2rem;
   border: 1px solid transparent;
   border-radius: 999px;
@@ -4349,7 +4454,8 @@
 }
 
 .chartRangeTabs button:hover,
-.chartCompareToggle:hover {
+.chartCompareToggle:hover,
+.chartResetButton:hover {
   background: rgb(239 246 255);
   color: #1d4ed8;
   transform: translateY(-1px);
@@ -4368,6 +4474,12 @@
   color: white;
 }
 
+.chartResetButton {
+  border-color: rgb(45 164 96 / 0.16);
+  background: rgb(45 164 96 / 0.08);
+  color: #166534;
+}
+
 .chartFrame {
   position: relative;
   min-height: 17rem;
@@ -4377,6 +4489,8 @@
   background:
     linear-gradient(180deg, rgb(255 255 255), rgb(248 251 255 / 0.74)),
     radial-gradient(circle at 78% 10%, rgb(37 99 235 / 0.06), transparent 14rem);
+  touch-action: none;
+  user-select: none;
 }
 
 .chartFrame svg {
@@ -4386,9 +4500,20 @@
   display: block;
 }
 
-.chartGridLines line {
+.chartInteractionPlane {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.chartGridLines line,
+.chartMinorGridLines line {
   stroke: rgb(28 42 59 / 0.08);
   stroke-width: 1;
+}
+
+.chartMinorGridLines line {
+  opacity: 0.45;
+  stroke-dasharray: 2 10;
 }
 
 .chartArea {
@@ -4421,7 +4546,27 @@
   stroke-width: 1.4;
 }
 
-.chartPoint {
+.chartBrush {
+  fill: rgb(45 164 96 / 0.1);
+  stroke: rgb(45 164 96 / 0.28);
+  stroke-width: 1;
+}
+
+.chartRawPoint {
+  fill: rgb(255 255 255 / 0.82);
+  opacity: 0.48;
+  stroke: rgb(45 164 96 / 0.72);
+  stroke-width: 1.8;
+}
+
+.chartRawPoint[data-interpolated="true"] {
+  fill: rgb(45 164 96 / 0.42);
+  opacity: 0.22;
+  stroke-width: 1;
+}
+
+.chartPoint,
+.chartCompareActivePoint {
   fill: #ffffff;
   stroke: #2da460;
   stroke-width: 3;
@@ -4433,7 +4578,14 @@
 .chartPoint[data-active="true"] {
   fill: #2da460;
   stroke-width: 4;
-  filter: drop-shadow(0 0.35rem 0.65rem rgb(45 164 96 / 0.26));
+  filter: drop-shadow(0 0 0.85rem rgb(45 164 96 / 0.72));
+}
+
+.chartCompareActivePoint {
+  fill: #4f8df7;
+  opacity: 0.86;
+  stroke: #ffffff;
+  stroke-width: 2;
 }
 
 .chartAxisLabels text,
@@ -4474,9 +4626,24 @@
   background: #ffffff;
   box-shadow: 0 0.65rem 1.4rem rgb(15 23 42 / 0.16);
   color: #0f172a;
+  opacity: 0;
   padding: 0.65rem 0.75rem;
   pointer-events: none;
   transform: var(--tooltip-transform, translate(-50%, -112%));
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.chartTooltip[data-visible="true"] {
+  opacity: 1;
+}
+
+.chartTooltip[data-pinned="true"] {
+  border-color: rgb(45 164 96 / 0.32);
+  box-shadow:
+    0 0.65rem 1.4rem rgb(15 23 42 / 0.16),
+    0 0 0 1px rgb(45 164 96 / 0.12);
 }
 
 .chartTooltip strong,
@@ -4497,6 +4664,51 @@
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 800;
+}
+
+.chartTooltipDelta[data-tone="positive"] {
+  color: #15803d;
+}
+
+.chartTooltipDelta[data-tone="negative"] {
+  color: #b42318;
+}
+
+.chartTooltipDelta[data-tone="neutral"] {
+  color: #64748b;
+}
+
+.chartSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.chartSummaryGrid span {
+  min-width: 0;
+  border: 1px solid rgb(28 42 59 / 0.08);
+  border-radius: 0.82rem;
+  background: rgb(255 255 255 / 0.72);
+  padding: 0.72rem 0.8rem;
+}
+
+.chartSummaryGrid small {
+  display: block;
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 920;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.chartSummaryGrid strong {
+  display: block;
+  min-width: 0;
+  margin-top: 0.2rem;
+  color: #102033;
+  font-size: clamp(0.98rem, 1.2vw, 1.2rem);
+  font-weight: 950;
+  overflow-wrap: anywhere;
 }
 
 .chartLegend {
@@ -4524,6 +4736,11 @@
 
 .chartLegend span[data-series="compare"]::before {
   background: #4f8df7;
+}
+
+.chartLegend span[data-series="density"]::before {
+  border: 1px solid currentColor;
+  background: transparent;
 }
 
 .chartEmptyState {
@@ -4587,7 +4804,8 @@
   box-shadow: 0 1rem 2.5rem rgb(33 24 42 / 0.05);
 }
 
-.analyticsFilters label {
+.analyticsFilters label,
+.analyticsFilters .searchCombobox {
   display: grid;
   gap: 0.4rem;
   min-width: 0;
@@ -5290,17 +5508,22 @@
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
+    pointer-events: none;
     transform: translateX(-110%);
     transition: transform 180ms ease;
+    visibility: hidden;
     box-shadow: 1rem 0 2rem rgb(15 23 42 / 0.14);
   }
 
   .sidebar[data-open="true"] {
+    pointer-events: auto;
     transform: translateX(0) !important;
+    visibility: visible;
   }
 
   .sidebarScrim {
     position: fixed;
+    inset: 0 0 0 min(86vw, 19rem);
     z-index: 110;
   }
 
@@ -5401,6 +5624,10 @@
 
   .chartRangeTabs {
     justify-content: flex-start;
+  }
+
+  .chartSummaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .headerActions {
@@ -5712,6 +5939,10 @@
   .chartTooltip {
     max-width: 82vw;
     transform: var(--tooltip-transform, translate(-50%, -104%));
+  }
+
+  .chartSummaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .analyticsDetailActions label {
@@ -6529,4 +6760,1993 @@
   .adminUsersTable {
     min-width: 760px;
   }
+}
+
+/* Open Design admin console theme layer: visual-only, no data or route changes. */
+.adminApp[data-admin-version="v2"] {
+  --od-bg: #06110f;
+  --od-bg-2: #071814;
+  --od-surface: #0a1714;
+  --od-panel: #0d211a;
+  --od-panel-2: #10271f;
+  --od-panel-3: #152d24;
+  --od-text: #f4fff0;
+  --od-muted: #8ea19a;
+  --od-border: #1f382f;
+  --od-accent: #b8ff4d;
+  --od-accent-ink: #07110f;
+  --od-cyan: #73f8ff;
+  --od-amber: #ffd166;
+  --od-danger: #ff6b8f;
+  --od-shadow: 0 1.5rem 4.5rem rgb(0 0 0 / 0.36);
+  --od-soft-border: color-mix(in oklab, var(--od-accent), transparent 80%);
+  --od-soft-accent: color-mix(in oklab, var(--od-accent), transparent 88%);
+  position: relative;
+  isolation: isolate;
+  color-scheme: dark;
+  border-color: color-mix(in oklab, var(--od-border), var(--od-accent) 12%);
+  background:
+    radial-gradient(
+      circle at 16% 8%,
+      color-mix(in oklab, var(--od-accent), transparent 77%),
+      transparent 28rem
+    ),
+    radial-gradient(
+      circle at 86% 12%,
+      color-mix(in oklab, var(--od-cyan), transparent 88%),
+      transparent 24rem
+    ),
+    linear-gradient(135deg, var(--od-bg), var(--od-bg-2));
+  color: var(--od-text);
+  box-shadow: var(--od-shadow);
+}
+
+.adminApp[data-admin-version="v2"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      105deg,
+      transparent 0 4.75rem,
+      color-mix(in oklab, var(--od-accent), transparent 94%) 4.8rem 4.85rem,
+      transparent 4.9rem 9.5rem
+    ),
+    linear-gradient(180deg, transparent 0 52%, rgb(0 0 0 / 0.18) 100%);
+  opacity: 0.52;
+}
+
+.adminApp[data-admin-version="v2"] > .adminMain {
+  position: relative;
+  z-index: 1;
+}
+
+.adminApp[data-admin-version="v2"] > .sidebar {
+  z-index: 130;
+}
+
+.adminApp[data-admin-version="v2"] .adminMain {
+  background: transparent;
+}
+
+.adminApp[data-admin-version="v2"] .sidebar {
+  border-right-color: color-mix(in oklab, var(--od-border), var(--od-accent) 14%);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--od-panel), var(--od-accent) 4%),
+      var(--od-panel)
+    ),
+    var(--od-panel);
+  box-shadow: inset -1px 0 0 color-mix(in oklab, var(--od-accent), transparent 86%);
+  scrollbar-color: color-mix(in oklab, var(--od-accent), transparent 52%) transparent;
+}
+
+.adminApp[data-admin-version="v2"] .sidebarHeader {
+  border-bottom: 1px solid color-mix(in oklab, var(--od-border), var(--od-accent) 12%);
+  padding-bottom: 1rem;
+}
+
+.adminApp[data-admin-version="v2"] .sidebarHeader > span {
+  border-radius: 0.5rem;
+  background: radial-gradient(
+    circle at 34% 28%,
+    color-mix(in oklab, var(--od-accent), #ffffff 20%),
+    var(--od-accent) 50%,
+    #6fbf26
+  );
+  color: var(--od-accent-ink);
+  box-shadow: 0 0 1.6rem color-mix(in oklab, var(--od-accent), transparent 66%);
+}
+
+.adminApp[data-admin-version="v2"] .sidebarHeader strong,
+.adminApp[data-admin-version="v2"] .topbar strong,
+.adminApp[data-admin-version="v2"] .pageHeader h1,
+.adminApp[data-admin-version="v2"] .managerSurface h2,
+.adminApp[data-admin-version="v2"] .section h2,
+.adminApp[data-admin-version="v2"] h2,
+.adminApp[data-admin-version="v2"] h3 {
+  color: var(--od-text);
+}
+
+.adminApp[data-admin-version="v2"] .sidebarHeader p,
+.adminApp[data-admin-version="v2"] .topbar span,
+.adminApp[data-admin-version="v2"] .navButton small,
+.adminApp[data-admin-version="v2"] .dataNotice,
+.adminApp[data-admin-version="v2"] .metricCard span,
+.adminApp[data-admin-version="v2"] .metricCard em,
+.adminApp[data-admin-version="v2"] .section p,
+.adminApp[data-admin-version="v2"] .emptyState p,
+.adminApp[data-admin-version="v2"] .compactList p,
+.adminApp[data-admin-version="v2"] .analyticsHeroPanel p,
+.adminApp[data-admin-version="v2"] .analyticsWidget li,
+.adminApp[data-admin-version="v2"] .analyticsReportCard pre,
+.adminApp[data-admin-version="v2"] .analyticsListHeader span,
+.adminApp[data-admin-version="v2"] .analyticsTableCoach span,
+.adminApp[data-admin-version="v2"] .analyticsRankList small,
+.adminApp[data-admin-version="v2"] .analyticsAttentionList span,
+.adminApp[data-admin-version="v2"] .analyticsRankIdentity small,
+.adminApp[data-admin-version="v2"] .analyticsMiniMetrics span,
+.adminApp[data-admin-version="v2"] .analyticsMetaGrid span,
+.adminApp[data-admin-version="v2"] .settingsPanelList span,
+.adminApp[data-admin-version="v2"] .settingsPanelList em,
+.adminApp[data-admin-version="v2"] .statusCard span,
+.adminApp[data-admin-version="v2"] .statusCard p,
+.adminApp[data-admin-version="v2"] .statusList span,
+.adminApp[data-admin-version="v2"] .dialogCopy,
+.adminApp[data-admin-version="v2"] .errorReportToolbar p,
+.adminApp[data-admin-version="v2"] .errorReportDetails span,
+.adminApp[data-admin-version="v2"] .adminUsersTable td span,
+.adminApp[data-admin-version="v2"] .adminInviteList span,
+.adminApp[data-admin-version="v2"] .permissionMatrix small,
+.adminApp[data-admin-version="v2"] .adminRoleGrid span {
+  color: var(--od-muted);
+}
+
+.adminApp[data-admin-version="v2"] .navGroup p {
+  color: color-mix(in oklab, var(--od-muted), var(--od-accent) 15%);
+}
+
+.adminApp[data-admin-version="v2"] .navButton {
+  border-radius: 0.5rem;
+  color: var(--od-text);
+}
+
+.adminApp[data-admin-version="v2"] .navButton:hover,
+.adminApp[data-admin-version="v2"] .navButton:focus-visible,
+.adminApp[data-admin-version="v2"] .navButton[data-active="true"] {
+  border-color: color-mix(in oklab, var(--od-accent), transparent 42%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--od-accent), transparent 78%),
+    color-mix(in oklab, var(--od-accent), transparent 92%)
+  );
+  color: var(--od-text);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 0 1.4rem color-mix(in oklab, var(--od-accent), transparent 82%);
+}
+
+.adminApp[data-admin-version="v2"] .topbar,
+.adminApp[data-admin-version="v2"] .submenuTabs,
+.adminApp[data-admin-version="v2"] .managerSurface,
+.adminApp[data-admin-version="v2"] .section,
+.adminApp[data-admin-version="v2"] .metricCard,
+.adminApp[data-admin-version="v2"] .analyticsHeroPanel,
+.adminApp[data-admin-version="v2"] .analyticsWidget,
+.adminApp[data-admin-version="v2"] .analyticsReportCard,
+.adminApp[data-admin-version="v2"] .analyticsChartCard,
+.adminApp[data-admin-version="v2"] .analyticsCoachListPanel,
+.adminApp[data-admin-version="v2"] .analyticsCoachCard,
+.adminApp[data-admin-version="v2"] .analyticsDetail,
+.adminApp[data-admin-version="v2"] .statusCard,
+.adminApp[data-admin-version="v2"] .settingsPanelList article,
+.adminApp[data-admin-version="v2"] .maintenanceCard,
+.adminApp[data-admin-version="v2"] .dialogPanel,
+.adminApp[data-admin-version="v2"] .adminInviteList article,
+.adminApp[data-admin-version="v2"] .adminFormGrid label,
+.adminApp[data-admin-version="v2"] .permissionMatrix fieldset,
+.adminApp[data-admin-version="v2"] .adminRoleGrid button {
+  border-color: color-mix(in oklab, var(--od-border), var(--od-accent) 10%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--od-panel), #ffffff 4%),
+    color-mix(in oklab, var(--od-panel), #000000 4%)
+  );
+  box-shadow: 0 1rem 2.8rem rgb(0 0 0 / 0.18);
+  color: var(--od-text);
+}
+
+.adminApp[data-admin-version="v2"] .topbar {
+  border-color: color-mix(in oklab, var(--od-border), var(--od-accent) 14%);
+  backdrop-filter: blur(16px) saturate(1.08);
+}
+
+.adminApp[data-admin-version="v2"] .pageBody {
+  scrollbar-color: color-mix(in oklab, var(--od-accent), transparent 56%) transparent;
+}
+
+.adminApp[data-admin-version="v2"] .kicker,
+.adminApp[data-admin-version="v2"] .brandKicker,
+.adminApp[data-admin-version="v2"] .table th,
+.adminApp[data-admin-version="v2"] .analyticsCoachTable th,
+.adminApp[data-admin-version="v2"] .adminUsersTable th,
+.adminApp[data-admin-version="v2"] .analyticsListHeader h2,
+.adminApp[data-admin-version="v2"] .analyticsHeroPanel h2,
+.adminApp[data-admin-version="v2"] .analyticsWidget h3,
+.adminApp[data-admin-version="v2"] .analyticsReportCard h3,
+.adminApp[data-admin-version="v2"] .statusCard h3,
+.adminApp[data-admin-version="v2"] .errorReportIdentity strong,
+.adminApp[data-admin-version="v2"] .adminUsersTable td strong,
+.adminApp[data-admin-version="v2"] .adminInviteList strong,
+.adminApp[data-admin-version="v2"] .permissionMatrix strong,
+.adminApp[data-admin-version="v2"] .adminRoleGrid button[data-active="true"] strong {
+  color: var(--od-accent);
+}
+
+.adminApp[data-admin-version="v2"] .submenuTabs button {
+  color: var(--od-muted);
+  border-radius: 0.45rem;
+}
+
+.adminApp[data-admin-version="v2"] .submenuTabs button[data-active="true"],
+.adminApp[data-admin-version="v2"] .submenuTabs button:hover,
+.adminApp[data-admin-version="v2"] .submenuTabs button:focus-visible {
+  border-color: color-mix(in oklab, var(--od-accent), transparent 42%);
+  background: color-mix(in oklab, var(--od-accent), transparent 86%);
+  color: var(--od-text);
+}
+
+.adminApp[data-admin-version="v2"] .logoutButton,
+.adminApp[data-admin-version="v2"] .menuButton,
+.adminApp[data-admin-version="v2"] .iconAction,
+.adminApp[data-admin-version="v2"] .secondaryAction,
+.adminApp[data-admin-version="v2"] .tableActions button,
+.adminApp[data-admin-version="v2"] .dialogHeader button,
+.adminApp[data-admin-version="v2"] .dialogFooter button,
+.adminApp[data-admin-version="v2"] .aiAssistantHeader button,
+.adminApp[data-admin-version="v2"] .aiAssistantActions button,
+.adminApp[data-admin-version="v2"] .chartRangeTabs button,
+.adminApp[data-admin-version="v2"] .chartCompareToggle,
+.adminApp[data-admin-version="v2"] .chartResetButton,
+.adminApp[data-admin-version="v2"] .analyticsTabs button,
+.adminApp[data-admin-version="v2"] .errorReportTabs button,
+.adminApp[data-admin-version="v2"] .compactSelectLabel,
+.adminApp[data-admin-version="v2"] .compactSelectLabel input,
+.adminApp[data-admin-version="v2"] .compactSelectLabel select,
+.adminApp[data-admin-version="v2"] input,
+.adminApp[data-admin-version="v2"] select,
+.adminApp[data-admin-version="v2"] textarea {
+  border-color: color-mix(in oklab, var(--od-border), var(--od-accent) 10%);
+  background: color-mix(in oklab, var(--od-surface), transparent 12%);
+  color: var(--od-text);
+}
+
+.adminApp[data-admin-version="v2"] input::placeholder,
+.adminApp[data-admin-version="v2"] textarea::placeholder {
+  color: color-mix(in oklab, var(--od-muted), transparent 18%);
+}
+
+.adminApp[data-admin-version="v2"] .inlineNote,
+.adminApp[data-admin-version="v2"] section[aria-label="Coach site manager"] > p {
+  color: color-mix(in oklab, var(--od-muted), var(--od-text) 28%);
+}
+
+.adminApp[data-admin-version="v2"] section[aria-label="Coach site manager"] label > span,
+.adminApp[data-admin-version="v2"] section[aria-label="Coach site manager"] label > small,
+.adminApp[data-admin-version="v2"] section[aria-label="Coach analytics filters"] label,
+.adminApp[data-admin-version="v2"] label > small {
+  color: color-mix(in oklab, var(--od-muted), var(--od-text) 26%);
+}
+
+.adminApp[data-admin-version="v2"] input:focus,
+.adminApp[data-admin-version="v2"] select:focus,
+.adminApp[data-admin-version="v2"] textarea:focus,
+.adminApp[data-admin-version="v2"] .compactSelectLabel input:focus,
+.adminApp[data-admin-version="v2"] .compactSelectLabel select:focus {
+  border-color: color-mix(in oklab, var(--od-accent), transparent 24%);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--od-accent), transparent 78%);
+  outline: none;
+}
+
+.adminApp[data-admin-version="v2"] .primaryAction,
+.adminApp[data-admin-version="v2"] .dialogFooter button:last-child,
+.adminApp[data-admin-version="v2"] .adminRoleGrid button[data-active="true"],
+.adminApp[data-admin-version="v2"] .toggleLine {
+  border-color: var(--od-accent);
+  background: var(--od-accent);
+  color: var(--od-accent-ink);
+  box-shadow: 0 0.8rem 1.8rem color-mix(in oklab, var(--od-accent), transparent 82%);
+}
+
+.adminApp[data-admin-version="v2"] .dangerAction,
+.adminApp[data-admin-version="v2"] .dialogFooter button[data-tone="danger"],
+.adminApp[data-admin-version="v2"] .iconAction[data-tone="danger"] {
+  border-color: color-mix(in oklab, var(--od-danger), transparent 36%);
+  background: color-mix(in oklab, var(--od-danger), transparent 88%);
+  color: #ffdce5;
+}
+
+.adminApp[data-admin-version="v2"] .primaryAction:hover:not(:disabled),
+.adminApp[data-admin-version="v2"] .secondaryAction:hover:not(:disabled),
+.adminApp[data-admin-version="v2"] .dangerAction:hover:not(:disabled),
+.adminApp[data-admin-version="v2"] .logoutButton:hover,
+.adminApp[data-admin-version="v2"] .menuButton:hover,
+.adminApp[data-admin-version="v2"] .iconAction:hover:not(:disabled),
+.adminApp[data-admin-version="v2"] .tableActions button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--od-accent);
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--od-accent), transparent 78%),
+    0 1rem 2.3rem rgb(0 0 0 / 0.2);
+}
+
+.adminApp[data-admin-version="v2"] .dataNotice,
+.adminApp[data-admin-version="v2"] .securityNote {
+  border-color: color-mix(in oklab, var(--od-amber), transparent 58%);
+  background: color-mix(in oklab, var(--od-amber), transparent 90%);
+  color: #ffe7a3;
+}
+
+.adminApp[data-admin-version="v2"] .metricCard {
+  min-height: 8.8rem;
+  overflow: hidden;
+}
+
+.adminApp[data-admin-version="v2"] .metricCard,
+.adminApp[data-admin-version="v2"] .metricCard[data-tone="neutral"] {
+  border-color: color-mix(in oklab, var(--od-border), var(--od-accent) 10%);
+  background: linear-gradient(180deg, #10271f, #0d211a), var(--od-panel);
+  color: var(--od-text);
+  box-shadow: 0 1rem 2.8rem rgb(0 0 0 / 0.18);
+}
+
+.adminApp[data-admin-version="v2"] .metricCard[data-tone="success"] {
+  background:
+    radial-gradient(
+      circle at 10% 0%,
+      color-mix(in oklab, var(--od-accent), transparent 84%),
+      transparent 10rem
+    ),
+    linear-gradient(180deg, #16351f, #0d211a);
+}
+
+.adminApp[data-admin-version="v2"] .metricCard[data-tone="warning"] {
+  background:
+    radial-gradient(
+      circle at 10% 0%,
+      color-mix(in oklab, var(--od-amber), transparent 84%),
+      transparent 10rem
+    ),
+    linear-gradient(180deg, #302a14, #0d211a);
+}
+
+.adminApp[data-admin-version="v2"] .metricCard[data-tone="attention"] {
+  background:
+    radial-gradient(
+      circle at 10% 0%,
+      color-mix(in oklab, var(--od-danger), transparent 84%),
+      transparent 10rem
+    ),
+    linear-gradient(180deg, #2e1720, #0d211a);
+}
+
+.adminApp[data-admin-version="v2"] .metricCard::before,
+.adminApp[data-admin-version="v2"] .analyticsChartCard::before,
+.adminApp[data-admin-version="v2"] .analyticsHeroPanel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(110deg, transparent 0 28%, rgb(255 255 255 / 0.08) 42%, transparent 56%),
+    radial-gradient(
+      circle at 10% 0%,
+      color-mix(in oklab, var(--od-accent), transparent 82%),
+      transparent 12rem
+    );
+  opacity: 0.42;
+}
+
+.adminApp[data-admin-version="v2"] .metricCard strong,
+.adminApp[data-admin-version="v2"] .analyticsHeroStats strong,
+.adminApp[data-admin-version="v2"] .analyticsMiniMetrics strong,
+.adminApp[data-admin-version="v2"] .statusCard strong,
+.adminApp[data-admin-version="v2"] .statusList strong,
+.adminApp[data-admin-version="v2"] .analyticsMetaGrid strong,
+.adminApp[data-admin-version="v2"] .analyticsRankIdentity strong,
+.adminApp[data-admin-version="v2"] .analyticsTableCoach strong,
+.adminApp[data-admin-version="v2"] .tableCoachText strong,
+.adminApp[data-admin-version="v2"] .errorReportDetails strong,
+.adminApp[data-admin-version="v2"] .permissionMatrix strong {
+  color: var(--od-text);
+}
+
+.adminApp[data-admin-version="v2"] .metricCard em,
+.adminApp[data-admin-version="v2"] .statusPill,
+.adminApp[data-admin-version="v2"] .statusBadge,
+.adminApp[data-admin-version="v2"] .errorReportBadges span,
+.adminApp[data-admin-version="v2"] .adminInviteList em,
+.adminApp[data-admin-version="v2"] .analyticsTabs button[data-active="true"],
+.adminApp[data-admin-version="v2"] .chartRangeTabs button[data-active="true"],
+.adminApp[data-admin-version="v2"] .chartCompareToggle[aria-pressed="true"],
+.adminApp[data-admin-version="v2"] .errorReportTabs button[data-active="true"] {
+  border-color: color-mix(in oklab, var(--od-accent), transparent 42%);
+  background: color-mix(in oklab, var(--od-accent), transparent 86%);
+  color: var(--od-accent) !important;
+}
+
+.adminApp[data-admin-version="v2"] .metricCard[data-tone="success"],
+.adminApp[data-admin-version="v2"] .statusCard[data-tone="success"],
+.adminApp[data-admin-version="v2"] .statusList div[data-tone="success"],
+.adminApp[data-admin-version="v2"] .settingsPanelList article[data-tone="success"],
+.adminApp[data-admin-version="v2"] .iconAction[data-tone="success"] {
+  border-color: color-mix(in oklab, var(--od-accent), transparent 48%);
+  background:
+    radial-gradient(
+      circle at 10% 0%,
+      color-mix(in oklab, var(--od-accent), transparent 84%),
+      transparent 10rem
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--od-panel), var(--od-accent) 7%),
+      var(--od-panel)
+    );
+}
+
+.adminApp[data-admin-version="v2"] .metricCard[data-tone="warning"],
+.adminApp[data-admin-version="v2"] .statusCard[data-tone="warning"],
+.adminApp[data-admin-version="v2"] .statusList div[data-tone="warning"],
+.adminApp[data-admin-version="v2"] .settingsPanelList article[data-tone="warning"],
+.adminApp[data-admin-version="v2"] .statusPill[data-status="disabled"] {
+  border-color: color-mix(in oklab, var(--od-amber), transparent 48%);
+  background: color-mix(in oklab, var(--od-amber), transparent 90%);
+  color: #ffe7a3 !important;
+}
+
+.adminApp[data-admin-version="v2"] .metricCard[data-tone="attention"],
+.adminApp[data-admin-version="v2"] .statusCard[data-tone="attention"],
+.adminApp[data-admin-version="v2"] .statusList div[data-tone="attention"],
+.adminApp[data-admin-version="v2"] .statusBadge[data-status="archived"],
+.adminApp[data-admin-version="v2"] .statusBadge[data-status="removed"],
+.adminApp[data-admin-version="v2"] .statusPill[data-status="inactive"] {
+  border-color: color-mix(in oklab, var(--od-danger), transparent 50%);
+  background: color-mix(in oklab, var(--od-danger), transparent 90%);
+  color: #ffdce5 !important;
+}
+
+.adminApp[data-admin-version="v2"] .statusBadge[data-status="published"],
+.adminApp[data-admin-version="v2"] .errorReportBadges span[data-status="Fixed"] {
+  border-color: color-mix(in oklab, var(--od-accent), transparent 42%);
+  background: color-mix(in oklab, var(--od-accent), transparent 86%);
+  color: var(--od-accent) !important;
+}
+
+.adminApp[data-admin-version="v2"] .statusBadge[data-status="paused"],
+.adminApp[data-admin-version="v2"] .statusBadge[data-status="draft"],
+.adminApp[data-admin-version="v2"] .errorReportBadges span[data-status="Reviewing"] {
+  border-color: color-mix(in oklab, var(--od-amber), transparent 52%);
+  background: color-mix(in oklab, var(--od-amber), transparent 90%);
+  color: #ffe7a3 !important;
+}
+
+.adminApp[data-admin-version="v2"] .tableWrap,
+.adminApp[data-admin-version="v2"] .analyticsCoachTableScroll {
+  border-color: color-mix(in oklab, var(--od-border), var(--od-accent) 10%);
+  background: color-mix(in oklab, var(--od-surface), transparent 10%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+}
+
+.adminApp[data-admin-version="v2"] .table th,
+.adminApp[data-admin-version="v2"] .table td,
+.adminApp[data-admin-version="v2"] .analyticsCoachTable th,
+.adminApp[data-admin-version="v2"] .analyticsCoachTable td,
+.adminApp[data-admin-version="v2"] .adminUsersTable th,
+.adminApp[data-admin-version="v2"] .adminUsersTable td {
+  border-bottom-color: color-mix(in oklab, var(--od-border), var(--od-accent) 7%);
+  color: color-mix(in oklab, var(--od-text), var(--od-muted) 22%);
+}
+
+.adminApp[data-admin-version="v2"] .table tbody tr:hover,
+.adminApp[data-admin-version="v2"] .analyticsCoachTable tbody tr:hover,
+.adminApp[data-admin-version="v2"] .errorReportCard:hover,
+.adminApp[data-admin-version="v2"] .analyticsWidget:hover,
+.adminApp[data-admin-version="v2"] .analyticsReportCard:hover,
+.adminApp[data-admin-version="v2"] .analyticsCoachCard:hover {
+  border-color: color-mix(in oklab, var(--od-accent), transparent 48%);
+  background: color-mix(in oklab, var(--od-accent), transparent 92%);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--od-accent), transparent 82%),
+    0 1rem 2.6rem rgb(0 0 0 / 0.22);
+}
+
+.adminApp[data-admin-version="v2"] .table code,
+.adminApp[data-admin-version="v2"] .codeStack button,
+.adminApp[data-admin-version="v2"] .copyableValue button,
+.adminApp[data-admin-version="v2"] .reportPrompt button,
+.adminApp[data-admin-version="v2"] .copyBlock,
+.adminApp[data-admin-version="v2"] .dialogCopy,
+.adminApp[data-admin-version="v2"] .errorReportCard,
+.adminApp[data-admin-version="v2"] .errorReportDetails div,
+.adminApp[data-admin-version="v2"] .analyticsHeroStats span,
+.adminApp[data-admin-version="v2"] .analyticsMiniMetrics,
+.adminApp[data-admin-version="v2"] .analyticsMetaGrid,
+.adminApp[data-admin-version="v2"] .analyticsRankList button,
+.adminApp[data-admin-version="v2"] .analyticsAttentionList button,
+.adminApp[data-admin-version="v2"] .analyticsBars div,
+.adminApp[data-admin-version="v2"] .analyticsFunnelSteps div,
+.adminApp[data-admin-version="v2"] .chartFrame,
+.adminApp[data-admin-version="v2"] .chartSummaryGrid span,
+.adminApp[data-admin-version="v2"] .chartTooltip,
+.adminApp[data-admin-version="v2"] .aiAssistantPanel,
+.adminApp[data-admin-version="v2"] .aiAssistantLoading,
+.adminApp[data-admin-version="v2"] .aiAssistantResult,
+.adminApp[data-admin-version="v2"] .adminWizardSteps span,
+.adminApp[data-admin-version="v2"] .adminFormGrid label,
+.adminApp[data-admin-version="v2"] .permissionMatrix fieldset {
+  border-color: color-mix(in oklab, var(--od-border), var(--od-accent) 10%);
+  background: color-mix(in oklab, var(--od-surface), transparent 10%);
+  color: var(--od-text);
+}
+
+.adminApp[data-admin-version="v2"] .chartGridLines line,
+.adminApp[data-admin-version="v2"] .chartMinorGridLines line,
+.adminApp[data-admin-version="v2"] .chartCursorLine {
+  stroke: color-mix(in oklab, var(--od-border), var(--od-accent) 12%);
+}
+
+.adminApp[data-admin-version="v2"] .chartMinorGridLines line {
+  opacity: 0.38;
+}
+
+.adminApp[data-admin-version="v2"] .chartPrimaryLine,
+.adminApp[data-admin-version="v2"] .chartArea,
+.adminApp[data-admin-version="v2"] .spark path,
+.adminApp[data-admin-version="v2"] .spark polyline {
+  stroke: var(--od-accent);
+}
+
+.adminApp[data-admin-version="v2"] .chartCompareLine,
+.adminApp[data-admin-version="v2"] .chartLegend span[data-series="compare"]::before {
+  stroke: var(--od-cyan);
+  background: var(--od-cyan);
+}
+
+.adminApp[data-admin-version="v2"] .chartPoint {
+  fill: var(--od-panel);
+  stroke: var(--od-accent);
+}
+
+.adminApp[data-admin-version="v2"] .chartRawPoint {
+  fill: color-mix(in oklab, var(--od-accent), transparent 30%);
+  stroke: var(--od-accent);
+}
+
+.adminApp[data-admin-version="v2"] .chartCompareActivePoint {
+  fill: var(--od-cyan);
+  stroke: var(--od-panel);
+}
+
+.adminApp[data-admin-version="v2"] .chartBrush {
+  fill: color-mix(in oklab, var(--od-accent), transparent 86%);
+  stroke: color-mix(in oklab, var(--od-accent), transparent 45%);
+}
+
+.adminApp[data-admin-version="v2"] .chartTooltip {
+  box-shadow: 0 1rem 2.4rem rgb(0 0 0 / 0.32);
+}
+
+.adminApp[data-admin-version="v2"] .chartSummaryGrid small,
+.adminApp[data-admin-version="v2"] .chartSummaryGrid strong {
+  color: inherit;
+}
+
+.adminApp[data-admin-version="v2"] .chartTooltipDelta[data-tone="positive"] {
+  color: var(--od-accent);
+}
+
+.adminApp[data-admin-version="v2"] .chartTooltipDelta[data-tone="negative"] {
+  color: var(--dash-danger, #ff5a5f);
+}
+
+.adminApp[data-admin-version="v2"] .chartFrame {
+  border-color: color-mix(in oklab, var(--od-border), var(--od-accent) 12%);
+  background:
+    linear-gradient(90deg, rgb(31 56 47 / 0.34) 1px, transparent 1px),
+    linear-gradient(180deg, rgb(31 56 47 / 0.3) 1px, transparent 1px), #0a1714;
+  background-size: 4.5rem 4.5rem;
+}
+
+.adminApp[data-admin-version="v2"] .chartEmptyState {
+  border-color: color-mix(in oklab, var(--od-border), var(--od-accent) 18%);
+  background: #0a1714;
+  color: var(--od-muted);
+}
+
+.adminApp[data-admin-version="v2"] .aiAssistantButton {
+  border-color: color-mix(in oklab, var(--od-accent), transparent 44%);
+  background:
+    radial-gradient(circle at 18% 15%, rgb(255 255 255 / 0.22), transparent 1.6rem),
+    linear-gradient(135deg, var(--od-accent), var(--od-cyan));
+  color: var(--od-accent-ink);
+}
+
+.adminApp[data-admin-version="v2"] .aiAssistantScrim,
+.adminApp[data-admin-version="v2"] .dialogScrim,
+.adminApp[data-admin-version="v2"] .sidebarScrim {
+  background: rgb(1 8 6 / 0.68);
+  backdrop-filter: blur(4px);
+}
+
+.adminApp[data-admin-version="v2"] .dialogHeader,
+.adminApp[data-admin-version="v2"] .dialogFooter {
+  border-color: color-mix(in oklab, var(--od-border), var(--od-accent) 12%);
+}
+
+.adminApp[data-admin-version="v2"] .emptyState,
+.adminApp[data-admin-version="v2"] .publishPanel,
+.adminApp[data-admin-version="v2"] .mediaProcessingCard {
+  border-color: color-mix(in oklab, var(--od-border), var(--od-accent) 12%);
+  background:
+    radial-gradient(
+      circle at 12% 0%,
+      color-mix(in oklab, var(--od-accent), transparent 86%),
+      transparent 12rem
+    ),
+    color-mix(in oklab, var(--od-panel), transparent 5%);
+  color: var(--od-text);
+}
+
+.adminApp[data-admin-version="v2"] .activityCenterPanel,
+.adminApp[data-admin-version="v2"] .activityCenterButton {
+  border-color: color-mix(in oklab, var(--od-border), var(--od-accent) 10%);
+  background: var(--od-panel);
+  color: var(--od-text);
+}
+
+@media (max-width: 860px) {
+  .adminApp[data-admin-version="v2"] .analyticsCoachTable tbody tr {
+    border-color: color-mix(in oklab, var(--od-border), var(--od-accent) 10%);
+    background: color-mix(in oklab, var(--od-panel), transparent 4%);
+    box-shadow: 0 0.85rem 1.8rem rgb(0 0 0 / 0.18);
+  }
+
+  .adminApp[data-admin-version="v2"] .analyticsCoachTable td {
+    color: var(--od-text);
+  }
+
+  .adminApp[data-admin-version="v2"] .analyticsCoachTable td::before {
+    color: var(--od-muted);
+  }
+}
+
+@media (max-width: 520px) {
+  .adminApp[data-admin-version="v2"] {
+    box-shadow: none;
+  }
+
+  .adminApp[data-admin-version="v2"] .topbar,
+  .adminApp[data-admin-version="v2"] .adminMain {
+    border-radius: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adminApp[data-admin-version="v2"] *,
+  .adminApp[data-admin-version="v2"] *::before,
+  .adminApp[data-admin-version="v2"] *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* OD fidelity correction: match the active Open Design console, keep production behavior intact. */
+.adminApp[data-admin-version="v2"] {
+  --od-bg: oklch(10% 0.014 250);
+  --od-bg-2: oklch(13% 0.018 250);
+  --od-surface: oklch(16% 0.018 250);
+  --od-surface-2: oklch(19% 0.02 250);
+  --od-surface-3: oklch(23% 0.025 250);
+  --od-text: oklch(93% 0.014 245);
+  --od-muted: oklch(66% 0.028 245);
+  --od-dim: oklch(48% 0.026 245);
+  --od-border: oklch(29% 0.018 250);
+  --od-border-soft: oklch(24% 0.016 250);
+  --od-accent: oklch(74% 0.17 154);
+  --od-accent-2: oklch(72% 0.14 218);
+  --od-accent-ink: oklch(10% 0.014 250);
+  --od-cyan: oklch(72% 0.14 218);
+  --od-amber: oklch(78% 0.16 82);
+  --od-danger: oklch(68% 0.19 28);
+  --od-radius: 8px;
+  --od-font-ui: "IBM Plex Sans", Aptos, "Segoe UI", system-ui, sans-serif;
+  --od-font-mono:
+    "JetBrains Mono", "IBM Plex Mono", "Cascadia Code", ui-monospace, SFMono-Regular, Menlo,
+    monospace;
+  color-scheme: dark;
+  border-color: var(--od-border);
+  border-radius: var(--od-radius);
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--od-border) 20%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      0deg,
+      color-mix(in oklch, var(--od-border) 18%, transparent) 1px,
+      transparent 1px
+    ),
+    radial-gradient(
+      circle at 52% 0%,
+      color-mix(in oklch, var(--od-cyan) 13%, transparent),
+      transparent 34rem
+    ),
+    var(--od-bg);
+  background-size:
+    56px 56px,
+    56px 56px,
+    auto,
+    auto;
+  color: var(--od-text);
+  font-family: var(--od-font-ui);
+  box-shadow: 0 24px 70px rgb(0 0 0 / 0.34);
+}
+
+.adminApp[data-admin-version="v2"]::before {
+  background: linear-gradient(180deg, transparent 0 58%, rgb(0 0 0 / 0.18) 100%);
+  opacity: 0.8;
+}
+
+.adminApp[data-admin-version="v2"] .adminMain {
+  background: transparent;
+}
+
+.adminApp[data-admin-version="v2"] .sidebar {
+  border-right-color: var(--od-border);
+  background: color-mix(in oklch, var(--od-bg-2) 88%, black 12%);
+  box-shadow: none;
+}
+
+.adminApp[data-admin-version="v2"] .sidebarHeader {
+  border-bottom-color: var(--od-border-soft);
+  padding-bottom: 14px;
+}
+
+.adminApp[data-admin-version="v2"] .sidebarHeader > span {
+  width: 34px;
+  height: 34px;
+  border: 1px solid color-mix(in oklch, var(--od-accent) 55%, var(--od-border));
+  border-radius: var(--od-radius);
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--od-accent) 18%, transparent),
+    transparent 70%
+  );
+  color: var(--od-accent);
+  font: 700 13px/1 var(--od-font-mono);
+  box-shadow: inset 0 0 18px color-mix(in oklch, var(--od-accent) 15%, transparent);
+}
+
+.adminApp[data-admin-version="v2"] .sidebarHeader strong,
+.adminApp[data-admin-version="v2"] .topbar strong,
+.adminApp[data-admin-version="v2"] .pageHeader h1,
+.adminApp[data-admin-version="v2"] .managerSurface h2,
+.adminApp[data-admin-version="v2"] .section h2,
+.adminApp[data-admin-version="v2"] h2,
+.adminApp[data-admin-version="v2"] h3 {
+  color: var(--od-text);
+  font-family: var(--od-font-ui);
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.adminApp[data-admin-version="v2"] .topbar h1,
+.adminApp[data-admin-version="v2"] .pageHeader h1 {
+  font-size: clamp(24px, 2.2vw, 36px);
+  line-height: 1.05;
+}
+
+.adminApp[data-admin-version="v2"] .sidebarHeader p,
+.adminApp[data-admin-version="v2"] .topbar span,
+.adminApp[data-admin-version="v2"] .navButton small,
+.adminApp[data-admin-version="v2"] .section p,
+.adminApp[data-admin-version="v2"] .emptyState p,
+.adminApp[data-admin-version="v2"] .compactList p,
+.adminApp[data-admin-version="v2"] .analyticsHeroPanel p,
+.adminApp[data-admin-version="v2"] .analyticsWidget li,
+.adminApp[data-admin-version="v2"] .analyticsReportCard pre,
+.adminApp[data-admin-version="v2"] .analyticsListHeader span,
+.adminApp[data-admin-version="v2"] .analyticsTableCoach span,
+.adminApp[data-admin-version="v2"] .analyticsRankList small,
+.adminApp[data-admin-version="v2"] .analyticsAttentionList span,
+.adminApp[data-admin-version="v2"] .analyticsRankIdentity small,
+.adminApp[data-admin-version="v2"] .analyticsMiniMetrics span,
+.adminApp[data-admin-version="v2"] .analyticsMetaGrid span,
+.adminApp[data-admin-version="v2"] .settingsPanelList span,
+.adminApp[data-admin-version="v2"] .settingsPanelList em,
+.adminApp[data-admin-version="v2"] .statusCard span,
+.adminApp[data-admin-version="v2"] .statusCard p,
+.adminApp[data-admin-version="v2"] .statusList span,
+.adminApp[data-admin-version="v2"] .dialogCopy,
+.adminApp[data-admin-version="v2"] .errorReportToolbar p,
+.adminApp[data-admin-version="v2"] .errorReportDetails span,
+.adminApp[data-admin-version="v2"] .adminUsersTable td span,
+.adminApp[data-admin-version="v2"] .adminInviteList span,
+.adminApp[data-admin-version="v2"] .permissionMatrix small,
+.adminApp[data-admin-version="v2"] .adminRoleGrid span,
+.adminApp[data-admin-version="v2"] .inlineNote,
+.adminApp[data-admin-version="v2"] section[aria-label="Coach site manager"] > p {
+  color: var(--od-muted);
+}
+
+.adminApp[data-admin-version="v2"] .navGroup p,
+.adminApp[data-admin-version="v2"] .kicker,
+.adminApp[data-admin-version="v2"] .brandKicker,
+.adminApp[data-admin-version="v2"] .table th,
+.adminApp[data-admin-version="v2"] .analyticsCoachTable th,
+.adminApp[data-admin-version="v2"] .adminUsersTable th,
+.adminApp[data-admin-version="v2"] .metricCard span,
+.adminApp[data-admin-version="v2"] .metricCard em,
+.adminApp[data-admin-version="v2"] .panel-label {
+  color: var(--od-dim);
+  font-family: var(--od-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adminApp[data-admin-version="v2"] .navButton {
+  min-height: 38px;
+  border-radius: var(--od-radius);
+  color: var(--od-muted);
+  font-size: 13px;
+}
+
+.adminApp[data-admin-version="v2"] .navButton:hover,
+.adminApp[data-admin-version="v2"] .navButton:focus-visible,
+.adminApp[data-admin-version="v2"] .navButton[data-active="true"] {
+  border-color: var(--od-border);
+  background: var(--od-surface);
+  color: var(--od-text);
+  box-shadow: none;
+}
+
+.adminApp[data-admin-version="v2"] .navButton[data-active="true"] strong {
+  color: var(--od-text);
+}
+
+.adminApp[data-admin-version="v2"] .navButton[data-active="true"] small,
+.adminApp[data-admin-version="v2"] .navButton:hover small {
+  color: var(--od-muted);
+}
+
+.adminApp[data-admin-version="v2"] .topbar,
+.adminApp[data-admin-version="v2"] .submenuTabs,
+.adminApp[data-admin-version="v2"] .managerSurface,
+.adminApp[data-admin-version="v2"] .section,
+.adminApp[data-admin-version="v2"] .metricCard,
+.adminApp[data-admin-version="v2"] .analyticsHeroPanel,
+.adminApp[data-admin-version="v2"] .analyticsWidget,
+.adminApp[data-admin-version="v2"] .analyticsReportCard,
+.adminApp[data-admin-version="v2"] .analyticsChartCard,
+.adminApp[data-admin-version="v2"] .analyticsCoachListPanel,
+.adminApp[data-admin-version="v2"] .analyticsCoachCard,
+.adminApp[data-admin-version="v2"] .analyticsDetail,
+.adminApp[data-admin-version="v2"] .statusCard,
+.adminApp[data-admin-version="v2"] .settingsPanelList article,
+.adminApp[data-admin-version="v2"] .maintenanceCard,
+.adminApp[data-admin-version="v2"] .dialogPanel,
+.adminApp[data-admin-version="v2"] .adminInviteList article,
+.adminApp[data-admin-version="v2"] .adminFormGrid label,
+.adminApp[data-admin-version="v2"] .permissionMatrix fieldset,
+.adminApp[data-admin-version="v2"] .adminRoleGrid button {
+  border-color: var(--od-border);
+  border-radius: var(--od-radius);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--od-surface-2) 88%, white 2%),
+    var(--od-surface)
+  );
+  color: var(--od-text);
+  box-shadow: none;
+}
+
+.adminApp[data-admin-version="v2"] .topbar {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(
+    180deg,
+    var(--od-bg) 0%,
+    color-mix(in oklch, var(--od-bg) 92%, transparent) 78%,
+    transparent 100%
+  );
+  backdrop-filter: none;
+}
+
+.adminApp[data-admin-version="v2"] .submenuTabs button,
+.adminApp[data-admin-version="v2"] .logoutButton,
+.adminApp[data-admin-version="v2"] .menuButton,
+.adminApp[data-admin-version="v2"] .themeToggleButton,
+.adminApp[data-admin-version="v2"] .iconAction,
+.adminApp[data-admin-version="v2"] .secondaryAction,
+.adminApp[data-admin-version="v2"] .tableActions button,
+.adminApp[data-admin-version="v2"] .dialogHeader button,
+.adminApp[data-admin-version="v2"] .dialogFooter button,
+.adminApp[data-admin-version="v2"] .aiAssistantHeader button,
+.adminApp[data-admin-version="v2"] .aiAssistantActions button,
+.adminApp[data-admin-version="v2"] .chartRangeTabs button,
+.adminApp[data-admin-version="v2"] .chartCompareToggle,
+.adminApp[data-admin-version="v2"] .analyticsTabs button,
+.adminApp[data-admin-version="v2"] .errorReportTabs button,
+.adminApp[data-admin-version="v2"] .compactSelectLabel,
+.adminApp[data-admin-version="v2"] .compactSelectLabel input,
+.adminApp[data-admin-version="v2"] .compactSelectLabel select,
+.adminApp[data-admin-version="v2"] input,
+.adminApp[data-admin-version="v2"] select,
+.adminApp[data-admin-version="v2"] textarea {
+  border-color: var(--od-border);
+  border-radius: var(--od-radius);
+  background: var(--od-surface);
+  color: var(--od-text);
+  font-family: var(--od-font-ui);
+  box-shadow: none;
+}
+
+.adminApp[data-admin-version="v2"] .submenuTabs button[data-active="true"],
+.adminApp[data-admin-version="v2"] .submenuTabs button:hover,
+.adminApp[data-admin-version="v2"] .submenuTabs button:focus-visible,
+.adminApp[data-admin-version="v2"] .analyticsTabs button[data-active="true"],
+.adminApp[data-admin-version="v2"] .chartRangeTabs button[data-active="true"],
+.adminApp[data-admin-version="v2"] .chartCompareToggle[aria-pressed="true"],
+.adminApp[data-admin-version="v2"] .errorReportTabs button[data-active="true"] {
+  border-color: color-mix(in oklch, var(--od-accent) 42%, var(--od-border));
+  background: color-mix(in oklch, var(--od-accent) 18%, transparent);
+  color: var(--od-accent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--od-accent) 18%, transparent);
+}
+
+.adminApp[data-admin-version="v2"] .primaryAction,
+.adminApp[data-admin-version="v2"] .dialogFooter button:last-child,
+.adminApp[data-admin-version="v2"] .adminRoleGrid button[data-active="true"],
+.adminApp[data-admin-version="v2"] .toggleLine {
+  border-color: color-mix(in oklch, var(--od-accent) 55%, var(--od-border));
+  background: color-mix(in oklch, var(--od-accent) 18%, transparent);
+  color: var(--od-accent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--od-accent) 22%, transparent);
+}
+
+.adminApp[data-admin-version="v2"] .primaryAction:hover:not(:disabled),
+.adminApp[data-admin-version="v2"] .secondaryAction:hover:not(:disabled),
+.adminApp[data-admin-version="v2"] .dangerAction:hover:not(:disabled),
+.adminApp[data-admin-version="v2"] .logoutButton:hover,
+.adminApp[data-admin-version="v2"] .menuButton:hover,
+.adminApp[data-admin-version="v2"] .themeToggleButton:hover,
+.adminApp[data-admin-version="v2"] .iconAction:hover:not(:disabled),
+.adminApp[data-admin-version="v2"] .tableActions button:hover:not(:disabled) {
+  transform: none;
+  border-color: color-mix(in oklch, var(--od-accent-2) 45%, var(--od-border));
+  background: var(--od-surface-2);
+  box-shadow: none;
+}
+
+.adminApp[data-admin-version="v2"] .metricCard,
+.adminApp[data-admin-version="v2"] .metricCard,
+.adminApp[data-admin-version="v2"] .metricCard[data-tone="neutral"] {
+  min-height: 142px;
+  border-color: var(--od-border);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--od-surface-2) 88%, white 2%),
+    var(--od-surface)
+  );
+  color: var(--od-text);
+  box-shadow: none;
+}
+
+.adminApp[data-admin-version="v2"] .metricCard::before,
+.adminApp[data-admin-version="v2"] .analyticsChartCard::before,
+.adminApp[data-admin-version="v2"] .analyticsHeroPanel::before {
+  display: none;
+}
+
+.adminApp[data-admin-version="v2"] .metricCard::after {
+  content: "";
+  position: absolute;
+  inset: auto 12px 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklch, var(--od-accent) 70%, transparent),
+    transparent
+  );
+  opacity: 0.65;
+}
+
+.adminApp[data-admin-version="v2"] .metricCard strong,
+.adminApp[data-admin-version="v2"] .analyticsHeroStats strong,
+.adminApp[data-admin-version="v2"] .analyticsMiniMetrics strong,
+.adminApp[data-admin-version="v2"] .statusCard strong,
+.adminApp[data-admin-version="v2"] .statusList strong,
+.adminApp[data-admin-version="v2"] .analyticsMetaGrid strong,
+.adminApp[data-admin-version="v2"] .analyticsRankIdentity strong,
+.adminApp[data-admin-version="v2"] .analyticsTableCoach strong,
+.adminApp[data-admin-version="v2"] .tableCoachText strong,
+.adminApp[data-admin-version="v2"] .errorReportDetails strong,
+.adminApp[data-admin-version="v2"] .permissionMatrix strong,
+.adminApp[data-admin-version="v2"] .table td strong,
+.adminApp[data-admin-version="v2"] .adminUsersTable td strong {
+  color: var(--od-text);
+}
+
+.adminApp[data-admin-version="v2"] .metricCard em,
+.adminApp[data-admin-version="v2"] .statusPill,
+.adminApp[data-admin-version="v2"] .statusBadge,
+.adminApp[data-admin-version="v2"] .errorReportBadges span,
+.adminApp[data-admin-version="v2"] .adminInviteList em {
+  border-color: var(--od-border);
+  background: var(--od-surface);
+  color: var(--od-muted) !important;
+}
+
+.adminApp[data-admin-version="v2"] .metricCard[data-tone="success"],
+.adminApp[data-admin-version="v2"] .statusCard[data-tone="success"],
+.adminApp[data-admin-version="v2"] .statusList div[data-tone="success"],
+.adminApp[data-admin-version="v2"] .settingsPanelList article[data-tone="success"],
+.adminApp[data-admin-version="v2"] .iconAction[data-tone="success"],
+.adminApp[data-admin-version="v2"] .statusBadge[data-status="published"],
+.adminApp[data-admin-version="v2"] .errorReportBadges span[data-status="Fixed"] {
+  border-color: color-mix(in oklch, var(--od-accent) 42%, var(--od-border));
+  background: color-mix(in oklch, var(--od-accent) 10%, transparent);
+  color: var(--od-accent) !important;
+}
+
+.adminApp[data-admin-version="v2"] .metricCard[data-tone="warning"],
+.adminApp[data-admin-version="v2"] .statusCard[data-tone="warning"],
+.adminApp[data-admin-version="v2"] .statusList div[data-tone="warning"],
+.adminApp[data-admin-version="v2"] .settingsPanelList article[data-tone="warning"],
+.adminApp[data-admin-version="v2"] .statusPill[data-status="disabled"],
+.adminApp[data-admin-version="v2"] .statusBadge[data-status="paused"],
+.adminApp[data-admin-version="v2"] .statusBadge[data-status="draft"],
+.adminApp[data-admin-version="v2"] .errorReportBadges span[data-status="Reviewing"] {
+  border-color: color-mix(in oklch, var(--od-amber) 42%, var(--od-border));
+  background: color-mix(in oklch, var(--od-amber) 10%, transparent);
+  color: var(--od-amber) !important;
+}
+
+.adminApp[data-admin-version="v2"] .metricCard[data-tone="attention"],
+.adminApp[data-admin-version="v2"] .statusCard[data-tone="attention"],
+.adminApp[data-admin-version="v2"] .statusList div[data-tone="attention"],
+.adminApp[data-admin-version="v2"] .statusBadge[data-status="archived"],
+.adminApp[data-admin-version="v2"] .statusBadge[data-status="removed"],
+.adminApp[data-admin-version="v2"] .statusPill[data-status="inactive"],
+.adminApp[data-admin-version="v2"] .dangerAction,
+.adminApp[data-admin-version="v2"] .dialogFooter button[data-tone="danger"],
+.adminApp[data-admin-version="v2"] .iconAction[data-tone="danger"] {
+  border-color: color-mix(in oklch, var(--od-danger) 42%, var(--od-border));
+  background: color-mix(in oklch, var(--od-danger) 10%, transparent);
+  color: color-mix(in oklch, var(--od-danger) 78%, white) !important;
+}
+
+.adminApp[data-admin-version="v2"] .tableWrap,
+.adminApp[data-admin-version="v2"] .analyticsCoachTableScroll,
+.adminApp[data-admin-version="v2"] .table code,
+.adminApp[data-admin-version="v2"] .codeStack button,
+.adminApp[data-admin-version="v2"] .copyableValue button,
+.adminApp[data-admin-version="v2"] .reportPrompt button,
+.adminApp[data-admin-version="v2"] .copyBlock,
+.adminApp[data-admin-version="v2"] .dialogCopy,
+.adminApp[data-admin-version="v2"] .errorReportCard,
+.adminApp[data-admin-version="v2"] .errorReportDetails div,
+.adminApp[data-admin-version="v2"] .analyticsHeroStats span,
+.adminApp[data-admin-version="v2"] .analyticsMiniMetrics,
+.adminApp[data-admin-version="v2"] .analyticsMetaGrid,
+.adminApp[data-admin-version="v2"] .analyticsRankList button,
+.adminApp[data-admin-version="v2"] .analyticsAttentionList button,
+.adminApp[data-admin-version="v2"] .analyticsBars div,
+.adminApp[data-admin-version="v2"] .analyticsFunnelSteps div,
+.adminApp[data-admin-version="v2"] .chartFrame,
+.adminApp[data-admin-version="v2"] .chartSummaryGrid span,
+.adminApp[data-admin-version="v2"] .chartTooltip,
+.adminApp[data-admin-version="v2"] .aiAssistantPanel,
+.adminApp[data-admin-version="v2"] .aiAssistantLoading,
+.adminApp[data-admin-version="v2"] .aiAssistantResult,
+.adminApp[data-admin-version="v2"] .adminWizardSteps span,
+.adminApp[data-admin-version="v2"] .adminFormGrid label,
+.adminApp[data-admin-version="v2"] .permissionMatrix fieldset {
+  border-color: var(--od-border-soft);
+  border-radius: var(--od-radius);
+  background: color-mix(in oklch, var(--od-surface) 78%, transparent);
+  color: var(--od-text);
+}
+
+.adminApp[data-admin-version="v2"] .table th,
+.adminApp[data-admin-version="v2"] .table td,
+.adminApp[data-admin-version="v2"] .analyticsCoachTable th,
+.adminApp[data-admin-version="v2"] .analyticsCoachTable td,
+.adminApp[data-admin-version="v2"] .adminUsersTable th,
+.adminApp[data-admin-version="v2"] .adminUsersTable td {
+  border-bottom-color: var(--od-border-soft);
+  color: var(--od-muted);
+}
+
+.adminApp[data-admin-version="v2"] .table tbody tr:hover,
+.adminApp[data-admin-version="v2"] .analyticsCoachTable tbody tr:hover,
+.adminApp[data-admin-version="v2"] .errorReportCard:hover,
+.adminApp[data-admin-version="v2"] .analyticsWidget:hover,
+.adminApp[data-admin-version="v2"] .analyticsReportCard:hover,
+.adminApp[data-admin-version="v2"] .analyticsCoachCard:hover {
+  border-color: var(--od-border);
+  background: color-mix(in oklch, var(--od-accent) 9%, transparent);
+  box-shadow: inset 2px 0 0 var(--od-accent);
+}
+
+.adminApp[data-admin-version="v2"] .chartGridLines line,
+.adminApp[data-admin-version="v2"] .chartMinorGridLines line,
+.adminApp[data-admin-version="v2"] .chartCursorLine {
+  stroke: color-mix(in oklch, var(--od-border) 75%, transparent);
+}
+
+.adminApp[data-admin-version="v2"] .chartMinorGridLines line {
+  opacity: 0.38;
+}
+
+.adminApp[data-admin-version="v2"] .chartPrimaryLine,
+.adminApp[data-admin-version="v2"] .chartArea,
+.adminApp[data-admin-version="v2"] .spark path,
+.adminApp[data-admin-version="v2"] .spark polyline {
+  stroke: var(--od-accent);
+  filter: drop-shadow(0 0 10px color-mix(in oklch, var(--od-accent) 35%, transparent));
+}
+
+.adminApp[data-admin-version="v2"] .chartCompareLine,
+.adminApp[data-admin-version="v2"] .chartLegend span[data-series="compare"]::before {
+  stroke: var(--od-cyan);
+  background: var(--od-cyan);
+}
+
+.adminApp[data-admin-version="v2"] .chartPoint {
+  fill: var(--od-bg);
+  stroke: var(--od-accent);
+}
+
+.adminApp[data-admin-version="v2"] .chartRawPoint {
+  fill: color-mix(in oklch, var(--od-accent) 58%, transparent);
+  stroke: var(--od-accent);
+}
+
+.adminApp[data-admin-version="v2"] .chartCompareActivePoint {
+  fill: var(--od-cyan);
+  stroke: var(--od-bg);
+}
+
+.adminApp[data-admin-version="v2"] .chartBrush {
+  fill: color-mix(in oklch, var(--od-accent) 16%, transparent);
+  stroke: color-mix(in oklch, var(--od-accent) 55%, transparent);
+}
+
+.adminApp[data-admin-version="v2"] .chartSummaryGrid small,
+.adminApp[data-admin-version="v2"] .chartSummaryGrid strong {
+  color: inherit;
+}
+
+.adminApp[data-admin-version="v2"] .chartTooltipDelta[data-tone="positive"] {
+  color: var(--od-accent);
+}
+
+.adminApp[data-admin-version="v2"] .chartTooltipDelta[data-tone="negative"] {
+  color: var(--od-danger);
+}
+
+.adminApp[data-admin-version="v2"] .chartFrame {
+  border-color: var(--od-border-soft);
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--od-border) 32%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      0deg,
+      color-mix(in oklch, var(--od-border) 28%, transparent) 1px,
+      transparent 1px
+    ),
+    oklch(12.5% 0.018 250);
+  background-size: 42px 42px;
+}
+
+.adminApp[data-admin-version="v2"] .chartEmptyState {
+  border-color: var(--od-border-soft);
+  background: var(--od-surface);
+  color: var(--od-muted);
+}
+
+.adminApp[data-admin-version="v2"] .dataNotice,
+.adminApp[data-admin-version="v2"] .securityNote {
+  border-color: color-mix(in oklch, var(--od-amber) 42%, var(--od-border));
+  background: color-mix(in oklch, var(--od-amber) 10%, transparent);
+  color: var(--od-amber);
+}
+
+.adminApp[data-admin-version="v2"] .aiAssistantButton {
+  border-color: color-mix(in oklch, var(--od-accent-2) 55%, var(--od-border));
+  background: var(--od-surface-2);
+  color: var(--od-cyan);
+  box-shadow: 0 16px 50px rgb(0 0 0 / 0.35);
+}
+
+.adminApp[data-admin-version="v2"] .aiAssistantScrim,
+.adminApp[data-admin-version="v2"] .dialogScrim,
+.adminApp[data-admin-version="v2"] .sidebarScrim {
+  background: rgb(0 0 0 / 0.58);
+  backdrop-filter: blur(4px);
+}
+
+.adminApp[data-admin-version="v2"] .activityCenterPanel,
+.adminApp[data-admin-version="v2"] .activityCenterButton {
+  border-color: var(--od-border);
+  background: var(--od-surface-2);
+  color: var(--od-text);
+}
+
+.adminApp[data-admin-version="v2"] section[aria-label="Coach site manager"] {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--od-border);
+  background:
+    radial-gradient(
+      circle at 10% 0%,
+      color-mix(in oklch, var(--od-accent) 12%, transparent),
+      transparent 18rem
+    ),
+    radial-gradient(
+      circle at 90% 10%,
+      color-mix(in oklch, var(--od-cyan) 10%, transparent),
+      transparent 16rem
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--od-surface-2) 92%, black 8%),
+      var(--od-surface)
+    );
+}
+
+.adminApp[data-admin-version="v2"] section[aria-label="Coach site manager"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--od-accent) 22%, transparent),
+      transparent
+    ),
+    linear-gradient(180deg, rgb(255 255 255 / 0.04), transparent 34%);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.adminApp[data-admin-version="v2"] section[aria-label="Coach site manager"] > .sectionHeader {
+  align-items: end;
+  border-bottom: 1px solid var(--od-border-soft);
+  padding-bottom: 1rem;
+}
+
+.adminApp[data-admin-version="v2"] section[aria-label="Coach site manager"] > .sectionHeader h2 {
+  font-size: clamp(1.5rem, 2vw, 2.25rem);
+}
+
+.adminApp[data-admin-version="v2"] .coachFilters {
+  grid-template-columns: minmax(14rem, 1fr) minmax(11rem, 0.25fr);
+  align-items: end;
+  border: 1px solid var(--od-border-soft);
+  border-radius: var(--od-radius);
+  background: color-mix(in oklch, var(--od-bg-2) 66%, transparent);
+  padding: 0.8rem;
+}
+
+.adminApp[data-admin-version="v2"] .compactField {
+  color: var(--od-muted);
+}
+
+.adminApp[data-admin-version="v2"] .compactField > span,
+.adminApp[data-admin-version="v2"] .compactField small {
+  color: color-mix(in oklch, var(--od-muted) 88%, var(--od-accent) 12%);
+}
+
+.adminApp[data-admin-version="v2"] .draftsPanel,
+.adminApp[data-admin-version="v2"] .archiveMenu,
+.adminApp[data-admin-version="v2"] .removePanel,
+.adminApp[data-admin-version="v2"] .publishPanel,
+.adminApp[data-admin-version="v2"] .wizardShell,
+.adminApp[data-admin-version="v2"] .productionPreview,
+.adminApp[data-admin-version="v2"] .analysisPanel,
+.adminApp[data-admin-version="v2"] .extractedPreview,
+.adminApp[data-admin-version="v2"] .copyEditorPanel,
+.adminApp[data-admin-version="v2"] .inspectSectionEditor,
+.adminApp[data-admin-version="v2"] .mediaStep {
+  border-color: var(--od-border);
+  border-radius: var(--od-radius);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--od-surface-2) 86%, white 2%),
+    var(--od-surface)
+  );
+  color: var(--od-text);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+}
+
+.adminApp[data-admin-version="v2"] .draftsPanel {
+  background:
+    radial-gradient(
+      circle at 8% 0%,
+      color-mix(in oklch, var(--od-amber) 14%, transparent),
+      transparent 14rem
+    ),
+    linear-gradient(180deg, var(--od-surface-2), var(--od-surface));
+}
+
+.adminApp[data-admin-version="v2"] .archiveMenu,
+.adminApp[data-admin-version="v2"] .removePanel {
+  background:
+    radial-gradient(
+      circle at 8% 0%,
+      color-mix(in oklch, var(--od-danger) 13%, transparent),
+      transparent 14rem
+    ),
+    linear-gradient(180deg, var(--od-surface-2), var(--od-surface));
+}
+
+.adminApp[data-admin-version="v2"] .tableWrap {
+  overflow: auto;
+  border: 1px solid var(--od-border);
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--od-border) 18%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      0deg,
+      color-mix(in oklch, var(--od-border) 16%, transparent) 1px,
+      transparent 1px
+    ),
+    color-mix(in oklch, var(--od-bg-2) 72%, transparent);
+  background-size:
+    44px 44px,
+    44px 44px,
+    auto;
+}
+
+.adminApp[data-admin-version="v2"] .table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.adminApp[data-admin-version="v2"] .table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: color-mix(in oklch, var(--od-bg-2) 94%, black 6%);
+  color: color-mix(in oklch, var(--od-muted) 86%, var(--od-accent) 14%);
+}
+
+.adminApp[data-admin-version="v2"] .table td {
+  background: color-mix(in oklch, var(--od-surface) 48%, transparent);
+}
+
+.adminApp[data-admin-version="v2"] .table tr[data-highlight="true"] td {
+  background: color-mix(in oklch, var(--od-accent) 13%, transparent);
+  box-shadow: inset 3px 0 0 var(--od-accent);
+}
+
+.adminApp[data-admin-version="v2"] .tableFooter {
+  border: 1px solid var(--od-border-soft);
+  border-radius: var(--od-radius);
+  background: color-mix(in oklch, var(--od-bg-2) 66%, transparent);
+  color: var(--od-muted);
+  padding: 0.75rem 0.9rem;
+}
+
+.adminApp[data-admin-version="v2"] .coachAvatar {
+  border: 1px solid color-mix(in oklch, var(--od-accent) 36%, var(--od-border));
+  background:
+    radial-gradient(
+      circle at 30% 20%,
+      color-mix(in oklch, var(--od-accent) 30%, transparent),
+      transparent 1.7rem
+    ),
+    var(--od-surface-2);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.04),
+    0 0 0 4px color-mix(in oklch, var(--od-accent) 8%, transparent);
+}
+
+.adminApp[data-admin-version="v2"] .coachAvatar img {
+  filter: saturate(1.08) contrast(1.04);
+}
+
+.adminApp[data-admin-version="v2"] .coachAvatar span {
+  color: var(--od-accent);
+}
+
+.adminApp[data-admin-version="v2"] .tableCoachText span,
+.adminApp[data-admin-version="v2"] .tableFooter span,
+.adminApp[data-admin-version="v2"] .definitionGrid dd,
+.adminApp[data-admin-version="v2"] .removeDetails dd,
+.adminApp[data-admin-version="v2"] .previewFacts dd {
+  color: var(--od-muted);
+}
+
+.adminApp[data-admin-version="v2"] .rowActions button,
+.adminApp[data-admin-version="v2"] .iconAction {
+  border-radius: var(--od-radius);
+}
+
+.adminApp[data-admin-version="v2"] .rowActions button:hover:not(:disabled),
+.adminApp[data-admin-version="v2"] .iconAction:hover:not(:disabled) {
+  color: var(--od-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--od-accent) 24%, transparent);
+}
+
+.adminApp[data-admin-version="v2"] .definitionGrid div,
+.adminApp[data-admin-version="v2"] .removeDetails div,
+.adminApp[data-admin-version="v2"] .manageMetrics span,
+.adminApp[data-admin-version="v2"] .removalChoiceGrid article,
+.adminApp[data-admin-version="v2"] .previewGrid section,
+.adminApp[data-admin-version="v2"] .previewFacts div,
+.adminApp[data-admin-version="v2"] .mediaPreview,
+.adminApp[data-admin-version="v2"] .imageResultPanel {
+  border-color: var(--od-border-soft);
+  background: color-mix(in oklch, var(--od-bg-2) 58%, transparent);
+  color: var(--od-text);
+}
+
+.adminApp[data-admin-version="v2"] .definitionGrid dt,
+.adminApp[data-admin-version="v2"] .removeDetails dt,
+.adminApp[data-admin-version="v2"] .previewFacts dt {
+  color: color-mix(in oklch, var(--od-muted) 80%, var(--od-accent) 20%);
+}
+
+.adminApp[data-admin-version="v2"] .removeUnlockChecklist {
+  border-color: color-mix(in oklch, var(--od-amber) 38%, var(--od-border));
+  background: color-mix(in oklch, var(--od-amber) 9%, transparent);
+  color: var(--od-amber);
+}
+
+.adminApp[data-admin-version="v2"] .removeUnlockChecklist[data-ready="true"] {
+  border-color: color-mix(in oklch, var(--od-accent) 42%, var(--od-border));
+  background: color-mix(in oklch, var(--od-accent) 10%, transparent);
+  color: var(--od-accent);
+}
+
+.adminApp[data-admin-version="v2"] .inlineStatus,
+.adminApp[data-admin-version="v2"] .privateRevealPanel {
+  border-color: color-mix(in oklch, var(--od-accent) 36%, var(--od-border));
+  background: color-mix(in oklch, var(--od-accent) 9%, transparent);
+  color: var(--od-accent);
+}
+
+.adminApp[data-admin-version="v2"] .linkWarning {
+  border-color: color-mix(in oklch, var(--od-amber) 38%, var(--od-border));
+  background: color-mix(in oklch, var(--od-amber) 9%, transparent);
+  color: var(--od-amber);
+}
+
+.adminApp[data-admin-version="v2"] .stepIndicator {
+  border: 1px solid var(--od-border-soft);
+  border-radius: var(--od-radius);
+  background: color-mix(in oklch, var(--od-bg-2) 66%, transparent);
+  padding: 0.5rem;
+}
+
+.adminApp[data-admin-version="v2"] .stepIndicator button {
+  border-color: transparent;
+  background: transparent;
+  color: var(--od-muted);
+}
+
+.adminApp[data-admin-version="v2"] .stepIndicator button[data-active="true"] {
+  border-color: color-mix(in oklch, var(--od-accent) 44%, var(--od-border));
+  background: color-mix(in oklch, var(--od-accent) 12%, transparent);
+  color: var(--od-accent);
+}
+
+.adminApp[data-admin-version="v2"] .productionPreviewFrame {
+  border-color: var(--od-border);
+  background: color-mix(in oklch, var(--od-bg) 84%, black 16%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.04);
+}
+
+.adminApp[data-admin-version="v2"] .productionPreviewViewportTools {
+  border-color: var(--od-border-soft);
+  background: color-mix(in oklch, var(--od-bg-2) 58%, transparent);
+}
+
+.adminApp[data-admin-version="v2"] .productionPreviewViewportTools button {
+  color: var(--od-muted);
+}
+
+.adminApp[data-admin-version="v2"] .productionPreviewViewportTools button[data-active="true"] {
+  background: color-mix(in oklch, var(--od-accent) 14%, transparent);
+  color: var(--od-accent);
+}
+
+.adminApp[data-admin-version="v2"] .publishProgress {
+  background: color-mix(in oklch, var(--od-border) 58%, transparent);
+}
+
+.adminApp[data-admin-version="v2"] .publishProgress span {
+  background: linear-gradient(90deg, var(--od-accent), var(--od-cyan));
+  box-shadow: 0 0 18px color-mix(in oklch, var(--od-accent) 30%, transparent);
+}
+
+/* Admin V2 Phase 8: OD-inspired module polish only. Production handlers/APIs stay unchanged. */
+.adminApp[data-admin-version="v2"] .quickActions,
+.adminApp[data-admin-version="v2"] .errorReportToolbar,
+.adminApp[data-admin-version="v2"] .maintenanceDialog {
+  border: 1px solid var(--od-border-soft);
+  border-radius: var(--od-radius);
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--od-accent) 9%, transparent), transparent 42%),
+    color-mix(in oklch, var(--od-bg-2) 72%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+
+.adminApp[data-admin-version="v2"] .quickActions {
+  padding: 0.75rem;
+}
+
+.adminApp[data-admin-version="v2"] .paidLinkList,
+.adminApp[data-admin-version="v2"] .errorReportList,
+.adminApp[data-admin-version="v2"] .maintenanceList,
+.adminApp[data-admin-version="v2"] .adminInviteList {
+  gap: 0.85rem;
+}
+
+.adminApp[data-admin-version="v2"] .paidLinkCard,
+.adminApp[data-admin-version="v2"] .reportPrompt,
+.adminApp[data-admin-version="v2"] .errorReportCard,
+.adminApp[data-admin-version="v2"] .maintenanceCard,
+.adminApp[data-admin-version="v2"] .settingsPanelList article,
+.adminApp[data-admin-version="v2"] .adminInviteList article,
+.adminApp[data-admin-version="v2"] .privateRevealPanel {
+  position: relative;
+  overflow: hidden;
+  border-color: var(--od-border);
+  background:
+    radial-gradient(
+      circle at 18% 0%,
+      color-mix(in oklch, var(--od-accent) 14%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--od-surface-2) 92%, white 2%),
+      var(--od-surface)
+    );
+  box-shadow:
+    0 18px 54px rgb(0 0 0 / 0.3),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+
+.adminApp[data-admin-version="v2"] .paidLinkCard::before,
+.adminApp[data-admin-version="v2"] .reportPrompt::before,
+.adminApp[data-admin-version="v2"] .errorReportCard::before,
+.adminApp[data-admin-version="v2"] .maintenanceCard::before,
+.adminApp[data-admin-version="v2"] .settingsPanelList article::before,
+.adminApp[data-admin-version="v2"] .adminInviteList article::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--od-accent), transparent 78%);
+  opacity: 0.82;
+}
+
+.adminApp[data-admin-version="v2"] .paidLinkCard:hover,
+.adminApp[data-admin-version="v2"] .reportPrompt:hover,
+.adminApp[data-admin-version="v2"] .errorReportCard:hover,
+.adminApp[data-admin-version="v2"] .maintenanceCard:hover,
+.adminApp[data-admin-version="v2"] .settingsPanelList article:hover,
+.adminApp[data-admin-version="v2"] .adminInviteList article:hover {
+  border-color: color-mix(in oklch, var(--od-accent) 44%, var(--od-border));
+  transform: translateY(-2px);
+  box-shadow:
+    0 24px 72px rgb(0 0 0 / 0.34),
+    0 0 26px color-mix(in oklch, var(--od-accent) 12%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 0.07);
+}
+
+.adminApp[data-admin-version="v2"] .definitionGrid,
+.adminApp[data-admin-version="v2"] .summaryGrid,
+.adminApp[data-admin-version="v2"] .statusGrid,
+.adminApp[data-admin-version="v2"] .maintenanceGrid,
+.adminApp[data-admin-version="v2"] .adminUsersGrid,
+.adminApp[data-admin-version="v2"] .permissionMatrix {
+  gap: 0.9rem;
+}
+
+.adminApp[data-admin-version="v2"] .definitionGrid div,
+.adminApp[data-admin-version="v2"] .summaryGrid article,
+.adminApp[data-admin-version="v2"] .statusGrid article,
+.adminApp[data-admin-version="v2"] .recipientList span,
+.adminApp[data-admin-version="v2"] .permissionMatrix fieldset,
+.adminApp[data-admin-version="v2"] .adminRoleGrid button {
+  border-color: var(--od-border-soft);
+  background: color-mix(in oklch, var(--od-bg-2) 66%, transparent);
+}
+
+.adminApp[data-admin-version="v2"] .recipientList span,
+.adminApp[data-admin-version="v2"] .settingsPanelList em,
+.adminApp[data-admin-version="v2"] .adminInviteList em {
+  color: var(--od-accent);
+  box-shadow: 0 0 16px color-mix(in oklch, var(--od-accent) 10%, transparent);
+}
+
+.adminApp[data-admin-version="v2"] .errorReportTabs button {
+  min-height: 4rem;
+}
+
+.adminApp[data-admin-version="v2"] .adminUsersTableWrap {
+  overflow: auto;
+  border: 1px solid var(--od-border);
+  border-radius: var(--od-radius);
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--od-surface-2) 82%, transparent), transparent),
+    color-mix(in oklch, var(--od-bg) 70%, black 12%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+
+.adminApp[data-admin-version="v2"] .adminUsersTable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: color-mix(in oklch, var(--od-bg-2) 92%, black 8%);
+}
+
+.adminApp[data-admin-version="v2"] .adminUsersTable tbody tr:hover td {
+  background: color-mix(in oklch, var(--od-accent) 6%, transparent);
+}
+
+.adminApp[data-admin-version="v2"] .metricCard em[data-detail-tone="positive"] {
+  border-color: color-mix(in oklch, var(--od-accent) 46%, var(--od-border)) !important;
+  background: color-mix(in oklch, var(--od-accent) 14%, transparent) !important;
+  color: var(--od-accent) !important;
+}
+
+.adminApp[data-admin-version="v2"] .metricCard em[data-detail-tone="negative"] {
+  border-color: color-mix(in oklch, var(--od-danger) 50%, var(--od-border)) !important;
+  background: color-mix(in oklch, var(--od-danger) 14%, transparent) !important;
+  color: color-mix(in oklch, var(--od-danger) 80%, white) !important;
+}
+
+.adminApp[data-admin-version="v2"] .metricCard em[data-detail-tone="neutral"] {
+  border-color: var(--od-border) !important;
+  background: var(--od-surface) !important;
+  color: var(--od-muted) !important;
+}
+
+.adminApp[data-admin-version="v2"] .searchSuggestionList {
+  border-color: var(--od-border);
+  background: color-mix(in oklch, var(--od-surface) 94%, black 6%);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.28);
+}
+
+.adminApp[data-admin-version="v2"] .searchSuggestionButton {
+  color: var(--od-text);
+}
+
+.adminApp[data-admin-version="v2"] .searchSuggestionButton:hover,
+.adminApp[data-admin-version="v2"] .searchSuggestionButton:focus-visible,
+.adminApp[data-admin-version="v2"] .searchSuggestionButton[data-active="true"] {
+  border-color: color-mix(in oklch, var(--od-accent) 42%, var(--od-border));
+  background: color-mix(in oklch, var(--od-accent) 14%, transparent);
+}
+
+.adminApp[data-admin-version="v2"] .searchSuggestionButton strong {
+  color: var(--od-text);
+}
+
+.adminApp[data-admin-version="v2"] .searchSuggestionMeta,
+.adminApp[data-admin-version="v2"] .searchSuggestionEmpty {
+  color: var(--od-muted);
+}
+
+.adminApp[data-admin-version="v2"][data-admin-theme="light"] {
+  --admin-v2-bg: #eef8ec;
+  --admin-v2-bg-soft: #f7fff5;
+  --admin-v2-panel: #ffffff;
+  --admin-v2-panel-2: #edf8ed;
+  --admin-v2-panel-3: #dcefdc;
+  --admin-v2-border: rgb(43 102 59 / 0.18);
+  --admin-v2-border-strong: rgb(68 146 78 / 0.36);
+  --admin-v2-accent: #4c9f22;
+  --admin-v2-accent-soft: #138f47;
+  --admin-v2-accent-cyan: #0f8f78;
+  --admin-v2-text: #102017;
+  --admin-v2-text-muted: #506457;
+  --admin-v2-text-faint: #768779;
+  --od-bg: oklch(96% 0.025 142);
+  --od-bg-2: oklch(93% 0.03 146);
+  --od-surface: oklch(98% 0.014 145);
+  --od-surface-2: oklch(94% 0.026 145);
+  --od-surface-3: oklch(90% 0.036 145);
+  --od-text: oklch(18% 0.035 150);
+  --od-muted: oklch(43% 0.04 150);
+  --od-dim: oklch(50% 0.04 150);
+  --od-border: oklch(79% 0.05 145);
+  --od-border-soft: oklch(86% 0.04 145);
+  --od-accent: oklch(52% 0.17 145);
+  --od-accent-2: oklch(52% 0.14 205);
+  --od-accent-ink: oklch(98% 0.014 145);
+  --od-cyan: oklch(54% 0.13 205);
+  --od-amber: oklch(63% 0.14 82);
+  --od-danger: oklch(56% 0.19 28);
+  color-scheme: light;
+  background:
+    linear-gradient(90deg, color-mix(in oklch, var(--od-border) 42%, transparent) 1px, transparent 1px),
+    linear-gradient(0deg, color-mix(in oklch, var(--od-border) 38%, transparent) 1px, transparent 1px),
+    radial-gradient(circle at 52% 0%, color-mix(in oklch, var(--od-accent) 18%, transparent), transparent 34rem),
+    linear-gradient(135deg, var(--od-bg), var(--od-bg-2));
+  color: var(--od-text);
+  box-shadow: 0 24px 70px rgb(31 79 39 / 0.16);
+}
+
+.adminApp[data-admin-version="v2"][data-admin-theme="light"]::before {
+  background: linear-gradient(180deg, transparent 0 64%, rgb(46 106 57 / 0.08) 100%);
+  opacity: 0.62;
+}
+
+.adminApp[data-admin-version="v2"][data-admin-theme="light"] .sidebar,
+.adminApp[data-admin-version="v2"][data-admin-theme="light"] .topbar,
+.adminApp[data-admin-version="v2"][data-admin-theme="light"] .searchSuggestionList {
+  background: color-mix(in oklch, var(--od-surface) 92%, white 8%);
+  box-shadow: 0 18px 50px rgb(31 79 39 / 0.12);
+}
+
+.adminApp[data-admin-version="v2"][data-admin-theme="light"] .topbar {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--od-bg) 92%, white 8%) 0%,
+    color-mix(in oklch, var(--od-bg) 78%, transparent) 78%,
+    transparent 100%
+  );
+}
+
+.adminApp[data-admin-version="v2"][data-admin-theme="light"] .dataNotice,
+.adminApp[data-admin-version="v2"][data-admin-theme="light"] .securityNote {
+  color: oklch(34% 0.08 90);
+}
+
+@media (max-width: 1420px) {
+  .adminApp[data-admin-version="v2"] {
+    border-radius: var(--od-radius);
+  }
+}
+
+@media (max-width: 760px) {
+  .adminApp[data-admin-version="v2"] {
+    background-size:
+      44px 44px,
+      44px 44px,
+      auto,
+      auto;
+  }
+
+  .adminApp[data-admin-version="v2"] .sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--od-border);
+  }
+
+  .adminApp[data-admin-version="v2"] .quickActions,
+  .adminApp[data-admin-version="v2"] .errorReportToolbar {
+    align-items: stretch;
+  }
+
+  .adminApp[data-admin-version="v2"] .quickActions a,
+  .adminApp[data-admin-version="v2"] .quickActions button,
+  .adminApp[data-admin-version="v2"] .errorReportToolbar button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] {
+  --od-module-panel: rgba(13, 31, 21, 0.92);
+  --od-module-panel-strong: rgba(16, 39, 25, 0.96);
+  --od-module-ink: #f4ffe9;
+  --od-module-muted: #9bad9b;
+  --od-module-line: rgba(183, 255, 60, 0.16);
+  --od-module-line-strong: rgba(183, 255, 60, 0.34);
+  --od-module-accent: #b7ff3c;
+  background:
+    radial-gradient(circle at 44% 0%, rgba(183, 255, 60, 0.13), transparent 30%),
+    radial-gradient(circle at 92% 18%, rgba(51, 245, 197, 0.09), transparent 28%),
+    linear-gradient(180deg, #06110b 0%, #08120d 100%);
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .pageShell {
+  width: min(100%, 1440px);
+  margin-inline: auto;
+  display: grid;
+  gap: 1.35rem;
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .pageHeader {
+  min-height: 148px;
+  padding: 1.45rem 1.65rem;
+  border: 1px solid var(--od-module-line);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(183, 255, 60, 0.12), transparent 34%),
+    linear-gradient(135deg, rgba(16, 39, 25, 0.92), rgba(6, 17, 11, 0.96));
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.055);
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .pageHeader h1 {
+  max-width: 760px;
+  margin-top: 0.35rem;
+  color: var(--od-module-ink);
+  font-size: clamp(2rem, 4.4vw, 3.8rem);
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .pageBody {
+  display: grid;
+  gap: 1.3rem;
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .managerSurface,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .section,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .draftsPanel,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .publishPanel,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .removePanel,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .archiveMenu,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .analyticsCoachListPanel,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .analyticsDetail,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .analyticsChartCard,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .analyticsWidget,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .statusCard,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .noticeCard,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .settingsPanelList article,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .maintenanceCard,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .adminInviteList article {
+  border: 1px solid var(--od-module-line) !important;
+  border-radius: 24px !important;
+  background:
+    linear-gradient(180deg, var(--od-module-panel-strong), rgba(6, 17, 11, 0.96)) !important;
+  box-shadow:
+    0 22px 64px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  color: var(--od-module-ink);
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .managerSurface {
+  padding: 1.65rem;
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .sectionHeader {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(183, 255, 60, 0.11);
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .kicker {
+  color: color-mix(in oklab, var(--od-module-accent), white 10%);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  letter-spacing: 0.13em;
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .coachFilters,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .adminFormGrid,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .formActions,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .quickActions,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .errorReportToolbar {
+  gap: 0.85rem;
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .compactField,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .adminFormGrid label {
+  border: 1px solid rgba(183, 255, 60, 0.13) !important;
+  border-radius: 16px !important;
+  background: rgba(4, 12, 7, 0.78) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] input,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] select,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] textarea {
+  border-color: rgba(183, 255, 60, 0.18) !important;
+  background: rgba(3, 10, 6, 0.78) !important;
+  color: var(--od-module-ink) !important;
+  box-shadow: none !important;
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] input:focus,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] select:focus,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] textarea:focus {
+  border-color: var(--od-module-line-strong) !important;
+  box-shadow: 0 0 0 3px rgba(183, 255, 60, 0.12) !important;
+  outline: none;
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .primaryAction,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .secondaryAction,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .dangerAction,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .iconAction,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .tableActions button {
+  min-height: 42px;
+  border-radius: 14px !important;
+  border: 1px solid rgba(183, 255, 60, 0.22) !important;
+  background: rgba(13, 31, 21, 0.88) !important;
+  color: var(--od-module-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .primaryAction {
+  background: linear-gradient(180deg, #b7ff3c, #7bd82c) !important;
+  color: #06110b !important;
+  border-color: rgba(183, 255, 60, 0.72) !important;
+  box-shadow: 0 12px 28px rgba(183, 255, 60, 0.16) !important;
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .secondaryAction:hover:not(:disabled),
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .iconAction:hover:not(:disabled),
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .tableActions button:hover:not(:disabled) {
+  border-color: rgba(183, 255, 60, 0.46) !important;
+  background: rgba(183, 255, 60, 0.12) !important;
+  color: var(--od-module-accent) !important;
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .tableWrap,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .analyticsCoachTableScroll,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .adminUsersTableWrap {
+  border: 1px solid rgba(183, 255, 60, 0.13) !important;
+  border-radius: 18px !important;
+  background: rgba(3, 10, 6, 0.72) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .table,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .analyticsCoachTable,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .adminUsersTable {
+  background: transparent !important;
+  color: var(--od-module-ink) !important;
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .table th,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .analyticsCoachTable th,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .adminUsersTable th {
+  background: rgba(3, 10, 6, 0.66) !important;
+  color: color-mix(in oklab, var(--od-module-muted), white 8%) !important;
+  border-bottom: 1px solid rgba(183, 255, 60, 0.11) !important;
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .table td,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .analyticsCoachTable td,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .adminUsersTable td {
+  border-bottom: 1px solid rgba(183, 255, 60, 0.08) !important;
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .table tbody tr:hover td,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .analyticsCoachTable tbody tr:hover td,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .adminUsersTable tbody tr:hover td {
+  background: rgba(183, 255, 60, 0.055) !important;
+}
+
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .emptyState,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .inlineStatus,
+.adminApp[data-admin-version="v2"][data-admin-v2-module-view="true"] .inlineNote {
+  border-color: rgba(183, 255, 60, 0.13) !important;
+  background: rgba(183, 255, 60, 0.055) !important;
+  color: var(--od-module-muted) !important;
 }

@@ -1,13 +1,18 @@
 import type { D1Database, R2Bucket } from "@cloudflare/workers-types";
 import { normalizeCoachSlug } from "../../../lib/admin-coach-sites";
-import {
-  insertCoachSiteMedia,
-  updateCoachSiteMediaProcessing
-} from "../../../lib/server/coach-site-storage";
+import { processAndPersistCoachImage } from "../../../lib/server/coach-image-processing";
+import { hasSupportedCoachImageSignature } from "../../../lib/server/coach-media-file-validation";
+import { insertCoachSiteMedia } from "../../../lib/server/coach-site-storage";
+import { getShopOrderForClient } from "../../../lib/server/shop";
 
 type Env = {
   ADMIN_DB?: D1Database;
   COACH_MEDIA_BUCKET?: R2Bucket;
+  IMAGE_BG_REMOVAL_ENABLED?: string;
+  IMAGE_BG_REMOVAL_PROVIDER?: string;
+  IMAGE_BG_REMOVAL_QUALITY_THRESHOLD?: string;
+  PHOTOROOM_API_KEY?: string;
+  REMOVEBG_API_KEY?: string;
 };
 
 type PagesContext = {
@@ -94,14 +99,37 @@ export async function onRequestPost({ request, env }: PagesContext) {
   const file = formData?.get("file");
   const rawCutoutFile = formData?.get("cutoutFile");
   const rawMediaType = formData?.get("mediaType");
-  const rawSlug = formData?.get("slug");
+  const rawAccessKey = formData?.get("accessKey");
+  const rawOrderId = formData?.get("orderId");
 
   if (!(file instanceof File)) {
     return shopJson({ ok: false, error: "Media file is required." }, 400);
   }
 
   const mediaType = rawMediaType === "video" ? "video" : "image";
-  const slug = normalizeCoachSlug(typeof rawSlug === "string" ? rawSlug : "") || "shop-draft";
+  const orderId = typeof rawOrderId === "string" ? rawOrderId : "";
+  const accessKey =
+    typeof rawAccessKey === "string"
+      ? rawAccessKey
+      : request.headers.get("x-shop-access-key") || "";
+  const order = orderId ? await getShopOrderForClient({ accessKey, env, orderId }) : null;
+  if (!order) {
+    return shopJson(
+      { ok: false, error: "Open a valid secure Shop draft before uploading media." },
+      401
+    );
+  }
+  if (
+    ["paid", "published", "publishing"].includes(order.paymentStatus) ||
+    ["published", "publishing"].includes(order.siteStatus)
+  ) {
+    return shopJson(
+      { ok: false, error: "This paid or published website is locked from coach-side media edits." },
+      409
+    );
+  }
+
+  const slug = normalizeCoachSlug(order.slug) || "shop-draft";
   const maxBytes = mediaType === "image" ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
   let clientCutoutFile =
     mediaType === "image" && rawCutoutFile instanceof File ? rawCutoutFile : null;
@@ -123,7 +151,10 @@ export async function onRequestPost({ request, env }: PagesContext) {
     );
   }
 
-  if (mediaType === "image" && !isAllowedImageFile(file)) {
+  if (
+    mediaType === "image" &&
+    (!isAllowedImageFile(file) || !(await hasSupportedCoachImageSignature(file)))
+  ) {
     return shopJson(
       {
         ok: false,
@@ -152,17 +183,6 @@ export async function onRequestPost({ request, env }: PagesContext) {
     );
   }
 
-  if (mediaType === "image" && !clientCutoutFile) {
-    return shopJson(
-      {
-        ok: false,
-        error:
-          "Transparent coach cutout is required. Re-upload a clearer JPEG/PNG/WebP photo and wait for the cutout to finish."
-      },
-      422
-    );
-  }
-
   const objectKey = createMediaObjectKey({
     fileName: file.name,
     mediaType,
@@ -171,106 +191,39 @@ export async function onRequestPost({ request, env }: PagesContext) {
   });
   const contentType = getSafeContentType(file, mediaType);
   const body = await file.arrayBuffer();
-  await env.COACH_MEDIA_BUCKET.put(objectKey, body, {
-    httpMetadata: {
-      contentType
-    }
-  });
-
   const mediaUrl = `/api/coach-media?key=${encodeURIComponent(objectKey)}`;
-  await insertCoachSiteMedia({
-    adminEmail: "public-shop-builder",
-    contentType,
-    env,
-    fileName: file.name,
-    mediaType,
-    objectKey,
-    publicUrl: mediaUrl,
-    sizeBytes: file.size,
-    slug,
-    variant: mediaType === "image" ? "original" : ""
-  });
+  try {
+    await env.COACH_MEDIA_BUCKET.put(objectKey, body, {
+      httpMetadata: { contentType }
+    });
+    await insertCoachSiteMedia({
+      adminEmail: "public-shop-builder",
+      contentType,
+      env,
+      fileName: file.name,
+      mediaType,
+      objectKey,
+      publicUrl: mediaUrl,
+      processingStatus: mediaType === "image" ? "processing" : "",
+      sizeBytes: file.size,
+      slug,
+      variant: mediaType === "image" ? "original" : ""
+    });
+  } catch {
+    return shopJson({ ok: false, error: "Coach media could not be stored safely." }, 503);
+  }
 
   if (mediaType === "image") {
-    if (clientCutoutFile) {
-      const cutoutBody = await clientCutoutFile.arrayBuffer();
-      const cutoutContentType = getSafeContentType(clientCutoutFile, "image");
-      const cutoutFileName = replaceFileExtension(file.name, ".png");
-      const cutoutObjectKey = createMediaObjectKey({
-        extensionOverride: ".png",
-        fileName: cutoutFileName,
-        mediaType,
-        slug,
-        variant: "cutout"
-      });
-
-      await env.COACH_MEDIA_BUCKET.put(cutoutObjectKey, cutoutBody, {
-        httpMetadata: {
-          contentType: cutoutContentType
-        }
-      });
-
-      const cutoutUrl = `/api/coach-media?key=${encodeURIComponent(cutoutObjectKey)}`;
-      await updateCoachSiteMediaProcessing({
-        env,
-        fallbackMode: "cutout",
-        objectKey,
-        originalObjectKey: objectKey,
-        processingErrorCode: "",
-        processingProvider: "already-transparent",
-        processingStatus: "cutout_ready",
-        qualityStatus: "passed",
-        variant: "original"
-      });
-      await insertCoachSiteMedia({
-        adminEmail: "public-shop-builder",
-        contentType: cutoutContentType,
-        env,
-        fileName: cutoutFileName,
-        mediaType,
-        objectKey: cutoutObjectKey,
-        publicUrl: cutoutUrl,
-        fallbackMode: "cutout",
-        originalObjectKey: objectKey,
-        processingErrorCode: "",
-        processingProvider: "already-transparent",
-        processingStatus: "cutout_ready",
-        qualityStatus: "passed",
-        sizeBytes: clientCutoutFile.size,
-        slug,
-        variant: "cutout"
-      });
-
-      return shopJson({
-        configured: true,
-        media: {
-          cutoutUrl,
-          fallbackMode: "cutout",
-          mediaType,
-          objectKey: cutoutObjectKey,
-          originalObjectKey: objectKey,
-          originalUrl: mediaUrl,
-          processingAttemptErrorCodes: [],
-          processingErrorCode: "",
-          processingProvider: "already-transparent",
-          processingStatus: "cutout_ready",
-          publicUrl: cutoutUrl,
-          qualityStatus: "passed",
-          safeMessage: "Coach photo is ready.",
-          sizeBytes: clientCutoutFile.size
-        },
-        ok: true
-      });
-    }
-
-    return shopJson(
-      {
-        ok: false,
-        error:
-          "Transparent coach cutout is required. Re-upload the photo and wait for the cutout to finish."
-      },
-      422
-    );
+    const media = await processAndPersistCoachImage({
+      clientCutoutFile,
+      env,
+      originalFile: file,
+      originalObjectKey: objectKey,
+      originalUrl: mediaUrl,
+      slug,
+      uploadedBy: "public-shop-builder",
+    });
+    return shopJson({ configured: true, media, ok: true });
   }
 
   return shopJson({
@@ -290,19 +243,17 @@ export async function onRequestOptions() {
 }
 
 function createMediaObjectKey({
-  extensionOverride,
   fileName,
   mediaType,
   slug,
   variant
 }: {
-  extensionOverride?: ".png" | ".webp";
   fileName: string;
   mediaType: "image" | "video";
   slug: string;
   variant?: "cutout" | "original";
 }) {
-  const extension = extensionOverride || getSafeExtension(fileName, mediaType);
+  const extension = getSafeExtension(fileName, mediaType);
   const timestamp = new Date()
     .toISOString()
     .replace(/[^0-9]/g, "")
@@ -420,11 +371,6 @@ function contentTypeFromExtension(extension: string, mediaType: "image" | "video
 function getFileExtension(fileName: string) {
   const match = fileName.toLowerCase().match(/\.[a-z0-9]+$/);
   return match?.[0] || "";
-}
-
-function replaceFileExtension(fileName: string, extension: ".png" | ".webp") {
-  const baseName = fileName.replace(/\.[a-z0-9]+$/i, "") || "coach-photo";
-  return `${baseName}-cutout${extension}`;
 }
 
 function normalizeContentType(contentType: string) {

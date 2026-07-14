@@ -115,10 +115,10 @@ type MediaUploadResponse = {
     originalUrl?: string;
     processingAttemptErrorCodes?: string[];
     processingErrorCode?: string;
-    processingProvider?: "already-transparent" | "photoroom" | "removebg";
+    processingProvider?: "already-transparent" | "local-browser" | "none" | "photoroom" | "removebg";
     processingStatus?: "cutout_ready" | "disabled" | "framed_fallback" | "not_configured";
     publicUrl: string;
-    qualityStatus?: "failed" | "passed" | "skipped";
+    qualityStatus?: "failed" | "needs_manual_review" | "passed" | "skipped";
     safeMessage?: string;
     sizeBytes: number;
   };
@@ -1351,19 +1351,25 @@ function MediaContactStep({
 
     try {
       if (mediaType === "image") {
-        const preparedPhoto = await prepareCoachHeroPhotoForUpload(file, {
-          maxBytes: SHOP_PHOTO_MAX_BYTES,
-          onProgress: setImageUploadProgress
-        });
-        cutoutFile = preparedPhoto.file;
-        setImageUploadProgress("Saving transparent coach photo securely...");
+        try {
+          const preparedPhoto = await prepareCoachHeroPhotoForUpload(file, {
+            maxBytes: SHOP_PHOTO_MAX_BYTES,
+            onProgress: setImageUploadProgress
+          });
+          cutoutFile = preparedPhoto.file;
+          setImageUploadProgress("Saving transparent coach photo securely...");
+        } catch {
+          cutoutFile = null;
+          setImageUploadProgress("Local cutout unavailable. Trying secure server processing...");
+        }
       }
 
       const formData = new FormData();
       formData.append("file", uploadedFile);
       if (cutoutFile) formData.append("cutoutFile", cutoutFile);
       formData.append("mediaType", mediaType);
-      formData.append("slug", state.slug || state.coachName || "shop-draft");
+      formData.append("orderId", state.orderId);
+      formData.append("accessKey", getStoredOrderAccessKey());
 
       const response = await fetch("/api/shop/media", {
         body: formData,
@@ -1438,6 +1444,53 @@ function MediaContactStep({
     setUploadMessage("Coach photo cleared. Upload another image when ready.");
   }
 
+  async function handleReprocessImage(provider: "auto" | "removebg") {
+    const originalObjectKey = coachImageResult?.originalObjectKey;
+    const accessKey = getStoredOrderAccessKey();
+    if (!state.orderId || !accessKey || !originalObjectKey) {
+      setUploadMessage("Save this draft and keep its secure resume link before reprocessing.");
+      return;
+    }
+
+    setUploadingMediaType("image");
+    const progressMessage =
+      provider === "removebg"
+        ? "Trying the fallback coach photo provider..."
+        : "Reprocessing your coach photo securely...";
+    setUploadMessage(progressMessage);
+    onMediaProcessingMessage(progressMessage);
+    try {
+      const response = await fetch("/api/shop/media-reprocess", {
+        body: JSON.stringify({
+          accessKey,
+          orderId: state.orderId,
+          originalObjectKey,
+          provider,
+        }),
+        cache: "no-store",
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      const payload = (await response.json().catch(() => ({}))) as MediaUploadResponse;
+      if (!response.ok || !payload.ok || !payload.media?.publicUrl) {
+        setUploadMessage(payload.error || "Coach photo could not be reprocessed safely.");
+        return;
+      }
+
+      setCoachImageResult(payload.media);
+      onPatch({
+        heroMediaType: "image",
+        photoUrl: payload.media.cutoutUrl || payload.media.publicUrl,
+      });
+      setUploadMessage(getCoachImageUploadMessage(payload.media));
+    } catch {
+      setUploadMessage("Coach photo reprocessing could not connect. The stored original is unchanged.");
+    } finally {
+      setUploadingMediaType("");
+      onMediaProcessingMessage("");
+    }
+  }
+
   return (
     <div className={styles.stepPanel}>
       <span className={styles.stepEyebrow}>Step 2</span>
@@ -1494,6 +1547,7 @@ function MediaContactStep({
               activeUrl={state.photoUrl}
               disabled={uploadingMediaType === "image"}
               media={coachImageResult}
+              onReprocess={handleReprocessImage}
               onReset={handleResetImage}
               onUse={handleUseImageUrl}
             />
@@ -1579,12 +1633,14 @@ function CoachImageResultPanel({
   activeUrl,
   disabled,
   media,
+  onReprocess,
   onReset,
   onUse
 }: {
   activeUrl: string;
   disabled: boolean;
   media: CoachImageMediaResult;
+  onReprocess: (provider: "auto" | "removebg") => void;
   onReset: () => void;
   onUse: (url: string | undefined, label: "cutout" | "original") => void;
 }) {
@@ -1617,6 +1673,16 @@ function CoachImageResultPanel({
             Use original frame
           </button>
         ) : null}
+        {media.originalObjectKey ? (
+          <button disabled={disabled} onClick={() => onReprocess("auto")} type="button">
+            Reprocess image
+          </button>
+        ) : null}
+        {media.originalObjectKey ? (
+          <button disabled={disabled} onClick={() => onReprocess("removebg")} type="button">
+            Try fallback provider
+          </button>
+        ) : null}
         <button disabled={disabled} onClick={onReset} type="button">
           Reset image
         </button>
@@ -1630,12 +1696,12 @@ function getCoachImageUploadMessage(media: NonNullable<MediaUploadResponse["medi
     return `Coach photo is ready${media.sizeBytes || file?.size ? ` (${formatBytes(media.sizeBytes || file?.size || 0)})` : ""}.`;
   }
 
-  if (media.processingStatus === "not_configured") {
-    return "Photo uploaded, but the transparent cutout was not created. Upload a clearer photo and try again.";
-  }
-
   if (media.safeMessage) {
     return media.safeMessage;
+  }
+
+  if (media.processingStatus === "not_configured") {
+    return "Photo uploaded safely. Provider keys are not configured, so the original portrait frame is active.";
   }
 
   return `Coach photo uploaded${file?.size ? ` (${formatBytes(file.size)})` : ""}.`;

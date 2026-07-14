@@ -2,6 +2,8 @@
 .cloudflare-pages-build/
 .open-next/
 .wrangler/
+.wrangler-admin-v2-*/
+.headroom/
 node_modules/
 .local-tools/
 out/

@@ -1,5 +1,9 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import { adminControlCenterData, type AdminErrorReportStatus } from "../../../lib/admin-control-center";
+import {
+  adminControlCenterData,
+  type AdminErrorReport,
+  type AdminErrorReportStatus
+} from "../../../lib/admin-control-center";
 import {
   adminAuthorizationResponse,
   adminJson,
@@ -7,7 +11,10 @@ import {
   readJsonBody,
   requireAdmin
 } from "../../../lib/server/admin-auth";
-import { listWebsiteErrorReports, updateWebsiteErrorReportStatus } from "../../../lib/server/error-reports";
+import {
+  listWebsiteErrorReports,
+  updateWebsiteErrorReportStatus
+} from "../../../lib/server/error-reports";
 import {
   clearOldErrorReports,
   type ErrorReportCleanupFilter
@@ -36,12 +43,7 @@ type ErrorReportActionBody = {
   status?: unknown;
 };
 
-const ALLOWED_STATUSES = new Set<AdminErrorReportStatus>([
-  "Fixed",
-  "Ignored",
-  "New",
-  "Reviewing"
-]);
+const ALLOWED_STATUSES = new Set<AdminErrorReportStatus>(["Fixed", "Ignored", "New", "Reviewing"]);
 
 export async function onRequest({ request, env }: PagesContext) {
   if (request.method === "GET") {
@@ -50,10 +52,17 @@ export async function onRequest({ request, env }: PagesContext) {
 
     const reports = await listWebsiteErrorReports(env);
     const hasLiveErrorReports = Array.isArray(reports);
+    const canViewTechnicalDetails = canAuthenticatedAdminPerform(
+      admin.admin,
+      "error_reports.technical_details"
+    );
+    const visibleReports = (
+      hasLiveErrorReports ? reports : adminControlCenterData.errorReports
+    ).map((report) => filterAdminErrorReportTechnicalDetails(report, canViewTechnicalDetails));
 
     return adminJson({
       configured: Boolean(env.ADMIN_DB),
-      errorReports: hasLiveErrorReports ? reports : adminControlCenterData.errorReports,
+      errorReports: visibleReports,
       ok: true,
       persistence: hasLiveErrorReports ? "d1_table" : "unavailable"
     });
@@ -119,6 +128,22 @@ export async function onRequest({ request, env }: PagesContext) {
   return adminJson({ ok: false, error: "Method not allowed." }, 405, {
     allow: "GET, POST, PATCH"
   });
+}
+
+export function filterAdminErrorReportTechnicalDetails(
+  report: AdminErrorReport,
+  canViewTechnicalDetails: boolean
+): AdminErrorReport {
+  if (canViewTechnicalDetails) return report;
+
+  return {
+    ...report,
+    browser: "Restricted",
+    referrer: "Restricted",
+    screenSize: "Restricted",
+    sessionId: "Restricted",
+    technicalDetails: ""
+  };
 }
 
 function isErrorReportCleanupFilter(value: string): value is ErrorReportCleanupFilter {

@@ -120,6 +120,7 @@ const COACH_SITE_TABLES_SQL = [
     size_bytes INTEGER NOT NULL,
     uploaded_by TEXT NOT NULL DEFAULT '',
     created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
     deleted_at INTEGER,
     FOREIGN KEY (coach_site_id) REFERENCES coach_sites(id) ON DELETE SET NULL
   )`,
@@ -139,7 +140,10 @@ const COACH_SITE_MIGRATIONS_SQL = [
   `ALTER TABLE coach_site_media ADD COLUMN processing_provider TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE coach_site_media ADD COLUMN quality_status TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE coach_site_media ADD COLUMN fallback_mode TEXT NOT NULL DEFAULT ''`,
-  `ALTER TABLE coach_site_media ADD COLUMN processing_error_code TEXT NOT NULL DEFAULT ''`
+  `ALTER TABLE coach_site_media ADD COLUMN processing_error_code TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE coach_site_media ADD COLUMN image_width INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE coach_site_media ADD COLUMN image_height INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE coach_site_media ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0`
 ];
 const coachSiteSchemaCache = new WeakMap<D1Database, D1SchemaCacheEntry>();
 
@@ -439,6 +443,8 @@ export async function insertCoachSiteMedia({
   env,
   fallbackMode = "",
   fileName,
+  imageHeight = 0,
+  imageWidth = 0,
   mediaType,
   objectKey,
   originalObjectKey = "",
@@ -456,6 +462,8 @@ export async function insertCoachSiteMedia({
   env: CoachSiteStorageEnv;
   fallbackMode?: string;
   fileName: string;
+  imageHeight?: number;
+  imageWidth?: number;
   mediaType: "image" | "video";
   objectKey: string;
   originalObjectKey?: string;
@@ -479,10 +487,10 @@ export async function insertCoachSiteMedia({
   await env.ADMIN_DB.prepare(
     `INSERT INTO coach_site_media (
       id, coach_site_id, slug, media_type, object_key, public_url,
-      file_name, content_type, size_bytes, uploaded_by, created_at,
+      file_name, content_type, size_bytes, uploaded_by, created_at, updated_at,
       variant, original_object_key, processing_status, processing_provider,
-      quality_status, fallback_mode, processing_error_code
-    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)`
+      quality_status, fallback_mode, processing_error_code, image_width, image_height
+    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21)`
   )
     .bind(
       createRecordId("coach-media"),
@@ -496,13 +504,16 @@ export async function insertCoachSiteMedia({
       sizeBytes,
       adminEmail,
       now,
+      now,
       variant,
       originalObjectKey,
       processingStatus,
       processingProvider,
       qualityStatus,
       fallbackMode,
-      processingErrorCode
+      processingErrorCode,
+      normalizeImageDimension(imageWidth),
+      normalizeImageDimension(imageHeight)
     )
     .run();
 }
@@ -510,6 +521,8 @@ export async function insertCoachSiteMedia({
 export async function updateCoachSiteMediaProcessing({
   env,
   fallbackMode = "",
+  imageHeight = 0,
+  imageWidth = 0,
   objectKey,
   originalObjectKey = "",
   processingErrorCode = "",
@@ -520,6 +533,8 @@ export async function updateCoachSiteMediaProcessing({
 }: {
   env: CoachSiteStorageEnv;
   fallbackMode?: string;
+  imageHeight?: number;
+  imageWidth?: number;
   objectKey: string;
   originalObjectKey?: string;
   processingErrorCode?: string;
@@ -539,8 +554,11 @@ export async function updateCoachSiteMediaProcessing({
         processing_provider = ?4,
         quality_status = ?5,
         fallback_mode = ?6,
-        processing_error_code = ?7
-      WHERE object_key = ?8`
+        processing_error_code = ?7,
+        image_width = ?8,
+        image_height = ?9,
+        updated_at = ?10
+      WHERE object_key = ?11`
   )
     .bind(
       variant,
@@ -550,9 +568,16 @@ export async function updateCoachSiteMediaProcessing({
       qualityStatus,
       fallbackMode,
       processingErrorCode,
+      normalizeImageDimension(imageWidth),
+      normalizeImageDimension(imageHeight),
+      Math.floor(Date.now() / 1000),
       objectKey
     )
     .run();
+}
+
+function normalizeImageDimension(value: number | undefined) {
+  return Number.isFinite(value) && Number(value) > 0 ? Math.round(Number(value)) : 0;
 }
 
 function normalizeCoachSitePayload(payload: CoachSitePayload): CoachSiteRecord {

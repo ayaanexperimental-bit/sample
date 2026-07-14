@@ -1,6 +1,6 @@
 export type AnalyticsFunnelType = "free_guest_link" | "paid_masterclass";
 
-export type AnalyticsDateRangeId = "7d" | "30d" | "90d" | "all" | "custom" | "today";
+export type AnalyticsDateRangeId = "7d" | "30d" | "90d" | "365d" | "all" | "custom" | "today";
 
 export type AnalyticsEventName =
   | "coach_google_form_click"
@@ -50,6 +50,46 @@ export type AnalyticsMetricSummary = {
   videoPlays: number;
   weeklyVisits: number;
   whatsappClicks: number;
+};
+
+export type AnalyticsAudienceRegion = {
+  children: AnalyticsAudienceRegion[];
+  coordinates: {
+    lat: number;
+    lng: number;
+    scope: "estimated" | "known";
+  };
+  countryLabel: string;
+  deviceBreakdown: {
+    desktop: number;
+    mobile: number;
+    tablet: number;
+    unknown: number;
+  };
+  id: string;
+  label: string;
+  lastActivity: string;
+  level: "city" | "country" | "district" | "region";
+  parentId: string | null;
+  paymentSuccess: number;
+  registerClicks: number;
+  share: number;
+  sourceBreakdown: Array<{
+    label: string;
+    share: number;
+    visits: number;
+  }>;
+  visits: number;
+};
+
+export type AnalyticsTimeSeriesPoint = {
+  bucketEnd: string;
+  bucketStart: string;
+  currentVisits: number;
+  previousRangeVisits: number;
+  registerClicks: number;
+  previousRangeRegisterClicks: number;
+  source: string;
 };
 
 export type AnalyticsEventRange = {

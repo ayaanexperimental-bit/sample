@@ -1,0 +1,51 @@
+# Generated/runtime folders
+.git/
+.next/
+node_modules/
+out/
+coverage/
+test-results/
+playwright-report/
+.wrangler/
+.wrangler-admin-v2-current-*/
+.tmp/
+tmp-admin-v2-preview/
+.local-tools/
+.headroom/
+graphify-out/
+public/ort/
+public/external/
+public/*.min.js
+public/**/*.min.js
+docs/screenshots/
+docs/**/screenshots/
+**/responsive-results.json
+
+# Logs and transient outputs
+*.log
+*.tmp
+*.cache
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Secrets and local env
+.env
+.env.*
+!.env.example
+secrets/
+.sandbox-secrets/
+
+# Binary/media and generated screenshots by default
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.mp4
+*.mov
+*.avi
+*.zip
+*.7z
+*.tar
+*.gz

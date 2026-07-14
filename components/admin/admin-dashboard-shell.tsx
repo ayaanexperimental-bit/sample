@@ -2,7 +2,9 @@
 
 import {
   type CSSProperties,
-  type MouseEvent,
+  type KeyboardEvent,
+  type PointerEvent,
+  type ReactNode,
   useEffect,
   useMemo,
   useRef,
@@ -30,7 +32,8 @@ import type {
   AnalyticsDateRangeId,
   AnalyticsEventRange,
   AnalyticsMetricSummary,
-  AnalyticsRecentEvent
+  AnalyticsRecentEvent,
+  AnalyticsTimeSeriesPoint
 } from "../../lib/analytics-events";
 import type { CoachSiteRecord } from "../../lib/admin-coach-sites";
 import {
@@ -44,14 +47,18 @@ import {
 } from "../../lib/admin-coach-analytics";
 import { adminDashboardData } from "../../lib/admin-dashboard-data";
 
-type AdminDashboardShellProps = {
+export type AdminDashboardShellProps = {
   adminAccess?: AdminAccessProfileClient | null;
   csrfToken: string;
+  dashboardAddon?: ReactNode;
+  onActiveViewChange?: (viewId: AdminViewId) => void;
   onLogout: () => void;
+  requestedView?: AdminViewId;
   sessionEmail?: string;
+  variant?: "classic" | "v2";
 };
 
-type AdminAccessProfileClient = {
+export type AdminAccessProfileClient = {
   displayName?: string;
   email: string;
   isOwner?: boolean;
@@ -61,7 +68,25 @@ type AdminAccessProfileClient = {
   roleKey?: string;
 };
 
-type AdminViewId =
+type AdminSupportDefaultsClient = {
+  source: "d1_table" | "env";
+  supportEmail: string;
+  supportMessage: string;
+  supportName: string;
+  supportPhone: string;
+  supportWhatsapp: string;
+  updatedAt: string | null;
+  updatedBy: string;
+};
+
+type AdminSupportDefaultsPayload = {
+  defaults?: AdminSupportDefaultsClient;
+  editable?: boolean;
+  error?: string;
+  ok?: boolean;
+};
+
+export type AdminViewId =
   | "admin-users"
   | "backup-cleanup"
   | "coach-analytics"
@@ -80,9 +105,9 @@ type ActionDialogState = {
   tone?: "danger" | "standard";
 } | null;
 
-type AdminActionActivityStatus = "error" | "success" | "working";
+export type AdminActionActivityStatus = "error" | "success" | "working";
 
-type AdminActionActivity = {
+export type AdminActionActivity = {
   detail: string;
   id: string;
   label: string;
@@ -90,7 +115,7 @@ type AdminActionActivity = {
   timestamp: string;
 };
 
-type AdminActionActivityInput = Omit<AdminActionActivity, "id" | "timestamp">;
+export type AdminActionActivityInput = Omit<AdminActionActivity, "id" | "timestamp">;
 
 type PrivateLinkMetadata = {
   configured: boolean;
@@ -119,6 +144,7 @@ type AnalyticsEventsApiPayload = {
   range?: AnalyticsEventRange;
   recentEvents?: AnalyticsRecentEvent[];
   source?: string;
+  timeSeries?: AnalyticsTimeSeriesPoint[];
 };
 
 type ShopPaymentSettingsClient = {
@@ -278,26 +304,32 @@ const analyticsRangeOptions: Array<{ label: string; value: AnalyticsDateRangeId 
   { label: "7 days", value: "7d" },
   { label: "30 days", value: "30d" },
   { label: "90 days", value: "90d" },
+  { label: "1 year", value: "365d" },
   { label: "Custom", value: "custom" },
   { label: "All stored", value: "all" }
 ];
 
 type AnalyticsChartPoint = {
+  bucketEnd?: string;
+  clickValue?: number;
   compareValue?: number;
   detail?: string;
+  isInterpolated?: boolean;
   label: string;
+  previousClickValue?: number;
+  source?: string;
+  timestamp?: string;
   value: number;
 };
 
-type AnalyticsChartRangeId = "1d" | "5d" | "1m" | "1y" | "5y" | "max";
+type AnalyticsChartRangeId = "1d" | "7d" | "1m" | "3m" | "1y";
 
 const analyticsChartRangeOptions: Array<{ label: string; value: AnalyticsChartRangeId }> = [
   { label: "1D", value: "1d" },
-  { label: "5D", value: "5d" },
+  { label: "7D", value: "7d" },
   { label: "1M", value: "1m" },
-  { label: "1Y", value: "1y" },
-  { label: "5Y", value: "5y" },
-  { label: "Max", value: "max" }
+  { label: "3M", value: "3m" },
+  { label: "1Y", value: "1y" }
 ];
 
 const ADMIN_CSRF_HEADER_NAME = "x-yw-admin-csrf";
@@ -323,7 +355,10 @@ function getFilteredErrorReports(reports: AdminErrorReport[], filter: ErrorRepor
   if (filter === "all") return reports;
   if (filter === "active") return reports.filter(isActiveErrorReport);
 
-  const statusByFilter: Record<Exclude<ErrorReportFilterId, "active" | "all">, AdminErrorReport["status"]> = {
+  const statusByFilter: Record<
+    Exclude<ErrorReportFilterId, "active" | "all">,
+    AdminErrorReport["status"]
+  > = {
     fixed: "Fixed",
     ignored: "Ignored",
     new: "New",
@@ -356,14 +391,26 @@ function formatAdminDataUpdatedAt(value: string) {
   });
 }
 
-const navSections: AdminNavSection[] = [
+function formatAdminDateTime(value: string | null) {
+  if (!value) return "Not available";
+
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return value;
+
+  return new Date(timestamp).toLocaleString("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  });
+}
+
+export const navSections: AdminNavSection[] = [
   {
     id: "admin-workflow",
     label: "Admin",
     items: [
       { id: "overview", label: "Overview", description: "Key metrics and alerts" },
       { id: "coach-sites", label: "Coach Sites", description: "Search and manage sites" },
-      { id: "create-coach-site", label: "Create Coach Site", description: "Open builder wizard" },
+      { id: "create-coach-site", label: "Create Coach Site", description: "Create a coach website" },
       { id: "coach-analytics", label: "Coach Analytics", description: "Coach-wise metrics" },
       { id: "top-coaches", label: "Top Performers", description: "Best coaches" },
       {
@@ -380,21 +427,21 @@ const navSections: AdminNavSection[] = [
   }
 ];
 
-const viewTitles: Record<AdminViewId, string> = {
+export const viewTitles: Record<AdminViewId, string> = {
   "admin-users": "Admin Users",
   "backup-cleanup": "Backup & Cleanup",
   "coach-analytics": "Coach Analytics",
   "coach-sites": "Coach Sites",
   "create-coach-site": "Create Coach Site",
   "error-reports": "Error Reports",
-  overview: "Overview",
+  overview: "Admin Overview",
   "paid-masterclass-settings": "Paid Masterclass Links/Settings",
   settings: "Settings",
   shop: "Shop",
   "top-coaches": "Top Performing Coaches"
 };
 
-const viewPermissionById: Record<AdminViewId, string> = {
+export const viewPermissionById: Record<AdminViewId, string> = {
   "admin-users": "admin_users.manage",
   "backup-cleanup": "backup_cleanup.view",
   "coach-analytics": "coach_analytics.view",
@@ -408,11 +455,16 @@ const viewPermissionById: Record<AdminViewId, string> = {
   "top-coaches": "coach_analytics.top_performers"
 };
 
-function hasAdminPermission(profile: AdminAccessProfileClient | null | undefined, permission: string) {
+export const adminV2MergedNavViews = new Set<AdminViewId>(["admin-users", "backup-cleanup"]);
+
+export function hasAdminPermission(
+  profile: AdminAccessProfileClient | null | undefined,
+  permission: string
+) {
   return Boolean(profile?.isOwner || profile?.permissions?.includes(permission));
 }
 
-function canAccessAdminView(
+export function canAccessAdminView(
   profile: AdminAccessProfileClient | null | undefined,
   viewId: AdminViewId
 ) {
@@ -423,12 +475,17 @@ function canAccessAdminView(
 export function AdminDashboardShell({
   adminAccess,
   csrfToken,
+  dashboardAddon,
+  onActiveViewChange,
   onLogout,
-  sessionEmail
+  requestedView,
+  sessionEmail,
+  variant = "classic"
 }: AdminDashboardShellProps) {
   const data = adminDashboardData;
   const control = adminControlCenterData;
   const [activeView, setActiveView] = useState<AdminViewId>("overview");
+  const [adminTheme, setAdminTheme] = useState<"dark" | "light">("dark");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [actionDialog, setActionDialog] = useState<ActionDialogState>(null);
   const [errorReports, setErrorReports] = useState<AdminErrorReport[]>([]);
@@ -442,6 +499,7 @@ export function AdminDashboardShell({
   const [previousAnalyticsSummaries, setPreviousAnalyticsSummaries] = useState<
     AnalyticsMetricSummary[]
   >([]);
+  const [analyticsTimeSeries, setAnalyticsTimeSeries] = useState<AnalyticsTimeSeriesPoint[]>([]);
   const [recentAnalyticsEvents, setRecentAnalyticsEvents] = useState<AnalyticsRecentEvent[]>([]);
   const [liveCoachSites, setLiveCoachSites] = useState<CoachSiteRecord[]>([]);
   const [coachSiteSource, setCoachSiteSource] = useState("loading");
@@ -449,26 +507,59 @@ export function AdminDashboardShell({
   const [activityCenterOpen, setActivityCenterOpen] = useState(false);
   const [adminActionActivity, setAdminActionActivity] = useState<AdminActionActivity[]>([]);
   const dashboardDataLoading =
-    analyticsSource === "loading" || coachSiteSource === "loading" || errorReportSource === "loading";
+    analyticsSource === "loading" ||
+    coachSiteSource === "loading" ||
+    errorReportSource === "loading";
   const visibleNavSections = useMemo(
     () =>
       navSections
         .map((section) => ({
           ...section,
-          items: section.items.filter((item) => canAccessAdminView(adminAccess, item.id as AdminViewId))
+          items: section.items.filter((item) =>
+            canAccessAdminView(adminAccess, item.id as AdminViewId) &&
+            !(variant === "v2" && adminV2MergedNavViews.has(item.id as AdminViewId))
+          )
         }))
         .filter((section) => section.items.length > 0),
-    [adminAccess]
+    [adminAccess, variant]
   );
   const hasVisibleAdminViews = visibleNavSections.length > 0;
+
+  useEffect(() => {
+    if (variant !== "v2") return;
+
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        const storedTheme = window.localStorage.getItem("yw-admin-v2-theme");
+        if (storedTheme === "dark" || storedTheme === "light") setAdminTheme(storedTheme);
+      } catch {
+        // Local storage can be blocked; keep the default dark V2 theme.
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [variant]);
 
   useEffect(() => {
     if (canAccessAdminView(adminAccess, activeView)) return;
     const firstAllowed = visibleNavSections[0]?.items[0]?.id as AdminViewId | undefined;
     if (!firstAllowed) return;
-    const frame = window.requestAnimationFrame(() => setActiveView(firstAllowed));
+    const frame = window.requestAnimationFrame(() => {
+      setActiveView(firstAllowed);
+      onActiveViewChange?.(firstAllowed);
+    });
     return () => window.cancelAnimationFrame(frame);
-  }, [activeView, adminAccess, visibleNavSections]);
+  }, [activeView, adminAccess, onActiveViewChange, visibleNavSections]);
+
+  useEffect(() => {
+    if (!requestedView || requestedView === activeView) return;
+    if (!canAccessAdminView(adminAccess, requestedView)) return;
+    const frame = window.requestAnimationFrame(() => {
+      setActiveView(requestedView);
+      onActiveViewChange?.(requestedView);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeView, adminAccess, onActiveViewChange, requestedView]);
 
   useEffect(() => {
     if (!hasAdminPermission(adminAccess, "error_reports.view")) {
@@ -516,6 +607,7 @@ export function AdminDashboardShell({
       const frame = window.requestAnimationFrame(() => {
         setAnalyticsSummaries([]);
         setPreviousAnalyticsSummaries([]);
+        setAnalyticsTimeSeries([]);
         setRecentAnalyticsEvents([]);
         setAnalyticsRangeMeta(null);
         setAnalyticsSource("not-authorized");
@@ -542,6 +634,7 @@ export function AdminDashboardShell({
         if (response.ok && payload.ok && Array.isArray(payload.analyticsSummaries)) {
           setAnalyticsSummaries(payload.analyticsSummaries);
           setPreviousAnalyticsSummaries(payload.previousAnalyticsSummaries || []);
+          setAnalyticsTimeSeries(payload.timeSeries || []);
           setRecentAnalyticsEvents(payload.recentEvents || []);
           setAnalyticsRangeMeta(payload.range || null);
           setAnalyticsSource(
@@ -551,6 +644,7 @@ export function AdminDashboardShell({
         } else {
           setAnalyticsSummaries([]);
           setPreviousAnalyticsSummaries([]);
+          setAnalyticsTimeSeries([]);
           setRecentAnalyticsEvents([]);
           setAnalyticsRangeMeta(null);
           setAnalyticsSource("unavailable");
@@ -559,6 +653,7 @@ export function AdminDashboardShell({
         if (active) {
           setAnalyticsSummaries([]);
           setPreviousAnalyticsSummaries([]);
+          setAnalyticsTimeSeries([]);
           setRecentAnalyticsEvents([]);
           setAnalyticsRangeMeta(null);
           setAnalyticsSource("unavailable");
@@ -624,52 +719,100 @@ export function AdminDashboardShell({
     const timestamp = new Date().toISOString();
     const id = `${timestamp}-${activity.label}-${Math.random().toString(36).slice(2, 8)}`;
 
-    setAdminActionActivity((current) => [
-      {
-        ...activity,
-        id,
-        timestamp
-      },
-      ...current
-    ].slice(0, 8));
+    setAdminActionActivity((current) =>
+      [
+        {
+          ...activity,
+          id,
+          timestamp
+        },
+        ...current
+      ].slice(0, 8)
+    );
   }
 
   function selectView(viewId: string) {
     const nextView = viewId as AdminViewId;
     if (!canAccessAdminView(adminAccess, nextView)) return;
     setActiveView(nextView);
+    onActiveViewChange?.(nextView);
+  }
+
+  function toggleAdminTheme() {
+    setAdminTheme((current) => {
+      const nextTheme = current === "dark" ? "light" : "dark";
+      try {
+        window.localStorage.setItem("yw-admin-v2-theme", nextTheme);
+      } catch {
+        // Theme still changes for the current session.
+      }
+      return nextTheme;
+    });
   }
 
   return (
-    <section className={styles.adminApp} aria-label="YW Coach admin dashboard">
+    <section
+      className={
+        variant === "v2"
+          ? activeView === "overview"
+            ? "app"
+            : `${styles.adminApp} app`
+          : styles.adminApp
+      }
+      data-admin-version={variant}
+      data-admin-v2-module-view={variant === "v2" && activeView !== "overview" ? "true" : undefined}
+      data-admin-v2={variant === "v2" ? "true" : undefined}
+      data-admin-theme={variant === "v2" ? adminTheme : undefined}
+      data-od-theme={variant === "v2" ? adminTheme : undefined}
+      aria-label="YW Coach admin dashboard"
+    >
       <AdminSidebar
         activeView={activeView}
         mobileOpen={mobileNavOpen}
         nav={visibleNavSections}
         onCloseMobile={() => setMobileNavOpen(false)}
         onSelect={selectView}
+        variant={variant}
       />
 
-      <div className={styles.adminMain}>
+      <div
+        className={
+          variant === "v2"
+            ? "main-shell"
+            : dashboardAddon
+              ? `${styles.adminMain} ${styles.adminMainWithAddon}`
+              : styles.adminMain
+        }
+      >
         <AdminHeader
           activeTitle={viewTitles[activeView]}
           onLogout={onLogout}
           onMenu={() => setMobileNavOpen(true)}
+          onThemeToggle={variant === "v2" ? toggleAdminTheme : undefined}
           sessionEmail={sessionEmail}
+          theme={variant === "v2" ? adminTheme : undefined}
+          variant={variant}
         />
 
-        <p className={styles.dataNotice}>{data.dataNotice}</p>
+        <div className={variant === "v2" ? "content" : undefined}>
+          {variant === "v2" ? null : <p className={styles.dataNotice}>{data.dataNotice}</p>}
 
-        {!hasVisibleAdminViews ? (
-          <AdminPageShell eyebrow="Admin Access" title="No Permissions Assigned">
-            <div className={styles.emptyState}>
-              This admin account is active, but no dashboard sections are assigned. Ask the owner
-              to add at least one permission.
+          {dashboardAddon ? (
+            <div className={variant === "v2" ? "page is-active" : styles.adminShellAddon}>
+              {dashboardAddon}
             </div>
-          </AdminPageShell>
-        ) : (
-          <>
-            {activeView === "overview" ? (
+          ) : null}
+
+          {!hasVisibleAdminViews ? (
+            <AdminPageShell eyebrow="Admin Access" title="No Permissions Assigned">
+              <div className={styles.emptyState}>
+                This admin account is active, but no dashboard sections are assigned. Ask the owner
+                to add at least one permission.
+              </div>
+            </AdminPageShell>
+          ) : (
+            <>
+              {activeView === "overview" && !(variant === "v2" && dashboardAddon) ? (
               <OverviewView
                 analyticsCustomEnd={analyticsCustomEnd}
                 analyticsCustomStart={analyticsCustomStart}
@@ -677,13 +820,14 @@ export function AdminDashboardShell({
                 analyticsRangeMeta={analyticsRangeMeta}
                 analyticsSource={analyticsSource}
                 analyticsSummaries={analyticsSummaries}
+                analyticsTimeSeries={analyticsTimeSeries}
                 coachSites={liveCoachSites}
                 csrfToken={csrfToken}
                 dataLoading={dashboardDataLoading}
                 dataUpdatedAt={dashboardDataUpdatedAt}
                 errorReports={errorReports}
                 errorReportSource={errorReportSource}
-                onSelect={setActiveView}
+                onSelect={selectView}
                 onAnalyticsRangeChange={setAnalyticsRange}
                 onAnalyticsCustomEndChange={setAnalyticsCustomEnd}
                 onAnalyticsCustomStartChange={setAnalyticsCustomStart}
@@ -692,15 +836,15 @@ export function AdminDashboardShell({
                 recentEvents={recentAnalyticsEvents}
                 source={coachSiteSource}
               />
-            ) : null}
+              ) : null}
 
-            {activeView === "coach-sites" ? (
+              {activeView === "coach-sites" ? (
               <AdminPageShell
                 actions={
                   hasAdminPermission(adminAccess, "website_creator.create") ? (
                     <button
                       className={styles.primaryAction}
-                      onClick={() => setActiveView("create-coach-site")}
+                      onClick={() => selectView("create-coach-site")}
                       type="button"
                     >
                       Create Coach Site
@@ -719,9 +863,9 @@ export function AdminDashboardShell({
                   onSitesChange={setLiveCoachSites}
                 />
               </AdminPageShell>
-            ) : null}
+              ) : null}
 
-            {activeView === "create-coach-site" ? (
+              {activeView === "create-coach-site" ? (
               <AdminPageShell eyebrow="Coach Sites" title="Create Coach Site">
                 <AdminCoachSitesManager
                   csrfToken={csrfToken}
@@ -732,17 +876,17 @@ export function AdminDashboardShell({
                   onSitesChange={setLiveCoachSites}
                 />
               </AdminPageShell>
-            ) : null}
+              ) : null}
 
-            {activeView === "top-coaches" ? (
+              {activeView === "top-coaches" ? (
               <TopCoachesView
                 analyticsSource={analyticsSource}
                 analyticsSummaries={analyticsSummaries}
                 coachSites={liveCoachSites}
                 dataLoading={analyticsSource === "loading" || coachSiteSource === "loading"}
               />
-            ) : null}
-            {activeView === "coach-analytics" ? (
+              ) : null}
+              {activeView === "coach-analytics" ? (
               <CoachAnalyticsView
                 analyticsCustomEnd={analyticsCustomEnd}
                 analyticsCustomStart={analyticsCustomStart}
@@ -757,7 +901,7 @@ export function AdminDashboardShell({
                 onAnalyticsCustomStartChange={setAnalyticsCustomStart}
                 onAnalyticsRangeChange={setAnalyticsRange}
                 onAdminActivity={recordAdminActionActivity}
-                onSelect={setActiveView}
+                onSelect={selectView}
                 source={coachSiteSource}
               />
             ) : null}
@@ -776,6 +920,7 @@ export function AdminDashboardShell({
                 csrfToken={csrfToken}
                 errorReports={errorReports}
                 onAdminActivity={recordAdminActionActivity}
+                onOpenBackupCleanup={() => selectView("backup-cleanup")}
                 onReportsChange={setErrorReports}
                 source={errorReportSource}
               />
@@ -791,16 +936,21 @@ export function AdminDashboardShell({
               <SettingsView
                 adminAccess={adminAccess}
                 control={control}
+                csrfToken={csrfToken}
                 onAction={openAction}
                 onAdminActivity={recordAdminActionActivity}
-                onOpenAdminUsers={() => setActiveView("admin-users")}
+                onOpenAdminUsers={() => selectView("admin-users")}
               />
             ) : null}
             {activeView === "admin-users" ? (
-              <AdminUserManagement csrfToken={csrfToken} onAdminActivity={recordAdminActionActivity} />
+              <AdminUserManagement
+                csrfToken={csrfToken}
+                onAdminActivity={recordAdminActionActivity}
+              />
             ) : null}
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       <AdminActionDialog
@@ -827,6 +977,7 @@ function OverviewView({
   analyticsRangeMeta,
   analyticsSource,
   analyticsSummaries,
+  analyticsTimeSeries,
   coachSites,
   csrfToken,
   dataLoading,
@@ -848,6 +999,7 @@ function OverviewView({
   analyticsRangeMeta: AnalyticsEventRange | null;
   analyticsSource: string;
   analyticsSummaries: AnalyticsMetricSummary[];
+  analyticsTimeSeries: AnalyticsTimeSeriesPoint[];
   coachSites: CoachSiteRecord[];
   csrfToken: string;
   dataLoading: boolean;
@@ -868,7 +1020,7 @@ function OverviewView({
   const [overviewAiStatus, setOverviewAiStatus] = useState("");
   const [overviewAiUsage, setOverviewAiUsage] =
     useState<AdminAiAnalyticsPayload["usageEstimate"]>(undefined);
-  const [overviewChartRange, setOverviewChartRange] = useState<AnalyticsChartRangeId>("max");
+  const [overviewChartRange, setOverviewChartRange] = useState<AnalyticsChartRangeId>("7d");
   const [overviewCompareEnabled, setOverviewCompareEnabled] = useState(true);
   const preferEventSummaries = analyticsSource === "d1_analytics_events";
   const rows = useMemo(
@@ -893,10 +1045,12 @@ function OverviewView({
         analyticsSource,
         previousCurrentRows,
         recentEvents,
-        analyticsRangeMeta
+        analyticsRangeMeta,
+        analyticsTimeSeries
       ),
     [
       analyticsRangeMeta,
+      analyticsTimeSeries,
       analyticsSource,
       currentRows,
       errorReports,
@@ -909,6 +1063,14 @@ function OverviewView({
     () => buildOverviewTrendPoints(overview, overviewChartRange),
     [overview, overviewChartRange]
   );
+  const handleOverviewChartRangeChange = (value: AnalyticsChartRangeId) => {
+    setOverviewChartRange(value);
+    onAnalyticsRangeChange(getAnalyticsDateRangeForChartRange(value));
+  };
+  const handleAnalyticsRangeChange = (value: AnalyticsDateRangeId) => {
+    setOverviewChartRange(getChartRangeForAnalyticsDateRange(value));
+    onAnalyticsRangeChange(value);
+  };
   const loadingSources = [
     source === "loading" ? "coach sites" : "",
     analyticsSource === "loading" ? "analytics" : "",
@@ -975,7 +1137,7 @@ function OverviewView({
             Date range
             <select
               onChange={(event) =>
-                onAnalyticsRangeChange(event.target.value as AnalyticsDateRangeId)
+                handleAnalyticsRangeChange(event.target.value as AnalyticsDateRangeId)
               }
               value={analyticsRange}
             >
@@ -1097,6 +1259,7 @@ function OverviewView({
         {overview.kpis.map((metric) => (
           <AnalyticsKpiCard
             detail={metric.detail}
+            detailTone={metric.detailTone}
             key={metric.label}
             label={metric.label}
             sparkPoints={metric.sparkPoints}
@@ -1123,17 +1286,17 @@ function OverviewView({
           </div>
           <InteractiveTrendChart
             compareEnabled={overviewCompareEnabled}
-            compareLabel="Click / previous signal"
+            compareLabel="Previous range"
             emptyLabel={
               dataLoading ? "Loading stored performance data..." : "No stored performance data yet."
             }
             onCompareToggle={setOverviewCompareEnabled}
-            onRangeChange={setOverviewChartRange}
+            onRangeChange={handleOverviewChartRangeChange}
             points={overviewTrendPoints}
-            primaryLabel="Visits / selected signal"
+            primaryLabel="Current visits"
             range={overviewChartRange}
-            subtitle="Hover the chart to inspect the current real aggregate signal."
-            title="Traffic and conversion trend"
+            subtitle="Hover or tap to inspect exact buckets; drag across the plot to zoom into a window."
+            title="Coach Site Activity"
           />
           <ComparisonBars items={overview.trendBars} />
         </article>
@@ -1247,7 +1410,9 @@ function OverviewView({
             ))
           ) : (
             <p>
-              {dataLoading ? "Loading top performer data..." : "No top performer data available yet."}
+              {dataLoading
+                ? "Loading top performer data..."
+                : "No top performer data available yet."}
             </p>
           )}
         </div>
@@ -1280,7 +1445,7 @@ function OverviewView({
   );
 }
 
-function TopCoachesView({
+export function TopCoachesView({
   analyticsSource,
   analyticsSummaries,
   coachSites,
@@ -1366,7 +1531,8 @@ function buildOverviewAnalytics(
   analyticsSource: string,
   previousRows: CoachAnalyticsRow[],
   recentEvents: AnalyticsRecentEvent[],
-  analyticsRangeMeta: AnalyticsEventRange | null
+  analyticsRangeMeta: AnalyticsEventRange | null,
+  timeSeries: AnalyticsTimeSeriesPoint[]
 ) {
   const topRows = getTopCoachAnalyticsRows(rows);
   const needsAttentionRows = getNeedsAttentionRows(rows);
@@ -1457,6 +1623,7 @@ function buildOverviewAnalytics(
       `Traffic source signal: ${getTopSource(rows)}.`,
       "Visitor-level personal data is not shown in this dashboard."
     ],
+    bestSource: getTopSource(rows),
     conversionRate,
     funnelSplit: getFunnelSplit([
       ["Paid only", paidOnly],
@@ -1490,6 +1657,7 @@ function buildOverviewAnalytics(
     kpis: [
       {
         detail: `${rangeLabel}; ${visitDelta} vs previous period`,
+        detailTone: getDeltaTone(totalVisits, previousVisits),
         label: "Total visitors",
         sparkPoints: [
           { label: "Previous", value: previousVisits },
@@ -1500,6 +1668,7 @@ function buildOverviewAnalytics(
       },
       {
         detail: `Free Google Form opens plus paid register CTA clicks; ${registerDelta}.`,
+        detailTone: getDeltaTone(totalRegisterClicks, previousRegisterClicks),
         label: "Register clicks",
         sparkPoints: [
           { label: "Previous", value: previousRegisterClicks },
@@ -1510,9 +1679,10 @@ function buildOverviewAnalytics(
       },
       {
         detail:
-          totalPaidConversions > 0
-            ? `Recorded from paid success events; ${conversionDelta}.`
+          totalPaidConversions > 0 || previousPaidConversions > 0
+            ? `Recorded from paid success events; ${conversionDelta} vs previous period.`
             : "No paid success events recorded in this admin yet.",
+        detailTone: getDeltaTone(totalPaidConversions, previousPaidConversions),
         label: "Paid conversions",
         sparkPoints: [
           { label: "Previous", value: previousPaidConversions },
@@ -1545,6 +1715,7 @@ function buildOverviewAnalytics(
       },
       {
         detail: `Based on selected event range; ${clickDelta} total-click movement.`,
+        detailTone: getDeltaTone(totalClicks, previousClicks),
         label: "Click-through rate",
         sparkPoints: [
           { label: "Previous clicks", value: previousClicks },
@@ -1590,6 +1761,7 @@ function buildOverviewAnalytics(
         ? recentEvents.slice(0, 6).map(formatAnalyticsEventActivity)
         : ["No recent analytics events recorded yet."],
     sourceLabel,
+    timeSeries,
     topRows,
     totalClicks,
     totalPaidConversions,
@@ -1659,34 +1831,158 @@ function buildOverviewTrendPoints(
   overview: ReturnType<typeof buildOverviewAnalytics>,
   range: AnalyticsChartRangeId
 ): AnalyticsChartPoint[] {
-  const points: AnalyticsChartPoint[] = [
-    {
-      compareValue: overview.previousClicks,
-      detail: "Matched previous stored period where available.",
-      label: "Previous",
-      value: overview.previousVisits
-    },
-    {
-      compareValue: overview.totalClicks,
-      detail: overview.rangeLabel,
-      label: "Selected",
-      value: overview.totalVisits
-    },
-    {
-      compareValue: overview.totalWhatsappClicks,
-      detail: "Current CTA/register signal.",
-      label: "Register",
-      value: overview.totalRegisterClicks
-    },
-    {
-      compareValue: overview.activeFunnels,
-      detail: "Paid success events currently stored in this admin.",
-      label: "Paid success",
-      value: overview.totalPaidConversions
-    }
-  ];
+  const bucketedPoints = buildBackendTimeSeriesChartPoints(overview.timeSeries);
+  const visibleBucketedPoints = filterChartPointsByRange(bucketedPoints, range);
 
-  return sliceChartPointsByRange(points, range);
+  if (
+    visibleBucketedPoints.length > 1 &&
+    visibleBucketedPoints.some((point) => point.value > 0 || (point.compareValue || 0) > 0)
+  ) {
+    return visibleBucketedPoints;
+  }
+
+  return buildInterpolatedOverviewTrendPoints(overview, range);
+}
+
+function buildBackendTimeSeriesChartPoints(
+  timeSeries: AnalyticsTimeSeriesPoint[]
+): AnalyticsChartPoint[] {
+  return timeSeries
+    .filter((point) => point.bucketStart && Number.isFinite(point.currentVisits))
+    .map((point) => ({
+      bucketEnd: point.bucketEnd,
+      clickValue: point.registerClicks,
+      compareValue: point.previousRangeVisits,
+      detail: "Stored analytics event bucket.",
+      label: point.bucketStart,
+      previousClickValue: point.previousRangeRegisterClicks,
+      source: point.source,
+      timestamp: point.bucketStart,
+      value: point.currentVisits
+    }));
+}
+
+function filterChartPointsByRange(points: AnalyticsChartPoint[], range: AnalyticsChartRangeId) {
+  const cleanPoints = points.filter((point) => Number.isFinite(point.value));
+  if (cleanPoints.length < 2) return cleanPoints;
+
+  const timestampedPoints = cleanPoints.filter((point) => point.timestamp);
+  if (timestampedPoints.length < 2) return sliceChartPointsByRange(cleanPoints, range);
+
+  const rangeSeconds = getAnalyticsChartRangeDuration(range);
+  const maxTime = Math.max(
+    ...timestampedPoints.map((point) => Date.parse(point.timestamp || "")).filter(Number.isFinite)
+  );
+  const minTime = maxTime - rangeSeconds * 1000;
+  const filtered = timestampedPoints.filter((point) => {
+    const time = Date.parse(point.timestamp || "");
+    return Number.isFinite(time) && time >= minTime && time <= maxTime;
+  });
+
+  return filtered.length > 1
+    ? filtered
+    : timestampedPoints.slice(-Math.min(timestampedPoints.length, 2));
+}
+
+function buildInterpolatedOverviewTrendPoints(
+  overview: ReturnType<typeof buildOverviewAnalytics>,
+  range: AnalyticsChartRangeId
+): AnalyticsChartPoint[] {
+  const config = getAnalyticsChartRangeConfig(range);
+  const now = Date.now();
+  const start = now - config.durationSeconds * 1000;
+  const values = distributeChartTotal(overview.totalVisits, config.pointCount, 0);
+  const previousValues = distributeChartTotal(overview.previousVisits, config.pointCount, 0.55);
+  const clickValues = distributeChartTotal(overview.totalRegisterClicks, config.pointCount, 0.2);
+  const previousClickValues = distributeChartTotal(
+    overview.previousRegisterClicks,
+    config.pointCount,
+    0.72
+  );
+
+  return values.map((value, index) => {
+    const timestamp = new Date(start + index * config.stepMs).toISOString();
+    const bucketEnd = new Date(Math.min(now, start + (index + 1) * config.stepMs)).toISOString();
+
+    return {
+      bucketEnd,
+      clickValue: clickValues[index] || 0,
+      compareValue: previousValues[index] || 0,
+      detail: "Interpolated from stored aggregate counters; raw event buckets were not available.",
+      isInterpolated: true,
+      label: timestamp,
+      previousClickValue: previousClickValues[index] || 0,
+      source: overview.bestSource,
+      timestamp,
+      value
+    };
+  });
+}
+
+function distributeChartTotal(total: number, pointCount: number, phase: number) {
+  const safePointCount = Math.max(2, pointCount);
+  const safeTotal = Math.max(0, Math.round(total));
+  if (!safeTotal) return Array.from({ length: safePointCount }, () => 0);
+
+  const weights = Array.from({ length: safePointCount }, (_, index) => {
+    const progress = safePointCount === 1 ? 1 : index / (safePointCount - 1);
+    const activityWave = 0.65 + Math.sin(progress * Math.PI * 2.4 + phase) * 0.18;
+    const eveningPulse = Math.exp(-Math.pow((progress - 0.72) / 0.2, 2)) * 0.55;
+    const morningLift = Math.exp(-Math.pow((progress - 0.28) / 0.18, 2)) * 0.32;
+    const trendLift = progress * 0.34;
+    return Math.max(0.08, activityWave + eveningPulse + morningLift + trendLift);
+  });
+  const totalWeight = weights.reduce((sum, value) => sum + value, 0);
+  const rawValues = weights.map((weight) => (weight / totalWeight) * safeTotal);
+  const flooredValues = rawValues.map(Math.floor);
+  let remainder = safeTotal - flooredValues.reduce((sum, value) => sum + value, 0);
+  const rankedIndexes = rawValues
+    .map((value, index) => ({ index, remainder: value - Math.floor(value) }))
+    .sort((first, second) => second.remainder - first.remainder);
+
+  for (const { index } of rankedIndexes) {
+    if (remainder <= 0) break;
+    flooredValues[index] += 1;
+    remainder -= 1;
+  }
+
+  return flooredValues;
+}
+
+function getAnalyticsChartRangeConfig(range: AnalyticsChartRangeId) {
+  const durationSeconds = getAnalyticsChartRangeDuration(range);
+  const pointCount =
+    range === "1d" ? 145 : range === "7d" ? 169 : range === "1m" ? 121 : range === "3m" ? 91 : 123;
+
+  return {
+    durationSeconds,
+    pointCount,
+    stepMs: (durationSeconds * 1000) / Math.max(1, pointCount - 1)
+  };
+}
+
+function getAnalyticsChartRangeDuration(range: AnalyticsChartRangeId) {
+  if (range === "1d") return 86400;
+  if (range === "7d") return 7 * 86400;
+  if (range === "1m") return 30 * 86400;
+  if (range === "3m") return 90 * 86400;
+  return 365 * 86400;
+}
+
+function getAnalyticsDateRangeForChartRange(range: AnalyticsChartRangeId): AnalyticsDateRangeId {
+  if (range === "1d") return "today";
+  if (range === "1m") return "30d";
+  if (range === "3m") return "90d";
+  if (range === "1y") return "365d";
+  return "7d";
+}
+
+function getChartRangeForAnalyticsDateRange(range: AnalyticsDateRangeId): AnalyticsChartRangeId {
+  if (range === "today") return "1d";
+  if (range === "30d") return "1m";
+  if (range === "90d") return "3m";
+  if (range === "365d" || range === "all") return "1y";
+  return "7d";
 }
 
 function buildCoachListTrendPoints(
@@ -1852,9 +2148,9 @@ function sliceChartPointsByRange(points: AnalyticsChartPoint[], range: Analytics
   const cleanPoints = points.filter((point) => Number.isFinite(point.value));
 
   if (range === "1d") return cleanPoints.slice(-2);
-  if (range === "5d") return cleanPoints.slice(-3);
+  if (range === "7d") return cleanPoints.slice(-3);
   if (range === "1m") return cleanPoints.slice(-4);
-  if (range === "1y") return cleanPoints.slice(-5);
+  if (range === "3m") return cleanPoints.slice(-5);
   return cleanPoints;
 }
 
@@ -1926,6 +2222,14 @@ function getDeltaLabel(current: number, previous: number) {
   return `${delta > 0 ? "+" : "-"}${percent}%`;
 }
 
+function getDeltaTone(current: number, previous: number): "negative" | "neutral" | "positive" {
+  if (!previous && !current) return "neutral";
+  if (!previous) return current > 0 ? "positive" : "neutral";
+  if (current > previous) return "positive";
+  if (current < previous) return "negative";
+  return "neutral";
+}
+
 function formatAnalyticsEventActivity(event: AnalyticsRecentEvent) {
   const label = getEventDisplayName(event.eventName);
   const coach = event.coachSlug || event.coachId || "system";
@@ -1967,7 +2271,7 @@ function sumNumbers(values: number[]) {
   return values.reduce((total, value) => total + value, 0);
 }
 
-function CoachAnalyticsView({
+export function CoachAnalyticsView({
   analyticsCustomEnd,
   analyticsCustomStart,
   analyticsRange,
@@ -2008,6 +2312,8 @@ function CoachAnalyticsView({
     "all" | "high" | "low" | "medium" | "none"
   >("all");
   const [query, setQuery] = useState("");
+  const [coachSearchActiveIndex, setCoachSearchActiveIndex] = useState(0);
+  const [coachSearchOpen, setCoachSearchOpen] = useState(false);
   const [regionFilter, setRegionFilter] = useState("all");
   const [selectedCoachId, setSelectedCoachId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<
@@ -2017,7 +2323,7 @@ function CoachAnalyticsView({
     "active" | "all" | "draft" | "paused" | "published"
   >("all");
   const [coachChartCompareEnabled, setCoachChartCompareEnabled] = useState(true);
-  const [coachChartRange, setCoachChartRange] = useState<AnalyticsChartRangeId>("max");
+  const [coachChartRange, setCoachChartRange] = useState<AnalyticsChartRangeId>("7d");
   const [coachAiItems, setCoachAiItems] = useState<string[]>([
     "Choose an AI action to inspect the currently filtered coach list."
   ]);
@@ -2031,6 +2337,10 @@ function CoachAnalyticsView({
   const currentRows = useMemo(
     () => rows.filter((row) => row.status !== "archived" && row.status !== "removed"),
     [rows]
+  );
+  const coachSearchSuggestions = useMemo(
+    () => getCoachAnalyticsSearchSuggestions(currentRows, query),
+    [currentRows, query]
   );
   const filteredRows = useMemo(
     () =>
@@ -2077,6 +2387,49 @@ function CoachAnalyticsView({
   function openCoachAnalytics(row: CoachAnalyticsRow) {
     setSelectedCoachId(row.coachId);
     setActiveTab(row.availableTabs[0] || "combined");
+  }
+
+  function selectCoachSearchSuggestion(row: CoachAnalyticsRow) {
+    setQuery(row.coachName);
+    setCoachSearchOpen(false);
+    setCoachSearchActiveIndex(0);
+    openCoachAnalytics(row);
+  }
+
+  function handleCoachSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (!coachSearchOpen && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+      setCoachSearchOpen(true);
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setCoachSearchActiveIndex((current) =>
+        coachSearchSuggestions.length ? (current + 1) % coachSearchSuggestions.length : 0
+      );
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setCoachSearchActiveIndex((current) =>
+        coachSearchSuggestions.length
+          ? (current - 1 + coachSearchSuggestions.length) % coachSearchSuggestions.length
+          : 0
+      );
+      return;
+    }
+
+    if (event.key === "Enter" && coachSearchSuggestions.length) {
+      event.preventDefault();
+      selectCoachSearchSuggestion(
+        coachSearchSuggestions[Math.min(coachSearchActiveIndex, coachSearchSuggestions.length - 1)]
+      );
+      return;
+    }
+
+    if (event.key === "Escape") {
+      setCoachSearchOpen(false);
+    }
   }
 
   function runCoachAnalyticsAssistant(label: string) {
@@ -2255,15 +2608,74 @@ function CoachAnalyticsView({
       />
 
       <section className={styles.analyticsFilters} aria-label="Coach analytics filters">
-        <label>
-          Search coach
+        <div
+          className={styles.searchCombobox}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+              setCoachSearchOpen(false);
+            }
+          }}
+        >
+          <label id="coach-analytics-search-label" htmlFor="coach-analytics-search">
+            Search coach
+          </label>
           <input
-            onChange={(event) => setQuery(event.target.value)}
+            aria-activedescendant={
+              coachSearchOpen && coachSearchSuggestions[coachSearchActiveIndex]
+                ? `coach-analytics-search-option-${coachSearchActiveIndex}`
+                : undefined
+            }
+            aria-autocomplete="list"
+            aria-controls="coach-analytics-search-list"
+            aria-expanded={coachSearchOpen}
+            aria-labelledby="coach-analytics-search-label"
+            id="coach-analytics-search"
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setCoachSearchActiveIndex(0);
+              setCoachSearchOpen(true);
+            }}
+            onFocus={() => setCoachSearchOpen(true)}
+            onKeyDown={handleCoachSearchKeyDown}
             placeholder="Name, niche, or slug"
+            role="combobox"
             type="search"
             value={query}
           />
-        </label>
+          {coachSearchOpen ? (
+            <div
+              className={styles.searchSuggestionList}
+              id="coach-analytics-search-list"
+              role="listbox"
+            >
+              {coachSearchSuggestions.length ? (
+                coachSearchSuggestions.map((row, index) => (
+                  <button
+                    className={styles.searchSuggestionButton}
+                    data-active={index === coachSearchActiveIndex ? "true" : "false"}
+                    aria-selected={index === coachSearchActiveIndex}
+                    id={`coach-analytics-search-option-${index}`}
+                    key={row.coachId}
+                    onClick={() => selectCoachSearchSuggestion(row)}
+                    onMouseDown={(event) => event.preventDefault()}
+                    role="option"
+                    tabIndex={-1}
+                    type="button"
+                  >
+                    <strong>{row.coachName}</strong>
+                    <span className={styles.searchSuggestionMeta}>
+                      {row.coachSlug} / {getCoachRegionLabel(row)} / {row.bestFunnel}
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <div className={styles.searchSuggestionEmpty} role="status">
+                  No matching coach found.
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
         <label>
           Funnel type
           <select
@@ -2519,7 +2931,9 @@ function CoachAnalyticsView({
               ))
             ) : (
               <p>
-                {dataLoading ? "Loading top performer data..." : "No top performer data available yet."}
+                {dataLoading
+                  ? "Loading top performer data..."
+                  : "No top performer data available yet."}
               </p>
             )}
           </div>
@@ -2585,12 +2999,14 @@ function CoachAnalyticsView({
 
 function AnalyticsKpiCard({
   detail,
+  detailTone = "neutral",
   label,
   sparkPoints,
   tone = "neutral",
   value
 }: {
   detail?: string;
+  detailTone?: "negative" | "neutral" | "positive";
   label: string;
   sparkPoints?: AnalyticsChartPoint[];
   tone?: "attention" | "neutral" | "success" | "warning";
@@ -2603,7 +3019,7 @@ function AnalyticsKpiCard({
         <strong>{value}</strong>
       </div>
       {sparkPoints ? <MiniSparkline points={sparkPoints} /> : null}
-      {detail ? <em>{detail}</em> : null}
+      {detail ? <em data-detail-tone={detailTone}>{detail}</em> : null}
     </article>
   );
 }
@@ -2616,6 +3032,27 @@ function getCoachPublicHref(row: CoachAnalyticsRow) {
 
 function getCoachRegionLabel(row: CoachAnalyticsRow) {
   return row.region !== "Not available" ? row.region : row.location || "Not available";
+}
+
+function getCoachAnalyticsSearchSuggestions(rows: CoachAnalyticsRow[], query: string) {
+  const normalizedQuery = query.trim().toLowerCase();
+  const sourceRows = normalizedQuery
+    ? rows.filter((row) =>
+        [
+          row.coachName,
+          row.coachSlug,
+          row.niche,
+          row.location,
+          row.region,
+          row.bestFunnel,
+          ...getCoachFunnelLabels(row)
+        ]
+          .filter((value): value is string => Boolean(value))
+          .some((value) => value.toLowerCase().includes(normalizedQuery))
+      )
+    : rows;
+
+  return sourceRows.slice(0, 8);
 }
 
 function formatCoachActivity(value: string) {
@@ -2727,24 +3164,31 @@ function InteractiveTrendChart({
   title: string;
 }) {
   const cleanPoints = points.filter((point) => Number.isFinite(point.value));
+  const [visibleDomain, setVisibleDomain] = useState<{ end: number; start: number } | null>(null);
+  const visiblePoints = visibleDomain
+    ? cleanPoints.slice(visibleDomain.start, visibleDomain.end + 1)
+    : cleanPoints;
   const hasActivity = cleanPoints.some(
     (point) => point.value > 0 || (compareEnabled && (point.compareValue || 0) > 0)
   );
-  const [activeIndex, setActiveIndex] = useState(() => Math.max(0, cleanPoints.length - 1));
+  const [activeIndex, setActiveIndex] = useState(() => Math.max(0, visiblePoints.length - 1));
   const [isGraphHovered, setIsGraphHovered] = useState(false);
+  const [pinnedIndex, setPinnedIndex] = useState<number | null>(null);
+  const [brushStartIndex, setBrushStartIndex] = useState<number | null>(null);
+  const [brushPreviewIndex, setBrushPreviewIndex] = useState<number | null>(null);
   const hoverFrameRef = useRef<number | null>(null);
   const pendingHoverIndexRef = useRef<number | null>(null);
   const width = 640;
-  const height = 260;
+  const height = 300;
   const padding = {
-    bottom: 42,
-    left: 58,
-    right: 20,
-    top: 26
+    bottom: 46,
+    left: 62,
+    right: 26,
+    top: 28
   };
   const plotWidth = width - padding.left - padding.right;
   const plotHeight = height - padding.top - padding.bottom;
-  const values = cleanPoints.flatMap((point) =>
+  const values = visiblePoints.flatMap((point) =>
     compareEnabled && typeof point.compareValue === "number"
       ? [point.value, point.compareValue]
       : [point.value]
@@ -2755,12 +3199,14 @@ function InteractiveTrendChart({
   const rawRange = Math.max(1, rawMaxValue - rawMinValue);
   const minValue = Math.max(0, rawMinValue - rawRange * 0.12);
   const maxValue = rawMaxValue + rawRange * 0.12;
-  const yTicks = getChartTicks(minValue, maxValue, 4);
-  const xAxisLabelIndexes = getXAxisLabelIndexes(cleanPoints.length);
-  const boundedActiveIndex = Math.min(activeIndex, Math.max(0, cleanPoints.length - 1));
-  const activePoint = cleanPoints[boundedActiveIndex];
+  const yTicks = getChartTicks(minValue, maxValue, 6);
+  const minorYTicks = getChartMinorTicks(yTicks);
+  const xAxisLabelIndexes = getXAxisLabelIndexes(visiblePoints.length);
+  const boundedActiveIndex = Math.min(activeIndex, Math.max(0, visiblePoints.length - 1));
+  const tooltipIndex = pinnedIndex ?? boundedActiveIndex;
+  const activePoint = visiblePoints[tooltipIndex];
   const activeCoord = activePoint
-    ? getChartCoord(activePoint.value, boundedActiveIndex, cleanPoints.length, {
+    ? getChartCoord(activePoint.value, tooltipIndex, visiblePoints.length, {
         maxValue,
         minValue,
         padding,
@@ -2768,8 +3214,8 @@ function InteractiveTrendChart({
         plotWidth
       })
     : null;
-  const primaryCoords = cleanPoints.map((point, index) =>
-    getChartCoord(point.value, index, cleanPoints.length, {
+  const primaryCoords = visiblePoints.map((point, index) =>
+    getChartCoord(point.value, index, visiblePoints.length, {
       maxValue,
       minValue,
       padding,
@@ -2778,9 +3224,9 @@ function InteractiveTrendChart({
     })
   );
   const compareCoords =
-    compareEnabled && cleanPoints.some((point) => typeof point.compareValue === "number")
-      ? cleanPoints.map((point, index) =>
-          getChartCoord(point.compareValue || 0, index, cleanPoints.length, {
+    compareEnabled && visiblePoints.some((point) => typeof point.compareValue === "number")
+      ? visiblePoints.map((point, index) =>
+          getChartCoord(point.compareValue || 0, index, visiblePoints.length, {
             maxValue,
             minValue,
             padding,
@@ -2789,12 +3235,24 @@ function InteractiveTrendChart({
           })
         )
       : [];
-  const primaryPath = formatChartPath(primaryCoords);
-  const comparePath = formatChartPath(compareCoords);
+  const primaryPath = formatSmoothChartPath(primaryCoords);
+  const comparePath = formatSmoothChartPath(compareCoords);
   const areaPath =
     primaryCoords.length > 1
       ? `${primaryPath} L ${primaryCoords[primaryCoords.length - 1].x.toFixed(1)},${(height - padding.bottom).toFixed(1)} L ${padding.left.toFixed(1)},${(height - padding.bottom).toFixed(1)} Z`
       : "";
+  const compareActiveCoord = compareCoords[tooltipIndex];
+  const summary = getChartSummaryMetrics(visiblePoints);
+  const brushRange =
+    brushStartIndex !== null && brushPreviewIndex !== null
+      ? {
+          end: Math.max(brushStartIndex, brushPreviewIndex),
+          start: Math.min(brushStartIndex, brushPreviewIndex)
+        }
+      : null;
+  const brushStartCoord = brushRange ? primaryCoords[brushRange.start] : null;
+  const brushEndCoord = brushRange ? primaryCoords[brushRange.end] : null;
+  const isTooltipVisible = (isGraphHovered || pinnedIndex !== null) && activePoint && activeCoord;
 
   useEffect(
     () => () => {
@@ -2805,17 +3263,18 @@ function InteractiveTrendChart({
     []
   );
 
-  function handleMouseMove(event: MouseEvent<SVGSVGElement>) {
-    if (cleanPoints.length < 2) return;
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setActiveIndex(Math.max(0, visiblePoints.length - 1));
+      setPinnedIndex(null);
+      setBrushStartIndex(null);
+      setBrushPreviewIndex(null);
+    });
 
-    const rect = event.currentTarget.getBoundingClientRect();
-    const localX = ((event.clientX - rect.left) / rect.width) * width;
-    const nextIndex = primaryCoords.reduce(
-      (closest, coord, index) =>
-        Math.abs(coord.x - localX) < Math.abs(primaryCoords[closest].x - localX) ? index : closest,
-      0
-    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [range, visibleDomain?.end, visibleDomain?.start, visiblePoints.length]);
 
+  function queueActiveIndex(nextIndex: number) {
     pendingHoverIndexRef.current = nextIndex;
 
     if (hoverFrameRef.current !== null) return;
@@ -2831,14 +3290,70 @@ function InteractiveTrendChart({
     });
   }
 
-  function handleMouseLeave() {
+  function getEventPointIndex(event: PointerEvent<SVGSVGElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const localX = ((event.clientX - rect.left) / rect.width) * width;
+    return getNearestChartIndex(primaryCoords, localX);
+  }
+
+  function handlePointerMove(event: PointerEvent<SVGSVGElement>) {
+    if (visiblePoints.length < 2) return;
+    const nextIndex = getEventPointIndex(event);
+    if (brushStartIndex !== null) {
+      setBrushPreviewIndex(nextIndex);
+    }
+    queueActiveIndex(nextIndex);
+  }
+
+  function handlePointerDown(event: PointerEvent<SVGSVGElement>) {
+    if (visiblePoints.length < 2) return;
+    const nextIndex = getEventPointIndex(event);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setPinnedIndex(null);
+    setIsGraphHovered(true);
+    setBrushStartIndex(nextIndex);
+    setBrushPreviewIndex(nextIndex);
+    queueActiveIndex(nextIndex);
+  }
+
+  function handlePointerUp(event: PointerEvent<SVGSVGElement>) {
+    if (visiblePoints.length < 2) return;
+    const nextIndex = getEventPointIndex(event);
+    const startIndex = brushStartIndex ?? nextIndex;
+    const start = Math.min(startIndex, nextIndex);
+    const end = Math.max(startIndex, nextIndex);
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setBrushStartIndex(null);
+    setBrushPreviewIndex(null);
+
+    if (end - start >= 3) {
+      const offset = visibleDomain?.start || 0;
+      setVisibleDomain({
+        end: offset + end,
+        start: offset + start
+      });
+      setPinnedIndex(null);
+      return;
+    }
+
+    setPinnedIndex(nextIndex);
+    setActiveIndex(nextIndex);
+    setIsGraphHovered(true);
+  }
+
+  function handlePointerLeave() {
     if (hoverFrameRef.current !== null) {
       window.cancelAnimationFrame(hoverFrameRef.current);
       hoverFrameRef.current = null;
     }
 
     pendingHoverIndexRef.current = null;
-    setIsGraphHovered(false);
+    setBrushStartIndex(null);
+    setBrushPreviewIndex(null);
+    if (pinnedIndex === null) setIsGraphHovered(false);
   }
 
   return (
@@ -2872,6 +3387,15 @@ function InteractiveTrendChart({
           >
             Compare
           </button>
+          {visibleDomain ? (
+            <button
+              className={styles.chartResetButton}
+              onClick={() => setVisibleDomain(null)}
+              type="button"
+            >
+              Reset zoom
+            </button>
+          ) : null}
         </div>
       </header>
       {cleanPoints.length > 1 && hasActivity ? (
@@ -2879,12 +3403,43 @@ function InteractiveTrendChart({
           <svg
             aria-label={title}
             focusable="false"
-            onMouseEnter={() => setIsGraphHovered(true)}
-            onMouseLeave={handleMouseLeave}
-            onMouseMove={handleMouseMove}
+            onPointerCancel={handlePointerLeave}
+            onPointerDown={handlePointerDown}
+            onPointerEnter={() => setIsGraphHovered(true)}
+            onPointerLeave={handlePointerLeave}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
             role="img"
             viewBox={`0 0 ${width} ${height}`}
           >
+            <defs>
+              <linearGradient id="admin-chart-area" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor="currentColor" stopOpacity="0.42" />
+                <stop offset="64%" stopColor="currentColor" stopOpacity="0.16" />
+                <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <rect
+              className={styles.chartInteractionPlane}
+              x={padding.left}
+              y={padding.top}
+              width={plotWidth}
+              height={plotHeight}
+            />
+            <g className={styles.chartMinorGridLines}>
+              {minorYTicks.map((tick) => {
+                const y = getChartY(tick, { maxValue, minValue, padding, plotHeight });
+                return (
+                  <line
+                    key={`minor-${tick.toFixed(4)}`}
+                    x1={padding.left}
+                    x2={width - padding.right}
+                    y1={y}
+                    y2={y}
+                  />
+                );
+              })}
+            </g>
             <g className={styles.chartGridLines}>
               {yTicks.map((tick) => {
                 const y = getChartY(tick, { maxValue, minValue, padding, plotHeight });
@@ -2913,7 +3468,16 @@ function InteractiveTrendChart({
               <path className={styles.chartCompareLine} d={comparePath} />
             ) : null}
             <path className={styles.chartArea} d={areaPath} />
-            {isGraphHovered && activeCoord ? (
+            {brushStartCoord && brushEndCoord ? (
+              <rect
+                className={styles.chartBrush}
+                x={Math.min(brushStartCoord.x, brushEndCoord.x)}
+                y={padding.top}
+                width={Math.max(2, Math.abs(brushEndCoord.x - brushStartCoord.x))}
+                height={plotHeight}
+              />
+            ) : null}
+            {isTooltipVisible ? (
               <line
                 className={styles.chartCursorLine}
                 x1={activeCoord.x}
@@ -2923,38 +3487,60 @@ function InteractiveTrendChart({
               />
             ) : null}
             <path className={styles.chartPrimaryLine} d={primaryPath} />
-            {primaryCoords.map((coord, index) => (
+            {visiblePoints.length <= 64
+              ? primaryCoords.map((coord, index) => (
+                  <circle
+                    className={styles.chartRawPoint}
+                    data-interpolated={visiblePoints[index]?.isInterpolated ? "true" : "false"}
+                    key={`${visiblePoints[index]?.label || index}-${index}-raw`}
+                    r={visiblePoints[index]?.isInterpolated ? 1.5 : 2.2}
+                    cx={coord.x}
+                    cy={coord.y}
+                  />
+                ))
+              : null}
+            {isTooltipVisible && compareActiveCoord ? (
+              <circle
+                className={styles.chartCompareActivePoint}
+                r={4.5}
+                cx={compareActiveCoord.x}
+                cy={compareActiveCoord.y}
+              />
+            ) : null}
+            {isTooltipVisible ? (
               <circle
                 className={styles.chartPoint}
-                data-active={isGraphHovered && index === boundedActiveIndex ? "true" : "false"}
-                key={`${cleanPoints[index]?.label || index}-${index}`}
-                r={isGraphHovered && index === boundedActiveIndex ? 5.5 : 3.5}
-                cx={coord.x}
-                cy={coord.y}
+                data-active="true"
+                r={6.5}
+                cx={activeCoord.x}
+                cy={activeCoord.y}
               />
-            ))}
+            ) : null}
             <g className={styles.chartAxisLabels}>
               {xAxisLabelIndexes.map((index) => {
-                const point = cleanPoints[index];
+                const point = visiblePoints[index];
                 const coord = primaryCoords[index];
                 return (
                   <text
                     data-edge={
-                      index === 0 ? "start" : index === cleanPoints.length - 1 ? "end" : "middle"
+                      index === 0 ? "start" : index === visiblePoints.length - 1 ? "end" : "middle"
                     }
                     key={`${point.label}-${index}`}
                     x={coord.x}
                     y={height - 12}
                   >
-                    {formatXAxisLabel(point.label)}
+                    {formatXAxisLabel(point)}
                   </text>
                 );
               })}
             </g>
           </svg>
-          {isGraphHovered && activePoint && activeCoord ? (
+          {activePoint && activeCoord ? (
             <div
+              aria-hidden={isTooltipVisible ? undefined : "true"}
               className={styles.chartTooltip}
+              data-pinned={pinnedIndex !== null ? "true" : "false"}
+              data-visible={isTooltipVisible ? "true" : "false"}
               style={
                 {
                   "--tooltip-left": `${Math.min(84, Math.max(16, (activeCoord.x / width) * 100))}%`,
@@ -2966,7 +3552,7 @@ function InteractiveTrendChart({
                 } as CSSProperties
               }
             >
-              <strong>{activePoint.label}</strong>
+              <strong>{formatChartPointTimeLabel(activePoint)}</strong>
               <span>
                 {primaryLabel}: {activePoint.value.toLocaleString()}
               </span>
@@ -2975,16 +3561,49 @@ function InteractiveTrendChart({
                   {compareLabel}: {activePoint.compareValue.toLocaleString()}
                 </span>
               ) : null}
+              <span
+                className={styles.chartTooltipDelta}
+                data-tone={getChartDeltaTone(activePoint.value, activePoint.compareValue || 0)}
+              >
+                {formatChartDelta(activePoint.value, activePoint.compareValue || 0)}
+              </span>
+              <span>Register clicks: {(activePoint.clickValue || 0).toLocaleString()}</span>
+              {activePoint.source ? <span>Top source: {activePoint.source}</span> : null}
               {activePoint.detail ? <em>{activePoint.detail}</em> : null}
+              {pinnedIndex !== null ? <em>Click another point to move the pin.</em> : null}
             </div>
           ) : null}
         </div>
       ) : (
         <div className={styles.chartEmptyState}>{emptyLabel}</div>
       )}
+      {cleanPoints.length > 1 && hasActivity ? (
+        <div className={styles.chartSummaryGrid} aria-label={`${title} selected range summary`}>
+          <span>
+            <small>Visits</small>
+            <strong>{summary.visits.toLocaleString()}</strong>
+          </span>
+          <span>
+            <small>Register clicks</small>
+            <strong>{summary.registerClicks.toLocaleString()}</strong>
+          </span>
+          <span>
+            <small>Peak window</small>
+            <strong>{summary.peakWindow}</strong>
+          </span>
+          <span>
+            <small>Best source</small>
+            <strong>{summary.bestSource}</strong>
+          </span>
+        </div>
+      ) : null}
       <footer className={styles.chartLegend}>
         <span data-series="primary">{primaryLabel}</span>
         {compareEnabled ? <span data-series="compare">{compareLabel}</span> : null}
+        <span data-series="density">
+          {visiblePoints.length.toLocaleString()} inspectable bucket
+          {visiblePoints.length === 1 ? "" : "s"}
+        </span>
       </footer>
     </article>
   );
@@ -3058,17 +3677,78 @@ function formatChartPath(coords: Array<{ x: number; y: number }>) {
     .join(" ");
 }
 
+function formatSmoothChartPath(coords: Array<{ x: number; y: number }>) {
+  if (coords.length < 3) return formatChartPath(coords);
+
+  const commands = [`M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`];
+
+  for (let index = 0; index < coords.length - 1; index += 1) {
+    const current = coords[index];
+    const next = coords[index + 1];
+    const previous = coords[index - 1] || current;
+    const afterNext = coords[index + 2] || next;
+    const tension = 0.18;
+    const cp1x = current.x + (next.x - previous.x) * tension;
+    const cp1y = current.y + (next.y - previous.y) * tension;
+    const cp2x = next.x - (afterNext.x - current.x) * tension;
+    const cp2y = next.y - (afterNext.y - current.y) * tension;
+
+    commands.push(
+      `C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${next.x.toFixed(1)} ${next.y.toFixed(1)}`
+    );
+  }
+
+  return commands.join(" ");
+}
+
 function getChartTicks(minValue: number, maxValue: number, count: number) {
   if (count <= 1) return [maxValue];
 
-  const step = (maxValue - minValue) / (count - 1);
-  return Array.from({ length: count }, (_, index) => maxValue - step * index);
+  const rawStep = (maxValue - minValue) / (count - 1);
+  const step = getNiceChartStep(rawStep);
+  const top = Math.ceil(maxValue / step) * step;
+  const bottom = Math.max(0, Math.floor(minValue / step) * step);
+  const ticks: number[] = [];
+
+  for (let value = top; value >= bottom; value -= step) {
+    ticks.push(Number(value.toFixed(4)));
+  }
+
+  return ticks.length >= 3
+    ? ticks
+    : Array.from({ length: count }, (_, index) => maxValue - rawStep * index);
+}
+
+function getNiceChartStep(value: number) {
+  const magnitude = 10 ** Math.floor(Math.log10(Math.max(1, value)));
+  const normalized = value / magnitude;
+  const niceNormalized = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+
+  return niceNormalized * magnitude;
+}
+
+function getChartMinorTicks(ticks: number[]) {
+  const minorTicks: number[] = [];
+
+  for (let index = 0; index < ticks.length - 1; index += 1) {
+    minorTicks.push((ticks[index] + ticks[index + 1]) / 2);
+  }
+
+  return minorTicks;
 }
 
 function getXAxisLabelIndexes(total: number) {
-  if (total <= 5) return Array.from({ length: total }, (_, index) => index);
+  if (total <= 6) return Array.from({ length: total }, (_, index) => index);
 
-  return Array.from(new Set([0, Math.floor((total - 1) / 2), total - 1]));
+  return Array.from(
+    new Set([
+      0,
+      Math.floor((total - 1) * 0.25),
+      Math.floor((total - 1) * 0.5),
+      Math.floor((total - 1) * 0.75),
+      total - 1
+    ])
+  );
 }
 
 function formatCompactGraphValue(value: number) {
@@ -3081,10 +3761,109 @@ function formatCompactGraphValue(value: number) {
   return safeValue.toFixed(safeValue % 1 === 0 ? 0 : 1);
 }
 
-function formatXAxisLabel(label: string) {
-  const cleanLabel = label.trim();
+function formatXAxisLabel(point: AnalyticsChartPoint) {
+  const date = point.timestamp ? new Date(point.timestamp) : null;
+  if (date && Number.isFinite(date.getTime())) {
+    const durationMs =
+      point.bucketEnd && Number.isFinite(Date.parse(point.bucketEnd))
+        ? Date.parse(point.bucketEnd) - date.getTime()
+        : 0;
+    const withinDay = durationMs > 0 && durationMs <= 3600 * 1000;
+
+    return date.toLocaleString("en-IN", {
+      day: withinDay ? undefined : "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      month: withinDay ? undefined : "short"
+    });
+  }
+
+  const cleanLabel = point.label.trim();
   if (cleanLabel.length <= 12) return cleanLabel;
   return `${cleanLabel.slice(0, 11)}...`;
+}
+
+function getNearestChartIndex(coords: Array<{ x: number; y: number }>, localX: number) {
+  if (!coords.length) return 0;
+
+  return coords.reduce(
+    (closest, coord, index) =>
+      Math.abs(coord.x - localX) < Math.abs(coords[closest].x - localX) ? index : closest,
+    0
+  );
+}
+
+function getChartSummaryMetrics(points: AnalyticsChartPoint[]) {
+  const visits = sumNumbers(points.map((point) => point.value));
+  const registerClicks = sumNumbers(points.map((point) => point.clickValue || 0));
+  const peakPoint = points.reduce<AnalyticsChartPoint | null>(
+    (peak, point) => (!peak || point.value > peak.value ? point : peak),
+    null
+  );
+  const sourceCounts = points.reduce<Record<string, number>>((acc, point) => {
+    const source = point.source && point.source !== "No source" ? point.source : "";
+    if (source) acc[source] = (acc[source] || 0) + point.value;
+    return acc;
+  }, {});
+
+  return {
+    bestSource: getTopBreakdownLabel(sourceCounts, "No source"),
+    peakWindow: peakPoint ? formatChartPointShortWindow(peakPoint) : "No peak",
+    registerClicks,
+    visits
+  };
+}
+
+function formatChartPointTimeLabel(point: AnalyticsChartPoint) {
+  if (!point.timestamp) return point.label;
+
+  const start = new Date(point.timestamp);
+  const end = point.bucketEnd ? new Date(point.bucketEnd) : null;
+  if (!Number.isFinite(start.getTime())) return point.label;
+
+  const startLabel = start.toLocaleString("en-IN", {
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "short"
+  });
+  if (!end || !Number.isFinite(end.getTime())) return startLabel;
+
+  return `${startLabel} - ${end.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit"
+  })}`;
+}
+
+function formatChartPointShortWindow(point: AnalyticsChartPoint) {
+  if (!point.timestamp) return point.label;
+
+  const date = new Date(point.timestamp);
+  if (!Number.isFinite(date.getTime())) return point.label;
+
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "short"
+  });
+}
+
+function formatChartDelta(current: number, previous: number) {
+  if (!previous && !current) return "Delta: no change";
+  if (!previous) return `Delta: +${current.toLocaleString()} new`;
+
+  const delta = current - previous;
+  const percent = Math.abs((delta / previous) * 100).toFixed(1);
+  const sign = delta > 0 ? "+" : delta < 0 ? "-" : "";
+
+  return `Delta: ${sign}${Math.abs(delta).toLocaleString()} (${sign}${percent}%)`;
+}
+
+function getChartDeltaTone(current: number, previous: number) {
+  if (current > previous) return "positive";
+  if (current < previous) return "negative";
+  return "neutral";
 }
 
 function getInitials(name: string) {
@@ -3357,7 +4136,7 @@ function ActionToast({
   );
 }
 
-function AdminActivityCenter({
+export function AdminActivityCenter({
   items,
   onToggle,
   open
@@ -3381,7 +4160,11 @@ function AdminActivityCenter({
         {latest ? <strong>{latest.status}</strong> : <strong>ready</strong>}
       </button>
       {open ? (
-        <div className={styles.activityCenterPanel} role="region" aria-label="Admin action activity">
+        <div
+          className={styles.activityCenterPanel}
+          role="region"
+          aria-label="Admin action activity"
+        >
           <div className={styles.activityCenterHeader}>
             <div>
               <p className={styles.kicker}>Task Center</p>
@@ -3610,7 +4393,7 @@ function CoachAnalyticsDetailPanel({
   const [reportGeneratedAt, setReportGeneratedAt] = useState("");
   const [reportHighlighted, setReportHighlighted] = useState(false);
   const [detailChartCompareEnabled, setDetailChartCompareEnabled] = useState(true);
-  const [detailChartRange, setDetailChartRange] = useState<AnalyticsChartRangeId>("max");
+  const [detailChartRange, setDetailChartRange] = useState<AnalyticsChartRangeId>("7d");
   const reportHighlightTimerRef = useRef<number | null>(null);
   const analyticsRangeLabel =
     analyticsRangeOptions.find((option) => option.value === analyticsRange)?.label ||
@@ -4069,11 +4852,7 @@ function CoachAnalyticsDetailPanel({
           data-highlight={reportHighlighted ? "true" : "false"}
         >
           <p className={styles.kicker}>Coach Report</p>
-          <h3>
-            {reportGeneratedAt
-              ? `Ready ${reportGeneratedAt}`
-              : "Safe to copy after review"}
-          </h3>
+          <h3>{reportGeneratedAt ? `Ready ${reportGeneratedAt}` : "Safe to copy after review"}</h3>
           <pre>{reportText}</pre>
           {copyMessage ? <p className={styles.inlineStatus}>{copyMessage}</p> : null}
         </article>
@@ -4694,7 +5473,7 @@ function formatDeviceBreakdown(deviceBreakdown: CoachSiteRecord["analytics"]["de
   return `Mobile ${deviceBreakdown.mobile} / Desktop ${deviceBreakdown.desktop} / Tablet ${deviceBreakdown.tablet}`;
 }
 
-function ShopView({
+export function ShopView({
   csrfToken,
   onAdminActivity
 }: {
@@ -5150,7 +5929,10 @@ function ShopView({
       </section>
 
       <section className={styles.statusGrid} aria-label="Shop recovery status">
-        <article className={styles.statusCard} data-tone={shop?.failures.length ? "attention" : "success"}>
+        <article
+          className={styles.statusCard}
+          data-tone={shop?.failures.length ? "attention" : "success"}
+        >
           <span>Recovery</span>
           <h3>{shop?.failures.length ? "Failures need review" : "No open failures"}</h3>
           <p>
@@ -5172,7 +5954,7 @@ function ShopView({
   );
 }
 
-function MasterclassLinksView({
+export function MasterclassLinksView({
   control,
   csrfToken,
   onAdminActivity
@@ -5312,11 +6094,7 @@ function MasterclassLinksView({
     return "Copying...";
   }
 
-  function recordPaidAction(
-    label: string,
-    status: AdminActionActivityStatus,
-    detail: string
-  ) {
+  function recordPaidAction(label: string, status: AdminActionActivityStatus, detail: string) {
     onAdminActivity({
       detail,
       label,
@@ -5388,11 +6166,7 @@ function MasterclassLinksView({
       }
     } catch {
       setPrivateRevealMessage("Could not reach the reveal OTP API.");
-      recordPaidAction(
-        "Send masterclass OTP",
-        "error",
-        "Could not reach the reveal OTP API."
-      );
+      recordPaidAction("Send masterclass OTP", "error", "Could not reach the reveal OTP API.");
     } finally {
       setPaidAction("");
     }
@@ -5576,10 +6350,9 @@ function MasterclassLinksView({
       };
 
       if (!response.ok || !payload.ok || !payload.metadata) {
-        const message =
-          payload.currentPaymentLinkPreserved
-            ? `${payload.error || "Could not save the payment link."} Current checkout remains active.`
-            : payload.error || "Could not save the payment link.";
+        const message = payload.currentPaymentLinkPreserved
+          ? `${payload.error || "Could not save the payment link."} Current checkout remains active.`
+          : payload.error || "Could not save the payment link.";
         setPaymentUpdateMessage(message);
         recordPaidAction("Update payment link", "error", message);
         return;
@@ -5618,7 +6391,10 @@ function MasterclassLinksView({
     recordPaidAction("Copy private WhatsApp", "working", "Copying revealed private link.");
 
     try {
-      await Promise.all([navigator.clipboard.writeText(privateRevealUrl), holdPaidActionFeedback(260)]);
+      await Promise.all([
+        navigator.clipboard.writeText(privateRevealUrl),
+        holdPaidActionFeedback(260)
+      ]);
       setPrivateRevealMessage("Private WhatsApp link copied.");
       if (currentManagedLink) highlightPaidFunnel(currentManagedLink.funnelId);
       recordPaidAction("Copy private WhatsApp", "success", "Private WhatsApp link copied.");
@@ -6053,16 +6829,18 @@ function MasterclassLinksView({
   );
 }
 
-function ErrorReportsView({
+export function ErrorReportsView({
   csrfToken,
   errorReports,
   onAdminActivity,
+  onOpenBackupCleanup,
   onReportsChange,
   source
 }: {
   csrfToken: string;
   errorReports: AdminErrorReport[];
   onAdminActivity: (activity: AdminActionActivityInput) => void;
+  onOpenBackupCleanup: () => void;
   onReportsChange: (reports: AdminErrorReport[]) => void;
   source: string;
 }) {
@@ -6110,9 +6888,7 @@ function ErrorReportsView({
     [displayErrorReports, reportFilter]
   );
   const promptReport =
-    reportFilter === "all"
-      ? visibleErrorReports[0] || null
-      : visibleErrorReports[0] || null;
+    reportFilter === "all" ? visibleErrorReports[0] || null : visibleErrorReports[0] || null;
 
   useEffect(() => {
     if (!copyMessage) return;
@@ -6156,7 +6932,10 @@ function ErrorReportsView({
     reportsForAi.forEach((report) => {
       const code = report.errorCode || report.referenceId || "Unknown";
       byCode.set(code, (byCode.get(code) || 0) + 1);
-      byCategory.set(report.category || "uncategorized", (byCategory.get(report.category || "uncategorized") || 0) + 1);
+      byCategory.set(
+        report.category || "uncategorized",
+        (byCategory.get(report.category || "uncategorized") || 0) + 1
+      );
     });
 
     const topCode = Array.from(byCode.entries()).sort((a, b) => b[1] - a[1])[0];
@@ -6237,9 +7016,7 @@ function ErrorReportsView({
       }
 
       const updatedReports = errorReports.map((item) =>
-        item.referenceId === report.referenceId
-          ? { ...item, status, updatedAt }
-          : item
+        item.referenceId === report.referenceId ? { ...item, status, updatedAt } : item
       );
       setReportStatusOverrides((current) => ({
         ...current,
@@ -6399,7 +7176,9 @@ function ErrorReportsView({
         status: "success"
       });
     } catch {
-      setStatusMessage("Could not clear selected old reports. No other production data was touched.");
+      setStatusMessage(
+        "Could not clear selected old reports. No other production data was touched."
+      );
       setCleanupStep("Cleanup failed safely");
       onAdminActivity({
         detail: "Old Error Reports cleanup failed safely.",
@@ -6430,7 +7209,7 @@ function ErrorReportsView({
               {
                 description: "Copy a safe Codex prompt for the newest report.",
                 label: "Create Codex Fix Prompt",
-            onSelect: () => runErrorReportsAssistant("Create Codex Fix Prompt")
+                onSelect: () => runErrorReportsAssistant("Create Codex Fix Prompt")
               }
             ]}
             cacheLabel={errorAiCache}
@@ -6455,6 +7234,14 @@ function ErrorReportsView({
             type="button"
           >
             Clear Old Error Reports
+          </button>
+          <button
+            className={styles.secondaryAction}
+            data-admin-tooltip="Open backup and cleanup controls"
+            onClick={onOpenBackupCleanup}
+            type="button"
+          >
+            Backup / Cleanup
           </button>
         </div>
       }
@@ -6583,7 +7370,13 @@ function ErrorReportsView({
         ) : (
           <div className={styles.emptyState} data-compact="true">
             <h3>
-              No {reportFilter === "active" ? "active" : errorReportFilters.find((filter) => filter.id === reportFilter)?.label.toLowerCase()} reports
+              No{" "}
+              {reportFilter === "active"
+                ? "active"
+                : errorReportFilters
+                    .find((filter) => filter.id === reportFilter)
+                    ?.label.toLowerCase()}{" "}
+              reports
             </h3>
             <p>
               {isLiveSource
@@ -6597,9 +7390,7 @@ function ErrorReportsView({
       </div>
       <div className={styles.reportPrompt}>
         <strong>Codex-ready bug prompt</strong>
-        <code>
-          {promptReport ? createErrorReportBugPrompt(promptReport) : "No reports yet."}
-        </code>
+        <code>{promptReport ? createErrorReportBugPrompt(promptReport) : "No reports yet."}</code>
         {promptReport ? (
           <button
             onClick={() =>
@@ -6616,11 +7407,18 @@ function ErrorReportsView({
           {statusMessage}
         </p>
       ) : null}
-      <ActionToast message={statusMessage || copyMessage} tone={getStatusMessageTone(statusMessage || copyMessage)} />
+      <ActionToast
+        message={statusMessage || copyMessage}
+        tone={getStatusMessageTone(statusMessage || copyMessage)}
+      />
       <AdminActionDialog
         footer={
           <>
-            <button disabled={cleanupBusy} onClick={() => setCleanupDialogOpen(false)} type="button">
+            <button
+              disabled={cleanupBusy}
+              onClick={() => setCleanupDialogOpen(false)}
+              type="button"
+            >
               Cancel
             </button>
             <button
@@ -6672,14 +7470,14 @@ function ErrorReportsView({
               placeholder={ERROR_REPORT_CLEANUP_CONFIRMATION}
               value={cleanupConfirmation}
             />
-            <small>
-              This confirmation is required because clearing reports is permanent.
-            </small>
+            <small>This confirmation is required because clearing reports is permanent.</small>
           </label>
           {cleanupBusy ? (
             <ActionProgressCard
               label={
-                cleanupStep.includes("successfully") ? "Cleared successfully" : "Clearing old reports"
+                cleanupStep.includes("successfully")
+                  ? "Cleared successfully"
+                  : "Clearing old reports"
               }
               progress={
                 cleanupStep.includes("successfully")
@@ -6838,7 +7636,7 @@ function ErrorReportsView({
   );
 }
 
-function BackupCleanupView({
+export function BackupCleanupView({
   control,
   csrfToken,
   onAdminActivity
@@ -6985,7 +7783,9 @@ function BackupCleanupView({
           : current
       );
       setErrorCleanupStep(`${deletedCount} reports cleared successfully`);
-      setMessage(`${deletedCount} old error reports cleared. No analytics or coach data was touched.`);
+      setMessage(
+        `${deletedCount} old error reports cleared. No analytics or coach data was touched.`
+      );
       highlightMaintenanceResult("error-report-cleanup");
       await waitForActionFeedback();
       setErrorCleanupConfirmOpen(false);
@@ -7022,7 +7822,7 @@ function BackupCleanupView({
         ? "Creating analytics backup..."
         : action === "cleanup"
           ? "Checking backup and active-admin notification before cleanup..."
-        : "Sending test backup email..."
+          : "Sending test backup email..."
     );
     onAdminActivity({
       detail:
@@ -7163,7 +7963,9 @@ function BackupCleanupView({
   return (
     <AdminPageShell eyebrow="Reports" title="Backup & Cleanup">
       <div className={styles.noticeCard} data-tone={loading ? "warning" : "success"}>
-        <strong>{loading ? "Loading maintenance status" : "Maintenance controls are protected"}</strong>
+        <strong>
+          {loading ? "Loading maintenance status" : "Maintenance controls are protected"}
+        </strong>
         <p>
           Error Reports cleanup is separate and does not require backup. Raw analytics cleanup is
           blocked unless backup creation and active-admin notification both succeed.
@@ -7180,14 +7982,18 @@ function BackupCleanupView({
           <span>Destination</span>
           <strong>{activeStatus.backupDestination}</strong>
           <p>
-            Backup data is emailed to active admins as CSV and XLS attachments. Protected
-            dashboard downloads remain available as fallbacks.
+            Backup data is emailed to active admins as CSV and XLS attachments. Protected dashboard
+            downloads remain available as fallbacks.
           </p>
         </article>
         <article className={styles.maintenanceCard}>
           <span>Active admin recipients</span>
           <strong>{activeStatus.activeAdminRecipientCount}</strong>
-          <p>{activeStatus.backupEmailConfigured ? "Email provider configured." : "Email provider missing."}</p>
+          <p>
+            {activeStatus.backupEmailConfigured
+              ? "Email provider configured."
+              : "Email provider missing."}
+          </p>
         </article>
         <article className={styles.maintenanceCard}>
           <span>Eligible old analytics</span>
@@ -7210,7 +8016,10 @@ function BackupCleanupView({
           <div className={styles.recipientList}>
             {activeStatus.rawRecipientRoles.map((recipient) => (
               <span key={`${recipient.maskedEmail}-${recipient.role}`}>
-                {recipient.maskedEmail} <small>{recipient.role} / {recipient.status}</small>
+                {recipient.maskedEmail}{" "}
+                <small>
+                  {recipient.role} / {recipient.status}
+                </small>
               </span>
             ))}
           </div>
@@ -7282,11 +8091,14 @@ function BackupCleanupView({
             onChange={(event) => setIncludeShopData(event.target.value === "yes")}
             value={includeShopData ? "yes" : "no"}
           >
-            <option value="yes">Yes - include Shop purchases, sites, settings audit, failures, analytics summary</option>
+            <option value="yes">
+              Yes - include Shop purchases, sites, settings audit, failures, analytics summary
+            </option>
             <option value="no">No - analytics backup only</option>
           </select>
           <small>
-            Default is Yes. Shop purchase records are preserved and never deleted by analytics cleanup.
+            Default is Yes. Shop purchase records are preserved and never deleted by analytics
+            cleanup.
           </small>
         </label>
         <div className={styles.formActions}>
@@ -7384,7 +8196,10 @@ function BackupCleanupView({
             ["Admin role table exists", activeStatus.roleChecklist.adminRoleTableExists],
             ["Current admin email present", activeStatus.roleChecklist.adminEmailPresent],
             ["Role requirement met", activeStatus.roleChecklist.roleRequirementMet],
-            ["ADMIN_REQUIRE_DB_ADMIN_ROLES enabled", activeStatus.roleChecklist.strictDbRolesEnabled]
+            [
+              "ADMIN_REQUIRE_DB_ADMIN_ROLES enabled",
+              activeStatus.roleChecklist.strictDbRolesEnabled
+            ]
           ].map(([label, passed]) => (
             <div data-state={passed ? "pass" : "wait"} key={String(label)}>
               <strong>{String(label)}</strong>
@@ -7432,7 +8247,11 @@ function BackupCleanupView({
       <AdminActionDialog
         footer={
           <>
-            <button disabled={busyAction === "backup"} onClick={() => setBackupConfirmOpen(false)} type="button">
+            <button
+              disabled={busyAction === "backup"}
+              onClick={() => setBackupConfirmOpen(false)}
+              type="button"
+            >
               Cancel
             </button>
             <button
@@ -7501,8 +8320,8 @@ function BackupCleanupView({
       >
         <div className={styles.maintenanceDialog}>
           <p className={styles.dialogCopy}>
-            This sends a test backup email to active admin recipients so the email backup channel can
-            be verified before cleanup is used.
+            This sends a test backup email to active admin recipients so the email backup channel
+            can be verified before cleanup is used.
           </p>
           {busyAction === "test_backup_email" ? (
             <ActionProgressCard
@@ -7520,7 +8339,11 @@ function BackupCleanupView({
       <AdminActionDialog
         footer={
           <>
-            <button disabled={busyAction === "cleanup"} onClick={() => setCleanupConfirmOpen(false)} type="button">
+            <button
+              disabled={busyAction === "cleanup"}
+              onClick={() => setCleanupConfirmOpen(false)}
+              type="button"
+            >
               Cancel
             </button>
             <button
@@ -7542,8 +8365,8 @@ function BackupCleanupView({
       >
         <div className={styles.maintenanceDialog}>
           <p className={styles.dialogCopy}>
-            This deletes only raw analytics/events older than {activeStatus.retentionDays} days.
-            It will not run unless the latest backup and active-admin notification succeeded.
+            This deletes only raw analytics/events older than {activeStatus.retentionDays} days. It
+            will not run unless the latest backup and active-admin notification succeeded.
           </p>
           <p className={styles.linkWarning}>
             Coach profiles, coach sites, slugs, settings, payment links, private links, admins, and
@@ -7621,9 +8444,7 @@ function BackupCleanupView({
               placeholder={ERROR_REPORT_CLEANUP_CONFIRMATION}
               value={errorCleanupConfirmation}
             />
-            <small>
-              This confirmation is required because clearing reports is permanent.
-            </small>
+            <small>This confirmation is required because clearing reports is permanent.</small>
           </label>
           {errorCleanupBusy ? (
             <ActionProgressCard
@@ -7653,15 +8474,17 @@ function BackupCleanupView({
   );
 }
 
-function SettingsView({
+export function SettingsView({
   adminAccess,
   control,
+  csrfToken,
   onAction,
   onAdminActivity,
   onOpenAdminUsers
 }: {
   adminAccess?: AdminAccessProfileClient | null;
   control: typeof adminControlCenterData;
+  csrfToken: string;
   onAdminActivity: (activity: AdminActionActivityInput) => void;
   onAction: (title: string, body: string) => void;
   onOpenAdminUsers: () => void;
@@ -7669,7 +8492,23 @@ function SettingsView({
   const [settingsMessage, setSettingsMessage] = useState("");
   const [settingsAction, setSettingsAction] = useState<"" | "support">("");
   const [highlightedSettings, setHighlightedSettings] = useState("");
+  const [supportDefaults, setSupportDefaults] = useState<AdminSupportDefaultsClient | null>(null);
+  const [supportDefaultsEditable, setSupportDefaultsEditable] = useState(false);
+  const [supportDefaultsForm, setSupportDefaultsForm] = useState({
+    supportEmail: "",
+    supportMessage: "",
+    supportName: "",
+    supportPhone: "",
+    supportWhatsapp: ""
+  });
+  const [supportDefaultsStatus, setSupportDefaultsStatus] = useState<
+    "error" | "loading" | "ready" | "saving"
+  >("loading");
+  const [supportDefaultsError, setSupportDefaultsError] = useState("");
   const settingsHighlightTimerRef = useRef<number | null>(null);
+  const canEditSupportDefaults = Boolean(
+    supportDefaultsEditable && hasAdminPermission(adminAccess, "settings.support")
+  );
 
   useEffect(() => {
     if (!settingsMessage) return;
@@ -7687,6 +8526,52 @@ function SettingsView({
     },
     []
   );
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSupportDefaults() {
+      setSupportDefaultsStatus("loading");
+      setSupportDefaultsError("");
+
+      try {
+        const response = await fetch("/api/admin/support-defaults", {
+          cache: "no-store",
+          credentials: "include"
+        });
+        const payload = (await response.json().catch(() => ({}))) as AdminSupportDefaultsPayload;
+
+        if (!active) return;
+
+        if (response.ok && payload.ok && payload.defaults) {
+          setSupportDefaults(payload.defaults);
+          setSupportDefaultsEditable(Boolean(payload.editable));
+          setSupportDefaultsForm({
+            supportEmail: payload.defaults.supportEmail,
+            supportMessage: payload.defaults.supportMessage,
+            supportName: payload.defaults.supportName,
+            supportPhone: payload.defaults.supportPhone,
+            supportWhatsapp: payload.defaults.supportWhatsapp
+          });
+          setSupportDefaultsStatus("ready");
+        } else {
+          setSupportDefaultsStatus("error");
+          setSupportDefaultsError(payload.error || "Support defaults could not be loaded.");
+        }
+      } catch {
+        if (active) {
+          setSupportDefaultsStatus("error");
+          setSupportDefaultsError("Support defaults could not be loaded.");
+        }
+      }
+    }
+
+    void loadSupportDefaults();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function highlightSettingsResult(sectionId: string) {
     setHighlightedSettings(sectionId);
@@ -7726,6 +8611,70 @@ function SettingsView({
       "Default Yours Wellness support is used only on error or unavailable fallback pages when coach-specific support details are missing. Coach details stay editable inside the Coach Site builder."
     );
     setSettingsAction("");
+  }
+
+  async function saveSupportDefaults() {
+    if (!canEditSupportDefaults || supportDefaultsStatus === "saving") return;
+
+    setSupportDefaultsStatus("saving");
+    setSupportDefaultsError("");
+    setSettingsMessage("");
+    onAdminActivity({
+      detail: "Saving default support fallback settings.",
+      label: "Settings",
+      status: "working"
+    });
+
+    try {
+      const response = await fetch("/api/admin/support-defaults", {
+        body: JSON.stringify(supportDefaultsForm),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-yw-admin-csrf": csrfToken
+        },
+        method: "PATCH"
+      });
+      const payload = (await response.json().catch(() => ({}))) as AdminSupportDefaultsPayload;
+
+      if (response.ok && payload.ok && payload.defaults) {
+        setSupportDefaults(payload.defaults);
+        setSupportDefaultsEditable(Boolean(payload.editable));
+        setSupportDefaultsForm({
+          supportEmail: payload.defaults.supportEmail,
+          supportMessage: payload.defaults.supportMessage,
+          supportName: payload.defaults.supportName,
+          supportPhone: payload.defaults.supportPhone,
+          supportWhatsapp: payload.defaults.supportWhatsapp
+        });
+        setSupportDefaultsStatus("ready");
+        setSettingsMessage("Support defaults saved.");
+        highlightSettingsResult("support");
+        onAdminActivity({
+          detail: "Support fallback settings saved.",
+          label: "Settings",
+          status: "success"
+        });
+        return;
+      }
+
+      setSupportDefaultsStatus("ready");
+      setSupportDefaultsError(payload.error || "Support defaults could not be saved.");
+      onAdminActivity({
+        detail: payload.error || "Support fallback settings save failed.",
+        label: "Settings",
+        status: "error"
+      });
+    } catch {
+      setSupportDefaultsStatus("ready");
+      setSupportDefaultsError("Support defaults could not be saved.");
+      onAdminActivity({
+        detail: "Support fallback settings save failed.",
+        label: "Settings",
+        status: "error"
+      });
+    }
   }
 
   return (
@@ -7773,7 +8722,9 @@ function SettingsView({
         <article data-tone="success">
           <div>
             <strong>Admin access</strong>
-            <span>Admin routes and write APIs remain protected by the current auth foundation.</span>
+            <span>
+              Admin routes and write APIs remain protected by the current auth foundation.
+            </span>
           </div>
           <em>Protected</em>
         </article>
@@ -7796,6 +8747,132 @@ function SettingsView({
         </article>
       </section>
 
+      <section className={styles.section} aria-busy={supportDefaultsStatus === "saving"}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.kicker}>Support Defaults</p>
+            <h2>Default fallback contact</h2>
+          </div>
+          <span className={styles.statusPill} data-status={supportDefaults?.source || "loading"}>
+            {supportDefaultsStatus === "loading"
+              ? "Loading"
+              : supportDefaults?.source === "d1_table"
+                ? "Saved in DB"
+                : "Env fallback"}
+          </span>
+        </div>
+        <p className={styles.inlineNote}>
+          These defaults are used only when an error or unavailable fallback page has no
+          coach-specific support details.
+        </p>
+
+        <div className={styles.adminFormGrid}>
+          <label>
+            <span>Support name</span>
+            <input
+              disabled={!canEditSupportDefaults || supportDefaultsStatus === "saving"}
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                setSupportDefaultsForm((current) => ({
+                  ...current,
+                  supportName: value
+                }));
+              }}
+              value={supportDefaultsForm.supportName}
+            />
+          </label>
+          <label>
+            <span>Support email</span>
+            <input
+              disabled={!canEditSupportDefaults || supportDefaultsStatus === "saving"}
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                setSupportDefaultsForm((current) => ({
+                  ...current,
+                  supportEmail: value
+                }));
+              }}
+              type="email"
+              value={supportDefaultsForm.supportEmail}
+            />
+          </label>
+          <label>
+            <span>Support phone</span>
+            <input
+              disabled={!canEditSupportDefaults || supportDefaultsStatus === "saving"}
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                setSupportDefaultsForm((current) => ({
+                  ...current,
+                  supportPhone: value
+                }));
+              }}
+              value={supportDefaultsForm.supportPhone}
+            />
+          </label>
+          <label>
+            <span>WhatsApp support URL</span>
+            <input
+              disabled={!canEditSupportDefaults || supportDefaultsStatus === "saving"}
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                setSupportDefaultsForm((current) => ({
+                  ...current,
+                  supportWhatsapp: value
+                }));
+              }}
+              placeholder="https://wa.me/..."
+              value={supportDefaultsForm.supportWhatsapp}
+            />
+          </label>
+          <label>
+            <span>Fallback message</span>
+            <textarea
+              disabled={!canEditSupportDefaults || supportDefaultsStatus === "saving"}
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                setSupportDefaultsForm((current) => ({
+                  ...current,
+                  supportMessage: value
+                }));
+              }}
+              rows={3}
+              value={supportDefaultsForm.supportMessage}
+            />
+          </label>
+        </div>
+
+        {supportDefaults ? (
+          <p className={styles.inlineNote}>
+            Last source: {supportDefaults.source === "d1_table" ? "database" : "environment"}
+            {supportDefaults.updatedAt
+              ? `, updated ${formatAdminDateTime(supportDefaults.updatedAt)}`
+              : ""}
+            {supportDefaults.updatedBy ? ` by ${supportDefaults.updatedBy}` : ""}.
+          </p>
+        ) : null}
+
+        {supportDefaultsError ? (
+          <p className={styles.inlineStatus} data-tone="warning">
+            {supportDefaultsError}
+          </p>
+        ) : null}
+
+        <div className={styles.pageActionCluster}>
+          <button
+            className={styles.primaryAction}
+            disabled={!canEditSupportDefaults || supportDefaultsStatus === "saving"}
+            onClick={() => void saveSupportDefaults()}
+            type="button"
+          >
+            {supportDefaultsStatus === "saving" ? "Saving..." : "Save Support Defaults"}
+          </button>
+          {!canEditSupportDefaults ? (
+            <span className={styles.inlineNote}>Requires the `settings.support` permission.</span>
+          ) : null}
+        </div>
+      </section>
+
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <div>
@@ -7815,9 +8892,7 @@ function SettingsView({
       <p className={styles.securityNote}>
         Strict DB admin role enforcement should stay disabled until the real admin row is verified.
       </p>
-      {settingsMessage ? (
-        <ActionToast message={settingsMessage} tone="success" />
-      ) : null}
+      {settingsMessage ? <ActionToast message={settingsMessage} tone="success" /> : null}
     </AdminPageShell>
   );
 }

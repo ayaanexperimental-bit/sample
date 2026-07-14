@@ -897,6 +897,29 @@ export async function getPublicShopOrder({
   };
 }
 
+export async function getShopOrderForClient({
+  accessKey,
+  env,
+  orderId
+}: {
+  accessKey?: string;
+  env: ShopEnv;
+  orderId: string;
+}): Promise<ShopSiteRecord | null> {
+  const cleanAccessKey = sanitizeText(accessKey, 120);
+  const cleanOrderId = sanitizeText(orderId, 160);
+  const db = env.ADMIN_DB;
+  if (!db || !cleanAccessKey || !cleanOrderId) return null;
+
+  const rawOrder = await getShopOrder(env, cleanOrderId);
+  if (!rawOrder) return null;
+
+  const orderAccessKey = await getExistingShopClientAccessKey(db, rawOrder.orderId);
+  if (!orderAccessKey || cleanAccessKey !== orderAccessKey) return null;
+
+  return reconcileShopOrderLiveStatus(env, rawOrder);
+}
+
 export async function archiveShopDraft({
   accessKey,
   env,

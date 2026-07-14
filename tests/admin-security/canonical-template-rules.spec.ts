@@ -724,9 +724,13 @@ test.describe("canonical coach template rules", () => {
     }
   });
 
-  test("coach photo uploads use local browser cutout processing with no paid provider fallback", () => {
+  test("coach photo uploads use provider-first processing with safe local and framed fallbacks", () => {
     const adminClientSource = readFileSync(
       join(REPO_ROOT, "components/admin/admin-coach-sites-manager.tsx"),
+      "utf8"
+    );
+    const adminV2ClientSource = readFileSync(
+      join(REPO_ROOT, "components/admin/admin-v2-shell.tsx"),
       "utf8"
     );
     const shopClientSource = readFileSync(
@@ -754,6 +758,11 @@ test.describe("canonical coach template rules", () => {
       join(REPO_ROOT, "lib/server/coach-site-storage.ts"),
       "utf8"
     );
+    const imageProcessingSource = readFileSync(
+      join(REPO_ROOT, "lib/server/coach-image-processing.ts"),
+      "utf8"
+    );
+    const envExampleSource = readFileSync(join(REPO_ROOT, ".env.example"), "utf8");
     const reactSource = readFileSync(
       join(REPO_ROOT, "components/coach/public-coach-site-page.tsx"),
       "utf8"
@@ -768,9 +777,15 @@ test.describe("canonical coach template rules", () => {
       expect(source).toContain("Use cutout");
       expect(source).toContain("Use original frame");
       expect(source).toContain("Reset image");
-      expect(source).not.toContain("Try fallback provider");
-      expect(source).not.toContain("premium framed version");
+      expect(source).toContain("Reprocess image");
+      expect(source).toContain("Try fallback provider");
+      expect(source).toContain("Local cutout unavailable. Trying secure server processing");
     }
+
+    expect(adminV2ClientSource).toContain("Upload coach photo");
+    expect(adminV2ClientSource).toContain("/api/admin/coach-sites/media-reprocess");
+    expect(adminV2ClientSource).toContain("Use original frame");
+    expect(adminV2ClientSource).toContain("Try fallback provider");
 
     expect(clientProcessingSource).toContain("@bunnio/rembg-web");
     expect(clientProcessingSource).toContain("onnxruntime-web");
@@ -783,30 +798,57 @@ test.describe("canonical coach template rules", () => {
 
     for (const source of [adminMediaApiSource, shopMediaApiSource]) {
       expect(source).toContain("rawCutoutFile");
-      expect(source).toContain("Transparent coach cutout is required");
+      expect(source).toContain("processAndPersistCoachImage");
       expect(source).toContain('"original"');
-      expect(source).toContain('variant: "cutout"');
       expect(source).toContain("originalUrl");
-      expect(source).toContain("cutoutUrl");
       expect(source).toContain("processingStatus");
-      expect(source).toContain("qualityStatus");
-      expect(source).toContain("fallbackMode");
+      expect(source).not.toContain("Transparent coach cutout is required");
       expect(source).not.toContain("removeCoachImageBackground");
-      expect(source).not.toMatch(/PHOTOROOM_API_KEY|REMOVEBG_API_KEY|IMAGE_BG_REMOVAL_PROVIDER/);
     }
 
+    expect(shopMediaApiSource).toContain("getShopOrderForClient");
+    expect(shopMediaApiSource).toContain("normalizeCoachSlug(order.slug)");
+    expect(shopMediaApiSource).not.toContain('formData?.get("slug")');
+
     for (const source of [adminReprocessSource, shopReprocessSource]) {
-      expect(source).toContain("Server-side photo reprocessing is disabled");
-      expect(source).toContain("410");
-      expect(source).not.toMatch(/PHOTOROOM_API_KEY|REMOVEBG_API_KEY/);
+      expect(source).toContain("reprocessStoredCoachImage");
+      expect(source).toContain("PHOTOROOM_API_KEY");
+      expect(source).toContain("REMOVEBG_API_KEY");
+      expect(source).not.toContain("Server-side photo reprocessing is disabled");
+      expect(source).not.toContain("410");
     }
+
+    expect(shopReprocessSource).toContain("getShopOrderForClient");
+
+    expect(imageProcessingSource).toContain('return ["photoroom", "removebg"] as const');
+    expect(imageProcessingSource).toContain("PROVIDER_TIMEOUT_MS");
+    expect(imageProcessingSource).toContain("inspectTransparentImage");
+    expect(imageProcessingSource).toContain("missing_alpha");
+    expect(imageProcessingSource).toContain("low_resolution");
+    expect(imageProcessingSource).toContain("local-browser");
+    expect(imageProcessingSource).toContain("premium portrait frame instead");
+    expect(imageProcessingSource).not.toMatch(/console\.(log|warn|error)/);
 
     expect(mediaStorageSource).toContain("processing_status");
     expect(mediaStorageSource).toContain("processing_provider");
     expect(mediaStorageSource).toContain("quality_status");
     expect(mediaStorageSource).toContain("fallback_mode");
     expect(mediaStorageSource).toContain("original_object_key");
+    expect(mediaStorageSource).toContain("image_width");
+    expect(mediaStorageSource).toContain("image_height");
+    expect(mediaStorageSource).toContain("updated_at");
     expect(mediaStorageSource).toContain("updateCoachSiteMediaProcessing");
+
+    for (const variable of [
+      "PHOTOROOM_API_KEY",
+      "REMOVEBG_API_KEY",
+      "IMAGE_BG_REMOVAL_PROVIDER=auto",
+      "IMAGE_BG_REMOVAL_ENABLED=true",
+      "IMAGE_BG_REMOVAL_QUALITY_THRESHOLD=high",
+    ]) {
+      expect(envExampleSource).toContain(variable);
+    }
+    expect(clientProcessingSource).not.toMatch(/PHOTOROOM_API_KEY|REMOVEBG_API_KEY/);
 
     for (const source of [reactSource, publicRouteSource]) {
       expect(source).toContain("data-image-mode");

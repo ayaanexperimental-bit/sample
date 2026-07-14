@@ -4,6 +4,7 @@ import {
   memo,
   type ClipboardEvent,
   type CSSProperties,
+  type KeyboardEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -52,6 +53,7 @@ type AdminCoachSitesManagerProps = {
   csrfToken: string;
   initialSites?: CoachSiteRecord[];
   initialSource?: string;
+  initialWizardStep?: number;
   mode?: "create" | "list";
   onAdminActivity?: (activity: AdminActionActivityInput) => void;
   onSitesChange?: (sites: CoachSiteRecord[]) => void;
@@ -116,10 +118,10 @@ type MediaUploadApiPayload = {
     originalUrl?: string;
     processingAttemptErrorCodes?: string[];
     processingErrorCode?: string;
-    processingProvider?: "already-transparent" | "photoroom" | "removebg";
+    processingProvider?: "already-transparent" | "local-browser" | "none" | "photoroom" | "removebg";
     processingStatus?: "cutout_ready" | "disabled" | "framed_fallback" | "not_configured";
     publicUrl?: string;
-    qualityStatus?: "failed" | "passed" | "skipped";
+    qualityStatus?: "failed" | "needs_manual_review" | "passed" | "skipped";
     safeMessage?: string;
     sizeBytes?: number;
   };
@@ -260,6 +262,31 @@ function matchesCoachSiteSearch(site: CoachSiteRecord, query: string) {
     site.niche.toLowerCase().includes(query) ||
     site.slug.toLowerCase().includes(query)
   );
+}
+
+function getCoachSiteSearchSuggestions(sites: CoachSiteRecord[], query: string) {
+  const normalizedQuery = query.trim().toLowerCase();
+  const sourceSites = normalizedQuery
+    ? sites.filter((site) =>
+        [
+          site.coachName,
+          site.niche,
+          site.slug,
+          site.location,
+          site.status,
+          site.publicUrl,
+          site.googleFormUrl,
+          site.existingPaidFunnelUrl,
+          site.whatsappLink,
+          site.paidFunnelContext,
+          site.supportText
+        ]
+          .filter((value): value is string => Boolean(value))
+          .some((value) => value.toLowerCase().includes(normalizedQuery))
+      )
+    : sites;
+
+  return sourceSites.slice(0, 8);
 }
 
 function getCoachSitePhotoUrl(site: CoachSiteRecord) {
@@ -1319,6 +1346,7 @@ export function AdminCoachSitesManager({
   csrfToken,
   initialSites,
   initialSource,
+  initialWizardStep = 0,
   mode = "list",
   onAdminActivity,
   onSitesChange
@@ -1330,8 +1358,12 @@ export function AdminCoachSitesManager({
   const [previewSite, setPreviewSite] = useState<CoachSiteRecord | null>(null);
   const [publishedSite, setPublishedSite] = useState<CoachSiteRecord | null>(null);
   const [dialog, setDialog] = useState<CoachDialog | null>(null);
-  const [wizardStep, setWizardStep] = useState(0);
+  const [wizardStep, setWizardStep] = useState(() =>
+    Math.max(0, Math.min(initialWizardStep, wizardSteps.length - 1))
+  );
   const [search, setSearch] = useState("");
+  const [siteSearchActiveIndex, setSiteSearchActiveIndex] = useState(0);
+  const [siteSearchOpen, setSiteSearchOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"all" | CurrentCoachSiteStatus>("all");
   const [archivedMenuOpen, setArchivedMenuOpen] = useState(false);
   const [message, setMessage] = useState("");
@@ -1417,7 +1449,10 @@ export function AdminCoachSitesManager({
 
   useEffect(() => {
     if (mode === "create") {
-      openCreatorDialog();
+      openCreatorDialog(
+        undefined,
+        Math.max(0, Math.min(initialWizardStep, wizardSteps.length - 1))
+      );
     }
     // The create page should open the wizard only when the route mode changes.
     // Adding openCreatorDialog would re-open/reset the wizard after every render.
@@ -1498,6 +1533,10 @@ export function AdminCoachSitesManager({
   }
 
   const visibleSites = useMemo(() => sites.filter((site) => site.status !== "removed"), [sites]);
+  const siteSearchSuggestions = useMemo(
+    () => getCoachSiteSearchSuggestions(visibleSites, search),
+    [search, visibleSites]
+  );
 
   const filteredSites = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -1529,6 +1568,49 @@ export function AdminCoachSitesManager({
       ),
     [filteredSites]
   );
+
+  function selectCoachSiteSearchSuggestion(site: CoachSiteRecord) {
+    setSearch(site.coachName);
+    setSiteSearchOpen(false);
+    setSiteSearchActiveIndex(0);
+    highlightCoachSite(site.id);
+  }
+
+  function handleCoachSiteSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (!siteSearchOpen && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+      setSiteSearchOpen(true);
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setSiteSearchActiveIndex((current) =>
+        siteSearchSuggestions.length ? (current + 1) % siteSearchSuggestions.length : 0
+      );
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setSiteSearchActiveIndex((current) =>
+        siteSearchSuggestions.length
+          ? (current - 1 + siteSearchSuggestions.length) % siteSearchSuggestions.length
+          : 0
+      );
+      return;
+    }
+
+    if (event.key === "Enter" && siteSearchSuggestions.length) {
+      event.preventDefault();
+      selectCoachSiteSearchSuggestion(
+        siteSearchSuggestions[Math.min(siteSearchActiveIndex, siteSearchSuggestions.length - 1)]
+      );
+      return;
+    }
+
+    if (event.key === "Escape") {
+      setSiteSearchOpen(false);
+    }
+  }
 
   function updateFormField<Key extends keyof CoachSiteFormState>(
     key: Key,
@@ -3098,15 +3180,72 @@ export function AdminCoachSitesManager({
       {mode === "list" ? (
         <>
           <div className={styles.coachFilters}>
-            <label className={styles.compactField}>
-              <span>Search coaches</span>
+            <div
+              className={`${styles.compactField} ${styles.searchCombobox}`}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  setSiteSearchOpen(false);
+                }
+              }}
+            >
+              <span id="coach-sites-search-label">Search coaches</span>
               <input
-                onChange={(event) => setSearch(event.target.value)}
+                aria-activedescendant={
+                  siteSearchOpen && siteSearchSuggestions[siteSearchActiveIndex]
+                    ? `coach-sites-search-option-${siteSearchActiveIndex}`
+                    : undefined
+                }
+                aria-autocomplete="list"
+                aria-controls="coach-sites-search-list"
+                aria-expanded={siteSearchOpen}
+                aria-labelledby="coach-sites-search-label"
+                id="coach-sites-search"
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setSiteSearchActiveIndex(0);
+                  setSiteSearchOpen(true);
+                }}
+                onFocus={() => setSiteSearchOpen(true)}
+                onKeyDown={handleCoachSiteSearchKeyDown}
                 placeholder="Name, niche, or slug"
+                role="combobox"
                 type="search"
                 value={search}
               />
-            </label>
+              {siteSearchOpen ? (
+                <div
+                  className={styles.searchSuggestionList}
+                  id="coach-sites-search-list"
+                  role="listbox"
+                >
+                  {siteSearchSuggestions.length ? (
+                    siteSearchSuggestions.map((site, index) => (
+                      <button
+                        className={styles.searchSuggestionButton}
+                        data-active={index === siteSearchActiveIndex ? "true" : "false"}
+                        aria-selected={index === siteSearchActiveIndex}
+                        id={`coach-sites-search-option-${index}`}
+                        key={site.id}
+                        onClick={() => selectCoachSiteSearchSuggestion(site)}
+                        onMouseDown={(event) => event.preventDefault()}
+                        role="option"
+                        tabIndex={-1}
+                        type="button"
+                      >
+                        <strong>{site.coachName}</strong>
+                        <span className={styles.searchSuggestionMeta}>
+                          {site.slug} / {site.niche} / {site.status}
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className={styles.searchSuggestionEmpty} role="status">
+                      No matching coach site found.
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
             <label className={styles.compactField}>
               <span>Status</span>
               <select
@@ -5291,12 +5430,17 @@ function HeroMediaStep({
 
     try {
       if (mediaType === "image") {
-        const preparedPhoto = await prepareCoachHeroPhotoForUpload(file, {
-          maxBytes: PHOTO_ORIGINAL_MAX_BYTES,
-          onProgress: setImageUploadProgress
-        });
-        cutoutFile = preparedPhoto.file;
-        setImageUploadProgress("Saving transparent coach photo...");
+        try {
+          const preparedPhoto = await prepareCoachHeroPhotoForUpload(file, {
+            maxBytes: PHOTO_ORIGINAL_MAX_BYTES,
+            onProgress: setImageUploadProgress
+          });
+          cutoutFile = preparedPhoto.file;
+          setImageUploadProgress("Saving transparent coach photo...");
+        } catch {
+          cutoutFile = null;
+          setImageUploadProgress("Local cutout unavailable. Trying secure server processing...");
+        }
       }
 
       const formData = new FormData();
@@ -5400,6 +5544,55 @@ function HeroMediaStep({
     setUploadMessage("Coach photo cleared. Upload another image when ready.");
   }
 
+  async function handleReprocessImage(provider: "auto" | "removebg") {
+    const originalObjectKey = coachImageResult?.originalObjectKey;
+    const slug = normalizeCoachSlug(form.slug || form.coachName);
+    if (!originalObjectKey || !slug) {
+      setUploadMessage("Save the coach name and original photo before reprocessing.");
+      return;
+    }
+
+    setUploadingMediaType("image");
+    const progressMessage =
+      provider === "removebg"
+        ? "Trying the fallback coach photo provider..."
+        : "Reprocessing your coach photo securely...";
+    setUploadMessage(progressMessage);
+    onMediaProcessingMessage(progressMessage);
+    try {
+      const response = await fetch("/api/admin/coach-sites/media-reprocess", {
+        body: JSON.stringify({ originalObjectKey, provider, slug }),
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-yw-admin-csrf": csrfToken,
+        },
+        method: "POST",
+      });
+      const payload = (await response.json().catch(() => ({}))) as MediaUploadApiPayload;
+      if (!response.ok || !payload.ok || !payload.media?.publicUrl) {
+        setUploadMessage(payload.error || "Coach photo could not be reprocessed safely.");
+        return;
+      }
+
+      setCoachImageResult(payload.media);
+      onUpdateField("heroMediaType", "image");
+      onUpdateField("photoUrl", payload.media.cutoutUrl || payload.media.publicUrl);
+      setUploadMessage(getCoachImageUploadMessage(payload.media));
+      onAdminActivity?.({
+        detail: getCoachImageAdminActivityMessage(payload.media),
+        label: "Coach Sites",
+        status: "success",
+      });
+    } catch {
+      setUploadMessage("Coach photo reprocessing could not connect. The stored original is unchanged.");
+    } finally {
+      setUploadingMediaType("");
+      onMediaProcessingMessage("");
+    }
+  }
+
   return (
     <div className={styles.mediaStep}>
       <label className={styles.compactField}>
@@ -5463,6 +5656,7 @@ function HeroMediaStep({
               activeUrl={form.photoUrl}
               disabled={uploadingMediaType === "image"}
               media={coachImageResult}
+              onReprocess={handleReprocessImage}
               onReset={handleResetImage}
               onUse={handleUseImageUrl}
             />
@@ -5599,28 +5793,35 @@ function WizardFooter({
       >
         {draftSubmitting ? "Saving..." : "Save Draft"}
       </button>
-      {wizardStep < wizardSteps.length - 1 ? (
+      {wizardStep < 4 ? (
         <button
           className={styles.primaryAction}
-          data-admin-tooltip={
-            wizardStep === 3
-              ? "Generate copy and open the preview step"
-              : "Continue to the next builder step"
-          }
+          data-admin-tooltip="Continue to the next builder step"
           disabled={aiSubmitting || publishSubmitting || mediaProcessing}
           aria-describedby={mediaProcessing ? "admin-media-processing-message" : undefined}
           onClick={() => {
             if (mediaProcessing) return;
-            if (wizardStep === 3) {
-              void onGeneratePreview();
-              return;
-            }
-
             setWizardStep(Math.min(wizardStep + 1, wizardSteps.length - 1));
           }}
           type="button"
         >
-          {wizardStep === 3 ? "Generate Preview" : "Next"}
+          Next
+        </button>
+      ) : wizardStep === 4 ? (
+        <button
+          className={styles.primaryAction}
+          data-admin-tooltip="Generate copy and open the final publish step"
+          disabled={aiSubmitting || publishSubmitting || mediaProcessing}
+          aria-describedby={mediaProcessing ? "admin-media-processing-message" : undefined}
+          onClick={() => {
+            if (mediaProcessing) return;
+            void onGeneratePreview().then((generated) => {
+              if (generated) setWizardStep(5);
+            });
+          }}
+          type="button"
+        >
+          Generate Preview
         </button>
       ) : (
         <button
@@ -6126,12 +6327,14 @@ function CoachImageResultPanel({
   activeUrl,
   disabled,
   media,
+  onReprocess,
   onReset,
   onUse
 }: {
   activeUrl: string;
   disabled: boolean;
   media: CoachImageMediaResult;
+  onReprocess: (provider: "auto" | "removebg") => void;
   onReset: () => void;
   onUse: (url: string | undefined, label: "cutout" | "original") => void;
 }) {
@@ -6162,6 +6365,16 @@ function CoachImageResultPanel({
             type="button"
           >
             Use original frame
+          </button>
+        ) : null}
+        {media.originalObjectKey ? (
+          <button disabled={disabled} onClick={() => onReprocess("auto")} type="button">
+            Reprocess image
+          </button>
+        ) : null}
+        {media.originalObjectKey ? (
+          <button disabled={disabled} onClick={() => onReprocess("removebg")} type="button">
+            Try fallback provider
           </button>
         ) : null}
         <button disabled={disabled} onClick={onReset} type="button">
@@ -6214,12 +6427,12 @@ function getCoachImageUploadMessage(
     return `Coach photo is ready${media.sizeBytes || file?.size ? ` (${formatBytes(media.sizeBytes || file?.size || 0)})` : ""}.`;
   }
 
-  if (media.processingStatus === "not_configured") {
-    return "Photo uploaded, but the transparent cutout was not created. Upload a clearer photo and try again.";
-  }
-
   if (media.safeMessage) {
     return media.safeMessage;
+  }
+
+  if (media.processingStatus === "not_configured") {
+    return "Photo uploaded safely. Provider keys are not configured, so the original portrait frame is active.";
   }
 
   return `Coach photo uploaded${file?.size ? ` (${formatBytes(file.size)})` : ""}.`;

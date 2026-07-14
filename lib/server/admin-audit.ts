@@ -7,6 +7,7 @@ export type AdminAuditEventType =
   | "cleanup_completed"
   | "error_reports_cleared"
   | "forgot_password_requested"
+  | "ai_action"
   | "login_attempt"
   | "login_failed"
   | "logout"
@@ -33,7 +34,7 @@ const MAX_AUDIT_REASON_LENGTH = 480;
 
 export async function recordAdminAuditEvent(event: AdminAuditEvent) {
   const db = event.env?.ADMIN_DB;
-  if (!db) return;
+  if (!db) return false;
 
   try {
     await db
@@ -49,8 +50,10 @@ export async function recordAdminAuditEvent(event: AdminAuditEvent) {
         getNowSeconds()
       )
       .run();
+    return true;
   } catch {
     // Audit logging must never leak internals to users or crash the review UI.
+    return false;
   }
 }
 
