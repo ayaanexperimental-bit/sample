@@ -23,12 +23,22 @@ export type AdminV2ViewId =
   | "shop"
   | "top-coaches";
 
+export type AdminV2CoachSiteFocus = {
+  coachId?: string;
+  coachSlug?: string;
+  siteId?: string;
+};
+
 export type AdminV2ShellProps = {
   adminAccess?: AdminV2AccessProfileClient | null;
   csrfToken: string;
   dashboardAddon?: ReactNode;
-  onActiveViewChange?: (viewId: AdminV2ViewId) => void;
+  onActiveViewChange?: (
+    viewId: AdminV2ViewId,
+    coachSiteFocus?: AdminV2CoachSiteFocus | null
+  ) => void;
   onLogout: () => void;
+  requestedCoachSiteFocus?: AdminV2CoachSiteFocus | null;
   requestedView?: AdminV2ViewId;
   sessionEmail?: string;
 };

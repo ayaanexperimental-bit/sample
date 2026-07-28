@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { getAdminV2AvailableModuleActions } from "../../lib/admin-v2-navigation";
+import {
+  getAdminV2AvailableModuleActions,
+  resolveAdminV2CoachSiteFocus
+} from "../../lib/admin-v2-navigation";
 
 test.describe("Admin V2 navigation", () => {
   test("shows only production modules allowed by the current admin profile", () => {
@@ -49,5 +52,44 @@ test.describe("Admin V2 navigation", () => {
         permissions: []
       }).map((action) => action.viewId)
     ).not.toContain("admin-users");
+  });
+
+  test("resolves an explicit coach-site handoff exactly and fails closed when identity is ambiguous", () => {
+    const sites = [
+      {
+        coachId: "coach-a",
+        coachName: "Coach A",
+        id: "site-a",
+        slug: "coach-a"
+      },
+      {
+        coachId: "coach-b",
+        coachName: "Coach B",
+        id: "site-b",
+        slug: "coach-b"
+      }
+    ];
+
+    expect(
+      resolveAdminV2CoachSiteFocus(sites, {
+        coachId: "coach-b",
+        coachSlug: "coach-b",
+        siteId: "site-b"
+      })?.id
+    ).toBe("site-b");
+    expect(
+      resolveAdminV2CoachSiteFocus(
+        [...sites, { coachId: "coach-b", coachName: "Coach B alternate", id: "site-b-2", slug: "coach-b" }],
+        { coachId: "coach-b", coachSlug: "coach-b" }
+      )
+    ).toBeNull();
+    expect(
+      resolveAdminV2CoachSiteFocus(sites, {
+        coachId: "coach-b",
+        coachSlug: "coach-b",
+        siteId: "site-a"
+      })
+    ).toBeNull();
+    expect(resolveAdminV2CoachSiteFocus(sites, { coachSlug: "missing-coach" })).toBeNull();
   });
 });

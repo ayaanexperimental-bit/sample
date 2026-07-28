@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { adminControlCenterData } from "../../lib/admin-control-center";
 import { getAdminV2DashboardData } from "../../lib/admin-v2-dashboard-data";
 
 test.describe("Admin V2 data adapter", () => {
@@ -198,6 +199,62 @@ test.describe("Admin V2 data adapter", () => {
         expect.objectContaining({ id: "coach-sites-total", value: 2 }),
         expect.objectContaining({ id: "coach-sites-published", value: 1 }),
         expect.objectContaining({ id: "open-error-reports", value: 1 })
+      ])
+    );
+  });
+
+  test("hydrates protected paid-link metadata with complete canonical payment rows", async () => {
+    const canonicalLink = adminControlCenterData.paidMasterclassLinks[0];
+    expect(canonicalLink).toBeTruthy();
+
+    const snapshot = await getAdminV2DashboardData({
+      adminAccess: {
+        isOwner: false,
+        permissions: ["paid_masterclass.view_settings"]
+      },
+      fetcher: async (input) => {
+        const path =
+          typeof input === "string" ? input : input instanceof Request ? input.url : String(input);
+
+        if (path === "/api/admin/masterclass-private-link") {
+          return jsonResponse({
+            links: [
+              {
+                configured: true,
+                entryCode: canonicalLink.entryCode,
+                funnelId: canonicalLink.funnelId,
+                paymentPageConfigured: true,
+                paymentPageStorageSource: "d1_table",
+                paymentPageUpdatedAt: "2026-07-27T07:00:00.000Z",
+                paymentPageUpdatedBy: "admin@example.com",
+                storageSource: "d1_table",
+                updatedAt: "2026-07-27T07:00:00.000Z",
+                updatedBy: "admin@example.com"
+              }
+            ],
+            ok: true,
+            privateLinkValuesExposed: false
+          });
+        }
+
+        if (path === "/api/admin/masterclass-settings") {
+          return jsonResponse({ ok: true });
+        }
+
+        throw new Error(`Unexpected Admin V2 adapter request: ${path}`);
+      }
+    });
+
+    expect(snapshot.sources.masterclassPrivateLinks.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          coachName: canonicalLink.coachName,
+          displayName: canonicalLink.displayName,
+          entryPath: canonicalLink.entryPath,
+          funnelId: canonicalLink.funnelId,
+          paidPagePath: canonicalLink.paidPagePath,
+          successPath: canonicalLink.successPath
+        })
       ])
     );
   });

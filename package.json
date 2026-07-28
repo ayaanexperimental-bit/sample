@@ -16,11 +16,13 @@
     "typecheck": "tsc --noEmit",
     "check:links": "node scripts/check-production-links.mjs",
     "test:admin-security": "playwright test --config=playwright.admin-security.config.ts",
+    "test:admin-ai-evaluation": "playwright test --config=playwright.admin-security.config.ts tests/admin-security/admin-ai-evaluation-redteam.spec.ts",
     "validate:coach-skins": "playwright test --config=playwright.admin-security.config.ts --grep \"template skin registry gates\"",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "check:admin-performance": "node scripts/check-admin-performance-artifacts.mjs"
   },
   "dependencies": {
     "@bunnio/rembg-web": "1.0.2",
@@ -52,6 +54,7 @@
       "@babel/core": "7.29.6",
       "minimatch@10>brace-expansion": "5.0.6",
       "postcss": "8.5.10",
+      "protobufjs": "7.6.5",
       "ws": "8.20.1"
     }
   }

@@ -669,6 +669,25 @@ export async function getShopOrder(env: ShopEnv, orderId: string) {
   return row ? shopSiteRowToRecord(row) : null;
 }
 
+export async function getVerifiedPublishedShopOrder(env: ShopEnv, orderId: string) {
+  const order = await getShopOrder(env, orderId);
+  if (
+    !order ||
+    order.paymentStatus !== "published" ||
+    order.siteStatus !== "published" ||
+    !env.ADMIN_DB
+  ) {
+    return null;
+  }
+
+  try {
+    const linkedSite = await getCoachSiteBySlugFromDb(order.slug, env);
+    return linkedSite?.status === "published" ? order : null;
+  } catch {
+    return null;
+  }
+}
+
 async function reconcileShopOrderLiveStatus(env: ShopEnv, order: ShopSiteRecord) {
   if (order.siteStatus !== "published" || !env.ADMIN_DB) return order;
 
@@ -1476,21 +1495,33 @@ export async function retryShopPublish({
 
   const order = await getShopOrder(env, orderId);
   if (!order) return { ok: false as const, error: "Shop order was not found." };
+  if (order.siteStatus !== "publish_failed") {
+    return { ok: false as const, error: "This Shop order is not waiting for publish retry." };
+  }
   if (order.paymentStatus !== "paid" && order.paymentStatus !== "publishing") {
     return { ok: false as const, error: "Payment is not verified for this Shop order." };
   }
 
-  await db
+  const claimed = await db
     .prepare(
       `UPDATE shop_sites
        SET site_status = 'publishing',
            workflow_stage = 'admin_retry_publish',
            issue_status = '',
            updated_at = ?1
-       WHERE order_id = ?2`
+       WHERE order_id = ?2
+         AND site_status = 'publish_failed'
+         AND payment_status IN ('paid', 'publishing')`
     )
     .bind(getNowSeconds(), order.orderId)
     .run();
+  const claimedChanges = Number(claimed.meta?.changes ?? 1);
+  if (!claimed.success || claimedChanges !== 1) {
+    return {
+      ok: false as const,
+      error: "This Shop order changed before publish retry could start."
+    };
+  }
 
   return publishShopOrder({ adminEmail, env, orderId: order.orderId });
 }

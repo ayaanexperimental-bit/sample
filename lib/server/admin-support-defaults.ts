@@ -30,13 +30,13 @@ export type AdminSupportDefaultsInput = {
 };
 
 type AdminSupportDefaultsRow = {
-  support_email: string;
-  support_message: string;
-  support_name: string;
-  support_phone: string;
-  support_whatsapp: string;
+  support_email: string | null;
+  support_message: string | null;
+  support_name: string | null;
+  support_phone: string | null;
+  support_whatsapp: string | null;
   updated_at: number | string;
-  updated_by: string;
+  updated_by: string | null;
 };
 
 const SUPPORT_DEFAULTS_ID = "default";
@@ -93,7 +93,7 @@ export async function updateAdminSupportDefaults({
     };
   }
 
-  const normalized = normalizeSupportDefaultsInput(input);
+  const normalized = normalizeAdminSupportDefaultsInput(input);
   if (!normalized.ok) return normalized;
 
   await ensureSupportDefaultsSchema(env.ADMIN_DB);
@@ -139,7 +139,7 @@ export async function updateAdminSupportDefaults({
   };
 }
 
-function normalizeSupportDefaultsInput(input: AdminSupportDefaultsInput) {
+export function normalizeAdminSupportDefaultsInput(input: AdminSupportDefaultsInput) {
   const supportName = stringValue(input.supportName);
   const supportEmail = stringValue(input.supportEmail).toLowerCase();
   const supportPhone = stringValue(input.supportPhone);
@@ -196,13 +196,13 @@ async function ensureSupportDefaultsSchema(db: D1Database) {
 function rowToSupportDefaults(row: AdminSupportDefaultsRow): AdminSupportDefaults {
   return {
     source: "d1_table",
-    supportEmail: row.support_email,
-    supportMessage: row.support_message,
-    supportName: row.support_name,
-    supportPhone: row.support_phone,
-    supportWhatsapp: row.support_whatsapp,
+    supportEmail: stringValue(row.support_email),
+    supportMessage: stringValue(row.support_message),
+    supportName: stringValue(row.support_name),
+    supportPhone: stringValue(row.support_phone),
+    supportWhatsapp: stringValue(row.support_whatsapp),
     updatedAt: secondsToIso(row.updated_at),
-    updatedBy: row.updated_by || "Admin"
+    updatedBy: stringValue(row.updated_by) || "Admin"
   };
 }
 
@@ -211,7 +211,8 @@ function getEnvSupportDefaults(env: AdminSupportDefaultsEnv): AdminSupportDefaul
     source: "env",
     supportEmail: env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@ywcoach.com",
     supportMessage:
-      env.NEXT_PUBLIC_SUPPORT_MESSAGE || "We could not complete this step. Please contact support for help.",
+      env.NEXT_PUBLIC_SUPPORT_MESSAGE ||
+      "We could not complete this step. Please contact support for help.",
     supportName: env.NEXT_PUBLIC_SUPPORT_NAME || "Yours Wellness Support",
     supportPhone: env.NEXT_PUBLIC_SUPPORT_PHONE || "",
     supportWhatsapp: env.NEXT_PUBLIC_SUPPORT_WHATSAPP || "",

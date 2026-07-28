@@ -74,21 +74,23 @@ test.describe("Admin V2 Pages smoke", () => {
     const adminV2Mount = page.locator('[data-admin-v2="true"]');
     await expect(adminV2Mount).toBeVisible();
     await expect(page.locator('[data-admin-version="v2"]')).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Open production modules" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Open admin modules" })).toBeVisible();
     await expect(page.getByRole("status", { name: /Owner|Admin|admin-v2-smoke/i })).toBeVisible();
 
     if (smokeMode === "limited") {
-      await expect(page.getByRole("button", { name: /Overview KPIs/i })).toBeVisible();
-      await expect(page.getByRole("button", { name: /Reports Error reports/i })).toBeVisible();
-      await expect(page.getByRole("button", { name: /Shop purchases/i })).toHaveCount(0);
-      await expect(page.getByRole("button", { name: /Admin Users Owner-only/i })).toHaveCount(0);
-      await expect(page.getByRole("button", { name: /Create Site Open/i })).toHaveCount(0);
+      await expect(page.getByRole("button", { exact: true, name: "Overview" })).toBeVisible();
+      await expect(page.getByRole("button", { exact: true, name: "Reports" })).toBeVisible();
+      await expect(page.getByRole("button", { exact: true, name: "Shop" })).toHaveCount(0);
+      await expect(page.getByRole("button", { exact: true, name: "Admin Users" })).toHaveCount(0);
+      await expect(page.getByRole("button", { exact: true, name: "Create Site" })).toHaveCount(0);
 
-      await page.getByRole("button", { name: /Reports Error reports/i }).click();
+      await page.getByRole("button", { exact: true, name: "Reports" }).click();
       await expect(page.getByRole("heading", { exact: true, name: "Error Reports" })).toBeVisible();
       await expect(page.locator('[data-admin-version="v2"]')).toBeVisible();
       await expect(page.getByLabel("Cleanup target")).toBeDisabled();
-      await expect(page.getByRole("button", { name: "Cleanup permission required" })).toBeDisabled();
+      await expect(
+        page.getByRole("button", { name: "Cleanup permission required" })
+      ).toBeDisabled();
 
       await page.getByRole("button", { name: "Open maintenance" }).click();
       await expect(
@@ -112,11 +114,33 @@ test.describe("Admin V2 Pages smoke", () => {
       await expect(detailDialog).not.toContainText("must-never-render-technical-detail");
       await detailDialog.getByRole("button", { name: "Close action dialog" }).click();
     } else {
-      await page.getByRole("button", { name: /Shop purchases, payment settings/i }).click();
+      await page.getByRole("button", { name: "30 days" }).click();
+      await expect(page.getByRole("button", { name: "30 days" })).toHaveAttribute(
+        "aria-pressed",
+        "true"
+      );
+
+      const coachTableSearch = page.getByLabel("Search coach performance table");
+      await coachTableSearch.fill("no-matching-coach-record");
+      await expect(
+        page.getByText("No coach-site records match the current filters.")
+      ).toBeVisible();
+      await coachTableSearch.fill("");
+
+      await page.getByRole("button", { name: "Review Shop Source" }).click();
       await expect(
         page.getByRole("heading", { exact: true, name: "Shop Website Builder" })
       ).toBeVisible();
       await expect(page.locator('[data-admin-version="v2"]')).toBeVisible();
+
+      await page.getByRole("button", { exact: true, name: "Overview" }).click();
+      const moduleSearch = page.getByLabel("Search admin modules");
+      await moduleSearch.fill("Shop");
+      await expect(page.getByRole("option", { name: /Shop Website purchases/i })).toBeVisible();
+      await moduleSearch.press("Enter");
+      await expect(
+        page.getByRole("heading", { exact: true, name: "Shop Website Builder" })
+      ).toBeVisible();
     }
 
     await page.goto("/admin/dashboard");

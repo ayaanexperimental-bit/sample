@@ -15,7 +15,7 @@ test.describe("Admin V2 Coach Sites production flow smoke", () => {
     page,
     request
   }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(240_000);
     const suffix = Date.now().toString(36);
     const coachName = `Codex V2 Native Coach ${suffix}`;
     const slug = `codex-v2-native-coach-${suffix}`;
@@ -124,7 +124,7 @@ test.describe("Admin V2 Coach Sites production flow smoke", () => {
     await assertSeparateV2Surface(page);
 
     await creator.getByRole("button", { name: "Go to preview" }).click();
-    await expectV2InlineStatus(page, "Preview generated inside the separate Admin V2 builder.");
+    await expectV2InlineStatus(page, "Preview ready. Review it before publishing.");
     await expect(creator.getByText(coachName).first()).toBeVisible();
     await creator.getByRole("button", { name: "Generate Preview" }).click();
     await expect(creator.getByText("Check the coach page before publishing")).toBeVisible();
@@ -167,6 +167,49 @@ test.describe("Admin V2 Coach Sites production flow smoke", () => {
     await expect(editCreator.getByRole("button", { name: "Analyze paid funnel" })).toBeVisible();
     await expect(editCreator.getByRole("button", { name: "Generate complete copy" })).toBeVisible();
     await expect(editCreator.getByLabel("Analyzed paid-funnel context")).toBeVisible();
+    const originalIntroHeading = "Original builder heading";
+    const suggestedIntroHeading = "Reviewed AI builder heading";
+    await editCreator.getByLabel("Intro heading").fill(originalIntroHeading);
+    await page.route("**/api/admin/coach-sites/generate-copy", async (route) => {
+      await route.fulfill({
+        json: {
+          configured: true,
+          content: { introHeading: suggestedIntroHeading },
+          ok: true
+        }
+      });
+    });
+
+    await editCreator.getByRole("button", { name: "Generate complete copy" }).click();
+    const copyReview = editCreator.getByRole("region", { name: "AI copy suggestion review" });
+    await expect(copyReview).toBeVisible();
+    await expect(editCreator.getByRole("button", { name: "Generate complete copy" })).toBeDisabled();
+    await expect(editCreator.getByLabel("Intro heading")).toHaveValue(originalIntroHeading);
+    await copyReview.getByText("Intro heading", { exact: true }).click();
+    await expect(copyReview.getByText(originalIntroHeading, { exact: true })).toBeVisible();
+    await expect(copyReview.getByText(suggestedIntroHeading, { exact: true })).toBeVisible();
+    await expect(copyReview.getByText("Reason", { exact: true }).first()).toBeVisible();
+    await copyReview.getByRole("button", { name: "Reject all", exact: true }).click();
+    await expect(copyReview).toBeHidden();
+    await expect(editCreator.getByLabel("Intro heading")).toHaveValue(originalIntroHeading);
+
+    await editCreator.getByRole("button", { name: "Generate complete copy" }).click();
+    await editCreator.getByLabel("Intro heading").fill("Manual edit after generation");
+    await expect(copyReview).toBeVisible();
+    await expect(
+      copyReview.getByRole("heading", { name: "4 AI copy suggestions are staged", exact: true })
+    ).toBeVisible();
+    await copyReview.getByRole("button", { name: "Apply 4 suggestions", exact: true }).click();
+    await expect(editCreator.getByLabel("Intro heading")).toHaveValue(
+      "Manual edit after generation"
+    );
+    await expectStaleSuggestionBatchResult(page, 4);
+
+    await editCreator.getByRole("button", { name: "Generate complete copy" }).click();
+    await copyReview.getByText("Intro heading", { exact: true }).click();
+    await copyReview.getByRole("button", { name: "Apply", exact: true }).click();
+    await expect(editCreator.getByLabel("Intro heading")).toHaveValue(suggestedIntroHeading);
+    await page.unroute("**/api/admin/coach-sites/generate-copy");
     await editCreator.getByRole("button", { name: /5 Preview/ }).click();
     const canonicalPreview = editCreator.locator(".v2-canonical-preview-panel");
     await expect(canonicalPreview.getByText("Exact public-page preview")).toBeVisible();
@@ -381,6 +424,28 @@ async function expectV2InlineStatus(page: import("@playwright/test").Page, text:
   await expect(page.locator('p[role="status"]').filter({ hasText: text })).toBeVisible({
     timeout: 30_000
   });
+}
+
+async function expectStaleSuggestionBatchResult(
+  page: import("@playwright/test").Page,
+  expectedTotal: number
+) {
+  const status = page
+    .locator('p[role="status"]')
+    .filter({
+      hasText: /approved AI copy suggestions? applied.*stale suggestions? (?:was|were) skipped/i
+    });
+  await expect(status).toBeVisible({ timeout: 30_000 });
+  const text = (await status.textContent()) || "";
+  const counts = text.match(
+    /(\d+) approved AI copy suggestions? applied.*?(\d+) stale suggestions? (?:was|were) skipped/i
+  );
+  expect(counts, `Unexpected stale-suggestion status: ${text}`).not.toBeNull();
+  const applied = Number(counts?.[1] || 0);
+  const skipped = Number(counts?.[2] || 0);
+  expect(applied).toBeGreaterThan(0);
+  expect(skipped).toBeGreaterThan(0);
+  expect(applied + skipped).toBe(expectedTotal);
 }
 
 function escapeRegExp(value: string) {

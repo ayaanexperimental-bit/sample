@@ -13,13 +13,13 @@ const SESSION_SECRET = "support-defaults-test-secret-at-least-32";
 type SupportDefaultsRow = {
   created_at: number;
   id: string;
-  support_email: string;
-  support_message: string;
-  support_name: string;
-  support_phone: string;
-  support_whatsapp: string;
+  support_email: string | null;
+  support_message: string | null;
+  support_name: string | null;
+  support_phone: string | null;
+  support_whatsapp: string | null;
   updated_at: number;
-  updated_by: string;
+  updated_by: string | null;
 };
 
 type SupportDefaultsEnv = {
@@ -57,6 +57,45 @@ test.describe("admin support defaults API", () => {
         supportName: "YW Support",
         supportPhone: "+15551234567",
         supportWhatsapp: "https://wa.me/15551234567"
+      },
+      editable: true,
+      ok: true
+    });
+  });
+
+  test("normalizes legacy nullable D1 support fields before returning API defaults", async () => {
+    const harness = createSupportDefaultsDb({
+      created_at: 1_700_000_000,
+      id: "default",
+      support_email: null,
+      support_message: null,
+      support_name: "  Legacy Support  ",
+      support_phone: null,
+      support_whatsapp: null,
+      updated_at: 1_700_000_000,
+      updated_by: null
+    });
+    const env = createEnv({ ADMIN_DB: harness.db });
+    const { cookie } = await createAdminTestSession(env);
+
+    const response = await supportDefaultsRequest({
+      env,
+      request: new Request("https://ywcoach.com/api/admin/support-defaults", {
+        headers: { cookie }
+      })
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      defaults: {
+        source: "d1_table",
+        supportEmail: "",
+        supportMessage: "",
+        supportName: "Legacy Support",
+        supportPhone: "",
+        supportWhatsapp: "",
+        updatedBy: "Admin"
       },
       editable: true,
       ok: true
@@ -213,8 +252,8 @@ function createEnv(overrides: Partial<SupportDefaultsEnv> = {}): SupportDefaults
   };
 }
 
-function createSupportDefaultsDb() {
-  let row: SupportDefaultsRow | null = null;
+function createSupportDefaultsDb(initialRow: SupportDefaultsRow | null = null) {
+  let row: SupportDefaultsRow | null = initialRow;
   const statements: string[] = [];
 
   const db = {

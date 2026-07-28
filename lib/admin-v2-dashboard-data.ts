@@ -7,7 +7,11 @@ import type {
   AnalyticsTimeSeriesPoint
 } from "./analytics-events";
 import type { CoachSiteRecord } from "./admin-coach-sites";
-import type { AdminErrorReport, AdminPaidMasterclassLink } from "./admin-control-center";
+import {
+  adminControlCenterData,
+  type AdminErrorReport,
+  type AdminPaidMasterclassLink
+} from "./admin-control-center";
 
 export type AdminV2DataStatus = "empty" | "not-authorized" | "ready" | "unavailable";
 
@@ -107,8 +111,21 @@ type ErrorReportsPayload = {
 };
 
 type MasterclassPrivateLinkPayload = {
-  links?: AdminPaidMasterclassLink[];
+  links?: MasterclassPrivateLinkMetadata[];
   ok?: boolean;
+};
+
+type MasterclassPrivateLinkMetadata = {
+  configured?: boolean;
+  entryCode?: string;
+  funnelId: string;
+  paymentPageConfigured?: boolean;
+  paymentPageStorageSource?: "d1_table" | "none";
+  paymentPageUpdatedAt?: string | null;
+  paymentPageUpdatedBy?: string;
+  storageSource?: "d1_table" | "none";
+  updatedAt?: string | null;
+  updatedBy?: string;
 };
 
 export async function getAdminV2DashboardData({
@@ -187,7 +204,11 @@ export async function getAdminV2DashboardData({
       ? fetchAdminV2Json<MasterclassPrivateLinkPayload>(
           fetcher,
           "/api/admin/masterclass-private-link"
-        ).then((result) => mapSourceArray(result, (payload) => payload.links || []))
+        ).then((result) =>
+          mapSourceArray(result, (payload) =>
+            hydratePaidMasterclassLinks(payload.links || [])
+          )
+        )
       : Promise.resolve(createNotAuthorizedSource<AdminPaidMasterclassLink[]>()),
     canAccessAdminV2Source(adminAccess, "paid_masterclass.view_settings")
       ? fetchAdminV2Json<unknown>(fetcher, "/api/admin/masterclass-settings").then(mapUnknownSource)
@@ -230,6 +251,17 @@ export async function getAdminV2DashboardData({
       users
     ])
   };
+}
+
+function hydratePaidMasterclassLinks(
+  metadata: MasterclassPrivateLinkMetadata[]
+): AdminPaidMasterclassLink[] {
+  const metadataByFunnelId = new Map(metadata.map((item) => [item.funnelId, item]));
+
+  return adminControlCenterData.paidMasterclassLinks.map((link) => ({
+    ...link,
+    ...metadataByFunnelId.get(link.funnelId)
+  }));
 }
 
 async function fetchAdminV2Json<TPayload>(

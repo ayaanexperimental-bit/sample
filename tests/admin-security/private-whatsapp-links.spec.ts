@@ -270,9 +270,17 @@ test.describe("private WhatsApp links", () => {
     expect(JSON.stringify(metadataBody)).not.toContain(TABLE_WHATSAPP_URL);
     expect(JSON.stringify(metadataBody)).not.toContain(TABLE_PAYMENT_URL);
     expect(metadataBody.links[0]).toMatchObject({
+      coachName: expect.any(String),
       configured: true,
+      displayName: expect.any(String),
+      entryPath: expect.any(String),
+      paidPagePath: expect.any(String),
       paymentPageConfigured: true,
-      storageSource: "d1_table"
+      paymentStatus: expect.any(String),
+      privateWhatsappStatus: expect.any(String),
+      status: expect.any(String),
+      storageSource: "d1_table",
+      successPath: expect.any(String)
     });
 
     const badOtp = await privateLinkRequest({

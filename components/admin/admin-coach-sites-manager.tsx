@@ -27,6 +27,8 @@ import {
   createFormFromCoachSite,
   normalizeCoachSlug
 } from "../../lib/admin-coach-sites";
+import type { AdminV2CoachSiteFocus } from "../../lib/admin-v2-access";
+import { resolveAdminV2CoachSiteFocus } from "../../lib/admin-v2-navigation";
 import {
   getSkinsForAdminSelector,
   getCoachTemplateTheme,
@@ -47,10 +49,12 @@ import {
   logWebsiteError,
   type PublicWebsiteErrorCategory
 } from "../../lib/error-reporting";
+import { requestAdminCoachCopyWithConfirmation } from "../../lib/admin-ai/adminAICoachCopyRequest";
 import styles from "./admin-dashboard-shell.module.css";
 
 type AdminCoachSitesManagerProps = {
   csrfToken: string;
+  focusTarget?: AdminV2CoachSiteFocus | null;
   initialSites?: CoachSiteRecord[];
   initialSource?: string;
   initialWizardStep?: number;
@@ -118,7 +122,12 @@ type MediaUploadApiPayload = {
     originalUrl?: string;
     processingAttemptErrorCodes?: string[];
     processingErrorCode?: string;
-    processingProvider?: "already-transparent" | "local-browser" | "none" | "photoroom" | "removebg";
+    processingProvider?:
+      | "already-transparent"
+      | "local-browser"
+      | "none"
+      | "photoroom"
+      | "removebg";
     processingStatus?: "cutout_ready" | "disabled" | "framed_fallback" | "not_configured";
     publicUrl?: string;
     qualityStatus?: "failed" | "needs_manual_review" | "passed" | "skipped";
@@ -1344,6 +1353,7 @@ function getCopyScopeLabel(scope: CopyRegenerationScope) {
 
 export function AdminCoachSitesManager({
   csrfToken,
+  focusTarget,
   initialSites,
   initialSource,
   initialWizardStep = 0,
@@ -1419,6 +1429,7 @@ export function AdminCoachSitesManager({
   const previewSyncFormRef = useRef<CoachSiteFormState | null>(null);
   const draftSubmittingRef = useRef(false);
   const siteHighlightTimerRef = useRef<number | null>(null);
+  const appliedFocusRef = useRef("");
 
   function recordActivity(activity: AdminActionActivityInput) {
     onAdminActivity?.(activity);
@@ -1533,6 +1544,54 @@ export function AdminCoachSitesManager({
   }
 
   const visibleSites = useMemo(() => sites.filter((site) => site.status !== "removed"), [sites]);
+  useEffect(() => {
+    if (mode !== "list") return;
+    const focusKey = [
+      focusTarget?.siteId || "",
+      focusTarget?.coachId || "",
+      focusTarget?.coachSlug || ""
+    ].join("|");
+    if (!focusKey.replace(/\|/g, "")) {
+      appliedFocusRef.current = "";
+      return;
+    }
+    if (initialSource === "loading" || appliedFocusRef.current === focusKey) return;
+
+    const site = resolveAdminV2CoachSiteFocus(visibleSites, focusTarget);
+    const frame = window.requestAnimationFrame(() => {
+      appliedFocusRef.current = focusKey;
+      setStatusFilter("all");
+      setSiteSearchOpen(false);
+      if (!site) {
+        const identity =
+          focusTarget?.coachSlug ||
+          focusTarget?.coachId ||
+          focusTarget?.siteId ||
+          "requested coach";
+        setSearch(identity);
+        setHighlightedSiteId("");
+        setMessage(
+          `${identity} has no unique permission-visible coach-site match. No site action was selected.`
+        );
+        onAdminActivity?.({
+          detail: `${identity} could not be resolved to one permission-visible coach-site record.`,
+          label: "Coach Sites",
+          status: "error"
+        });
+        return;
+      }
+
+      setSearch(site.coachName);
+      setMessage(`${site.coachName} loaded from Analytics.`);
+      highlightCoachSite(site.id);
+      onAdminActivity?.({
+        detail: `${site.coachName} identity carried from Analytics into Coach Sites.`,
+        label: "Coach Sites",
+        status: "success"
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusTarget, initialSource, mode, onAdminActivity, visibleSites]);
   const siteSearchSuggestions = useMemo(
     () => getCoachSiteSearchSuggestions(visibleSites, search),
     [search, visibleSites]
@@ -1765,8 +1824,10 @@ export function AdminCoachSitesManager({
 
     if (status === "published") {
       if (!sourceForm.googleFormUrl.trim()) {
-      setMessage("Registration/contact link is required before publishing.");
-        setStorageMessage("Save as draft until the coach-specific registration/contact link is added.");
+        setMessage("Registration/contact link is required before publishing.");
+        setStorageMessage(
+          "Save as draft until the coach-specific registration/contact link is added."
+        );
         return null;
       }
 
@@ -2181,46 +2242,42 @@ export function AdminCoachSitesManager({
     sourceForm: CoachSiteFormState,
     scope: CopyRegenerationScope = "all"
   ) {
-    const response = await fetch("/api/admin/coach-sites/generate-copy", {
-      body: JSON.stringify({
-        bio: sourceForm.bio,
-        coachName: sourceForm.coachName,
-        existingPaidFunnelUrl: sourceForm.existingPaidFunnelUrl,
-        hasGoogleFormUrl: Boolean(sourceForm.googleFormUrl.trim()),
-        hasSupportContact: Boolean(
-          sourceForm.whatsappLink.trim() ||
-          sourceForm.coachEmail.trim() ||
-          sourceForm.coachPhone.trim()
-        ),
-        heroMediaType: sourceForm.heroMediaType,
-        location: sourceForm.location,
-        niche: sourceForm.niche,
-        paidFunnelContext: sourceForm.paidFunnelContext,
-        registerButtonText: sourceForm.registerButtonText,
-        scope,
-        supportText: sourceForm.supportText,
-        vision: sourceForm.vision
-      }),
-      cache: "no-store",
-      credentials: "include",
-      headers: {
-        "content-type": "application/json",
-        "x-yw-admin-csrf": csrfToken
-      },
-      method: "POST"
-    });
-    const payload = (await response.json().catch(() => ({}))) as {
-      cache?: "hit" | "miss";
-      configured?: boolean;
-      content?: GeneratedCoachCopy;
-      error?: string;
-      message?: string;
-      ok?: boolean;
-      usageEstimate?: GeneratedCoachCopyUsage;
+    const requestBody = {
+      bio: sourceForm.bio,
+      coachName: sourceForm.coachName,
+      existingPaidFunnelUrl: sourceForm.existingPaidFunnelUrl,
+      hasGoogleFormUrl: Boolean(sourceForm.googleFormUrl.trim()),
+      hasSupportContact: Boolean(
+        sourceForm.whatsappLink.trim() ||
+        sourceForm.coachEmail.trim() ||
+        sourceForm.coachPhone.trim()
+      ),
+      heroMediaType: sourceForm.heroMediaType,
+      location: sourceForm.location,
+      niche: sourceForm.niche,
+      paidFunnelContext: sourceForm.paidFunnelContext,
+      registerButtonText: sourceForm.registerButtonText,
+      scope,
+      supportText: sourceForm.supportText,
+      vision: sourceForm.vision
     };
+    const { cancelled, payload, response } =
+      await requestAdminCoachCopyWithConfirmation<GeneratedCoachCopy>({
+        body: requestBody,
+        confirmLargeRequest: (message) => window.confirm(message),
+        csrfToken
+      });
+    if (cancelled) {
+      return {
+        cancelled: true,
+        content: null,
+        message: "AI copy generation cancelled. Your form data was not changed."
+      };
+    }
 
     if (!response.ok || !payload.ok || !payload.content) {
       return {
+        cancelled: false,
         content: null,
         message:
           payload.message ||
@@ -2232,6 +2289,7 @@ export function AdminCoachSitesManager({
     }
 
     return {
+      cancelled: false,
       content: payload.content,
       message: formatAiUsageMessage(payload.usageEstimate, payload.cache)
     };
@@ -2382,6 +2440,11 @@ export function AdminCoachSitesManager({
     try {
       const result = await requestGeneratedCopy(validatedForm, "all");
 
+      if (result.cancelled) {
+        setAiMessage(result.message);
+        setMessage("AI copy generation cancelled. Preview kept the current form data.");
+        return true;
+      }
       if (result.content) {
         nextForm = applyGeneratedCopyToForm(validatedForm, result.content, "all");
         setAiMessage(
@@ -2432,6 +2495,10 @@ export function AdminCoachSitesManager({
 
     try {
       const result = await requestGeneratedCopy(validatedForm, scope);
+      if (result.cancelled) {
+        setAiMessage(result.message);
+        return;
+      }
       if (!result.content) {
         reportAiCopyIssue({
           coachSlug: normalizeCoachSlug(validatedForm.slug || validatedForm.coachName),
@@ -5566,9 +5633,9 @@ function HeroMediaStep({
         credentials: "include",
         headers: {
           "content-type": "application/json",
-          "x-yw-admin-csrf": csrfToken,
+          "x-yw-admin-csrf": csrfToken
         },
-        method: "POST",
+        method: "POST"
       });
       const payload = (await response.json().catch(() => ({}))) as MediaUploadApiPayload;
       if (!response.ok || !payload.ok || !payload.media?.publicUrl) {
@@ -5583,10 +5650,12 @@ function HeroMediaStep({
       onAdminActivity?.({
         detail: getCoachImageAdminActivityMessage(payload.media),
         label: "Coach Sites",
-        status: "success",
+        status: "success"
       });
     } catch {
-      setUploadMessage("Coach photo reprocessing could not connect. The stored original is unchanged.");
+      setUploadMessage(
+        "Coach photo reprocessing could not connect. The stored original is unchanged."
+      );
     } finally {
       setUploadingMediaType("");
       onMediaProcessingMessage("");

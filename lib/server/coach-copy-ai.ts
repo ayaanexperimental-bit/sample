@@ -1,12 +1,16 @@
+import type { D1Database } from "@cloudflare/workers-types";
 import type { CoachSiteContent } from "../admin-coach-sites";
+import { buildAdminAIContentBoundary } from "../admin-ai/adminAIContentTrust";
 import { universalCoachBonuses } from "../coach-canonical-template";
-import { requiredCoachTemplateContentFields } from "../coach-template-content-slots";
+import { aiRegeneratableCoachTemplateContentFields } from "../coach-template-content-slots";
 import { getCachedAiResult, setCachedAiResult, createStableAiHash } from "./ai-cache-service";
 import { compressAiContext } from "./ai-context-compressor";
 import { getAiModelConfig, type AiModelConfigEnv } from "./ai-model-config";
 import { estimateAiTokens, type AiUsageEstimate } from "./ai-token-estimator";
 
 export type CoachCopyAiEnv = AiModelConfigEnv & {
+  ADMIN_DB?: D1Database;
+  AI_COPY_REQUEST_TIMEOUT_MS?: string;
   OPENAI_API_KEY?: string;
 };
 
@@ -43,6 +47,20 @@ export type GeneratedCoachSiteCopy = Partial<CoachSiteContent>;
 
 const FIXED_BONUS_SERVICE_TITLES = universalCoachBonuses.map((bonus) => bonus.baseTitle);
 
+export type CoachCopyAiFailure = {
+  attempts: number;
+  code:
+    | "invalid_provider_response"
+    | "provider_rate_limited"
+    | "provider_rejected_request"
+    | "provider_timeout"
+    | "provider_unavailable"
+    | "request_limit"
+    | "usage_limit_unavailable";
+  retryAfterSeconds?: number;
+  retryable: boolean;
+};
+
 export type CoachCopyAiResult =
   | {
       cache: "hit" | "miss";
@@ -58,6 +76,7 @@ export type CoachCopyAiResult =
     }
   | {
       configured: true;
+      failure: CoachCopyAiFailure;
       message: "AI copy generation failed.";
       ok: false;
     };
@@ -271,7 +290,7 @@ const AI_COPY_SCHEMA = {
         type: "string"
       }
     },
-    required: requiredCoachTemplateContentFields,
+    required: aiRegeneratableCoachTemplateContentFields,
     type: "object"
   },
   strict: true,
@@ -281,8 +300,8 @@ const AI_COPY_SCHEMA = {
 const AI_COPY_SCHEMA_PROPERTIES = AI_COPY_SCHEMA.schema.properties;
 
 const COPY_SCOPE_FIELDS: Record<CoachCopyScope, Array<keyof CoachSiteContent>> = {
-  all: requiredCoachTemplateContentFields,
-  benefits: ["benefitsSectionLabel", "benefitsHeading", "benefits", "benefitDescriptions"],
+  all: aiRegeneratableCoachTemplateContentFields,
+  benefits: ["benefitsSectionLabel", "benefitsHeading", "benefitDescriptions"],
   cta: [
     "ctaSectionLabel",
     "ctaText",
@@ -300,7 +319,7 @@ const COPY_SCOPE_FIELDS: Record<CoachCopyScope, Array<keyof CoachSiteContent>> =
     "supportWhatsappLabel"
   ],
   faq: ["faqSectionLabel", "faqHeading", "faq"],
-  footer: ["footerBrandLine", "footerHeadline", "footerText", "supportPrivacyNote"],
+  footer: ["footerHeadline"],
   hero: [
     "brandBadge",
     "brandEyebrow",
@@ -318,6 +337,10 @@ const COPY_SCOPE_FIELDS: Record<CoachCopyScope, Array<keyof CoachSiteContent>> =
   vision: ["visionLabel", "visionText"]
 };
 
+export function getCoachCopyScopeFields(scope: CoachCopyScope) {
+  return [...COPY_SCOPE_FIELDS[scope]];
+}
+
 const COPY_SCOPE_MAX_OUTPUT_TOKENS: Record<CoachCopyScope, number> = {
   all: 3200,
   benefits: 450,
@@ -332,6 +355,91 @@ const COPY_SCOPE_MAX_OUTPUT_TOKENS: Record<CoachCopyScope, number> = {
   vision: 300
 };
 
+const LARGE_INPUT_CHARACTER_THRESHOLD = 8_000;
+const LARGE_INPUT_TOKEN_THRESHOLD = 4_000;
+const PROVIDER_MAX_ATTEMPTS = 2;
+const PROVIDER_TIMEOUT_DEFAULT_MS = 12_000;
+const PROVIDER_TIMEOUT_MAX_MS = 30_000;
+const PROVIDER_TIMEOUT_MIN_MS = 25;
+const USAGE_LIMIT_MAX_REQUESTS = 12;
+const USAGE_LIMIT_WINDOW_SECONDS = 60;
+const usageLimitSchemaReady = new WeakSet<D1Database>();
+
+const AI_COACH_COPY_USAGE_SCHEMA = `CREATE TABLE IF NOT EXISTS ai_coach_copy_usage_limits (
+  identity_hash TEXT PRIMARY KEY,
+  request_count INTEGER NOT NULL,
+  reset_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+)`;
+
+export function getCoachCopyRequestPreflight(input: CoachCopyAiInput, env: CoachCopyAiEnv) {
+  const prepared = prepareCoachCopyRequest(input, env);
+  return {
+    confirmationRequired:
+      countNormalizedSourceCharacters(input) >= LARGE_INPUT_CHARACTER_THRESHOLD ||
+      prepared.usageEstimate.estimatedInputTokens >= LARGE_INPUT_TOKEN_THRESHOLD,
+    usageEstimate: prepared.usageEstimate
+  };
+}
+
+export async function consumeCoachCopyUsage(
+  identity: string,
+  env: CoachCopyAiEnv,
+  now = Math.floor(Date.now() / 1000)
+) {
+  const db = env.ADMIN_DB;
+  if (!db) {
+    return {
+      allowed: false as const,
+      reason: "unavailable" as const,
+      retryAfterSeconds: USAGE_LIMIT_WINDOW_SECONDS
+    };
+  }
+
+  try {
+    if (!usageLimitSchemaReady.has(db)) {
+      await db.prepare(AI_COACH_COPY_USAGE_SCHEMA).run();
+      usageLimitSchemaReady.add(db);
+    }
+    const identityHash = createStableAiHash(identity.trim().toLowerCase() || "unknown-admin");
+    const resetAt = now + USAGE_LIMIT_WINDOW_SECONDS;
+    const consumed = await db
+      .prepare(
+        `INSERT INTO ai_coach_copy_usage_limits (
+          identity_hash, request_count, reset_at, updated_at
+        ) VALUES (?1, 1, ?2, ?3)
+        ON CONFLICT(identity_hash) DO UPDATE SET
+          request_count = CASE
+            WHEN reset_at <= ?3 THEN 1
+            ELSE request_count + 1
+          END,
+          reset_at = CASE
+            WHEN reset_at <= ?3 THEN ?2
+            ELSE reset_at
+          END,
+          updated_at = ?3
+        WHERE reset_at <= ?3 OR request_count < ?4
+        RETURNING request_count, reset_at`
+      )
+      .bind(identityHash, resetAt, now, USAGE_LIMIT_MAX_REQUESTS)
+      .first<{ request_count: number; reset_at: number }>();
+
+    return consumed
+      ? { allowed: true as const }
+      : {
+          allowed: false as const,
+          reason: "limit" as const,
+          retryAfterSeconds: USAGE_LIMIT_WINDOW_SECONDS
+        };
+  } catch {
+    return {
+      allowed: false as const,
+      reason: "unavailable" as const,
+      retryAfterSeconds: USAGE_LIMIT_WINDOW_SECONDS
+    };
+  }
+}
+
 export async function generateCoachSiteCopyWithAi(
   input: CoachCopyAiInput,
   env: CoachCopyAiEnv
@@ -345,12 +453,8 @@ export async function generateCoachSiteCopyWithAi(
     };
   }
 
-  const scope = normalizeCopyScope(input.scope);
-  const config = getAiModelConfig(env);
-  const normalizedInput = normalizeAiInput(input, config.maxInputTokens);
-  const prompt = createCoachCopyPrompt(normalizedInput, scope);
-  const maxOutputTokens = Math.min(COPY_SCOPE_MAX_OUTPUT_TOKENS[scope], config.maxOutputTokens);
-  const usageEstimate = estimateAiTokens(prompt, maxOutputTokens);
+  const { config, maxOutputTokens, normalizedInput, prompt, scope, usageEstimate } =
+    prepareCoachCopyRequest(input, env);
   const cacheKey = createStableAiHash(
     JSON.stringify({
       model: config.copyModel,
@@ -370,45 +474,40 @@ export async function generateCoachSiteCopyWithAi(
     };
   }
 
-  try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      body: JSON.stringify({
-        input: prompt,
-        instructions:
-          "Generate only editable website copy for the single canonical YW Nutritech Circle coach page. Do not propose design changes, backend logic, database schema, security settings, payment changes, or third-party automation. Keep copy practical, ethical, and education-first.",
-        max_output_tokens: maxOutputTokens,
-        model: config.copyModel,
-        reasoning: {
-          effort: "minimal"
-        },
-        store: false,
-        text: {
-          format: createCopySchemaForScope(scope)
-        }
-      }),
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        "content-type": "application/json"
+  const providerResult = await requestCoachCopyProvider({
+    apiKey,
+    body: JSON.stringify({
+      input: prompt,
+      instructions:
+        "Generate only editable website copy for the single canonical YW Nutritech Circle coach page. Do not propose design changes, backend logic, database schema, security settings, payment changes, or third-party automation. Keep copy practical, ethical, and education-first.",
+      max_output_tokens: maxOutputTokens,
+      model: config.copyModel,
+      reasoning: {
+        effort: "minimal"
       },
-      method: "POST"
-    });
+      store: false,
+      text: {
+        format: createCopySchemaForScope(scope)
+      }
+    }),
+    timeoutMs: parseBoundedInteger(
+      env.AI_COPY_REQUEST_TIMEOUT_MS,
+      PROVIDER_TIMEOUT_DEFAULT_MS,
+      PROVIDER_TIMEOUT_MIN_MS,
+      PROVIDER_TIMEOUT_MAX_MS
+    )
+  });
+  if (!providerResult.ok) return providerFailure(providerResult.failure);
 
-    if (!response.ok) {
-      return {
-        configured: true,
-        message: "AI copy generation failed.",
-        ok: false
-      };
-    }
-
-    const payload = (await response.json()) as OpenAiResponse;
+  try {
+    const payload = JSON.parse(providerResult.body) as OpenAiResponse;
     const content = parseCoachCopy(extractResponseText(payload), scope, normalizedInput);
     if (!content) {
-      return {
-        configured: true,
-        message: "AI copy generation failed.",
-        ok: false
-      };
+      return providerFailure({
+        attempts: providerResult.attempts,
+        code: "invalid_provider_response",
+        retryable: false
+      });
     }
 
     if (config.cachingEnabled) setCachedAiResult(cacheKey, content);
@@ -421,12 +520,151 @@ export async function generateCoachSiteCopyWithAi(
       usageEstimate
     };
   } catch {
+    return providerFailure({
+      attempts: providerResult.attempts,
+      code: "invalid_provider_response",
+      retryable: false
+    });
+  }
+}
+
+function prepareCoachCopyRequest(input: CoachCopyAiInput, env: CoachCopyAiEnv) {
+  const scope = normalizeCopyScope(input.scope);
+  const config = getAiModelConfig(env);
+  const normalizedInput = normalizeAiInput(input, config.maxInputTokens);
+  const prompt = createCoachCopyPrompt(normalizedInput, scope);
+  const maxOutputTokens = Math.min(COPY_SCOPE_MAX_OUTPUT_TOKENS[scope], config.maxOutputTokens);
+
+  return {
+    config,
+    maxOutputTokens,
+    normalizedInput,
+    prompt,
+    scope,
+    usageEstimate: estimateAiTokens(prompt, maxOutputTokens)
+  };
+}
+
+async function requestCoachCopyProvider({
+  apiKey,
+  body,
+  timeoutMs
+}: {
+  apiKey: string;
+  body: string;
+  timeoutMs: number;
+}): Promise<
+  { attempts: number; body: string; ok: true } | { failure: CoachCopyAiFailure; ok: false }
+> {
+  for (let attempt = 1; attempt <= PROVIDER_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch("https://api.openai.com/v1/responses", {
+        body,
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          "content-type": "application/json"
+        },
+        method: "POST",
+        signal: AbortSignal.timeout(timeoutMs)
+      });
+      if (response.ok) return { attempts: attempt, body: await response.text(), ok: true };
+
+      const failure = classifyProviderResponse(response, attempt);
+      if (attempt < PROVIDER_MAX_ATTEMPTS && shouldRetryProviderStatus(response.status)) continue;
+      return { failure, ok: false };
+    } catch (error) {
+      if (isTimeoutError(error)) {
+        return {
+          failure: {
+            attempts: attempt,
+            code: "provider_timeout",
+            retryable: true
+          },
+          ok: false
+        };
+      }
+      if (attempt < PROVIDER_MAX_ATTEMPTS) continue;
+      return {
+        failure: {
+          attempts: attempt,
+          code: "provider_unavailable",
+          retryable: true
+        },
+        ok: false
+      };
+    }
+  }
+
+  return {
+    failure: {
+      attempts: PROVIDER_MAX_ATTEMPTS,
+      code: "provider_unavailable",
+      retryable: true
+    },
+    ok: false
+  };
+}
+
+function classifyProviderResponse(response: Response, attempts: number): CoachCopyAiFailure {
+  if (response.status === 429) {
+    const retryAfterSeconds = parseRetryAfter(response.headers.get("retry-after"));
     return {
-      configured: true,
-      message: "AI copy generation failed.",
-      ok: false
+      attempts,
+      code: "provider_rate_limited",
+      ...(retryAfterSeconds ? { retryAfterSeconds } : {}),
+      retryable: true
     };
   }
+  if (shouldRetryProviderStatus(response.status)) {
+    return { attempts, code: "provider_unavailable", retryable: true };
+  }
+  return { attempts, code: "provider_rejected_request", retryable: false };
+}
+
+function providerFailure(failure: CoachCopyAiFailure): CoachCopyAiResult {
+  return {
+    configured: true,
+    failure,
+    message: "AI copy generation failed.",
+    ok: false
+  };
+}
+
+function shouldRetryProviderStatus(status: number) {
+  return status === 408 || (status >= 500 && status <= 599);
+}
+
+function isTimeoutError(error: unknown) {
+  return isRecord(error) && (error.name === "AbortError" || error.name === "TimeoutError");
+}
+
+function parseRetryAfter(value: string | null) {
+  const seconds = Number.parseInt(value || "", 10);
+  return Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds, 3600) : null;
+}
+
+function parseBoundedInteger(
+  value: string | undefined,
+  fallback: number,
+  minimum: number,
+  maximum: number
+) {
+  const parsed = Number.parseInt(value || "", 10);
+  return Number.isFinite(parsed) ? Math.max(minimum, Math.min(maximum, parsed)) : fallback;
+}
+
+function countNormalizedSourceCharacters(input: CoachCopyAiInput) {
+  return [
+    sanitizeAiField(input.coachName, 160),
+    sanitizeAiField(input.niche, 160),
+    sanitizeAiField(input.location, 160),
+    sanitizeAiField(input.bio, 1200),
+    sanitizeAiField(input.vision, 1200),
+    sanitizeAiField(input.existingPaidFunnelUrl, 1200),
+    sanitizeAiField(input.paidFunnelContext, 7000),
+    sanitizeAiField(input.registerButtonText, 80),
+    sanitizeAiField(input.supportText, 400)
+  ].reduce((total, value) => total + value.length, 0);
 }
 
 function normalizeAiInput(input: CoachCopyAiInput, maxInputTokens: number): CoachCopyAiInput {
@@ -474,25 +712,31 @@ function createCopySchemaForScope(scope: CoachCopyScope) {
 }
 
 function createCoachCopyPrompt(input: CoachCopyAiInput, scope: CoachCopyScope) {
+  const coachProfile = createUntrustedContentBlock("COACH PROFILE", "coach-copy", {
+    bio: input.bio || "Not provided",
+    coachName: input.coachName,
+    location: input.location || "Not provided",
+    niche: input.niche,
+    vision: input.vision || "Not provided"
+  });
+  const adminForm = createUntrustedContentBlock("ADMIN FORM", "form-submission", {
+    hasGoogleFormUrl: input.hasGoogleFormUrl === true,
+    hasSupportContact: input.hasSupportContact === true,
+    heroMediaType: input.heroMediaType || "none",
+    registerButtonText: input.registerButtonText || "Register Now",
+    supportText: input.supportText || "Not provided"
+  });
+  const externalPage = createUntrustedContentBlock("EXTERNAL PAGE", "external-page", {
+    existingPaidFunnelUrl: input.existingPaidFunnelUrl || "Not provided",
+    paidFunnelContext: input.paidFunnelContext || "Not provided"
+  });
+
   return [
     "Create copy for the single canonical Yours Wellness fixed-template coach referral page.",
     `Requested generation scope: ${getPromptScopeLabel(scope)}.`,
-    `Coach name: ${input.coachName}`,
-    `Coach niche: ${input.niche}`,
-    `Coach location: ${input.location || "Not provided"}`,
-    `Coach short bio: ${input.bio || "Not provided"}`,
-    `Coach vision/mission: ${input.vision || "Not provided"}`,
-    input.existingPaidFunnelUrl
-      ? `Existing paid funnel page URL analyzed by admin: ${input.existingPaidFunnelUrl}`
-      : "Existing paid funnel page URL: Not provided",
-    input.paidFunnelContext
-      ? `Clean visible context extracted from the existing paid funnel page:\n${input.paidFunnelContext.slice(0, 7000)}`
-      : "Extracted paid funnel page context: Not provided",
-    `Hero media type selected: ${input.heroMediaType || "none"}`,
-    `Registration link configured: ${input.hasGoogleFormUrl ? "yes" : "no"}`,
-    `Preferred register button text: ${input.registerButtonText || "Register Now"}`,
-    `Hidden fallback support text configured: ${input.supportText ? "yes" : "no"}`,
-    `Hidden fallback support contact configured: ${input.hasSupportContact ? "yes" : "no"}`,
+    coachProfile,
+    adminForm,
+    externalPage,
     "The public page leads to a Google Form register button when configured. Do not claim form submissions are tracked.",
     "Do not generate or alter Google Form URLs. Each coach site uses its own admin/shop-provided registration link.",
     "Do not generate or alter support contact details, public slugs, analytics behavior, payment/security logic, legal link destinations, or YW Nutritech branding placement.",
@@ -515,9 +759,27 @@ function createCoachCopyPrompt(input: CoachCopyAiInput, scope: CoachCopyScope) {
     "Every visible text slot must be specific to the coach, niche, location, and available context. Avoid generic placeholder-like copy.",
     "Keep legal/safety language education-first. Do not promise cures, guaranteed results, diagnosis, treatment, or disease reversal.",
     scope === "all"
-      ? `Generate the complete content object for these visible template fields: ${requiredCoachTemplateContentFields.join(", ")}.`
+      ? `Generate the complete content object for these AI-regeneratable template fields: ${COPY_SCOPE_FIELDS.all.join(", ")}.`
       : "Generate only the requested section fields in the schema. Do not include unrelated fields.",
     "Return structured copy only in the requested JSON schema."
+  ].join("\n");
+}
+
+function createUntrustedContentBlock(
+  label: "ADMIN FORM" | "COACH PROFILE" | "EXTERNAL PAGE",
+  source: "coach-copy" | "external-page" | "form-submission",
+  content: Record<string, unknown>
+) {
+  const boundary = buildAdminAIContentBoundary({ content: JSON.stringify(content), source });
+
+  return [
+    `BEGIN UNTRUSTED ${label}`,
+    `source: ${boundary.source}`,
+    `trust: ${boundary.trust}`,
+    `action authority: ${boundary.actionAuthority}`,
+    boundary.instruction,
+    `payload: ${boundary.content}`,
+    `END UNTRUSTED ${label}`
   ].join("\n");
 }
 

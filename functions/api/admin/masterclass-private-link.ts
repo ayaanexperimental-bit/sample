@@ -1,4 +1,5 @@
 import type { D1Database } from "@cloudflare/workers-types";
+import { adminControlCenterData } from "../../../lib/admin-control-center";
 import { funnels, getFunnelByEntryCode, isPaidProgramFunnel } from "../../../lib/coach-platform";
 import {
   adminAuthorizationResponse,
@@ -251,12 +252,18 @@ export async function onRequest({ request, env }: PagesContext) {
 }
 
 async function getPaidLinkMetadata(env: Env) {
-  return Promise.all(
+  const metadata = await Promise.all(
     funnels.filter(isPaidProgramFunnel).map(async (funnel) => ({
       entryCode: funnel.entryCode,
       ...(await getPrivateWhatsappLinkMetadata(funnel, env))
     }))
   );
+  const metadataByFunnelId = new Map(metadata.map((item) => [item.funnelId, item]));
+
+  return adminControlCenterData.paidMasterclassLinks.map((link) => ({
+    ...link,
+    ...metadataByFunnelId.get(link.funnelId)
+  }));
 }
 
 async function verifyRevealOtp({

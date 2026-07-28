@@ -1,7 +1,10 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { adminJson, readJsonBody, requireAdmin } from "../../../../lib/server/admin-auth";
 import {
+  consumeCoachCopyUsage,
   type CoachCopyAiInput,
+  type CoachCopyAiFailure,
+  getCoachCopyRequestPreflight,
   generateCoachSiteCopyWithAi
 } from "../../../../lib/server/coach-copy-ai";
 
@@ -14,6 +17,7 @@ type Env = {
   ADMIN_SESSION_SECRET?: string;
   AI_ANALYTICS_MODEL?: string;
   AI_COPY_MODEL?: string;
+  AI_COPY_REQUEST_TIMEOUT_MS?: string;
   AI_ENABLE_CACHING?: string;
   AI_EXTRACT_MODEL?: string;
   AI_MAX_INPUT_TOKENS?: string;
@@ -30,6 +34,7 @@ type PagesContext = {
 type GenerateCopyBody = {
   bio?: unknown;
   coachName?: unknown;
+  confirmLargeRequest?: unknown;
   existingPaidFunnelUrl?: unknown;
   hasGoogleFormUrl?: unknown;
   hasSupportContact?: unknown;
@@ -62,6 +67,30 @@ export async function onRequest({ request, env }: PagesContext) {
     return adminJson({ ok: false, error: "Coach name and coach niche are required." }, 400);
   }
 
+  if (env.OPENAI_API_KEY?.trim()) {
+    const preflight = getCoachCopyRequestPreflight(input, env);
+    if (preflight.confirmationRequired && body?.confirmLargeRequest !== true) {
+      return adminJson(
+        {
+          code: "large_input_confirmation_required",
+          confirmationRequired: true,
+          configured: true,
+          message: "This AI copy request is large. Confirm it before using provider capacity.",
+          ok: false,
+          usageEstimate: preflight.usageEstimate
+        },
+        409
+      );
+    }
+
+    const usageLimit = await consumeCoachCopyUsage(admin.admin.email, env);
+    if (!usageLimit.allowed) {
+      return usageLimit.reason === "limit"
+        ? requestLimitResponse(env, usageLimit.retryAfterSeconds)
+        : usageLimitUnavailableResponse(env, usageLimit.retryAfterSeconds);
+    }
+  }
+
   const result = await generateCoachSiteCopyWithAi(input, env);
   if (!result.ok && !result.configured) {
     return adminJson(
@@ -78,10 +107,12 @@ export async function onRequest({ request, env }: PagesContext) {
     return adminJson(
       {
         configured: true,
+        failure: result.failure,
         message: result.message,
         ok: false
       },
-      502
+      result.failure.retryable ? 503 : 502,
+      retryHeaders(result.failure)
     );
   }
 
@@ -92,6 +123,48 @@ export async function onRequest({ request, env }: PagesContext) {
     ok: true,
     usageEstimate: result.usageEstimate
   });
+}
+
+function requestLimitResponse(env: Env, retryAfterSeconds: number) {
+  const failure: CoachCopyAiFailure = {
+    attempts: 0,
+    code: "request_limit",
+    retryAfterSeconds,
+    retryable: true
+  };
+  return adminJson(
+    {
+      configured: Boolean(env.OPENAI_API_KEY?.trim()),
+      failure,
+      message: "AI copy request limit reached. Try again shortly.",
+      ok: false
+    },
+    429,
+    retryHeaders(failure)
+  );
+}
+
+function usageLimitUnavailableResponse(env: Env, retryAfterSeconds: number) {
+  const failure: CoachCopyAiFailure = {
+    attempts: 0,
+    code: "usage_limit_unavailable",
+    retryAfterSeconds,
+    retryable: true
+  };
+  return adminJson(
+    {
+      configured: Boolean(env.OPENAI_API_KEY?.trim()),
+      failure,
+      message: "AI copy usage controls are unavailable. Try again shortly.",
+      ok: false
+    },
+    503,
+    retryHeaders(failure)
+  );
+}
+
+function retryHeaders(failure: CoachCopyAiFailure): Record<string, string> {
+  return failure.retryAfterSeconds ? { "retry-after": String(failure.retryAfterSeconds) } : {};
 }
 
 function parseGenerateCopyBody(body: GenerateCopyBody | null): CoachCopyAiInput | null {

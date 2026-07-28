@@ -36,6 +36,7 @@ import type {
   AnalyticsTimeSeriesPoint
 } from "../../lib/analytics-events";
 import type { CoachSiteRecord } from "../../lib/admin-coach-sites";
+import type { AdminV2CoachSiteFocus } from "../../lib/admin-v2-access";
 import {
   buildCoachAnalyticsRows,
   filterCoachAnalyticsRows,
@@ -51,8 +52,9 @@ export type AdminDashboardShellProps = {
   adminAccess?: AdminAccessProfileClient | null;
   csrfToken: string;
   dashboardAddon?: ReactNode;
-  onActiveViewChange?: (viewId: AdminViewId) => void;
+  onActiveViewChange?: (viewId: AdminViewId, coachSiteFocus?: AdminV2CoachSiteFocus | null) => void;
   onLogout: () => void;
+  requestedCoachSiteFocus?: AdminV2CoachSiteFocus | null;
   requestedView?: AdminViewId;
   sessionEmail?: string;
   variant?: "classic" | "v2";
@@ -229,6 +231,11 @@ type AdminAiAnalyticsInsight = {
 type AdminAiAnalyticsPayload = {
   cache?: "hit" | "miss";
   configured?: boolean;
+  failure?: {
+    attempts: number;
+    code: string;
+    retryable: boolean;
+  };
   insight?: AdminAiAnalyticsInsight;
   message?: string;
   ok?: boolean;
@@ -410,7 +417,11 @@ export const navSections: AdminNavSection[] = [
     items: [
       { id: "overview", label: "Overview", description: "Key metrics and alerts" },
       { id: "coach-sites", label: "Coach Sites", description: "Search and manage sites" },
-      { id: "create-coach-site", label: "Create Coach Site", description: "Create a coach website" },
+      {
+        id: "create-coach-site",
+        label: "Create Coach Site",
+        description: "Create a coach website"
+      },
       { id: "coach-analytics", label: "Coach Analytics", description: "Coach-wise metrics" },
       { id: "top-coaches", label: "Top Performers", description: "Best coaches" },
       {
@@ -478,6 +489,7 @@ export function AdminDashboardShell({
   dashboardAddon,
   onActiveViewChange,
   onLogout,
+  requestedCoachSiteFocus,
   requestedView,
   sessionEmail,
   variant = "classic"
@@ -502,6 +514,9 @@ export function AdminDashboardShell({
   const [analyticsTimeSeries, setAnalyticsTimeSeries] = useState<AnalyticsTimeSeriesPoint[]>([]);
   const [recentAnalyticsEvents, setRecentAnalyticsEvents] = useState<AnalyticsRecentEvent[]>([]);
   const [liveCoachSites, setLiveCoachSites] = useState<CoachSiteRecord[]>([]);
+  const [coachSiteFocus, setCoachSiteFocus] = useState<AdminV2CoachSiteFocus | null>(
+    requestedCoachSiteFocus || null
+  );
   const [coachSiteSource, setCoachSiteSource] = useState("loading");
   const [dashboardDataUpdatedAt, setDashboardDataUpdatedAt] = useState("");
   const [activityCenterOpen, setActivityCenterOpen] = useState(false);
@@ -515,9 +530,10 @@ export function AdminDashboardShell({
       navSections
         .map((section) => ({
           ...section,
-          items: section.items.filter((item) =>
-            canAccessAdminView(adminAccess, item.id as AdminViewId) &&
-            !(variant === "v2" && adminV2MergedNavViews.has(item.id as AdminViewId))
+          items: section.items.filter(
+            (item) =>
+              canAccessAdminView(adminAccess, item.id as AdminViewId) &&
+              !(variant === "v2" && adminV2MergedNavViews.has(item.id as AdminViewId))
           )
         }))
         .filter((section) => section.items.length > 0),
@@ -560,6 +576,14 @@ export function AdminDashboardShell({
     });
     return () => window.cancelAnimationFrame(frame);
   }, [activeView, adminAccess, onActiveViewChange, requestedView]);
+
+  useEffect(() => {
+    if (requestedView !== "coach-sites") return;
+    const frame = window.requestAnimationFrame(() => {
+      setCoachSiteFocus(requestedCoachSiteFocus || null);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [requestedCoachSiteFocus, requestedView]);
 
   useEffect(() => {
     if (!hasAdminPermission(adminAccess, "error_reports.view")) {
@@ -731,11 +755,25 @@ export function AdminDashboardShell({
     );
   }
 
-  function selectView(viewId: string) {
+  function selectView(viewId: string, nextCoachSiteFocus: AdminV2CoachSiteFocus | null = null) {
     const nextView = viewId as AdminViewId;
     if (!canAccessAdminView(adminAccess, nextView)) return;
+    setCoachSiteFocus(nextView === "coach-sites" ? nextCoachSiteFocus : null);
     setActiveView(nextView);
-    onActiveViewChange?.(nextView);
+    onActiveViewChange?.(nextView, nextView === "coach-sites" ? nextCoachSiteFocus : null);
+  }
+
+  function openClassicCoachSite(row: CoachAnalyticsRow) {
+    const exactMatches = liveCoachSites.filter(
+      (site) =>
+        site.coachId === row.coachId ||
+        site.slug.trim().toLowerCase() === row.coachSlug.trim().toLowerCase()
+    );
+    selectView("coach-sites", {
+      coachId: row.coachId,
+      coachSlug: row.coachSlug,
+      ...(exactMatches.length === 1 ? { siteId: exactMatches[0].id } : {})
+    });
   }
 
   function toggleAdminTheme() {
@@ -813,141 +851,142 @@ export function AdminDashboardShell({
           ) : (
             <>
               {activeView === "overview" && !(variant === "v2" && dashboardAddon) ? (
-              <OverviewView
-                analyticsCustomEnd={analyticsCustomEnd}
-                analyticsCustomStart={analyticsCustomStart}
-                analyticsRange={analyticsRange}
-                analyticsRangeMeta={analyticsRangeMeta}
-                analyticsSource={analyticsSource}
-                analyticsSummaries={analyticsSummaries}
-                analyticsTimeSeries={analyticsTimeSeries}
-                coachSites={liveCoachSites}
-                csrfToken={csrfToken}
-                dataLoading={dashboardDataLoading}
-                dataUpdatedAt={dashboardDataUpdatedAt}
-                errorReports={errorReports}
-                errorReportSource={errorReportSource}
-                onSelect={selectView}
-                onAnalyticsRangeChange={setAnalyticsRange}
-                onAnalyticsCustomEndChange={setAnalyticsCustomEnd}
-                onAnalyticsCustomStartChange={setAnalyticsCustomStart}
-                onAdminActivity={recordAdminActionActivity}
-                previousAnalyticsSummaries={previousAnalyticsSummaries}
-                recentEvents={recentAnalyticsEvents}
-                source={coachSiteSource}
-              />
+                <OverviewView
+                  analyticsCustomEnd={analyticsCustomEnd}
+                  analyticsCustomStart={analyticsCustomStart}
+                  analyticsRange={analyticsRange}
+                  analyticsRangeMeta={analyticsRangeMeta}
+                  analyticsSource={analyticsSource}
+                  analyticsSummaries={analyticsSummaries}
+                  analyticsTimeSeries={analyticsTimeSeries}
+                  coachSites={liveCoachSites}
+                  csrfToken={csrfToken}
+                  dataLoading={dashboardDataLoading}
+                  dataUpdatedAt={dashboardDataUpdatedAt}
+                  errorReports={errorReports}
+                  errorReportSource={errorReportSource}
+                  onSelect={selectView}
+                  onAnalyticsRangeChange={setAnalyticsRange}
+                  onAnalyticsCustomEndChange={setAnalyticsCustomEnd}
+                  onAnalyticsCustomStartChange={setAnalyticsCustomStart}
+                  onAdminActivity={recordAdminActionActivity}
+                  previousAnalyticsSummaries={previousAnalyticsSummaries}
+                  recentEvents={recentAnalyticsEvents}
+                  source={coachSiteSource}
+                />
               ) : null}
 
               {activeView === "coach-sites" ? (
-              <AdminPageShell
-                actions={
-                  hasAdminPermission(adminAccess, "website_creator.create") ? (
-                    <button
-                      className={styles.primaryAction}
-                      onClick={() => selectView("create-coach-site")}
-                      type="button"
-                    >
-                      Create Coach Site
-                    </button>
-                  ) : null
-                }
-                eyebrow="Coach Sites"
-                title="All Coach Sites"
-              >
-                <AdminCoachSitesManager
-                  csrfToken={csrfToken}
-                  initialSites={liveCoachSites}
-                  initialSource={coachSiteSource}
-                  mode="list"
-                  onAdminActivity={recordAdminActionActivity}
-                  onSitesChange={setLiveCoachSites}
-                />
-              </AdminPageShell>
+                <AdminPageShell
+                  actions={
+                    hasAdminPermission(adminAccess, "website_creator.create") ? (
+                      <button
+                        className={styles.primaryAction}
+                        onClick={() => selectView("create-coach-site")}
+                        type="button"
+                      >
+                        Create Coach Site
+                      </button>
+                    ) : null
+                  }
+                  eyebrow="Coach Sites"
+                  title="All Coach Sites"
+                >
+                  <AdminCoachSitesManager
+                    csrfToken={csrfToken}
+                    focusTarget={coachSiteFocus}
+                    initialSites={liveCoachSites}
+                    initialSource={coachSiteSource}
+                    mode="list"
+                    onAdminActivity={recordAdminActionActivity}
+                    onSitesChange={setLiveCoachSites}
+                  />
+                </AdminPageShell>
               ) : null}
 
               {activeView === "create-coach-site" ? (
-              <AdminPageShell eyebrow="Coach Sites" title="Create Coach Site">
-                <AdminCoachSitesManager
-                  csrfToken={csrfToken}
-                  initialSites={liveCoachSites}
-                  initialSource={coachSiteSource}
-                  mode="create"
-                  onAdminActivity={recordAdminActionActivity}
-                  onSitesChange={setLiveCoachSites}
-                />
-              </AdminPageShell>
+                <AdminPageShell eyebrow="Coach Sites" title="Create Coach Site">
+                  <AdminCoachSitesManager
+                    csrfToken={csrfToken}
+                    initialSites={liveCoachSites}
+                    initialSource={coachSiteSource}
+                    mode="create"
+                    onAdminActivity={recordAdminActionActivity}
+                    onSitesChange={setLiveCoachSites}
+                  />
+                </AdminPageShell>
               ) : null}
 
               {activeView === "top-coaches" ? (
-              <TopCoachesView
-                analyticsSource={analyticsSource}
-                analyticsSummaries={analyticsSummaries}
-                coachSites={liveCoachSites}
-                dataLoading={analyticsSource === "loading" || coachSiteSource === "loading"}
-              />
+                <TopCoachesView
+                  analyticsSource={analyticsSource}
+                  analyticsSummaries={analyticsSummaries}
+                  coachSites={liveCoachSites}
+                  dataLoading={analyticsSource === "loading" || coachSiteSource === "loading"}
+                />
               ) : null}
               {activeView === "coach-analytics" ? (
-              <CoachAnalyticsView
-                analyticsCustomEnd={analyticsCustomEnd}
-                analyticsCustomStart={analyticsCustomStart}
-                analyticsRange={analyticsRange}
-                analyticsSource={analyticsSource}
-                analyticsSummaries={analyticsSummaries}
-                coachSites={liveCoachSites}
-                csrfToken={csrfToken}
-                dataLoading={analyticsSource === "loading" || coachSiteSource === "loading"}
-                dataUpdatedAt={dashboardDataUpdatedAt}
-                onAnalyticsCustomEndChange={setAnalyticsCustomEnd}
-                onAnalyticsCustomStartChange={setAnalyticsCustomStart}
-                onAnalyticsRangeChange={setAnalyticsRange}
-                onAdminActivity={recordAdminActionActivity}
-                onSelect={selectView}
-                source={coachSiteSource}
-              />
-            ) : null}
-            {activeView === "paid-masterclass-settings" ? (
-              <MasterclassLinksView
-                control={control}
-                csrfToken={csrfToken}
-                onAdminActivity={recordAdminActionActivity}
-              />
-            ) : null}
-            {activeView === "shop" ? (
-              <ShopView csrfToken={csrfToken} onAdminActivity={recordAdminActionActivity} />
-            ) : null}
-            {activeView === "error-reports" ? (
-              <ErrorReportsView
-                csrfToken={csrfToken}
-                errorReports={errorReports}
-                onAdminActivity={recordAdminActionActivity}
-                onOpenBackupCleanup={() => selectView("backup-cleanup")}
-                onReportsChange={setErrorReports}
-                source={errorReportSource}
-              />
-            ) : null}
-            {activeView === "backup-cleanup" ? (
-              <BackupCleanupView
-                control={control}
-                csrfToken={csrfToken}
-                onAdminActivity={recordAdminActionActivity}
-              />
-            ) : null}
-            {activeView === "settings" ? (
-              <SettingsView
-                adminAccess={adminAccess}
-                control={control}
-                csrfToken={csrfToken}
-                onAction={openAction}
-                onAdminActivity={recordAdminActionActivity}
-                onOpenAdminUsers={() => selectView("admin-users")}
-              />
-            ) : null}
-            {activeView === "admin-users" ? (
-              <AdminUserManagement
-                csrfToken={csrfToken}
-                onAdminActivity={recordAdminActionActivity}
-              />
-            ) : null}
+                <CoachAnalyticsView
+                  analyticsCustomEnd={analyticsCustomEnd}
+                  analyticsCustomStart={analyticsCustomStart}
+                  analyticsRange={analyticsRange}
+                  analyticsSource={analyticsSource}
+                  analyticsSummaries={analyticsSummaries}
+                  coachSites={liveCoachSites}
+                  csrfToken={csrfToken}
+                  dataLoading={analyticsSource === "loading" || coachSiteSource === "loading"}
+                  dataUpdatedAt={dashboardDataUpdatedAt}
+                  onAnalyticsCustomEndChange={setAnalyticsCustomEnd}
+                  onAnalyticsCustomStartChange={setAnalyticsCustomStart}
+                  onAnalyticsRangeChange={setAnalyticsRange}
+                  onAdminActivity={recordAdminActionActivity}
+                  onOpenCoachSites={openClassicCoachSite}
+                  source={coachSiteSource}
+                />
+              ) : null}
+              {activeView === "paid-masterclass-settings" ? (
+                <MasterclassLinksView
+                  control={control}
+                  csrfToken={csrfToken}
+                  onAdminActivity={recordAdminActionActivity}
+                />
+              ) : null}
+              {activeView === "shop" ? (
+                <ShopView csrfToken={csrfToken} onAdminActivity={recordAdminActionActivity} />
+              ) : null}
+              {activeView === "error-reports" ? (
+                <ErrorReportsView
+                  csrfToken={csrfToken}
+                  errorReports={errorReports}
+                  onAdminActivity={recordAdminActionActivity}
+                  onOpenBackupCleanup={() => selectView("backup-cleanup")}
+                  onReportsChange={setErrorReports}
+                  source={errorReportSource}
+                />
+              ) : null}
+              {activeView === "backup-cleanup" ? (
+                <BackupCleanupView
+                  control={control}
+                  csrfToken={csrfToken}
+                  onAdminActivity={recordAdminActionActivity}
+                />
+              ) : null}
+              {activeView === "settings" ? (
+                <SettingsView
+                  adminAccess={adminAccess}
+                  control={control}
+                  csrfToken={csrfToken}
+                  onAction={openAction}
+                  onAdminActivity={recordAdminActionActivity}
+                  onOpenAdminUsers={() => selectView("admin-users")}
+                />
+              ) : null}
+              {activeView === "admin-users" ? (
+                <AdminUserManagement
+                  csrfToken={csrfToken}
+                  onAdminActivity={recordAdminActionActivity}
+                />
+              ) : null}
             </>
           )}
         </div>
@@ -1119,10 +1158,15 @@ function OverviewView({
         return;
       }
 
+      const retryAfter = response.headers.get("retry-after");
       setOverviewAiStatus(
         payload.configured === false
           ? "AI Analytics is not configured yet."
-          : payload.message || "AI overview could not be generated right now."
+          : `${payload.message || "AI overview could not be generated right now."}${
+              payload.failure?.retryable
+                ? ` Retry manually${retryAfter ? ` after ${retryAfter} seconds` : " shortly"}.`
+                : " The request was not retried automatically."
+            }`
       );
     } catch {
       setOverviewAiStatus("AI overview could not be generated right now.");
@@ -2285,7 +2329,7 @@ export function CoachAnalyticsView({
   onAnalyticsCustomStartChange,
   onAnalyticsRangeChange,
   onAdminActivity,
-  onSelect,
+  onOpenCoachSites,
   source
 }: {
   analyticsCustomEnd: string;
@@ -2301,7 +2345,7 @@ export function CoachAnalyticsView({
   onAnalyticsCustomEndChange: (value: string) => void;
   onAnalyticsCustomStartChange: (value: string) => void;
   onAnalyticsRangeChange: (value: AnalyticsDateRangeId) => void;
-  onSelect: (view: AdminViewId) => void;
+  onOpenCoachSites: (row: CoachAnalyticsRow) => void;
   source: string;
 }) {
   const [activeTab, setActiveTab] = useState<CoachAnalyticsFunnelType>("free");
@@ -2858,7 +2902,7 @@ export function CoachAnalyticsView({
                               aria-label={`Manage ${row.coachName}`}
                               className={styles.iconAction}
                               data-admin-tooltip="Manage coach site"
-                              onClick={() => onSelect("coach-sites")}
+                              onClick={() => onOpenCoachSites(row)}
                               type="button"
                             >
                               <AdminActionIcon name="settings" />
@@ -4509,10 +4553,15 @@ function CoachAnalyticsDetailPanel({
         return;
       }
 
+      const retryAfter = response.headers.get("retry-after");
       setInsightStatus(
         payload.configured === false
           ? "AI Analytics is not configured yet."
-          : payload.message || "AI insights could not be generated right now."
+          : `${payload.message || "AI insights could not be generated right now."}${
+              payload.failure?.retryable
+                ? ` Retry manually${retryAfter ? ` after ${retryAfter} seconds` : " shortly"}.`
+                : " The request was not retried automatically."
+            }`
       );
       onAdminActivity({
         detail: `${coach.coachName} AI insights could not be generated.`,

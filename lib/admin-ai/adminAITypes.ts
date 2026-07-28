@@ -18,11 +18,16 @@ export type AdminAIEntity = {
 
 export type AdminAIEvidence = {
   dateRange: string;
+  entityReferences?: string[];
+  entityRoutes?: Record<string, string>;
+  filters?: Record<string, string>;
   freshness: string;
   label: string;
   module: string;
+  observedAt?: string;
   recordCount: number;
   source: string;
+  sourceRoute?: string;
 };
 
 export type AdminAISearchResult = {
@@ -52,18 +57,22 @@ export type AdminAIHealthSignal = {
 };
 
 export type AdminAIHealthScoreComponent = {
+  calculation?: string | null;
+  howToImprove: string[];
   id: string;
   inputs: string[];
   label: string;
   missingInputs: string[];
-  score: number;
+  score: number | null;
+  weight?: number | null;
 };
 
 export type AdminAIHealthScore = {
   calculatedAt: string;
+  calculation?: string | null;
   components: AdminAIHealthScoreComponent[];
   missingInputs: string[];
-  score: number;
+  score: number | null;
 };
 
 export type AdminAIPlanStep = {
@@ -86,11 +95,14 @@ export type AdminAIDryRun = {
   validation: "blocked" | "ready" | "requires-review";
 };
 
+export type AdminAIDryRunPreview = Omit<AdminAIDryRun, "generatedAt">;
+
 export type AdminAIPlan = {
   affectedRecords: string[];
   approvalLevel: AdminAIApprovalLevel;
   confirmationRequired: boolean;
   dryRun?: AdminAIDryRun;
+  dryRunPreview?: AdminAIDryRunPreview;
   executable: boolean;
   expectedOutcome: string;
   id: string;
@@ -109,24 +121,27 @@ export type AdminAIApprovalReceipt = {
   action: string;
   affectedRecords: string[];
   approvalLevel: AdminAIApprovalLevel;
-  auditReference: string;
+  auditReference: string | null;
   confirmationTimestamp: string;
   currentState: string;
+  executionStatus?: "failure" | "success";
   impact: string;
+  impactLabel?: "Impact";
   outcome: string;
   otpRequired: boolean;
   permissionCheck: string;
   proposedState: string;
+  recommendedByAI?: string;
   recordsChanged: number;
   requestedBy: string;
   reversible: boolean;
+  rollbackAvailable?: boolean;
 };
 
 export type AdminAIRollbackAction = {
-  actionId: string;
   label: string;
+  receiptId: string;
   recordId: string;
-  targetStatus: "Fixed" | "Ignored" | "New" | "Reviewing";
 };
 
 export type AdminAIArtifact = {

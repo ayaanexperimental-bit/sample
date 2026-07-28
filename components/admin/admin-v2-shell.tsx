@@ -2,12 +2,15 @@
 
 import Image from "next/image";
 import {
+  type ComponentProps,
   type CSSProperties,
+  forwardRef,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
   useCallback,
   useEffect,
   useId,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState
@@ -21,12 +24,14 @@ import {
   hasAdminV2Permission,
   type AdminV2ActionActivity,
   type AdminV2ActionActivityInput,
+  type AdminV2CoachSiteFocus,
   type AdminV2NavItem,
   type AdminV2NavSection,
   type AdminV2ShellProps,
   type AdminV2ViewId
 } from "../../lib/admin-v2-access";
 import { AdminOdV2Style } from "./admin-od-v2-style";
+import { AdminV2PortalScope } from "./admin-v2-portal-scope";
 import styles from "./admin-v2-shell.module.css";
 import {
   createErrorReportBugPrompt,
@@ -57,6 +62,7 @@ import {
 } from "../../lib/admin-coach-analytics";
 import {
   getAdminV2AvailableModuleActions,
+  resolveAdminV2CoachSiteFocus,
   type AdminV2ModuleAction
 } from "../../lib/admin-v2-navigation";
 import {
@@ -81,13 +87,32 @@ import {
   AdminV2PaidMasterclassPanel
 } from "./admin-v2-production-parity";
 import {
+  buildAdminAIIntelligenceContext,
   buildAdminAISectionContext,
+  getAdminAIAnalyticsEntityId,
   type AdminAIBuilderSnapshot,
   type AdminAIShopSnapshot
 } from "../../lib/admin-ai/adminAIContext";
+import {
+  buildAdminAIOperationalContext,
+  type AdminAISettingsSnapshot
+} from "../../lib/admin-ai/adminAIOperationalContext";
+import { requestAdminCoachCopyWithConfirmation } from "../../lib/admin-ai/adminAICoachCopyRequest";
+import type { AdminAITableContext } from "../../lib/admin-ai/adminAITableCopilot";
+import {
+  canonicalCoachSectionRegistry,
+  getCanonicalCoachNavbarSections,
+  universalCoachBonuses
+} from "../../lib/coach-canonical-template";
 import { getAllowedAdminAICommands } from "../../lib/admin-ai/adminAIPermissions";
 import { adminAIRegistry, getAdminAISection } from "../../lib/admin-ai/adminAIRegistry";
-import type { AdminAIResponse } from "../../lib/admin-ai/adminAIService";
+import { groundAdminAIResponse, type AdminAIResponse } from "../../lib/admin-ai/adminAIService";
+import {
+  applyAdminAIBuilderSuggestions,
+  buildAdminAIBuilderSuggestions,
+  type AdminAIBuilderSuggestion
+} from "../../lib/admin-ai/adminAIBuilderSuggestions";
+import { reviewAdminAIForm } from "../../lib/admin-ai/adminAIFormCopilot";
 
 type LeafletModule = typeof import("leaflet");
 
@@ -145,6 +170,11 @@ type AdminV2AiInsightApiPayload = {
   cache?: "hit" | "miss";
   configured?: boolean;
   error?: string;
+  failure?: {
+    attempts: number;
+    code: string;
+    retryable: boolean;
+  };
   insight?: AdminV2AiInsight;
   message?: string;
   ok?: boolean;
@@ -202,6 +232,10 @@ type AdminV2CoachAnalyticsSortBy =
 type AdminV2CoachAnalyticsStatusFilter = "active" | "all" | CoachSiteStatus;
 type AdminV2CoachReportFormat = "admin" | "detailed" | "whatsapp";
 type AdminV2ErrorReportFilter = "active" | "all" | "fixed" | "ignored" | "new" | "reviewing";
+type AdminV2CoachAnalyticsAIContext = {
+  filters: Record<string, string>;
+  selectedIds: string[];
+};
 
 const ADMIN_CSRF_HEADER_NAME = "x-yw-admin-csrf";
 const PUBLIC_SHOP_SITE_PATH = "/shop";
@@ -269,6 +303,7 @@ type AdminSupportDefaultsForm = {
 };
 
 type AdminV2UnknownRecord = Record<string, unknown>;
+type AdminV2FormAIReviewResult = ReturnType<typeof reviewAdminAIForm>;
 
 type AdminV2ShopPaymentSettings = {
   active: boolean;
@@ -337,9 +372,49 @@ type AdminV2ShopApiPayload = {
   shop?: AdminV2ShopSnapshot;
 };
 
+type AdminAIPillHostProps = Omit<ComponentProps<typeof AdminAIPill>, "onOpenChange" | "open"> & {
+  onOpenStateChange: (open: boolean) => void;
+};
+
+type AdminAIPillHostHandle = {
+  close: () => void;
+  open: () => void;
+};
+
+const AdminAIPillHost = forwardRef<AdminAIPillHostHandle, AdminAIPillHostProps>(
+  function AdminAIPillHost({ onOpenStateChange, ...props }, ref) {
+    const [open, setOpen] = useState(false);
+    const handleOpenChange = useCallback(
+      (nextOpen: boolean) => {
+        setOpen(nextOpen);
+        onOpenStateChange(nextOpen);
+      },
+      [onOpenStateChange]
+    );
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        close: () => handleOpenChange(false),
+        open: () => handleOpenChange(true)
+      }),
+      [handleOpenChange]
+    );
+
+    return <AdminAIPill {...props} onOpenChange={handleOpenChange} open={open} />;
+  }
+);
+
 export function AdminV2DashboardShell(props: AdminV2ShellProps) {
-  const { adminAccess, csrfToken, onActiveViewChange, onLogout, requestedView, sessionEmail } =
-    props;
+  const {
+    adminAccess,
+    csrfToken,
+    onActiveViewChange,
+    onLogout,
+    requestedCoachSiteFocus,
+    requestedView,
+    sessionEmail
+  } = props;
   const [snapshotStatus, setSnapshotStatus] = useState<AdminV2DataStatus | "loading">("loading");
   const [snapshot, setSnapshot] = useState<AdminV2DashboardData | null>(null);
   const [activeView, setActiveView] = useState<AdminV2ViewId>(requestedView || "overview");
@@ -347,9 +422,10 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
   const [themeSweepActive, setThemeSweepActive] = useState(false);
   const themeSweepTimeoutRef = useRef<number | null>(null);
   const aiStateResetTimerRef = useRef<number | null>(null);
+  const activityCenterRef = useRef<AdminAIPillHostHandle>(null);
+  const activityCenterOpenRef = useRef(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [actionDialog, setActionDialog] = useState<AdminV2ActionDialogState>(null);
-  const [activityCenterOpen, setActivityCenterOpen] = useState(false);
   const [adminActionActivity, setAdminActionActivity] = useState<AdminV2ActionActivity[]>([]);
   const [errorReports, setErrorReports] = useState<AdminErrorReport[]>([]);
   const [errorReportSource, setErrorReportSource] = useState("loading");
@@ -363,6 +439,9 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
   const [analyticsTimeSeries, setAnalyticsTimeSeries] = useState<AnalyticsTimeSeriesPoint[]>([]);
   const [recentAnalyticsEvents, setRecentAnalyticsEvents] = useState<AnalyticsRecentEvent[]>([]);
   const [liveCoachSites, setLiveCoachSites] = useState<CoachSiteRecord[]>([]);
+  const [coachSiteFocus, setCoachSiteFocus] = useState<AdminV2CoachSiteFocus | null>(
+    requestedCoachSiteFocus || null
+  );
   const [builderEditingSite, setBuilderEditingSite] = useState<CoachSiteRecord | null>(null);
   const [coachSiteSource, setCoachSiteSource] = useState("loading");
   const [dashboardDataUpdatedAt, setDashboardDataUpdatedAt] = useState("");
@@ -416,6 +495,59 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
   const [aiBusy, setAiBusy] = useState(false);
   const [aiAssistantState, setAiAssistantState] = useState<AdminV2AiAssistantState>("idle");
   const [builderAiContext, setBuilderAiContext] = useState<AdminAIBuilderSnapshot | null>(null);
+  const [coachSitesAiTableContext, setCoachSitesAiTableContext] =
+    useState<AdminAITableContext | null>(null);
+  const [adminAiTableContexts, setAdminAiTableContexts] = useState<
+    Partial<Record<AdminV2ViewId, AdminAITableContext>>
+  >({});
+  const [coachAnalyticsAiContext, setCoachAnalyticsAiContext] =
+    useState<AdminV2CoachAnalyticsAIContext | null>(null);
+  const [, setErrorReportAiContext] = useState<{
+    filter: AdminV2ErrorReportFilter;
+    selectedReferenceId: string;
+  }>({ filter: "active", selectedReferenceId: "" });
+  const [settingsAiContext, setSettingsAiContext] = useState<AdminAISettingsSnapshot | null>(null);
+  const registerAdminAiTableContext = useCallback(
+    (viewId: AdminV2ViewId, context: AdminAITableContext) => {
+      setAdminAiTableContexts((current) =>
+        current[viewId] === context ? current : { ...current, [viewId]: context }
+      );
+    },
+    []
+  );
+  const setOverviewAiTableContext = useCallback(
+    (context: AdminAITableContext) => registerAdminAiTableContext("overview", context),
+    [registerAdminAiTableContext]
+  );
+  const setTopCoachesAiTableContext = useCallback(
+    (context: AdminAITableContext) => registerAdminAiTableContext("top-coaches", context),
+    [registerAdminAiTableContext]
+  );
+  const setCoachAnalyticsAiTableContext = useCallback(
+    (context: AdminAITableContext) => registerAdminAiTableContext("coach-analytics", context),
+    [registerAdminAiTableContext]
+  );
+  const setShopAiTableContext = useCallback(
+    (context: AdminAITableContext) => registerAdminAiTableContext("shop", context),
+    [registerAdminAiTableContext]
+  );
+  const setErrorReportsAiTableContext = useCallback(
+    (context: AdminAITableContext) => registerAdminAiTableContext("error-reports", context),
+    [registerAdminAiTableContext]
+  );
+  const setPaidMasterclassAiTableContext = useCallback(
+    (context: AdminAITableContext) =>
+      registerAdminAiTableContext("paid-masterclass-settings", context),
+    [registerAdminAiTableContext]
+  );
+  const setAdminUsersAiTableContext = useCallback(
+    (context: AdminAITableContext) => registerAdminAiTableContext("admin-users", context),
+    [registerAdminAiTableContext]
+  );
+  const activeAdminAiTableContext =
+    activeView === "coach-sites"
+      ? coachSitesAiTableContext
+      : adminAiTableContexts[activeView] || null;
   const visibleNavSections = useMemo(
     () =>
       adminV2NavSections
@@ -429,29 +561,85 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
         .filter((section) => section.items.length > 0),
     [adminAccess]
   );
-  const setAiAssistantMood = useCallback(
-    (state: AdminV2AiAssistantState, resetMs = 0) => {
-      if (aiStateResetTimerRef.current !== null) {
-        window.clearTimeout(aiStateResetTimerRef.current);
+  const setAiAssistantMood = useCallback((state: AdminV2AiAssistantState, resetMs = 0) => {
+    if (aiStateResetTimerRef.current !== null) {
+      window.clearTimeout(aiStateResetTimerRef.current);
+      aiStateResetTimerRef.current = null;
+    }
+
+    setAiAssistantState(state);
+
+    if (resetMs > 0) {
+      aiStateResetTimerRef.current = window.setTimeout(() => {
+        setAiAssistantState(activityCenterOpenRef.current ? "listen" : "idle");
         aiStateResetTimerRef.current = null;
-      }
-
-      setAiAssistantState(state);
-
-      if (resetMs > 0) {
-        aiStateResetTimerRef.current = window.setTimeout(() => {
-          setAiAssistantState(activityCenterOpen ? "listen" : "idle");
-          aiStateResetTimerRef.current = null;
-        }, resetMs);
-      }
-    },
-    [activityCenterOpen]
-  );
+      }, resetMs);
+    }
+  }, []);
+  const trackActivityCenterOpen = useCallback((open: boolean) => {
+    activityCenterOpenRef.current = open;
+  }, []);
   const hasVisibleAdminViews = visibleNavSections.length > 0;
   const activeCopilotSection = getAdminAISection(activeView);
   const shellShopAiSnapshot = useMemo(
     () => getAdminV2ShopAiSnapshot(snapshot?.sources.shop.data),
     [snapshot?.sources.shop.data]
+  );
+  const adminAiOperational = useMemo(
+    () =>
+      buildAdminAIOperationalContext({
+        actionActivity: adminActionActivity,
+        backupData: snapshot?.sources.backupCleanup.data,
+        backupStatus: snapshot?.sources.backupCleanup.status || snapshotStatus,
+        calculatedAt: dashboardDataUpdatedAt || snapshot?.generatedAt || new Date().toISOString(),
+        coachSites: liveCoachSites,
+        errorReports,
+        profile: adminAccess,
+        settingsSnapshot: settingsAiContext,
+        settingsStatus: snapshot?.sources.authSession.status || snapshotStatus,
+        usersData: snapshot?.sources.users.data,
+        usersStatus: snapshot?.sources.users.status || snapshotStatus
+      }),
+    [
+      adminAccess,
+      adminActionActivity,
+      dashboardDataUpdatedAt,
+      errorReports,
+      liveCoachSites,
+      settingsAiContext,
+      snapshot,
+      snapshotStatus
+    ]
+  );
+  const adminAiIntelligence = useMemo(
+    () =>
+      buildAdminAIIntelligenceContext({
+        analyticsStatus: analyticsSource,
+        builderInspection:
+          activeView === "create-coach-site" ? builderAiContext?.inspection || null : null,
+        calculatedAt: dashboardDataUpdatedAt || snapshot?.generatedAt || new Date().toISOString(),
+        coachSites: liveCoachSites,
+        errorReportStatus: errorReportSource,
+        errorReports,
+        operational: adminAiOperational,
+        shop: shellShopAiSnapshot,
+        table: activeAdminAiTableContext,
+        timeSeries: analyticsTimeSeries
+      }),
+    [
+      activeView,
+      adminAiOperational,
+      analyticsSource,
+      analyticsTimeSeries,
+      builderAiContext?.inspection,
+      activeAdminAiTableContext,
+      dashboardDataUpdatedAt,
+      errorReportSource,
+      errorReports,
+      liveCoachSites,
+      shellShopAiSnapshot,
+      snapshot?.generatedAt
+    ]
   );
   const adminAiContext = useMemo(() => {
     const allowedCommands = getAllowedAdminAICommands(adminAccess, activeCopilotSection.commands);
@@ -481,12 +669,22 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
       errorReports,
       filters:
         activeView === "coach-analytics"
-          ? { dateRange: analyticsRangeMeta?.label || analyticsRange.toUpperCase() }
+          ? coachAnalyticsAiContext?.filters || {
+              dateRange: analyticsRangeMeta?.label || analyticsRange.toUpperCase()
+            }
           : activeView === "create-coach-site" && builderAiContext
             ? { creatorStep: builderAiContext.currentStep }
-            : {},
+            : activeAdminAiTableContext
+              ? Object.fromEntries(
+                  Object.entries(activeAdminAiTableContext.filters).map(([key, value]) => [
+                    key,
+                    String(value)
+                  ])
+                )
+              : {},
       globalRegisteredCommands: globalAllowedCommands,
       highRiskCount: shellHighRiskRows.length,
+      intelligence: adminAiIntelligence,
       lastUpdated: dashboardDataUpdatedAt || snapshot?.generatedAt || "",
       loading: isAdminV2CopilotContextLoading(activeView, {
         analyticsSource,
@@ -495,6 +693,7 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
         snapshotStatus
       }),
       metrics: snapshot?.metrics || [],
+      operational: adminAiOperational,
       profile: adminAccess,
       relatedAPIs: activeCopilotSection.relatedAPIs,
       registeredCommands: allowedCommands,
@@ -502,7 +701,9 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
       selectedRows:
         activeView === "create-coach-site" && builderAiContext?.coachName
           ? [builderAiContext.coachName]
-          : [],
+          : activeAdminAiTableContext?.selectedIds ||
+            (activeView === "coach-analytics" ? coachAnalyticsAiContext?.selectedIds : []) ||
+            [],
       shop: shellShopAiSnapshot,
       sourceStatuses,
       timeSeries: analyticsTimeSeries
@@ -511,12 +712,16 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
     activeCopilotSection,
     activeView,
     adminAccess,
+    adminAiOperational,
     analyticsRange,
     analyticsRangeMeta?.label,
     analyticsSource,
     analyticsSummaries,
     analyticsTimeSeries,
+    adminAiIntelligence,
     builderAiContext,
+    activeAdminAiTableContext,
+    coachAnalyticsAiContext,
     coachSiteSource,
     dashboardDataUpdatedAt,
     errorReportSource,
@@ -657,6 +862,14 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
 
     return () => window.cancelAnimationFrame(frame);
   }, [activeView, adminAccess, onActiveViewChange, requestedView]);
+
+  useEffect(() => {
+    if (requestedView !== "coach-sites") return;
+    const frame = window.requestAnimationFrame(() => {
+      setCoachSiteFocus(requestedCoachSiteFocus || null);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [requestedCoachSiteFocus, requestedView]);
 
   useEffect(() => {
     if (canAccessAdminV2View(adminAccess, activeView)) return;
@@ -843,32 +1056,44 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
     );
   }
 
-  async function generateFloatingAiInsight(forceRefresh = false): Promise<AdminAIResponse> {
+  async function generateFloatingAiInsight(
+    forceRefresh = false,
+    signal?: AbortSignal
+  ): Promise<AdminAIResponse> {
     if (aiBusy) {
-      return {
-        body: "An aggregate insight request is already running.",
-        items: [],
-        state: "loading",
-        title: "AI insight in progress"
-      };
+      return groundAdminAIResponse(
+        {
+          body: "An aggregate insight request is already running.",
+          items: [],
+          state: "loading",
+          title: "AI insight in progress"
+        },
+        adminAiContext
+      );
     }
     if (!featureFlags.aiInsights) {
       setAiAssistantMood("warning", 2600);
-      return {
-        body: "The live model feature flag is off. Deterministic Copilot commands remain available.",
-        items: [],
-        state: "offline-error",
-        title: "Live AI insight is disabled"
-      };
+      return groundAdminAIResponse(
+        {
+          body: "The live model feature flag is off. Deterministic Copilot commands remain available.",
+          items: [],
+          state: "offline-error",
+          title: "Live AI insight is disabled"
+        },
+        adminAiContext
+      );
     }
     if (!canUseAiInsights) {
       setAiAssistantMood("warning", 2600);
-      return {
-        body: "This admin is not assigned coach_analytics.ai_insights.",
-        items: [],
-        state: "insufficient-permission",
-        title: "AI permission required"
-      };
+      return groundAdminAIResponse(
+        {
+          body: "This admin is not assigned coach_analytics.ai_insights.",
+          items: [],
+          state: "insufficient-permission",
+          title: "AI permission required"
+        },
+        adminAiContext
+      );
     }
 
     setAiAssistantMood("thinking");
@@ -900,25 +1125,33 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
           "content-type": "application/json",
           [ADMIN_CSRF_HEADER_NAME]: csrfToken
         },
-        method: "POST"
+        method: "POST",
+        signal
       });
       const payload = (await response.json().catch(() => ({}))) as AdminV2AiInsightApiPayload;
 
       if (!response.ok || !payload.ok || !payload.insight) {
         const fallbackMessage =
           payload.message || payload.error || "AI insight unavailable; local rules remain active.";
-        setAiAssistantMood(response.status === 503 ? "confused" : "warning", 3200);
+        const retryable = payload.failure?.retryable ?? response.status === 503;
+        setAiAssistantMood(retryable ? "confused" : "warning", 3200);
         recordAdminV2ActionActivity({
           detail: payload.message || "Floating AI returned a safe fallback state.",
           label: "AI Assistant",
-          status: response.status === 503 ? "success" : "error"
+          status: "error"
         });
-        return {
-          body: fallbackMessage,
-          items: shellLocalAiInsight.recommendations.slice(0, 3),
-          state: response.status === 503 ? "offline-error" : "action-failed",
-          title: "Live AI insight unavailable"
-        };
+        return groundAdminAIResponse(
+          {
+            body: fallbackMessage,
+            items: [
+              ...(retryable ? ["Retry manually after the provider recovery window."] : []),
+              ...shellLocalAiInsight.recommendations.slice(0, 3)
+            ],
+            state: retryable ? "offline-error" : "action-failed",
+            title: "Live AI insight unavailable"
+          },
+          adminAiContext
+        );
       }
 
       setAiAssistantMood("success", 2400);
@@ -927,49 +1160,89 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
         label: "AI Assistant",
         status: "success"
       });
-      return {
-        body: payload.insight.summary,
-        items: [
-          ...payload.insight.keyTrends,
-          ...payload.insight.recommendations,
-          ...payload.insight.warnings
-        ].slice(0, 6),
-        state: "ready",
-        title: payload.cache === "hit" ? "Cached live insight" : "Live aggregate insight"
-      };
-    } catch {
+      return groundAdminAIResponse(
+        {
+          body: payload.insight.summary,
+          confidence: {
+            level: "medium",
+            reason:
+              "The live-model interpretation is grounded in bounded aggregate counters and still requires source verification."
+          },
+          items: [
+            ...payload.insight.keyTrends,
+            ...payload.insight.recommendations,
+            ...payload.insight.warnings
+          ].slice(0, 6),
+          state: "ready",
+          title: payload.cache === "hit" ? "Cached live insight" : "Live aggregate insight"
+        },
+        adminAiContext
+      );
+    } catch (error) {
+      if (signal?.aborted || (error instanceof DOMException && error.name === "AbortError")) {
+        return groundAdminAIResponse(
+          {
+            body: "The stale read request was cancelled. Core admin controls remain available.",
+            items: [],
+            state: "cancelled",
+            title: "AI request cancelled"
+          },
+          adminAiContext
+        );
+      }
       setAiAssistantMood("confused", 3200);
       recordAdminV2ActionActivity({
         detail: "Floating AI insight request failed safely.",
         label: "AI Assistant",
         status: "error"
       });
-      return {
-        body: "The model endpoint could not be reached. Deterministic Copilot commands remain available.",
-        items: shellLocalAiInsight.recommendations.slice(0, 3),
-        state: "offline-error",
-        title: "Live AI service offline"
-      };
+      return groundAdminAIResponse(
+        {
+          body: "The model endpoint could not be reached. Deterministic Copilot commands remain available.",
+          items: shellLocalAiInsight.recommendations.slice(0, 3),
+          state: "offline-error",
+          title: "Live AI service offline"
+        },
+        adminAiContext
+      );
     } finally {
       setAiBusy(false);
     }
   }
 
-  function selectView(viewId: string, preserveBuilderEdit = false) {
+  function selectView(
+    viewId: string,
+    preserveBuilderEdit = false,
+    nextCoachSiteFocus: AdminV2CoachSiteFocus | null = null
+  ) {
     const nextView = viewId as AdminV2ViewId;
     if (!canAccessAdminV2View(adminAccess, nextView)) return;
     if (nextView === "create-coach-site" && !preserveBuilderEdit) {
       setBuilderEditingSite(null);
     }
     setActionDialog(null);
-    setActivityCenterOpen(false);
+    activityCenterRef.current?.close();
     window.scrollTo({ left: 0, top: 0 });
     document.querySelector<HTMLElement>('[data-admin-v2="true"] .content')?.scrollTo({
       left: 0,
       top: 0
     });
+    setCoachSiteFocus(nextView === "coach-sites" ? nextCoachSiteFocus : null);
     setActiveView(nextView);
-    onActiveViewChange?.(nextView);
+    onActiveViewChange?.(nextView, nextView === "coach-sites" ? nextCoachSiteFocus : null);
+  }
+
+  function openCoachSitesForAnalyticsRow(row: CoachAnalyticsRow) {
+    const exactMatches = liveCoachSites.filter(
+      (site) =>
+        site.coachId === row.coachId ||
+        normalizeCoachSlug(site.slug) === normalizeCoachSlug(row.coachSlug)
+    );
+    selectView("coach-sites", false, {
+      coachId: row.coachId,
+      coachSlug: row.coachSlug,
+      ...(exactMatches.length === 1 ? { siteId: exactMatches[0].id } : {})
+    });
   }
 
   function setThemeSweepDomState(active: boolean) {
@@ -1068,6 +1341,7 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
           analyticsSource={analyticsSource}
           dataUpdatedAt={dashboardDataUpdatedAt}
           onAnalyticsRangeChange={setAnalyticsRange}
+          onAIContextChange={setOverviewAiTableContext}
           onSelect={selectView}
           selectedView={activeView}
           snapshot={snapshot}
@@ -1087,6 +1361,9 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
           canRemove={hasAdminV2Permission(adminAccess, "coach_sites.remove")}
           coachSites={liveCoachSites}
           csrfToken={csrfToken}
+          errorReports={errorReports}
+          focusTarget={coachSiteFocus}
+          onAIContextChange={setCoachSitesAiTableContext}
           onAdminActivity={recordAdminV2ActionActivity}
           onEditSite={(site) => {
             setBuilderEditingSite(site);
@@ -1126,6 +1403,7 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
           analyticsSummaries={analyticsSummaries}
           coachSites={liveCoachSites}
           dataLoading={analyticsSource === "loading" || coachSiteSource === "loading"}
+          onAIContextChange={setTopCoachesAiTableContext}
         />
       ) : null}
 
@@ -1143,8 +1421,10 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
           onAnalyticsCustomEndChange={setAnalyticsCustomEnd}
           onAnalyticsCustomStartChange={setAnalyticsCustomStart}
           onAnalyticsRangeChange={setAnalyticsRange}
+          onAIContextChange={setCoachAnalyticsAiContext}
+          onTableAIContextChange={setCoachAnalyticsAiTableContext}
           onAdminActivity={recordAdminV2ActionActivity}
-          onSelect={selectView}
+          onOpenCoachOps={openCoachSitesForAnalyticsRow}
           recentEvents={recentAnalyticsEvents}
           source={coachSiteSource}
           snapshot={snapshot}
@@ -1156,6 +1436,7 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
         <AdminV2PaidMasterclassPage
           csrfToken={csrfToken}
           links={snapshot?.sources.masterclassPrivateLinks.data || []}
+          onAIContextChange={setPaidMasterclassAiTableContext}
           onAdminActivity={recordAdminV2ActionActivity}
           source={
             snapshot?.sources.masterclassPrivateLinks.source ||
@@ -1169,6 +1450,7 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
       {activeView === "shop" ? (
         <AdminV2ShopPage
           csrfToken={csrfToken}
+          onAIContextChange={setShopAiTableContext}
           onAdminActivity={recordAdminV2ActionActivity}
           snapshot={snapshot}
         />
@@ -1182,6 +1464,8 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
           csrfToken={csrfToken}
           errorReports={errorReports}
           maintenanceStatus={snapshot?.sources.backupCleanup.status || "unavailable"}
+          onAIContextChange={setErrorReportAiContext}
+          onTableAIContextChange={setErrorReportsAiTableContext}
           onAdminActivity={recordAdminV2ActionActivity}
           onReportsChange={setErrorReports}
           onSelect={selectView}
@@ -1199,6 +1483,7 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
           errorReports={errorReports}
           focusMaintenance
           maintenanceStatus={snapshot?.sources.backupCleanup.status || "unavailable"}
+          onAIContextChange={setErrorReportAiContext}
           onAdminActivity={recordAdminV2ActionActivity}
           onReportsChange={setErrorReports}
           onSelect={selectView}
@@ -1212,6 +1497,7 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
           adminAccess={adminAccess}
           csrfToken={csrfToken}
           onAction={openAction}
+          onAIContextChange={setSettingsAiContext}
           onAdminActivity={recordAdminV2ActionActivity}
           onOpenAdminUsers={() => selectView("admin-users")}
           snapshot={snapshot}
@@ -1225,8 +1511,10 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
           csrfToken={csrfToken}
           focusAdminUsers
           onAction={openAction}
+          onAIContextChange={setSettingsAiContext}
           onAdminActivity={recordAdminV2ActionActivity}
           onOpenAdminUsers={() => selectView("admin-users")}
+          onTableAIContextChange={setAdminUsersAiTableContext}
           snapshot={snapshot}
           theme={adminTheme}
         />
@@ -1274,8 +1562,9 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
             adminRoleLabel={adminRoleLabel}
             canCreateSite={canAccessAdminV2View(adminAccess, "create-coach-site")}
             canOpenReports={canAccessAdminV2View(adminAccess, "error-reports")}
+            mobileOpen={mobileNavOpen}
             nav={visibleNavSections}
-            onActivityToggle={() => setActivityCenterOpen(true)}
+            onActivityToggle={() => activityCenterRef.current?.open()}
             onLogout={onLogout}
             onMenu={() => setMobileNavOpen(true)}
             onSelect={selectView}
@@ -1318,21 +1607,23 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
         >
           <p className={styles.v2DialogCopy}>{actionDialog?.body}</p>
         </AdminV2ActionDialog>
-        <AdminAIPill
+        <AdminAIPillHost
           activity={adminActionActivity}
           assistantState={aiAssistantState}
           context={adminAiContext}
           csrfToken={csrfToken}
           onActivity={recordAdminV2ActionActivity}
           onAssistantStateChange={setAiAssistantMood}
-          onExternalCommand={() => generateFloatingAiInsight(false)}
+          onExternalCommand={(_command, _context, options) =>
+            generateFloatingAiInsight(false, options.signal)
+          }
           onNavigate={selectView}
-          onOpenChange={setActivityCenterOpen}
-          open={activityCenterOpen}
+          onOpenStateChange={trackActivityCenterOpen}
           orbContent={
             <AdminV2AiBotSvg className={styles.aiAssistantRobot} state={aiAssistantState} />
           }
           profile={adminAccess}
+          ref={activityCenterRef}
           theme={adminTheme}
         />
       </section>
@@ -1401,13 +1692,13 @@ function AdminV2Sidebar({
             />
           </div>
           <div>
-            <strong>YWcoach Admin V2</strong>
+            <strong>YWcoach Admin</strong>
             <span>Production operations</span>
           </div>
         </div>
 
         <nav className="nav-section" aria-label="Primary admin rail">
-          <div className="nav-title">Admin V2 rail</div>
+          <div className="nav-title">Admin navigation</div>
           {navItems.map((item) => {
             const isActive = activeView === item.id;
             const iconName = getAdminV2Icon(item.id);
@@ -1473,6 +1764,7 @@ function AdminV2Header({
   adminRoleLabel,
   canCreateSite = false,
   canOpenReports = false,
+  mobileOpen = false,
   nav,
   onActivityToggle,
   onLogout,
@@ -1490,6 +1782,7 @@ function AdminV2Header({
   adminRoleLabel?: string;
   canCreateSite?: boolean;
   canOpenReports?: boolean;
+  mobileOpen?: boolean;
   nav: AdminV2NavSection[];
   onActivityToggle?: () => void;
   onLogout: () => void;
@@ -1507,6 +1800,7 @@ function AdminV2Header({
   const quickActionsAvailable = showQuickActions && onSelect && (canOpenReports || canCreateSite);
   const [commandQuery, setCommandQuery] = useState("");
   const [commandOpen, setCommandOpen] = useState(false);
+  const [activeCommandIndex, setActiveCommandIndex] = useState(0);
   const suppressCommandOpenRef = useRef(false);
   const [localThemeSweepActive, setLocalThemeSweepActive] = useState(false);
   const localThemeSweepTimeoutRef = useRef<number | null>(null);
@@ -1525,6 +1819,11 @@ function AdminV2Header({
         .slice(0, 8),
     [navItems, normalizedCommandQuery]
   );
+  const resolvedActiveCommandIndex = Math.min(
+    activeCommandIndex,
+    Math.max(0, commandResults.length - 1)
+  );
+  const activeCommand = commandResults[resolvedActiveCommandIndex];
   const sweepActive = themeSweepActive || localThemeSweepActive;
 
   useEffect(
@@ -1559,7 +1858,7 @@ function AdminV2Header({
     <>
       <button
         aria-controls="admin-sidebar"
-        aria-expanded="false"
+        aria-expanded={mobileOpen}
         aria-label="Open navigation"
         className="mobile-menu"
         id="mobile-menu"
@@ -1576,7 +1875,7 @@ function AdminV2Header({
             <div className="page-kicker">Verified admin session</div>
             <div className="page-heading-row">
               <h1 className="page-title">{activeTitle}</h1>
-              <span className="page-dropdown" aria-label="Admin V2 workspace">
+              <span className="page-dropdown" aria-label="Admin workspace">
                 <span>Admin</span>
                 <span className="page-chevron" aria-hidden="true" />
               </span>
@@ -1600,13 +1899,19 @@ function AdminV2Header({
             >
               <label htmlFor="admin-v2-global-command-search">Search</label>
               <input
+                aria-activedescendant={
+                  commandOpen && activeCommand
+                    ? `admin-v2-command-option-${activeCommand.id}`
+                    : undefined
+                }
                 aria-controls="admin-v2-global-command-results"
                 aria-expanded={commandOpen}
                 aria-haspopup="listbox"
-                aria-label="Search coaches, sites, orders"
+                aria-label="Search admin modules"
                 id="admin-v2-global-command-search"
                 onChange={(event) => {
                   setCommandQuery(event.currentTarget.value);
+                  setActiveCommandIndex(0);
                   if (suppressCommandOpenRef.current) {
                     suppressCommandOpenRef.current = false;
                     setCommandOpen(false);
@@ -1623,12 +1928,26 @@ function AdminV2Header({
                     setCommandOpen(false);
                     return;
                   }
-                  if (event.key === "Enter" && commandResults[0]) {
+                  if (event.key === "ArrowDown" && commandResults.length) {
                     event.preventDefault();
-                    selectCommand(commandResults[0].id);
+                    setCommandOpen(true);
+                    setActiveCommandIndex((index) =>
+                      Math.min(commandResults.length - 1, index + 1)
+                    );
+                    return;
+                  }
+                  if (event.key === "ArrowUp" && commandResults.length) {
+                    event.preventDefault();
+                    setCommandOpen(true);
+                    setActiveCommandIndex((index) => Math.max(0, index - 1));
+                    return;
+                  }
+                  if (event.key === "Enter" && activeCommand) {
+                    event.preventDefault();
+                    selectCommand(activeCommand.id);
                   }
                 }}
-                placeholder="Search coaches, sites, orders..."
+                placeholder="Search admin modules..."
                 role="combobox"
                 type="search"
                 value={commandQuery}
@@ -1640,12 +1959,14 @@ function AdminV2Header({
                 role="listbox"
               >
                 {commandResults.length ? (
-                  commandResults.map((item) => (
+                  commandResults.map((item, index) => (
                     <button
-                      aria-selected="false"
+                      aria-selected={resolvedActiveCommandIndex === index}
                       className="smart-search-option console-command-btn"
+                      id={`admin-v2-command-option-${item.id}`}
                       key={item.id}
                       onMouseDown={(event) => event.preventDefault()}
+                      onMouseEnter={() => setActiveCommandIndex(index)}
                       onClick={() => selectCommand(item.id)}
                       role="option"
                       type="button"
@@ -1659,7 +1980,7 @@ function AdminV2Header({
                     </button>
                   ))
                 ) : (
-                  <div className="smart-search-empty">No Admin V2 command found.</div>
+                  <div className="smart-search-empty">No matching command found.</div>
                 )}
               </div>
             </div>
@@ -1888,7 +2209,9 @@ function AdminV2ActionDialog({
     </div>
   );
 
-  return typeof document === "undefined" ? dialog : createPortal(dialog, document.body);
+  return typeof document === "undefined"
+    ? dialog
+    : createPortal(<AdminV2PortalScope theme={theme}>{dialog}</AdminV2PortalScope>, document.body);
 }
 
 type AdminV2IconName =
@@ -5490,7 +5813,7 @@ const ADMIN_V2_OD_RUNTIME_CSS = `
   }
 
   [data-admin-v2="true"][data-od-theme="light"] .console-mini {
-    border-left: 4px solid rgba(8, 122, 63, .72) !important;
+    border-color: rgba(8, 122, 63, .36) !important;
   }
 
   [data-admin-v2="true"][data-od-theme="light"] .score-card,
@@ -7095,6 +7418,7 @@ function AdminV2DashboardAddon({
   analyticsSource,
   dataUpdatedAt,
   onAnalyticsRangeChange,
+  onAIContextChange,
   onSelect,
   selectedView,
   snapshot,
@@ -7107,6 +7431,7 @@ function AdminV2DashboardAddon({
   analyticsSource: string;
   dataUpdatedAt: string;
   onAnalyticsRangeChange: (range: AnalyticsDateRangeId) => void;
+  onAIContextChange: (context: AdminAITableContext) => void;
   onSelect: (viewId: AdminV2ViewId) => void;
   selectedView: AdminV2ViewId;
   snapshot: AdminV2DashboardData | null;
@@ -7121,6 +7446,7 @@ function AdminV2DashboardAddon({
       analyticsSource={analyticsSource}
       dataUpdatedAt={dataUpdatedAt}
       onAnalyticsRangeChange={onAnalyticsRangeChange}
+      onAIContextChange={onAIContextChange}
       onSelect={onSelect}
       selectedView={selectedView}
       snapshot={snapshot}
@@ -7137,6 +7463,7 @@ function AdminV2OdDashboard({
   analyticsSource,
   dataUpdatedAt,
   onAnalyticsRangeChange,
+  onAIContextChange,
   onSelect,
   selectedView,
   snapshot,
@@ -7149,6 +7476,7 @@ function AdminV2OdDashboard({
   analyticsSource: string;
   dataUpdatedAt: string;
   onAnalyticsRangeChange: (range: AnalyticsDateRangeId) => void;
+  onAIContextChange: (context: AdminAITableContext) => void;
   onSelect: (viewId: AdminV2ViewId) => void;
   selectedView: AdminV2ViewId;
   snapshot: AdminV2DashboardData | null;
@@ -7156,9 +7484,23 @@ function AdminV2OdDashboard({
   timeSeries: AnalyticsTimeSeriesPoint[];
 }) {
   const metrics = useMemo(() => getAdminV2OdMetrics(snapshot), [snapshot]);
-  const coachSites = snapshot?.sources.coachSites.data || [];
-  const errorReports = snapshot?.sources.errorReports.data || [];
-  const audienceRegions = snapshot?.sources.analyticsEvents.data?.audienceRegions || [];
+  const coachSites = useMemo(
+    () => snapshot?.sources.coachSites.data || [],
+    [snapshot?.sources.coachSites.data]
+  );
+  const errorReports = useMemo(
+    () => snapshot?.sources.errorReports.data || [],
+    [snapshot?.sources.errorReports.data]
+  );
+  const [coachTableQuery, setCoachTableQuery] = useState("");
+  const [coachStatusFilter, setCoachStatusFilter] = useState<"all" | CoachSiteStatus>("all");
+  const [coachSourceFilter, setCoachSourceFilter] = useState("all");
+  const [coachPaymentFilter, setCoachPaymentFilter] = useState<"all" | "paid" | "unpaid">("all");
+  const [coachPage, setCoachPage] = useState(0);
+  const audienceRegions = useMemo(
+    () => snapshot?.sources.analyticsEvents.data?.audienceRegions || [],
+    [snapshot?.sources.analyticsEvents.data?.audienceRegions]
+  );
   const topCoach = coachSites[0];
   const unresolvedErrors = errorReports.filter(
     (report) => report.status !== "Fixed" && report.status !== "Ignored"
@@ -7185,7 +7527,87 @@ function AdminV2OdDashboard({
   const coachActivityScore = getAdminV2RatioScore(activeCoachCount, currentCoachSites.length);
   const funnelCoverageScore = getAdminV2RatioScore(funnelReadyCoachCount, currentCoachSites.length);
   const supportHealthScore = clampAdminV2Score(100 - unresolvedErrors * 22);
-  const dashboardCoachRows = coachSites.slice(0, 4);
+  const coachSourceOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          coachSites
+            .map((site) => site.analytics?.source?.trim())
+            .filter((source): source is string => Boolean(source))
+        )
+      ).sort((left, right) => left.localeCompare(right)),
+    [coachSites]
+  );
+  const filteredCoachSites = useMemo(() => {
+    const query = coachTableQuery.trim().toLowerCase();
+
+    return coachSites.filter((site) => {
+      if (
+        query &&
+        ![site.coachName, site.niche, site.slug, site.location, site.analytics?.source]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(query)
+      ) {
+        return false;
+      }
+      if (coachStatusFilter !== "all" && site.status !== coachStatusFilter) return false;
+      if (coachSourceFilter !== "all" && site.analytics?.source?.trim() !== coachSourceFilter) {
+        return false;
+      }
+      if (coachPaymentFilter === "paid" && !site.existingPaidFunnelUrl) return false;
+      if (coachPaymentFilter === "unpaid" && site.existingPaidFunnelUrl) return false;
+      return true;
+    });
+  }, [coachPaymentFilter, coachSourceFilter, coachStatusFilter, coachTableQuery, coachSites]);
+  const coachPageCount = Math.max(1, Math.ceil(filteredCoachSites.length / 4));
+  const safeCoachPage = Math.min(coachPage, coachPageCount - 1);
+  const dashboardCoachRows = useMemo(
+    () => filteredCoachSites.slice(safeCoachPage * 4, safeCoachPage * 4 + 4),
+    [filteredCoachSites, safeCoachPage]
+  );
+  const tableAiContext = useMemo<AdminAITableContext>(
+    () => ({
+      filters: {
+        analyticsRange,
+        payment: coachPaymentFilter,
+        query: coachTableQuery,
+        source: coachSourceFilter,
+        status: coachStatusFilter
+      },
+      rows: dashboardCoachRows.map((site) => ({
+        duplicateKey: normalizeCoachSlug(site.slug || site.coachName),
+        groupKey: site.location || "unassigned-region",
+        id: site.id || site.slug,
+        label: site.coachName || site.slug,
+        requiredDataComplete: Boolean(site.coachName && site.slug),
+        status: site.status,
+        unresolvedErrors: errorReports.filter(
+          (report) =>
+            report.status !== "Fixed" &&
+            report.status !== "Ignored" &&
+            (report.coachSlug === site.slug || report.pagePath.includes(`/coach/${site.slug}`))
+        ).length
+      })),
+      selectedIds: [],
+      sort: { direction: "desc", field: "visits" },
+      tableId: "overview-coach-performance"
+    }),
+    [
+      analyticsRange,
+      coachPaymentFilter,
+      coachSourceFilter,
+      coachStatusFilter,
+      coachTableQuery,
+      dashboardCoachRows,
+      errorReports
+    ]
+  );
+
+  useEffect(() => {
+    onAIContextChange(tableAiContext);
+  }, [onAIContextChange, tableAiContext]);
   const topRegion = audienceRegions[0]?.label || topCoach?.location || "No region data";
   const overviewGauges = [
     {
@@ -7249,23 +7671,35 @@ function AdminV2OdDashboard({
   ];
 
   return (
-    <div className="dashboard-console" aria-label="Admin V2 overview analytics">
+    <div className="dashboard-console" aria-label="Overview analytics">
       <div className="console-chrome">
         <div className="console-tabs" aria-label="Date range">
           <span className="console-pill">Date range</span>
-          <button className="console-pill" type="button">
-            Today
-          </button>
-          <button className="console-pill is-active" type="button">
-            7 days
-          </button>
-          <button className="console-pill" type="button">
-            30 days
-          </button>
-          <button className="console-pill" type="button">
-            90 days
-          </button>
-          <button className="console-pill" type="button">
+          {(
+            [
+              { id: "today", label: "Today" },
+              { id: "7d", label: "7 days" },
+              { id: "30d", label: "30 days" },
+              { id: "90d", label: "90 days" }
+            ] as Array<{ id: AnalyticsDateRangeId; label: string }>
+          ).map((range) => (
+            <button
+              aria-pressed={analyticsRange === range.id}
+              className={`console-pill${analyticsRange === range.id ? " is-active" : ""}`}
+              key={range.id}
+              onClick={() => onAnalyticsRangeChange(range.id)}
+              type="button"
+            >
+              {range.label}
+            </button>
+          ))}
+          <button
+            aria-label="Open custom analytics range controls"
+            aria-pressed={analyticsRange === "custom"}
+            className={`console-pill${analyticsRange === "custom" ? " is-active" : ""}`}
+            onClick={() => onSelect("coach-analytics")}
+            type="button"
+          >
             Custom
           </button>
         </div>
@@ -7285,7 +7719,7 @@ function AdminV2OdDashboard({
         </div>
       </div>
 
-      <div className="dashboard-grid" aria-label="Admin V2 overview grid">
+      <div className="dashboard-grid" aria-label="Overview grid">
         <section
           className="console-card console-hero dashboard-wallet"
           aria-label="Wallet and balance cards"
@@ -7304,8 +7738,12 @@ function AdminV2OdDashboard({
               <span>Revenue source missing</span>
             </div>
             <div className="finance-actions">
-              <button className="console-btn is-primary" type="button">
-                Review Source
+              <button
+                className="console-btn is-primary"
+                onClick={() => onSelect("shop")}
+                type="button"
+              >
+                Review Shop Source
               </button>
               <button
                 className="console-btn console-command-btn"
@@ -7413,11 +7851,18 @@ function AdminV2OdDashboard({
             <div>
               <h3>Coach performance table</h3>
               <p>
-                Production-shaped admin rows with search, filters, sorting, selection, pagination,
-                row actions, and state handling.
+                Search and filter the production coach preview, then open the full Sites workspace
+                for record actions.
               </p>
             </div>
-            <span className="console-pill">0 selected</span>
+            <div className="row-actions">
+              <AdminAIAskButton
+                className="btn btn-sm"
+                label="Analyze coach performance table"
+                query="Summarize the visible coach performance table and identify records needing attention."
+                scope="page"
+              />
+            </div>
           </div>
           <div className="admin-table-shell">
             <div className="table-toolbar" aria-label="Coach table controls">
@@ -7426,19 +7871,59 @@ function AdminV2OdDashboard({
                 <input
                   aria-label="Search coach performance table"
                   id="coach-table-search"
+                  onChange={(event) => {
+                    setCoachTableQuery(event.currentTarget.value);
+                    setCoachPage(0);
+                  }}
                   placeholder="Coach, niche, slug, source..."
                   type="search"
+                  value={coachTableQuery}
                 />
                 <div className="smart-search-results" role="listbox" hidden />
               </div>
-              <select aria-label="Coach status">
-                <option>All statuses</option>
+              <select
+                aria-label="Coach status"
+                onChange={(event) => {
+                  setCoachStatusFilter(event.currentTarget.value as "all" | CoachSiteStatus);
+                  setCoachPage(0);
+                }}
+                value={coachStatusFilter}
+              >
+                <option value="all">All statuses</option>
+                {(["published", "draft", "paused", "archived", "removed"] as CoachSiteStatus[]).map(
+                  (statusId) => (
+                    <option key={statusId} value={statusId}>
+                      {formatAdminV2Label(statusId)}
+                    </option>
+                  )
+                )}
               </select>
-              <select aria-label="Coach source">
-                <option>All sources</option>
+              <select
+                aria-label="Coach source"
+                onChange={(event) => {
+                  setCoachSourceFilter(event.currentTarget.value);
+                  setCoachPage(0);
+                }}
+                value={coachSourceFilter}
+              >
+                <option value="all">All sources</option>
+                {coachSourceOptions.map((source) => (
+                  <option key={source} value={source}>
+                    {formatAdminV2Label(source)}
+                  </option>
+                ))}
               </select>
-              <select aria-label="Payment status">
-                <option>All payments</option>
+              <select
+                aria-label="Payment status"
+                onChange={(event) => {
+                  setCoachPaymentFilter(event.currentTarget.value as "all" | "paid" | "unpaid");
+                  setCoachPage(0);
+                }}
+                value={coachPaymentFilter}
+              >
+                <option value="all">All payments</option>
+                <option value="paid">Paid funnel connected</option>
+                <option value="unpaid">No paid funnel</option>
               </select>
               <button
                 className="console-btn is-primary"
@@ -7493,9 +7978,13 @@ function AdminV2OdDashboard({
                       </td>
                     </tr>
                   ))}
-                  {!coachSites.length ? (
+                  {!dashboardCoachRows.length ? (
                     <tr>
-                      <td colSpan={6}>No coach-site records are available yet.</td>
+                      <td colSpan={6}>
+                        {coachSites.length
+                          ? "No coach-site records match the current filters."
+                          : "No coach-site records are available yet."}
+                      </td>
                     </tr>
                   ) : null}
                 </tbody>
@@ -7504,13 +7993,23 @@ function AdminV2OdDashboard({
             <div className="admin-pagination">
               <span>
                 Showing {dashboardCoachRows.length.toLocaleString("en-IN")} of{" "}
-                {coachSites.length.toLocaleString("en-IN")} coach records
+                {filteredCoachSites.length.toLocaleString("en-IN")} matching coach records
               </span>
               <div className="row-actions">
-                <button className="console-pill" type="button">
+                <button
+                  className="console-pill"
+                  disabled={safeCoachPage <= 0}
+                  onClick={() => setCoachPage(Math.max(0, safeCoachPage - 1))}
+                  type="button"
+                >
                   Previous
                 </button>
-                <button className="console-pill" type="button">
+                <button
+                  className="console-pill"
+                  disabled={safeCoachPage >= coachPageCount - 1}
+                  onClick={() => setCoachPage(Math.min(coachPageCount - 1, safeCoachPage + 1))}
+                  type="button"
+                >
                   Next
                 </button>
               </div>
@@ -7571,25 +8070,34 @@ function AdminV2OdDashboard({
               </p>
             </div>
             <div className="console-tabs" aria-label="Audience time range">
-              {["24H", "7D", "30D", "90D"].map((range, index) => (
+              {(
+                [
+                  { id: "today", label: "24H" },
+                  { id: "7d", label: "7D" },
+                  { id: "30d", label: "30D" },
+                  { id: "90d", label: "90D" }
+                ] as Array<{ id: AnalyticsDateRangeId; label: string }>
+              ).map((range) => (
                 <button
-                  aria-pressed={index === 0}
-                  className={`console-pill${index === 0 ? " is-active" : ""}`}
-                  key={range}
+                  aria-pressed={analyticsRange === range.id}
+                  className={`console-pill${analyticsRange === range.id ? " is-active" : ""}`}
+                  key={range.id}
+                  onClick={() => onAnalyticsRangeChange(range.id)}
                   type="button"
                 >
-                  {range}
+                  {range.label}
                 </button>
               ))}
             </div>
           </div>
-          <AdminV2AudienceMapPanel snapshot={snapshot} status={status} />
+          <AdminV2AudienceMapPanel
+            onAIContextChange={onAIContextChange}
+            snapshot={snapshot}
+            status={status}
+          />
         </section>
 
-        <section
-          className="console-card dashboard-admin-addon"
-          aria-label="Admin V2 functional coverage"
-        >
+        <section className="console-card dashboard-admin-addon" aria-label="Admin module coverage">
           <div className="admin-addon-shell">
             <div className="addon-header">
               <div>
@@ -7597,9 +8105,9 @@ function AdminV2OdDashboard({
                   <span className="console-dot" />
                   Primary rail coverage
                 </div>
-                <h3>Open production modules</h3>
+                <h3>Open admin modules</h3>
               </div>
-              <span className="console-pill">Admin V2</span>
+              <span className="console-pill">Live</span>
             </div>
             <div className="addon-module-grid" aria-label="Admin module summaries">
               {actions.map((action) => {
@@ -7624,7 +8132,7 @@ function AdminV2OdDashboard({
                 );
               })}
             </div>
-            <div className="addon-module-grid" aria-label="Admin V2 functional totals">
+            <div className="addon-module-grid" aria-label="Admin module totals">
               <section className="addon-panel">
                 <div className="addon-panel-head">
                   <div>
@@ -8475,6 +8983,11 @@ type AdminV2CoachCopyScope =
   | "problem"
   | "vision";
 
+type AdminV2BuilderCopyReview = {
+  scope: AdminV2CoachCopyScope;
+  suggestions: Array<AdminAIBuilderSuggestion<keyof CoachSiteFormState>>;
+};
+
 type AdminV2PaidFunnelAnalysis = {
   cleanText: string;
   coachName?: string;
@@ -8592,6 +9105,17 @@ const ADMIN_V2_FOOTER_FIELDS = [
   { field: "footerText", label: "Footer legal/disclaimer copy", rows: 5, span: true }
 ] satisfies readonly AdminV2CreatorFieldDefinition[];
 
+const ADMIN_V2_AI_COPY_FIELDS = [
+  ...ADMIN_V2_HERO_COPY_FIELDS,
+  ...ADMIN_V2_INTRO_VISION_FIELDS,
+  ...ADMIN_V2_PROBLEM_BENEFIT_FIELDS,
+  ...ADMIN_V2_JOURNEY_MEDIA_FIELDS,
+  ...ADMIN_V2_FAQ_FIELDS,
+  ...ADMIN_V2_CTA_SUPPORT_FIELDS,
+  ...ADMIN_V2_STICKY_SOCIAL_FIELDS,
+  ...ADMIN_V2_FOOTER_FIELDS
+] satisfies readonly AdminV2CreatorFieldDefinition[];
+
 const ADMIN_V2_IMAGE_MAX_BYTES = 12 * 1024 * 1024;
 const ADMIN_V2_VIDEO_MAX_BYTES = 70 * 1024 * 1024;
 
@@ -8640,6 +9164,93 @@ function AdminV2CreatorFieldGrid({
   );
 }
 
+function AdminV2BuilderSuggestionReview({
+  onApply,
+  onApplySuggestion,
+  onReject,
+  onRejectSuggestion,
+  review
+}: {
+  onApply: () => void;
+  onApplySuggestion: (field: keyof CoachSiteFormState) => void;
+  onReject: () => void;
+  onRejectSuggestion: (field: keyof CoachSiteFormState) => void;
+  review: AdminV2BuilderCopyReview;
+}) {
+  return (
+    <section
+      aria-label="AI copy suggestion review"
+      aria-live="polite"
+      className="console-card v2-creator-ai-review"
+    >
+      <div className="section-head">
+        <div>
+          <span className="badge badge-accent">Review required</span>
+          <h3>{review.suggestions.length} AI copy suggestions are staged</h3>
+          <p>The form is unchanged until you explicitly apply these field values.</p>
+        </div>
+        <div className="row-actions">
+          <button className="btn btn-sm" onClick={onReject} type="button">
+            Reject all
+          </button>
+          <button className="btn btn-sm btn-primary" onClick={onApply} type="button">
+            Apply {review.suggestions.length} suggestions
+          </button>
+        </div>
+      </div>
+      <div className="v2-creator-ai-review-list">
+        {review.suggestions.map((suggestion) => (
+          <details className="v2-creator-ai-review-item" key={suggestion.field}>
+            <summary>{getAdminV2BuilderFieldLabel(suggestion.field)}</summary>
+            <dl className="v2-creator-ai-review-values">
+              <div>
+                <dt>Original</dt>
+                <dd>{suggestion.original || "Empty"}</dd>
+              </div>
+              <div>
+                <dt>Proposed / suggested value</dt>
+                <dd>{suggestion.proposed || "Empty"}</dd>
+              </div>
+              <div className="v2-creator-ai-review-reason">
+                <dt>Reason</dt>
+                <dd>{suggestion.reason}</dd>
+              </div>
+              <div>
+                <dt>Risk</dt>
+                <dd>{suggestion.risk}</dd>
+              </div>
+            </dl>
+            <div className="row-actions">
+              <button
+                className="btn btn-sm"
+                onClick={() => onRejectSuggestion(suggestion.field)}
+                type="button"
+              >
+                Reject
+              </button>
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={() => onApplySuggestion(suggestion.field)}
+                type="button"
+              >
+                Apply
+              </button>
+            </div>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function getAdminV2BuilderFieldLabel(field: keyof CoachSiteFormState) {
+  const registered = ADMIN_V2_AI_COPY_FIELDS.find((definition) => definition.field === field);
+  if (registered) return registered.label;
+  return String(field)
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/^./, (letter) => letter.toUpperCase());
+}
+
 function AdminV2CreateSitePage({
   csrfToken,
   editingSite,
@@ -8670,8 +9281,10 @@ function AdminV2CreateSitePage({
           ctaText: "Register Now"
         }
   );
+  const formRef = useRef(form);
   const [message, setMessage] = useState("");
   const [aiBusyScope, setAiBusyScope] = useState<AdminV2CoachCopyScope | "">("");
+  const [copyReview, setCopyReview] = useState<AdminV2BuilderCopyReview | null>(null);
   const [funnelAnalysisBusy, setFunnelAnalysisBusy] = useState(false);
   const [mediaBusy, setMediaBusy] = useState(false);
   const [mediaResult, setMediaResult] = useState<AdminV2CoachImageResult | null>(null);
@@ -8699,15 +9312,66 @@ function AdminV2CreateSitePage({
       site.slug === normalizedSlug &&
       (!savedSiteId || site.id !== savedSiteId)
   );
-  const builderCopilotContext = useMemo<AdminAIBuilderSnapshot>(
-    () => ({
+  const builderCopilotContext = useMemo<AdminAIBuilderSnapshot>(() => {
+    const navbarSections = getCanonicalCoachNavbarSections().map((section) => section.sectionId);
+    const visibleSections = canonicalCoachSectionRegistry
+      .filter((section) => section.enabled)
+      .map((section) => section.sectionId);
+    const mediaReady =
+      form.heroMediaType === "none" ||
+      (form.heroMediaType === "image" && Boolean((form.photoUrl || form.logoUrl).trim())) ||
+      (form.heroMediaType === "video" && Boolean(form.videoUrl.trim()));
+    return {
       coachName: form.coachName.trim().slice(0, 100),
       currentStep: ADMIN_V2_CREATOR_STEPS[activeCreatorStep]?.label || "Details",
       hasPreview: Boolean(activePreview),
-      mediaReady:
-        form.heroMediaType === "none" ||
-        (form.heroMediaType === "image" && Boolean((form.photoUrl || form.logoUrl).trim())) ||
-        (form.heroMediaType === "video" && Boolean(form.videoUrl.trim())),
+      inspection: {
+        bonusServiceTitles: universalCoachBonuses.map((bonus) => bonus.baseTitle),
+        copyText: [
+          form.heroHeadline,
+          form.subheadline,
+          form.heroTrustLine,
+          form.bio,
+          form.coachIntro,
+          form.visionText,
+          form.benefitsText,
+          form.problemPointsText,
+          form.socialCopy
+        ]
+          .join(" ")
+          .trim(),
+        ctaText: form.ctaText || form.registerButtonText,
+        faq: activePreview?.content.faq || [],
+        footer: {
+          brandLine: form.footerBrandLine,
+          privacyNote: form.supportPrivacyNote,
+          text: form.footerText
+        },
+        media: { ready: mediaReady },
+        missingFields: getAdminV2BuilderMissingFields(form),
+        mobileContentLength: [
+          form.heroHeadline,
+          form.subheadline,
+          form.bio,
+          form.coachIntro,
+          form.visionText,
+          form.benefitsText,
+          form.problemPointsText,
+          form.faqText,
+          form.footerText
+        ].join(" ").length,
+        navbarSections,
+        niche: form.niche,
+        previewDigest: activePreview ? getAdminV2CoachSitePublicFingerprint(activePreview) : "",
+        productionValidationError: getAdminV2CoachSiteValidationError(form, "published"),
+        publicDigest:
+          editingSite?.status === "published"
+            ? getAdminV2CoachSitePublicFingerprint(editingSite)
+            : "",
+        registrationUrl: form.googleFormUrl,
+        visibleSections
+      },
+      mediaReady,
       missingFields: getAdminV2BuilderMissingFields(form),
       readinessChecks: [
         {
@@ -8751,9 +9415,12 @@ function AdminV2CreateSitePage({
       ],
       saving: Boolean(savingIntent),
       slug: normalizedSlug
-    }),
-    [activeCreatorStep, activePreview, form, normalizedSlug, savingIntent]
-  );
+    };
+  }, [activeCreatorStep, activePreview, editingSite, form, normalizedSlug, savingIntent]);
+
+  useEffect(() => {
+    formRef.current = form;
+  }, [form]);
 
   useEffect(() => {
     onAIContextChange(builderCopilotContext);
@@ -8778,6 +9445,10 @@ function AdminV2CreateSitePage({
   }
 
   async function analyzeExistingPaidFunnel() {
+    if (copyReview) {
+      setMessage("Apply or reject the pending AI copy review before analyzing another funnel.");
+      return;
+    }
     const url = form.existingPaidFunnelUrl.trim();
     if (!isAdminV2SingleHttpsUrl(url)) {
       setMessage("Add one valid HTTPS paid funnel URL before analysis.");
@@ -8837,10 +9508,15 @@ function AdminV2CreateSitePage({
   }
 
   async function generateCoachCopy(scope: AdminV2CoachCopyScope) {
-    if (!form.coachName.trim() || !form.niche.trim() || aiBusyScope) {
+    if (copyReview) {
+      setMessage("Apply or reject the pending AI copy review before generating more suggestions.");
+      return;
+    }
+    if (!form.coachName.trim() || !form.niche.trim()) {
       setMessage("Coach name and niche are required before AI copy generation.");
       return;
     }
+    if (aiBusyScope) return;
 
     setAiBusyScope(scope);
     setMessage(
@@ -8854,49 +9530,65 @@ function AdminV2CreateSitePage({
       status: "working"
     });
     try {
-      const response = await fetch("/api/admin/coach-sites/generate-copy", {
-        body: JSON.stringify({
-          bio: form.bio,
-          coachName: form.coachName,
-          existingPaidFunnelUrl: form.existingPaidFunnelUrl,
-          hasGoogleFormUrl: Boolean(form.googleFormUrl.trim()),
-          hasSupportContact: Boolean(
-            form.coachEmail.trim() || form.coachPhone.trim() || form.whatsappLink.trim()
-          ),
-          heroMediaType: form.heroMediaType,
-          location: form.location,
-          niche: form.niche,
-          paidFunnelContext: form.paidFunnelContext,
-          registerButtonText: form.registerButtonText,
-          scope,
-          supportText: form.supportText,
-          vision: form.vision
-        }),
-        cache: "no-store",
-        credentials: "include",
-        headers: {
-          "content-type": "application/json",
-          [ADMIN_CSRF_HEADER_NAME]: csrfToken
-        },
-        method: "POST"
-      });
-      const payload = (await response.json().catch(() => ({}))) as {
-        configured?: boolean;
-        content?: Partial<CoachSiteRecord["content"]>;
-        message?: string;
-        ok?: boolean;
+      const requestBody = {
+        bio: form.bio,
+        coachName: form.coachName,
+        existingPaidFunnelUrl: form.existingPaidFunnelUrl,
+        hasGoogleFormUrl: Boolean(form.googleFormUrl.trim()),
+        hasSupportContact: Boolean(
+          form.coachEmail.trim() || form.coachPhone.trim() || form.whatsappLink.trim()
+        ),
+        heroMediaType: form.heroMediaType,
+        location: form.location,
+        niche: form.niche,
+        paidFunnelContext: form.paidFunnelContext,
+        registerButtonText: form.registerButtonText,
+        scope,
+        supportText: form.supportText,
+        vision: form.vision
       };
+      const { cancelled, payload, response } = await requestAdminCoachCopyWithConfirmation<
+        Partial<CoachSiteRecord["content"]>
+      >({
+        body: requestBody,
+        confirmLargeRequest: (message) => window.confirm(message),
+        csrfToken
+      });
+      if (cancelled) {
+        const cancellationMessage = "AI copy generation cancelled. No form fields were changed.";
+        setMessage(cancellationMessage);
+        onAdminActivity({
+          detail: cancellationMessage,
+          label: "Create Site AI",
+          status: "error"
+        });
+        return;
+      }
       if (!response.ok || !payload.ok || !payload.content) {
         throw new Error(payload.message || "AI copy generation failed safely.");
       }
 
-      setForm((current) => applyAdminV2GeneratedCoachCopy(current, payload.content!));
-      setPreviewSite(null);
+      const currentForm = formRef.current;
+      const proposedForm = applyAdminV2GeneratedCoachCopy(currentForm, payload.content);
+      const suggestions = buildAdminAIBuilderSuggestions(
+        currentForm,
+        proposedForm,
+        currentForm.paidFunnelContext.trim()
+          ? "Generated from the selected coach, niche, and analyzed paid-funnel source context."
+          : "Generated from the selected coach, niche, and current permission-visible builder context."
+      );
+      if (!suggestions.length) {
+        setMessage(
+          "AI copy generation returned no field changes. The current form remains unchanged."
+        );
+        return;
+      }
+      setCopyReview({ scope, suggestions });
       setMessage(
-        `${scope === "all" ? "Complete site copy" : `${scope} copy`} generated. Review and edit before saving.`
+        `${suggestions.length} ${scope === "all" ? "site-copy" : scope} suggestions generated. Review and apply or reject them; the form is unchanged.`
       );
       onAdminActivity({
-        detail: `${scope} copy generated for ${form.coachName}.`,
+        detail: `${suggestions.length} ${scope} copy suggestions staged for ${currentForm.coachName}.`,
         label: "Create Site AI",
         status: "success"
       });
@@ -8907,6 +9599,85 @@ function AdminV2CreateSitePage({
     } finally {
       setAiBusyScope("");
     }
+  }
+
+  function applyGeneratedCoachCopySuggestions() {
+    if (!copyReview) return;
+    const suggestionCount = copyReview.suggestions.length;
+    const appliedCount = copyReview.suggestions.filter(
+      (suggestion) => formRef.current[suggestion.field] === suggestion.original
+    ).length;
+    const skippedCount = suggestionCount - appliedCount;
+    setForm((current) => applyAdminAIBuilderSuggestions(current, copyReview.suggestions));
+    setCopyReview(null);
+    if (appliedCount) setPreviewSite(null);
+    setMessage(
+      `${appliedCount} approved AI copy suggestion${appliedCount === 1 ? "" : "s"} applied to the unsaved form.${
+        skippedCount
+          ? ` ${skippedCount} stale suggestion${skippedCount === 1 ? " was" : "s were"} skipped because the field changed after generation.`
+          : ""
+      }`
+    );
+    onAdminActivity({
+      detail: `${appliedCount} AI copy suggestions applied after explicit review; ${skippedCount} stale suggestions skipped.`,
+      label: "Create Site AI",
+      status: "success"
+    });
+  }
+
+  function applyGeneratedCoachCopySuggestion(field: keyof CoachSiteFormState) {
+    const suggestion = copyReview?.suggestions.find((item) => item.field === field);
+    if (!suggestion) return;
+    const applied = formRef.current[field] === suggestion.original;
+    setForm((current) => applyAdminAIBuilderSuggestions(current, [suggestion]));
+    setCopyReview((current) => {
+      if (!current) return null;
+      const remaining = current.suggestions.filter((item) => item.field !== field);
+      return remaining.length ? { ...current, suggestions: remaining } : null;
+    });
+    if (applied) setPreviewSite(null);
+    setMessage(
+      applied
+        ? `${getAdminV2BuilderFieldLabel(field)} AI copy suggestion applied to the unsaved form.`
+        : `${getAdminV2BuilderFieldLabel(field)} AI copy suggestion was stale and skipped because the field changed after generation.`
+    );
+    onAdminActivity({
+      detail: `${getAdminV2BuilderFieldLabel(field)} AI copy suggestion ${applied ? "applied" : "skipped as stale"} after explicit review.`,
+      label: "Create Site AI",
+      status: "success"
+    });
+  }
+
+  function rejectGeneratedCoachCopySuggestion(field: keyof CoachSiteFormState) {
+    const suggestion = copyReview?.suggestions.find((item) => item.field === field);
+    if (!suggestion) return;
+    setCopyReview((current) => {
+      if (!current) return null;
+      const remaining = current.suggestions.filter((item) => item.field !== field);
+      return remaining.length ? { ...current, suggestions: remaining } : null;
+    });
+    setMessage(
+      `${getAdminV2BuilderFieldLabel(field)} AI copy suggestion rejected. The form value was preserved.`
+    );
+    onAdminActivity({
+      detail: `${getAdminV2BuilderFieldLabel(field)} AI copy suggestion rejected without changing the form.`,
+      label: "Create Site AI",
+      status: "success"
+    });
+  }
+
+  function rejectGeneratedCoachCopySuggestions() {
+    if (!copyReview) return;
+    const suggestionCount = copyReview.suggestions.length;
+    setCopyReview(null);
+    setMessage(
+      `${suggestionCount} AI copy suggestions rejected. Original form values were preserved.`
+    );
+    onAdminActivity({
+      detail: `${suggestionCount} AI copy suggestions rejected without changing the form.`,
+      label: "Create Site AI",
+      status: "success"
+    });
   }
 
   function preparePreview() {
@@ -8928,9 +9699,9 @@ function AdminV2CreateSitePage({
       status: "draft"
     });
     setPreviewSite(site);
-    setMessage("Preview generated inside the separate Admin V2 builder.");
+    setMessage("Preview ready. Review it before publishing.");
     onAdminActivity({
-      detail: `${site.coachName} preview generated in Admin V2.`,
+      detail: `${site.coachName} preview generated.`,
       label: "Create Site",
       status: "success"
     });
@@ -9331,7 +10102,9 @@ function AdminV2CreateSitePage({
             <div className="row-actions">
               <button
                 className="btn btn-sm"
-                disabled={funnelAnalysisBusy || !form.existingPaidFunnelUrl.trim()}
+                disabled={
+                  funnelAnalysisBusy || Boolean(copyReview) || !form.existingPaidFunnelUrl.trim()
+                }
                 onClick={() => void analyzeExistingPaidFunnel()}
                 type="button"
               >
@@ -9339,7 +10112,7 @@ function AdminV2CreateSitePage({
               </button>
               <button
                 className="btn btn-sm btn-primary"
-                disabled={Boolean(aiBusyScope)}
+                disabled={Boolean(aiBusyScope) || Boolean(copyReview)}
                 onClick={() => void generateCoachCopy("all")}
                 type="button"
               >
@@ -9405,7 +10178,7 @@ function AdminV2CreateSitePage({
                 <span>{String(label)}</span>
                 <button
                   className="btn btn-sm"
-                  disabled={Boolean(aiBusyScope)}
+                  disabled={Boolean(aiBusyScope) || Boolean(copyReview)}
                   onClick={(event) => {
                     event.preventDefault();
                     void generateCoachCopy(scope as AdminV2CoachCopyScope);
@@ -9501,7 +10274,7 @@ function AdminV2CreateSitePage({
                 <span>{String(label)}</span>
                 <button
                   className="btn btn-sm"
-                  disabled={Boolean(aiBusyScope)}
+                  disabled={Boolean(aiBusyScope) || Boolean(copyReview)}
                   onClick={(event) => {
                     event.preventDefault();
                     void generateCoachCopy(scope as AdminV2CoachCopyScope);
@@ -9550,7 +10323,7 @@ function AdminV2CreateSitePage({
             {selectedInspectTarget ? (
               <button
                 className="btn btn-sm"
-                disabled={Boolean(aiBusyScope)}
+                disabled={Boolean(aiBusyScope) || Boolean(copyReview)}
                 onClick={() => void generateCoachCopy(inspectScope)}
                 type="button"
               >
@@ -9656,9 +10429,17 @@ function AdminV2CreateSitePage({
                   : "Build, preview, save, and publish through the production coach-site API."}
               </p>
             </div>
-            <span className="console-pill">
-              {initialSource === "loading" ? "Loading" : initialSource}
-            </span>
+            <div className="row-actions">
+              <AdminAIAskButton
+                className="btn btn-sm"
+                label="Review Builder form with AI"
+                query="Review the current Builder form for completeness, conflicting values, unsafe claims, URL format, and risky changes without editing it."
+                scope="page"
+              />
+              <span className="console-pill">
+                {initialSource === "loading" ? "Loading" : initialSource}
+              </span>
+            </div>
           </div>
 
           <div className="steps" aria-label="Coach Website Creator steps">
@@ -9676,6 +10457,16 @@ function AdminV2CreateSitePage({
           </div>
 
           {renderCreatorStepFields()}
+
+          {copyReview ? (
+            <AdminV2BuilderSuggestionReview
+              onApply={applyGeneratedCoachCopySuggestions}
+              onApplySuggestion={applyGeneratedCoachCopySuggestion}
+              onReject={rejectGeneratedCoachCopySuggestions}
+              onRejectSuggestion={rejectGeneratedCoachCopySuggestion}
+              review={copyReview}
+            />
+          ) : null}
 
           <div className="modal-actions">
             <button
@@ -9715,14 +10506,22 @@ function AdminV2CreateSitePage({
               </button>
             ) : null}
             {isPublishStep ? (
-              <button
-                className="btn btn-primary"
-                disabled={savingIntent !== ""}
-                onClick={() => void persistCoachSite("published", "publish")}
-                type="button"
-              >
-                {savingIntent === "publish" ? "Publishing..." : "Publish"}
-              </button>
+              <>
+                <AdminAIAskButton
+                  className="btn"
+                  label="Pre-publish AI check"
+                  query="Run the complete pre-publish Builder inspection."
+                  scope="page"
+                />
+                <button
+                  className="btn btn-primary"
+                  disabled={savingIntent !== ""}
+                  onClick={() => void persistCoachSite("published", "publish")}
+                  type="button"
+                >
+                  {savingIntent === "publish" ? "Publishing..." : "Publish"}
+                </button>
+              </>
             ) : null}
           </div>
           <div className="modal-actions v2-creator-secondary-actions">
@@ -10049,6 +10848,16 @@ function getAdminV2CoachSiteValidationError(
   return "";
 }
 
+function getAdminV2CoachSitePublicFingerprint(site: CoachSiteRecord) {
+  const value = JSON.stringify(toPublicCoachSiteRecord(site));
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 function mergeAdminV2CoachSite(sites: CoachSiteRecord[], savedSite: CoachSiteRecord) {
   const replaced = sites.map((site) => (site.id === savedSite.id ? savedSite : site));
   return replaced.some((site) => site.id === savedSite.id) ? replaced : [savedSite, ...sites];
@@ -10067,6 +10876,42 @@ function isAdminV2SingleHttpsUrl(value: string) {
   } catch {
     return false;
   }
+}
+
+function getAdminV2CoachSiteGenerationFailure(
+  site: CoachSiteRecord,
+  errorReports: AdminErrorReport[]
+) {
+  const report = errorReports.find((candidate) => {
+    if (candidate.status === "Fixed" || candidate.status === "Ignored") return false;
+    const related =
+      candidate.coachSlug === site.slug || candidate.pagePath.includes(`/coach/${site.slug}`);
+    if (!related) return false;
+    return [candidate.errorCode, candidate.safeMessage, candidate.category].some((value) =>
+      /(?:generat|publish[_ -]?fail|copy[_ -]?fail|ai[_ -]?fail)/i.test(value || "")
+    );
+  });
+  if (!report) return undefined;
+  return [report.errorCode, report.safeMessage, report.category]
+    .filter((value): value is string => Boolean(value))
+    .filter((value) => /(?:generat|publish[_ -]?fail|copy[_ -]?fail|ai[_ -]?fail)/i.test(value))
+    .join(": ");
+}
+
+function getAdminV2CoachSitePermissionIssue(
+  site: CoachSiteRecord,
+  permissions: { canArchive: boolean; canEdit: boolean; canPublish: boolean }
+) {
+  if (site.status === "draft" && !permissions.canPublish) {
+    return "Current role lacks website_creator.publish permission for this draft.";
+  }
+  if (site.status === "archived" && !permissions.canArchive) {
+    return "Current role lacks coach_sites.archive permission to restore this record.";
+  }
+  if ((site.status === "published" || site.status === "paused") && !permissions.canEdit) {
+    return "Current role lacks coach_sites.edit permission for this record.";
+  }
+  return undefined;
 }
 
 function isAdminV2SingleEmailAddress(value: string) {
@@ -10092,6 +10937,9 @@ function AdminV2CoachSitesPage({
   canRemove,
   coachSites,
   csrfToken,
+  errorReports,
+  focusTarget,
+  onAIContextChange,
   onAdminActivity,
   onEditSite,
   onSelect,
@@ -10108,6 +10956,9 @@ function AdminV2CoachSitesPage({
   canRemove: boolean;
   coachSites: CoachSiteRecord[];
   csrfToken: string;
+  errorReports: AdminErrorReport[];
+  focusTarget: AdminV2CoachSiteFocus | null;
+  onAIContextChange: (context: AdminAITableContext) => void;
   onAdminActivity: (activity: AdminV2ActionActivityInput) => void;
   onEditSite: (site: CoachSiteRecord) => void;
   onSelect: (viewId: AdminV2ViewId) => void;
@@ -10131,11 +10982,71 @@ function AdminV2CoachSitesPage({
   const [managedSiteId, setManagedSiteId] = useState("");
   const [selectedOpsRowKey, setSelectedOpsRowKey] = useState("");
   const [selectedSiteId, setSelectedSiteId] = useState("");
+  const [selectedTableSiteIdsState, setSelectedTableSiteIds] = useState<string[]>([]);
+  const appliedFocusRef = useRef("");
   const normalizedQuery = query.trim().toLowerCase();
   const visibleSites = useMemo(
     () => coachSites.filter((site) => site.status !== "removed"),
     [coachSites]
   );
+  const explicitFocusActive = Boolean(
+    focusTarget?.siteId || focusTarget?.coachId || focusTarget?.coachSlug
+  );
+  useEffect(() => {
+    const focusKey = [
+      focusTarget?.siteId || "",
+      focusTarget?.coachId || "",
+      focusTarget?.coachSlug || ""
+    ].join("|");
+    if (!focusKey.replace(/\|/g, "")) {
+      appliedFocusRef.current = "";
+      return;
+    }
+    if (source === "loading" || appliedFocusRef.current === focusKey) return;
+
+    const site = resolveAdminV2CoachSiteFocus(visibleSites, focusTarget);
+    const frame = window.requestAnimationFrame(() => {
+      appliedFocusRef.current = focusKey;
+      setQuery("");
+      setSearchOpen(false);
+      setStatusFilter("all");
+      setSiteTypeFilter("all");
+
+      if (!site) {
+        const identity =
+          focusTarget?.coachSlug ||
+          focusTarget?.coachId ||
+          focusTarget?.siteId ||
+          "requested coach";
+        setCurrentPage(1);
+        setSelectedOpsRowKey(focusTarget?.coachSlug || focusTarget?.coachId || "");
+        setSelectedSiteId("");
+        setSelectedTableSiteIds([]);
+        setMessage(
+          `${identity} has no unique permission-visible coach-site match. No site action was selected.`
+        );
+        onAdminActivity({
+          detail: `${identity} could not be resolved to one permission-visible coach-site record.`,
+          label: "Coach Ops",
+          status: "error"
+        });
+        return;
+      }
+
+      const siteIndex = visibleSites.findIndex((candidate) => candidate.id === site.id);
+      setCurrentPage(siteIndex < 0 ? 1 : Math.floor(siteIndex / ADMIN_V2_COACH_SITE_PAGE_SIZE) + 1);
+      setSelectedOpsRowKey(site.slug || site.id);
+      setSelectedSiteId(site.id);
+      setSelectedTableSiteIds([site.id]);
+      setMessage(`${site.coachName} loaded from Analytics into the operations workbench.`);
+      onAdminActivity({
+        detail: `${site.coachName} identity carried from Analytics into Coach Sites.`,
+        label: "Coach Ops",
+        status: "success"
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusTarget, onAdminActivity, source, visibleSites]);
   const currentSites = useMemo(
     () => visibleSites.filter((site) => site.status !== "archived"),
     [visibleSites]
@@ -10167,7 +11078,8 @@ function AdminV2CoachSitesPage({
     [normalizedQuery, siteTypeFilter, statusFilter, visibleSites]
   );
   const selectedSite =
-    visibleSites.find((site) => site.id === selectedSiteId) || filteredSites[0] || visibleSites[0];
+    visibleSites.find((site) => site.id === selectedSiteId) ||
+    (explicitFocusActive ? null : filteredSites[0] || visibleSites[0]);
   const managedSite = visibleSites.find((site) => site.id === managedSiteId) || null;
   const searchSuggestions = useMemo(
     () =>
@@ -10226,7 +11138,7 @@ function AdminV2CoachSitesPage({
     intelligenceRows.find(
       (row) => row.id === selectedSite?.id || row.slug === selectedSite?.slug
     ) ||
-    intelligenceRows[0] ||
+    (explicitFocusActive ? null : intelligenceRows[0]) ||
     null;
   const operationsQueue = intelligenceRows
     .filter((row) => row.risk.priority !== "good")
@@ -10237,13 +11149,92 @@ function AdminV2CoachSitesPage({
   const pageStartIndex = filteredSites.length
     ? (clampedCurrentPage - 1) * ADMIN_V2_COACH_SITE_PAGE_SIZE
     : 0;
-  const tableSites = filteredSites.slice(
-    pageStartIndex,
-    pageStartIndex + ADMIN_V2_COACH_SITE_PAGE_SIZE
+  const tableSites = useMemo(
+    () => filteredSites.slice(pageStartIndex, pageStartIndex + ADMIN_V2_COACH_SITE_PAGE_SIZE),
+    [filteredSites, pageStartIndex]
   );
+  const selectedTableSiteIds = useMemo(() => {
+    const visibleIds = new Set(tableSites.map((site) => site.id));
+    return selectedTableSiteIdsState.filter((id) => visibleIds.has(id));
+  }, [selectedTableSiteIdsState, tableSites]);
   const pageEndIndex = filteredSites.length ? pageStartIndex + tableSites.length : 0;
   const activeFilterCount =
     (query.trim() ? 1 : 0) + (statusFilter !== "all" ? 1 : 0) + (siteTypeFilter !== "all" ? 1 : 0);
+  const tableAiContext = useMemo<AdminAITableContext>(
+    () => ({
+      filters: {
+        page: clampedCurrentPage,
+        query: query.trim(),
+        siteType: siteTypeFilter,
+        status: statusFilter
+      },
+      rows: tableSites.map((site) => ({
+        duplicateKey: normalizeCoachSlug(site.slug || site.coachName),
+        generationFailure: getAdminV2CoachSiteGenerationFailure(site, errorReports),
+        groupKey: site.niche,
+        id: site.id,
+        imageReady:
+          site.heroMediaType === "none" ||
+          (site.heroMediaType === "image" && Boolean((site.photoUrl || site.logoUrl).trim())) ||
+          (site.heroMediaType === "video" && Boolean(site.videoUrl.trim())),
+        label: site.coachName || site.slug,
+        linkValid: isAdminV2SingleHttpsUrl(site.googleFormUrl),
+        permissionIssue: getAdminV2CoachSitePermissionIssue(site, {
+          canArchive,
+          canEdit,
+          canPublish
+        }),
+        requiredDataComplete: Boolean(
+          site.coachName.trim() &&
+          site.niche.trim() &&
+          site.slug.trim() &&
+          site.bio.trim() &&
+          site.vision.trim()
+        ),
+        status: site.status,
+        unresolvedErrors: errorReports.filter(
+          (report) =>
+            report.status !== "Fixed" &&
+            report.status !== "Ignored" &&
+            (report.coachSlug === site.slug || report.pagePath.includes(`/coach/${site.slug}`))
+        ).length
+      })),
+      selectedIds: selectedTableSiteIds,
+      sort: null,
+      tableId: "coach-sites"
+    }),
+    [
+      canArchive,
+      canEdit,
+      canPublish,
+      clampedCurrentPage,
+      errorReports,
+      query,
+      selectedTableSiteIds,
+      siteTypeFilter,
+      statusFilter,
+      tableSites
+    ]
+  );
+
+  useEffect(() => {
+    onAIContextChange(tableAiContext);
+  }, [onAIContextChange, tableAiContext]);
+
+  function toggleCoachSiteSelection(id: string, selected: boolean) {
+    setSelectedTableSiteIds((current) =>
+      selected
+        ? Array.from(new Set([...current, id]))
+        : current.filter((selectedId) => selectedId !== id)
+    );
+  }
+
+  function toggleVisibleCoachSiteSelection() {
+    const visibleIds = tableSites.map((site) => site.id);
+    const allSelected =
+      visibleIds.length > 0 && visibleIds.every((id) => selectedTableSiteIds.includes(id));
+    setSelectedTableSiteIds(allSelected ? [] : visibleIds);
+  }
 
   function changeStatusFilter(status: "all" | CoachSiteStatus) {
     setStatusFilter(status);
@@ -10750,6 +11741,15 @@ function AdminV2CoachSitesPage({
           </div>
           {selectedSite ? (
             <div className="row-actions">
+              {selectedTableSiteIds.length ? (
+                <AdminAIAskButton
+                  className="btn btn-sm"
+                  label="Analyze selected Coach Sites"
+                  query="Why are these selected Coach Sites still in draft? Explain each selected row using only permission-visible evidence."
+                  selectedEntityIds={selectedTableSiteIds}
+                  scope="selection"
+                />
+              ) : null}
               <button
                 className="btn btn-sm btn-primary"
                 onClick={() => setManagedSiteId(selectedSite.id)}
@@ -10850,17 +11850,26 @@ function AdminV2CoachSitesPage({
               load per page from the live coach-site list.
             </p>
           </div>
-          <div className="tabs v2-sites-tabs">
-            {(["all", "published", "paused", "draft", "archived"] as const).map((status) => (
-              <button
-                className={`tab${statusFilter === status ? " is-active" : ""}`}
-                key={status}
-                onClick={() => changeStatusFilter(status)}
-                type="button"
-              >
-                {getCoachV2StatusLabel(status)}
-              </button>
-            ))}
+          <div className="row-actions">
+            <span className="console-pill">{selectedTableSiteIds.length} selected</span>
+            <AdminAIAskButton
+              className="btn btn-sm"
+              label="Analyze visible table"
+              query="Summarize the visible Coach Sites table using the current filters and explain the safest review-only next steps."
+              scope="page"
+            />
+            <div className="tabs v2-sites-tabs">
+              {(["all", "published", "paused", "draft", "archived"] as const).map((status) => (
+                <button
+                  className={`tab${statusFilter === status ? " is-active" : ""}`}
+                  key={status}
+                  onClick={() => changeStatusFilter(status)}
+                  type="button"
+                >
+                  {getCoachV2StatusLabel(status)}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -10964,6 +11973,17 @@ function AdminV2CoachSitesPage({
           <table className="v2-sites-table">
             <thead>
               <tr>
+                <th>
+                  <input
+                    aria-label="Select all visible coach sites"
+                    checked={
+                      tableSites.length > 0 &&
+                      tableSites.every((site) => selectedTableSiteIds.includes(site.id))
+                    }
+                    onChange={toggleVisibleCoachSiteSelection}
+                    type="checkbox"
+                  />
+                </th>
                 <th>Coach</th>
                 <th>Status</th>
                 <th>Public Link</th>
@@ -10978,13 +11998,29 @@ function AdminV2CoachSitesPage({
                   const nextStatus = site.status === "paused" ? "published" : "paused";
                   return (
                     <tr
-                      data-selected={selectedSite?.id === site.id ? "true" : undefined}
+                      aria-selected={selectedTableSiteIds.includes(site.id)}
+                      data-selected={
+                        selectedTableSiteIds.includes(site.id) || selectedSite?.id === site.id
+                          ? "true"
+                          : undefined
+                      }
                       key={site.id}
                       onClick={() => {
                         setSelectedSiteId(site.id);
                         setSelectedOpsRowKey(site.slug || site.id);
                       }}
                     >
+                      <td>
+                        <input
+                          aria-label={`Select ${site.coachName || site.slug}`}
+                          checked={selectedTableSiteIds.includes(site.id)}
+                          onChange={(event) =>
+                            toggleCoachSiteSelection(site.id, event.currentTarget.checked)
+                          }
+                          onClick={(event) => event.stopPropagation()}
+                          type="checkbox"
+                        />
+                      </td>
                       <td>
                         <div className="person">
                           <span className="avatar">{getCoachV2Initials(site.coachName)}</span>
@@ -11151,7 +12187,7 @@ function AdminV2CoachSitesPage({
                 })
               ) : (
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={7}>
                     <div className="empty-state">
                       <h3>No coach sites match this filter</h3>
                       <p>
@@ -11850,7 +12886,7 @@ function AdminV2CoachOpsAiBridge({
           <p>
             {focusSignal
               ? `${focusSignal.reason} Recommended action: ${focusSignal.action}.`
-              : "The workbench uses production counters to route coach actions without opening old admin panels."}
+              : "The workbench uses live counters to prioritize and route coach actions."}
           </p>
         </div>
       </div>
@@ -11891,19 +12927,46 @@ function AdminV2TopPerformersPage({
   analyticsSource,
   analyticsSummaries,
   coachSites,
-  dataLoading
+  dataLoading,
+  onAIContextChange
 }: {
   analyticsSource: string;
   analyticsSummaries: AnalyticsMetricSummary[];
   coachSites: CoachSiteRecord[];
   dataLoading: boolean;
+  onAIContextChange: (context: AdminAITableContext) => void;
 }) {
-  const rows = getAdminV2CoachRows(coachSites, analyticsSummaries)
-    .sort((a, b) => b.visits - a.visits)
-    .slice(0, 8);
+  const rows = useMemo(
+    () =>
+      getAdminV2CoachRows(coachSites, analyticsSummaries)
+        .sort((a, b) => b.visits - a.visits)
+        .slice(0, 8),
+    [analyticsSummaries, coachSites]
+  );
+  const tableAiContext = useMemo<AdminAITableContext>(
+    () => ({
+      filters: { ranking: "top-8" },
+      rows: rows.map((row) => ({
+        duplicateKey: normalizeCoachSlug(row.slug || row.coachName),
+        groupKey: row.region,
+        id: row.id || row.slug,
+        label: row.coachName,
+        requiredDataComplete: Boolean(row.coachName && row.slug),
+        status: row.status
+      })),
+      selectedIds: [],
+      sort: { direction: "desc", field: "visits" },
+      tableId: "coach-leaderboard"
+    }),
+    [rows]
+  );
   const topCoach = rows[0];
   const totalVisits = rows.reduce((total, row) => total + row.visits, 0);
   const totalClicks = rows.reduce((total, row) => total + row.clicks, 0);
+
+  useEffect(() => {
+    onAIContextChange(tableAiContext);
+  }, [onAIContextChange, tableAiContext]);
 
   return (
     <AdminV2ModuleShell
@@ -11945,6 +13008,12 @@ function AdminV2TopPerformersPage({
             <h3>Coach leaderboard</h3>
             <p>Compact, sortable-ready data shape for production coach ranking.</p>
           </div>
+          <AdminAIAskButton
+            className="btn btn-sm"
+            label="Analyze coach leaderboard"
+            query="Summarize the visible coach leaderboard, compare statuses, and identify records needing attention."
+            scope="page"
+          />
         </div>
         <div className="table-wrap">
           <table>
@@ -12006,8 +13075,10 @@ function AdminV2CoachAnalyticsPage({
   onAnalyticsCustomEndChange,
   onAnalyticsCustomStartChange,
   onAnalyticsRangeChange,
+  onAIContextChange,
+  onTableAIContextChange,
   onAdminActivity,
-  onSelect,
+  onOpenCoachOps,
   recentEvents,
   snapshot,
   timeSeries
@@ -12024,8 +13095,10 @@ function AdminV2CoachAnalyticsPage({
   onAnalyticsCustomEndChange: (value: string) => void;
   onAnalyticsCustomStartChange: (value: string) => void;
   onAnalyticsRangeChange: (value: AnalyticsDateRangeId) => void;
+  onAIContextChange: (context: AdminV2CoachAnalyticsAIContext) => void;
+  onTableAIContextChange: (context: AdminAITableContext) => void;
   onAdminActivity: (activity: AdminV2ActionActivityInput) => void;
-  onSelect: (view: AdminV2ViewId) => void;
+  onOpenCoachOps: (row: CoachAnalyticsRow) => void;
   recentEvents: AnalyticsRecentEvent[];
   source: string;
   snapshot: AdminV2DashboardData | null;
@@ -12063,16 +13136,29 @@ function AdminV2CoachAnalyticsPage({
       .toLowerCase()
       .includes(query.toLowerCase())
   );
-  const productionFilteredRows = filterCoachAnalyticsRows({
-    dateRange: analyticsRange,
-    funnelFilter,
-    performanceFilter,
-    query,
-    regionFilter,
-    rows: productionRows,
-    sortBy,
-    statusFilter
-  });
+  const productionFilteredRows = useMemo(
+    () =>
+      filterCoachAnalyticsRows({
+        dateRange: analyticsRange,
+        funnelFilter,
+        performanceFilter,
+        query,
+        regionFilter,
+        rows: productionRows,
+        sortBy,
+        statusFilter
+      }),
+    [
+      analyticsRange,
+      funnelFilter,
+      performanceFilter,
+      productionRows,
+      query,
+      regionFilter,
+      sortBy,
+      statusFilter
+    ]
+  );
   const productionSearchRows = getAdminV2CoachAnalyticsSearchSuggestions(productionRows, query);
   const productionRegions = Array.from(
     new Set(productionRows.map((row) => getAdminV2CoachAnalyticsRegionLabel(row)).filter(Boolean))
@@ -12096,10 +13182,73 @@ function AdminV2CoachAnalyticsPage({
     productionFilteredRows[0] ||
     productionRows[0] ||
     null;
+  const tableAiContext = useMemo<AdminAITableContext>(
+    () => ({
+      filters: {
+        dateRange: analyticsRangeLabel,
+        funnel: funnelFilter,
+        performance: performanceFilter,
+        query,
+        region: regionFilter,
+        status: statusFilter
+      },
+      rows: productionFilteredRows.map((row) => ({
+        duplicateKey: normalizeCoachSlug(row.coachSlug || row.coachName),
+        groupKey: getAdminV2CoachAnalyticsRegionLabel(row),
+        id: row.coachId || row.coachSlug,
+        label: row.coachName,
+        linkValid: getAdminV2CoachPublicHref(row)
+          ? isAdminV2SingleHttpsUrl(getAdminV2CoachPublicHref(row))
+          : false,
+        requiredDataComplete: Boolean(row.coachName && (row.coachId || row.coachSlug)),
+        status: row.status
+      })),
+      selectedIds: selectedProductionCoach
+        ? [selectedProductionCoach.coachId || selectedProductionCoach.coachSlug]
+        : [],
+      sort: { direction: "desc", field: sortBy },
+      tableId: "coach-analytics"
+    }),
+    [
+      analyticsRangeLabel,
+      funnelFilter,
+      performanceFilter,
+      productionFilteredRows,
+      query,
+      regionFilter,
+      selectedProductionCoach,
+      sortBy,
+      statusFilter
+    ]
+  );
+  const selectedAnalyticsEntityKey = Array.from(
+    new Set(
+      analyticsSummaries
+        .filter(
+          (summary) =>
+            summary.coachId === selectedProductionCoach?.coachId ||
+            summary.coachSlug === selectedProductionCoach?.coachSlug
+        )
+        .map(getAdminAIAnalyticsEntityId)
+    )
+  ).join("|");
   const dedicatedCoach =
     productionRows.find(
       (row) => row.coachSlug === dedicatedCoachKey || row.coachId === dedicatedCoachKey
     ) || null;
+  const dedicatedCoachEntityIds = dedicatedCoach
+    ? Array.from(
+        new Set(
+          analyticsSummaries
+            .filter(
+              (summary) =>
+                summary.coachId === dedicatedCoach.coachId ||
+                summary.coachSlug === dedicatedCoach.coachSlug
+            )
+            .map(getAdminAIAnalyticsEntityId)
+        )
+      )
+    : [];
   const showSuggestions = query.trim().length > 0;
   const chartPoints = buildAdminV2OdChartPoints(timeSeries);
   useEffect(() => {
@@ -12118,6 +13267,40 @@ function AdminV2CoachAnalyticsPage({
     const frame = window.requestAnimationFrame(() => setSelectedCoachKey(nextKey));
     return () => window.cancelAnimationFrame(frame);
   }, [intelligenceRows, productionRows, selectedCoachKey]);
+
+  useEffect(() => {
+    onAIContextChange({
+      filters: {
+        dateRange: analyticsRangeLabel,
+        funnel: funnelFilter,
+        performance: performanceFilter,
+        query,
+        region: regionFilter,
+        sort: sortBy,
+        status: statusFilter
+      },
+      selectedIds: selectedAnalyticsEntityKey
+        ? selectedAnalyticsEntityKey.split("|")
+        : selectedCoachKey
+          ? [selectedCoachKey]
+          : []
+    });
+  }, [
+    analyticsRangeLabel,
+    funnelFilter,
+    onAIContextChange,
+    performanceFilter,
+    query,
+    regionFilter,
+    selectedAnalyticsEntityKey,
+    selectedCoachKey,
+    sortBy,
+    statusFilter
+  ]);
+
+  useEffect(() => {
+    onTableAIContextChange(tableAiContext);
+  }, [onTableAIContextChange, tableAiContext]);
 
   function selectCoachAnalyticsRow(row: CoachAnalyticsRow) {
     setSelectedCoachKey(row.coachSlug || row.coachId);
@@ -12154,7 +13337,10 @@ function AdminV2CoachAnalyticsPage({
           </div>
           <button
             className="btn btn-sm console-command-btn"
-            onClick={() => onSelect("coach-sites")}
+            disabled={!selectedProductionCoach}
+            onClick={() => {
+              if (selectedProductionCoach) onOpenCoachOps(selectedProductionCoach);
+            }}
             type="button"
           >
             <AdminV2ActionGlyph name="site" />
@@ -12252,7 +13438,9 @@ function AdminV2CoachAnalyticsPage({
               : "No activity selected"
           ]}
           eyebrow="Observe"
-          onPrimaryAction={() => onSelect("coach-sites")}
+          onPrimaryAction={() => {
+            if (selectedProductionCoach) onOpenCoachOps(selectedProductionCoach);
+          }}
           onSecondaryAction={
             selectedProductionCoach && getAdminV2CoachPublicHref(selectedProductionCoach)
               ? () => {
@@ -12300,10 +13488,22 @@ function AdminV2CoachAnalyticsPage({
               command surface with funnel, risk, report, and operations context.
             </p>
           </div>
-          <span className="console-pill">
-            Showing {productionFilteredRows.length.toLocaleString("en-IN")} /{" "}
-            {productionRows.length.toLocaleString("en-IN")}
-          </span>
+          <div
+            className="row-actions"
+            onFocusCapture={() => onTableAIContextChange(tableAiContext)}
+            onPointerDownCapture={() => onTableAIContextChange(tableAiContext)}
+          >
+            <AdminAIAskButton
+              className="btn btn-sm"
+              label="Analyze coach analytics table"
+              query="Summarize the visible coach analytics table, compare statuses, and identify records needing attention."
+              scope="page"
+            />
+            <span className="console-pill">
+              Showing {productionFilteredRows.length.toLocaleString("en-IN")} /{" "}
+              {productionRows.length.toLocaleString("en-IN")}
+            </span>
+          </div>
         </div>
 
         <div className="v2-coach-analytics-filters" aria-label="Coach analytics filters">
@@ -12401,7 +13601,7 @@ function AdminV2CoachAnalyticsPage({
         </div>
 
         <AdminV2CoachWiseAnalyticsMatrix
-          onOpenCoachOps={() => onSelect("coach-sites")}
+          onOpenCoachOps={onOpenCoachOps}
           onOpenCoachAnalytics={openCoachDedicatedAnalytics}
           rows={productionFilteredRows}
           selectedCoach={selectedProductionCoach}
@@ -12503,6 +13703,7 @@ function AdminV2CoachAnalyticsPage({
           </div>
         </div>
         <AdminV2AudienceMapPanel
+          onAIContextChange={onTableAIContextChange}
           snapshot={snapshot}
           status={snapshot?.sources.analyticsEvents.status || "loading"}
         />
@@ -12517,9 +13718,10 @@ function AdminV2CoachAnalyticsPage({
           onClose={() => setDedicatedCoachKey("")}
           onOpenCoachOps={() => {
             setDedicatedCoachKey("");
-            onSelect("coach-sites");
+            onOpenCoachOps(dedicatedCoach);
           }}
           recentEvents={recentEvents}
+          selectedEntityIds={dedicatedCoachEntityIds}
         />
       ) : null}
     </AdminV2ModuleShell>
@@ -12532,7 +13734,7 @@ function AdminV2CoachWiseAnalyticsMatrix({
   rows,
   selectedCoach
 }: {
-  onOpenCoachOps: () => void;
+  onOpenCoachOps: (row: CoachAnalyticsRow) => void;
   onOpenCoachAnalytics: (row: CoachAnalyticsRow) => void;
   rows: CoachAnalyticsRow[];
   selectedCoach: CoachAnalyticsRow | null;
@@ -12606,7 +13808,7 @@ function AdminV2CoachWiseAnalyticsMatrix({
                       <button
                         aria-label={`Open coach operations for ${row.coachName}`}
                         className="btn btn-sm"
-                        onClick={onOpenCoachOps}
+                        onClick={() => onOpenCoachOps(row)}
                         type="button"
                       >
                         <AdminV2ActionGlyph name="users" />
@@ -12650,7 +13852,8 @@ function AdminV2CoachDedicatedAnalyticsDialog({
   onAdminActivity,
   onClose,
   onOpenCoachOps,
-  recentEvents
+  recentEvents,
+  selectedEntityIds
 }: {
   analyticsRangeLabel: string;
   coach: CoachAnalyticsRow;
@@ -12659,6 +13862,7 @@ function AdminV2CoachDedicatedAnalyticsDialog({
   onClose: () => void;
   onOpenCoachOps: () => void;
   recentEvents: AnalyticsRecentEvent[];
+  selectedEntityIds: string[];
 }) {
   const availableTabs = useMemo(() => getAdminV2CoachDedicatedTabs(coach), [coach]);
   const [activeTab, setActiveTab] = useState<CoachAnalyticsFunnelType>("combined");
@@ -12711,7 +13915,8 @@ function AdminV2CoachDedicatedAnalyticsDialog({
             <AdminAIAskButton
               className="btn btn-sm"
               label="Generate AI Insights"
-              query={`Analyze ${coach.coachName} for ${analyticsRangeLabel}. Use only current production counters, identify funnel risks, and recommend the safest next action.`}
+              query={`Investigate ${coach.coachName} for ${analyticsRangeLabel}. Use only current production counters, identify funnel risks, and recommend the safest next action.`}
+              selectedEntityIds={selectedEntityIds}
               scope="selection"
             />
             <button className="btn btn-sm" onClick={onOpenCoachOps} type="button">
@@ -13263,12 +14468,14 @@ function AdminV2CoachReportDock({
 function AdminV2PaidMasterclassPage({
   csrfToken,
   links,
+  onAIContextChange,
   onAdminActivity,
   source,
   theme
 }: {
   csrfToken: string;
   links: AdminPaidMasterclassLink[];
+  onAIContextChange: (context: AdminAITableContext) => void;
   onAdminActivity: (activity: AdminV2ActionActivityInput) => void;
   source: string;
   theme: "dark" | "light";
@@ -13283,6 +14490,7 @@ function AdminV2PaidMasterclassPage({
       <AdminV2PaidMasterclassPanel
         csrfToken={csrfToken}
         links={links}
+        onAIContextChange={onAIContextChange}
         onAdminActivity={onAdminActivity}
         source={source}
         theme={theme}
@@ -13293,10 +14501,12 @@ function AdminV2PaidMasterclassPage({
 
 function AdminV2ShopPage({
   csrfToken,
+  onAIContextChange,
   onAdminActivity,
   snapshot
 }: {
   csrfToken: string;
+  onAIContextChange: (context: AdminAITableContext) => void;
   onAdminActivity: (activity: AdminV2ActionActivityInput) => void;
   snapshot: AdminV2DashboardData | null;
 }) {
@@ -13316,6 +14526,7 @@ function AdminV2ShopPage({
     initialShop?.paymentSettings.packageLabel || "Coach Website Builder"
   );
   const [paymentActive, setPaymentActive] = useState(initialShop?.paymentSettings.active ?? true);
+  const [shopFormAIEnabled, setShopFormAIEnabled] = useState(false);
   const status = snapshot?.sources.shop.status || "loading";
   const paymentSettings = shop?.paymentSettings;
   const reportLinks = [
@@ -13327,6 +14538,94 @@ function AdminV2ShopPage({
     ["Payment settings audit", "settings"],
     ["Analytics summary", "analytics"]
   ] as const;
+  const shopFormAIReview = useMemo(
+    () =>
+      reviewAdminAIForm({
+        assistanceEnabled: shopFormAIEnabled,
+        fields: [
+          {
+            currentConfiguration: paymentSettings?.paymentPageUrl,
+            explanation: "HTTPS checkout destination opened by the public Shop payment action.",
+            id: "paymentPageUrl",
+            label: "Payment page URL",
+            required: true,
+            riskyChange: Boolean(
+              paymentSettings && paymentSettings.paymentPageUrl !== paymentPageUrl
+            ),
+            type: "url",
+            value: paymentPageUrl
+          },
+          {
+            currentConfiguration: paymentSettings?.providerLabel,
+            explanation: "Provider name shown to administrators reviewing the payment handoff.",
+            id: "providerLabel",
+            label: "Provider label",
+            required: true,
+            type: "text",
+            value: providerLabel
+          },
+          {
+            currentConfiguration: paymentSettings?.packageLabel,
+            explanation: "Package name associated with the protected Shop checkout.",
+            id: "packageLabel",
+            label: "Package label",
+            required: true,
+            type: "copy",
+            value: packageLabel
+          },
+          {
+            currentConfiguration: paymentSettings
+              ? paymentSettings.active
+                ? "active"
+                : "paused"
+              : undefined,
+            explanation: "Controls whether the Shop payment handoff is active or paused.",
+            id: "paymentActive",
+            label: "Payment active",
+            required: true,
+            riskyChange: Boolean(paymentSettings && paymentSettings.active !== paymentActive),
+            type: "setting",
+            value: paymentActive ? "active" : "paused"
+          }
+        ],
+        formId: "shop-payment-settings"
+      }),
+    [packageLabel, paymentActive, paymentPageUrl, paymentSettings, providerLabel, shopFormAIEnabled]
+  );
+  const tableAiContext = useMemo<AdminAITableContext>(() => {
+    const sites = shop?.sites || [];
+    const failures = shop?.failures || [];
+    return {
+      filters: { source: status },
+      rows: sites.map((site) => {
+        const relatedFailures = failures.filter((failure) => failure.orderId === site.orderId);
+        const recordedFailure = relatedFailures[0];
+        return {
+          duplicateKey: normalizeCoachSlug(site.slug || site.coachName),
+          generationFailure:
+            site.siteStatus === "publish_failed" || site.workflowStage.includes("publish_failed")
+              ? recordedFailure?.message || site.workflowStage || site.siteStatus
+              : undefined,
+          groupKey: site.niche || site.source,
+          id: site.orderId,
+          label: site.coachName || site.orderId,
+          linkValid: site.publicUrl ? isAdminV2SingleHttpsUrl(site.publicUrl) : undefined,
+          requiredDataComplete: Boolean(site.orderId && site.coachName && site.paymentStatus),
+          status: site.siteStatus || site.paymentStatus,
+          unresolvedErrors: relatedFailures.filter(
+            (failure) => !/^(?:fixed|resolved|recovered)$/i.test(failure.recoveryStatus)
+          ).length
+        };
+      }),
+      selectedIds: [],
+      sort: { direction: "desc", field: "createdAt" },
+      tableId: "shop-orders"
+    };
+  }, [shop, status]);
+
+  useEffect(() => {
+    onAIContextChange(tableAiContext);
+  }, [onAIContextChange, tableAiContext]);
 
   useEffect(() => {
     let active = true;
@@ -13535,9 +14834,17 @@ function AdminV2ShopPage({
             <h3>Shop payment page</h3>
             <p>Updates are saved through the protected production Shop admin API.</p>
           </div>
-          <a className="btn btn-sm" href={PUBLIC_SHOP_SITE_PATH} rel="noreferrer" target="_blank">
-            Open Shop
-          </a>
+          <div className="row-actions">
+            <AdminAIAskButton
+              className="btn btn-sm"
+              label="Review Shop settings with AI"
+              query="Review the current Shop settings for completeness, URL format, conflicting values, and risky changes without editing them."
+              scope="page"
+            />
+            <a className="btn btn-sm" href={PUBLIC_SHOP_SITE_PATH} rel="noreferrer" target="_blank">
+              Open Shop
+            </a>
+          </div>
         </div>
         <div className="filters">
           <label>
@@ -13589,6 +14896,12 @@ function AdminV2ShopPage({
             {saving ? "Saving..." : "Save Shop Settings"}
           </button>
         </div>
+        <AdminV2FormAIReview
+          enabled={shopFormAIEnabled}
+          onEnabledChange={setShopFormAIEnabled}
+          review={shopFormAIReview}
+          title="Shop payment settings"
+        />
         <div className="grid grid-4">
           {[
             ["Current URL", paymentSettings?.paymentPageUrl || "Not configured"],
@@ -13628,6 +14941,12 @@ function AdminV2ShopPage({
             <h3>Shop Website Builder orders</h3>
             <p>Published-site status and publish recovery use live Shop records.</p>
           </div>
+          <AdminAIAskButton
+            className="btn btn-sm"
+            label="Analyze Shop orders"
+            query="Summarize the visible Shop orders, identify publish failures, and explain records needing attention."
+            scope="page"
+          />
         </div>
         <div className="table-wrap">
           <table>
@@ -13752,6 +15071,13 @@ function formatAdminV2ShopDate(value: string | null) {
   });
 }
 
+function getAdminV2ErrorReportGenerationFailure(report: AdminErrorReport) {
+  return [report.errorCode, report.safeMessage, report.category]
+    .filter((value): value is string => Boolean(value))
+    .filter((value) => /(?:generat|publish[_ -]?fail|copy[_ -]?fail|ai[_ -]?fail)/i.test(value))
+    .join(": ");
+}
+
 function AdminV2ReportsPage({
   canClear,
   canMark,
@@ -13760,6 +15086,8 @@ function AdminV2ReportsPage({
   errorReports,
   focusMaintenance = false,
   maintenanceStatus,
+  onAIContextChange,
+  onTableAIContextChange,
   onAdminActivity,
   onReportsChange,
   onSelect,
@@ -13773,6 +15101,11 @@ function AdminV2ReportsPage({
   errorReports: AdminErrorReport[];
   focusMaintenance?: boolean;
   maintenanceStatus: string;
+  onAIContextChange: (context: {
+    filter: AdminV2ErrorReportFilter;
+    selectedReferenceId: string;
+  }) => void;
+  onTableAIContextChange?: (context: AdminAITableContext) => void;
   onAdminActivity: (activity: AdminV2ActionActivityInput) => void;
   onReportsChange: (reports: AdminErrorReport[]) => void;
   onSelect: (view: AdminV2ViewId) => void;
@@ -13796,13 +15129,59 @@ function AdminV2ReportsPage({
     new: errorReports.filter((report) => report.status === "New").length,
     reviewing: errorReports.filter((report) => report.status === "Reviewing").length
   };
-  const visibleReports = errorReports.filter((report) => {
-    if (reportFilter === "all") return true;
-    if (reportFilter === "active") {
-      return report.status === "New" || report.status === "Reviewing";
-    }
-    return report.status.toLowerCase() === reportFilter;
-  });
+  const visibleReports = useMemo(
+    () =>
+      errorReports.filter((report) => {
+        if (reportFilter === "all") return true;
+        if (reportFilter === "active") {
+          return report.status === "New" || report.status === "Reviewing";
+        }
+        return report.status.toLowerCase() === reportFilter;
+      }),
+    [errorReports, reportFilter]
+  );
+  const reportAiContext = useMemo(
+    () => ({
+      filter: reportFilter,
+      selectedReferenceId: selectedReport?.referenceId || ""
+    }),
+    [reportFilter, selectedReport?.referenceId]
+  );
+  const tableAiContext = useMemo<AdminAITableContext>(
+    () => ({
+      filters: { reportFilter },
+      rows: visibleReports.slice(0, 40).map((report) => ({
+        duplicateKey: report.errorCode || report.safeMessage,
+        generationFailure: getAdminV2ErrorReportGenerationFailure(report),
+        groupKey: report.category,
+        id: report.referenceId,
+        label: report.errorCode || report.referenceId,
+        permissionIssue: canViewTechnical
+          ? undefined
+          : "Current role cannot access technical error details.",
+        requiredDataComplete: Boolean(
+          report.referenceId && report.category && report.status && report.safeMessage
+        ),
+        status: report.status,
+        unresolvedErrors: report.status === "Fixed" || report.status === "Ignored" ? 0 : 1
+      })),
+      selectedIds:
+        selectedReport && visibleReports.some((report) => report === selectedReport)
+          ? [selectedReport.referenceId]
+          : [],
+      sort: { direction: "desc", field: "createdAt" },
+      tableId: "error-reports"
+    }),
+    [canViewTechnical, reportFilter, selectedReport, visibleReports]
+  );
+
+  useEffect(() => {
+    onAIContextChange(reportAiContext);
+  }, [onAIContextChange, reportAiContext]);
+
+  useEffect(() => {
+    onTableAIContextChange?.(tableAiContext);
+  }, [onTableAIContextChange, tableAiContext]);
 
   async function copyReportValue(label: string, value: string) {
     try {
@@ -13829,7 +15208,7 @@ function AdminV2ReportsPage({
     try {
       const response = await fetch("/api/admin/error-reports", {
         body: JSON.stringify({
-          adminNotes: `Marked ${status} from native Admin V2 Error Reports.`,
+          adminNotes: `Marked ${status} from Error Reports.`,
           referenceId: report.referenceId,
           status
         }),
@@ -14245,6 +15624,15 @@ function AdminV2ReportsPage({
                     wide
                   />
                 </div>
+                <div className="row-actions">
+                  <AdminAIAskButton
+                    className="btn btn-sm"
+                    label="Investigate with AI"
+                    query="Investigate the selected error report and prepare an exact developer-ready bug summary."
+                    selectedEntityIds={[selectedReport.referenceId]}
+                    scope="selection"
+                  />
+                </div>
                 {copyMessage ? (
                   <p className={styles.v2ReportStatus} role="status">
                     {copyMessage}
@@ -14322,8 +15710,10 @@ function AdminV2SettingsPage({
   csrfToken,
   focusAdminUsers = false,
   onAction,
+  onAIContextChange,
   onAdminActivity,
   onOpenAdminUsers,
+  onTableAIContextChange,
   snapshot,
   theme
 }: {
@@ -14331,8 +15721,10 @@ function AdminV2SettingsPage({
   csrfToken: string;
   focusAdminUsers?: boolean;
   onAction: (title: string, body: string, tone?: "danger" | "standard") => void;
+  onAIContextChange: (context: AdminAISettingsSnapshot) => void;
   onAdminActivity: (activity: AdminV2ActionActivityInput) => void;
   onOpenAdminUsers: () => void;
+  onTableAIContextChange?: (context: AdminAITableContext) => void;
   snapshot: AdminV2DashboardData | null;
   theme: "dark" | "light";
 }) {
@@ -14344,8 +15736,79 @@ function AdminV2SettingsPage({
     supportWhatsapp: ""
   });
   const [supportStatus, setSupportStatus] = useState<"idle" | "loading" | "saving">("loading");
+  const [savedSupportDefaults, setSavedSupportDefaults] = useState<AdminSupportDefaultsForm | null>(
+    null
+  );
+  const [supportFormAIEnabled, setSupportFormAIEnabled] = useState(false);
   const securityItems = ADMIN_V2_SECURITY_STATUS_ITEMS;
   const userSource = snapshot?.sources.users.status || "loading";
+  const supportFormAIReview = useMemo(
+    () =>
+      reviewAdminAIForm({
+        assistanceEnabled: supportFormAIEnabled,
+        fields: [
+          {
+            currentConfiguration: savedSupportDefaults?.supportName,
+            explanation:
+              "Default support identity shown when a coach-specific name is unavailable.",
+            id: "supportName",
+            label: "Support name",
+            required: true,
+            type: "text",
+            value: supportDefaults.supportName
+          },
+          {
+            currentConfiguration: savedSupportDefaults?.supportEmail,
+            explanation: "Default support inbox used for coach and customer assistance.",
+            id: "supportEmail",
+            label: "Support email",
+            required: true,
+            riskyChange: Boolean(
+              savedSupportDefaults &&
+              savedSupportDefaults.supportEmail !== supportDefaults.supportEmail
+            ),
+            type: "email",
+            value: supportDefaults.supportEmail
+          },
+          {
+            currentConfiguration: savedSupportDefaults?.supportPhone,
+            explanation: "Optional support telephone number presented as a fallback contact.",
+            id: "supportPhone",
+            label: "Support phone",
+            type: "tel",
+            value: supportDefaults.supportPhone
+          },
+          {
+            currentConfiguration: savedSupportDefaults?.supportWhatsapp,
+            explanation: "Optional HTTPS WhatsApp destination for default support.",
+            id: "supportWhatsapp",
+            label: "Support WhatsApp",
+            riskyChange: Boolean(
+              savedSupportDefaults &&
+              savedSupportDefaults.supportWhatsapp !== supportDefaults.supportWhatsapp
+            ),
+            type: "url",
+            value: supportDefaults.supportWhatsapp
+          },
+          {
+            currentConfiguration: savedSupportDefaults?.supportMessage,
+            explanation:
+              "Default public support message used when a specific message is unavailable.",
+            id: "supportMessage",
+            label: "Support message",
+            required: true,
+            riskyChange: Boolean(
+              savedSupportDefaults &&
+              savedSupportDefaults.supportMessage !== supportDefaults.supportMessage
+            ),
+            type: "copy",
+            value: supportDefaults.supportMessage
+          }
+        ],
+        formId: "support-defaults"
+      }),
+    [savedSupportDefaults, supportDefaults, supportFormAIEnabled]
+  );
 
   useEffect(() => {
     let active = true;
@@ -14357,7 +15820,18 @@ function AdminV2SettingsPage({
           defaults?: Partial<AdminSupportDefaultsForm>;
         };
         if (!active) return;
-        setSupportDefaults((current) => ({ ...current, ...payload.defaults }));
+        const defaults = payload.defaults;
+        const nextDefaults: AdminSupportDefaultsForm = {
+          supportEmail: typeof defaults?.supportEmail === "string" ? defaults.supportEmail : "",
+          supportMessage:
+            typeof defaults?.supportMessage === "string" ? defaults.supportMessage : "",
+          supportName: typeof defaults?.supportName === "string" ? defaults.supportName : "",
+          supportPhone: typeof defaults?.supportPhone === "string" ? defaults.supportPhone : "",
+          supportWhatsapp:
+            typeof defaults?.supportWhatsapp === "string" ? defaults.supportWhatsapp : ""
+        };
+        setSupportDefaults(nextDefaults);
+        setSavedSupportDefaults(nextDefaults);
       } finally {
         if (active) setSupportStatus("idle");
       }
@@ -14369,6 +15843,22 @@ function AdminV2SettingsPage({
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    const fieldPresence = {
+      supportEmail: supportDefaults.supportEmail.trim().length > 0,
+      supportMessage: supportDefaults.supportMessage.trim().length > 0,
+      supportName: supportDefaults.supportName.trim().length > 0,
+      supportPhone: supportDefaults.supportPhone.trim().length > 0,
+      supportWhatsapp: supportDefaults.supportWhatsapp.trim().length > 0
+    };
+    onAIContextChange({
+      configuredFieldCount: Object.values(fieldPresence).filter(Boolean).length,
+      fieldCount: Object.keys(fieldPresence).length,
+      fieldPresence,
+      status: supportStatus
+    });
+  }, [onAIContextChange, supportDefaults, supportStatus]);
 
   async function saveSupportDefaults() {
     setSupportStatus("saving");
@@ -14382,6 +15872,7 @@ function AdminV2SettingsPage({
         method: "PATCH"
       });
       if (!response.ok) throw new Error("Support save failed");
+      setSavedSupportDefaults(supportDefaults);
       onAdminActivity({
         detail: "Default support fields saved.",
         label: "Support defaults",
@@ -14412,6 +15903,7 @@ function AdminV2SettingsPage({
       {focusAdminUsers ? (
         <AdminV2AdminUsersPanel
           csrfToken={csrfToken}
+          onAIContextChange={onTableAIContextChange!}
           onAdminActivity={onAdminActivity}
           theme={theme}
         />
@@ -14433,14 +15925,22 @@ function AdminV2SettingsPage({
                   <h3>Default support details</h3>
                   <p>Used when a coach does not provide a specific support destination.</p>
                 </div>
-                <button
-                  className="btn btn-sm btn-primary"
-                  disabled={supportStatus !== "idle"}
-                  onClick={saveSupportDefaults}
-                  type="button"
-                >
-                  {supportStatus === "saving" ? "Saving..." : "Save"}
-                </button>
+                <div className="row-actions">
+                  <AdminAIAskButton
+                    className="btn btn-sm"
+                    label="Review support defaults with AI"
+                    query="Review the current support defaults for completeness, conflicting values, unsafe claims, URL or contact formatting, and risky changes without editing them."
+                    scope="page"
+                  />
+                  <button
+                    className="btn btn-sm btn-primary"
+                    disabled={supportStatus !== "idle"}
+                    onClick={saveSupportDefaults}
+                    type="button"
+                  >
+                    {supportStatus === "saving" ? "Saving..." : "Save"}
+                  </button>
+                </div>
               </div>
               <div className="filters">
                 {(
@@ -14476,13 +15976,19 @@ function AdminV2SettingsPage({
                   />
                 </label>
               </div>
+              <AdminV2FormAIReview
+                enabled={supportFormAIEnabled}
+                onEnabledChange={setSupportFormAIEnabled}
+                review={supportFormAIReview}
+                title="Support defaults"
+              />
             </section>
             <section className="console-card">
               <div className="section-head">
                 <div>
                   <span className="badge">Admin users</span>
                   <h3>Roles and access</h3>
-                  <p>Admin Users is merged into Settings, while role-gated APIs stay unchanged.</p>
+                  <p>Admin users are managed in Settings with the same role-gated controls.</p>
                 </div>
                 <button className="btn btn-sm" onClick={onOpenAdminUsers} type="button">
                   Open users
@@ -14511,7 +16017,7 @@ function AdminV2SettingsPage({
                 onClick={() =>
                   onAction(
                     "Admin users",
-                    "Admin users are merged into Settings in V2. Production role checks and owner-only routes remain unchanged."
+                    "Admin users are managed in Settings. Role checks and owner-only routes remain enforced."
                   )
                 }
                 type="button"
@@ -14523,6 +16029,71 @@ function AdminV2SettingsPage({
         </>
       )}
     </AdminV2ModuleShell>
+  );
+}
+
+function AdminV2FormAIReview({
+  enabled,
+  onEnabledChange,
+  review,
+  title
+}: {
+  enabled: boolean;
+  onEnabledChange: (enabled: boolean) => void;
+  review: AdminV2FormAIReviewResult;
+  title: string;
+}) {
+  const findings = enabled
+    ? [
+        ...review.diagnostics,
+        ...review.warnings,
+        ...review.comparisons.map(
+          (comparison) =>
+            `${formatAdminV2Label(comparison.fieldId)} differs from the saved configuration.`
+        ),
+        ...review.suggestions.map(
+          (suggestion) => `${formatAdminV2Label(suggestion.fieldId)}: ${suggestion.reason}`
+        )
+      ].slice(0, 8)
+    : [];
+
+  return (
+    <aside className="finance-card" aria-label={`${title} structured AI review`}>
+      <div className="section-head">
+        <div>
+          <span className={`badge ${enabled ? "badge-accent" : ""}`}>
+            {enabled && review.advisoryOnly ? "Advisory only" : "AI assistance off"}
+          </span>
+          <strong>{title} review</strong>
+          <p>
+            {enabled
+              ? "Reviews current in-browser fields only. Production validation still controls saving."
+              : "Off by default. Enable it to review the current form without editing or saving values."}
+          </p>
+        </div>
+        <button
+          aria-pressed={enabled}
+          className="btn btn-sm"
+          onClick={() => onEnabledChange(!enabled)}
+          type="button"
+        >
+          {enabled ? "Disable AI review" : "Enable AI review"}
+        </button>
+      </div>
+      {enabled ? (
+        <div aria-live="polite">
+          {findings.length ? (
+            <ul>
+              {findings.map((finding, index) => (
+                <li key={`${index}-${finding}`}>{finding}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>No advisory issues found in the current fields.</p>
+          )}
+        </div>
+      ) : null}
+    </aside>
   );
 }
 
@@ -15856,9 +17427,11 @@ function formatSiteStatus(value: string) {
 }
 
 function AdminV2AudienceMapPanel({
+  onAIContextChange,
   snapshot,
   status
 }: {
+  onAIContextChange: (context: AdminAITableContext) => void;
   snapshot: AdminV2DashboardData | null;
   status: AdminV2DataStatus | "loading";
 }) {
@@ -15886,6 +17459,26 @@ function AdminV2AudienceMapPanel({
           }
         ]
       : [];
+  const tableAiContext = useMemo<AdminAITableContext>(
+    () => ({
+      filters: { drilldown: drilldownRegion?.label || "World" },
+      rows: visibleRegions.slice(0, 8).map((region) => ({
+        duplicateKey: region.label,
+        groupKey: region.countryLabel || region.level,
+        id: region.id,
+        label: region.label,
+        requiredDataComplete: Boolean(region.id && region.label),
+        status: region.visits > 0 ? "traffic-recorded" : "no-traffic"
+      })),
+      selectedIds:
+        selectedRegion && visibleRegions.some((region) => region.id === selectedRegion.id)
+          ? [selectedRegion.id]
+          : [],
+      sort: { direction: "desc", field: "visits" },
+      tableId: "analytics-audience-regions"
+    }),
+    [drilldownRegion?.label, selectedRegion, visibleRegions]
+  );
 
   if (status === "loading") {
     return (
@@ -15928,7 +17521,19 @@ function AdminV2AudienceMapPanel({
                       )}
                 </span>
               </div>
-              <span className="console-pill">{drilldownRegion?.label || "World"}</span>
+              <div
+                className="row-actions"
+                onFocusCapture={() => onAIContextChange(tableAiContext)}
+                onPointerDownCapture={() => onAIContextChange(tableAiContext)}
+              >
+                <AdminAIAskButton
+                  className="btn btn-sm"
+                  label="Analyze audience table"
+                  query="Summarize the visible audience regions and identify traffic records needing attention."
+                  scope="page"
+                />
+                <span className="console-pill">{drilldownRegion?.label || "World"}</span>
+              </div>
             </div>
             <div className="audience-table-wrap">
               <table className="audience-table">

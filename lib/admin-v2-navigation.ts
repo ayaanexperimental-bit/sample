@@ -1,4 +1,5 @@
-import type { AdminV2ViewId } from "./admin-v2-access";
+import { normalizeCoachSlug } from "./admin-coach-sites";
+import type { AdminV2CoachSiteFocus, AdminV2ViewId } from "./admin-v2-access";
 
 export type AdminV2NavigationAccessProfile = {
   isOwner?: boolean;
@@ -11,6 +12,13 @@ export type AdminV2ModuleAction = {
   label: string;
   permissions?: string[];
   viewId: AdminV2ViewId;
+};
+
+export type AdminV2CoachSiteFocusCandidate = {
+  coachId: string;
+  coachName: string;
+  id: string;
+  slug: string;
 };
 
 export const adminV2ModuleActions: AdminV2ModuleAction[] = [
@@ -94,4 +102,38 @@ function canUseAdminV2ModuleAction(
   return Boolean(
     action.permissions?.some((permission) => profile?.permissions?.includes(permission))
   );
+}
+
+export function parseAdminV2CoachSiteFocus(
+  searchParams: Pick<URLSearchParams, "get">
+): AdminV2CoachSiteFocus | null {
+  const siteId = safeAdminV2FocusValue(searchParams.get("site"));
+  const coachSlug = safeAdminV2FocusValue(searchParams.get("coach"));
+  if (!siteId && !coachSlug) return null;
+  return {
+    ...(coachSlug ? { coachSlug: normalizeCoachSlug(coachSlug) } : {}),
+    ...(siteId ? { siteId } : {})
+  };
+}
+
+export function resolveAdminV2CoachSiteFocus<T extends AdminV2CoachSiteFocusCandidate>(
+  sites: readonly T[],
+  focus: AdminV2CoachSiteFocus | null | undefined
+): T | null {
+  if (!focus) return null;
+
+  const normalizedSlug = focus.coachSlug ? normalizeCoachSlug(focus.coachSlug) : "";
+  const matches = sites.filter(
+    (site) =>
+      (!focus.siteId || site.id === focus.siteId) &&
+      (!focus.coachId || site.coachId === focus.coachId) &&
+      (!normalizedSlug || normalizeCoachSlug(site.slug) === normalizedSlug)
+  );
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function safeAdminV2FocusValue(value: string | null) {
+  const trimmed = value?.trim() || "";
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,119}$/.test(trimmed)) return "";
+  return trimmed;
 }

@@ -3,12 +3,14 @@ import styles from "./admin-ai.module.css";
 
 export function AdminAIDrawer({
   children,
+  dismissed,
   onClose,
   sectionName,
   stateLabel,
-  theme,
+  theme
 }: {
   children: ReactNode;
+  dismissed?: boolean;
   onClose: () => void;
   sectionName: string;
   stateLabel: string;
@@ -26,6 +28,13 @@ export function AdminAIDrawer({
       if (!panel) return;
       if (event.key === "Escape") {
         event.preventDefault();
+        const confirmationCancel = panel.querySelector<HTMLButtonElement>(
+          '[role="alertdialog"] [data-admin-ai-confirm-cancel="true"]'
+        );
+        if (confirmationCancel) {
+          confirmationCancel.click();
+          return;
+        }
         onClose();
         return;
       }
@@ -57,12 +66,20 @@ export function AdminAIDrawer({
 
   return (
     <>
-      <button aria-label="Close Admin Copilot" className={styles.scrim} onClick={onClose} type="button" />
+      <button
+        aria-label="Close Admin Copilot"
+        className={styles.scrim}
+        hidden={dismissed}
+        onClick={onClose}
+        type="button"
+      />
       <div
         aria-label={`${sectionName} Admin Copilot`}
         aria-modal="true"
         className={styles.drawer}
         data-theme={theme}
+        hidden={dismissed}
+        id="admin-ai-copilot-dialog"
         ref={panelRef}
         role="dialog"
       >

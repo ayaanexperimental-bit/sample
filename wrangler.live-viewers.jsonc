@@ -6,6 +6,16 @@
   "observability": {
     "enabled": true
   },
+  "triggers": {
+    "crons": ["17 2 * * *"]
+  },
+  "d1_databases": [
+    {
+      "binding": "ADMIN_DB",
+      "database_name": "ywcoach-admin",
+      "database_id": "a82c8785-b313-4c30-ac94-6bd9efa33712"
+    }
+  ],
   "durable_objects": {
     "bindings": [
       {

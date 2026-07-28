@@ -1,8 +1,10 @@
 import type {
+  D1Database,
   DurableObjectNamespace,
   DurableObjectState,
   WebSocket as CloudflareWebSocket
 } from "@cloudflare/workers-types";
+import { purgeExpiredAdminAIRecords } from "../lib/server/admin-ai-retention";
 
 declare const WebSocketPair: {
   new (): {
@@ -12,7 +14,12 @@ declare const WebSocketPair: {
 };
 
 type Env = {
+  ADMIN_DB: D1Database;
   LIVE_VIEWERS: DurableObjectNamespace;
+};
+
+type ScheduledContext = {
+  waitUntil(promise: Promise<unknown>): void;
 };
 
 const ROOM_NAME = "primary-landing-page";
@@ -27,10 +34,27 @@ const worker = {
   fetch(request: Request, env: Env) {
     const room = env.LIVE_VIEWERS.get(env.LIVE_VIEWERS.idFromName(ROOM_NAME));
     return room.fetch(request as unknown as Parameters<typeof room.fetch>[0]);
+  },
+  scheduled(_controller: unknown, env: Env, context: ScheduledContext) {
+    context.waitUntil(runScheduledAdminAIPurge(env.ADMIN_DB));
   }
 };
 
 export default worker;
+
+export async function runScheduledAdminAIPurge(db: D1Database, maxPasses = 20) {
+  let deleted = 0;
+  const passes = Math.max(1, Math.min(20, Math.floor(maxPasses)));
+  for (let pass = 0; pass < passes; pass += 1) {
+    const batchDeleted = await purgeExpiredAdminAIRecords({
+      batchSize: 1_000,
+      db
+    });
+    deleted += batchDeleted;
+    if (batchDeleted === 0) break;
+  }
+  return deleted;
+}
 
 export class LiveViewerRoom {
   constructor(private readonly state: DurableObjectState) {}

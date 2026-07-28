@@ -3,7 +3,10 @@
 import { type FormEvent, type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { AdminPaidMasterclassLink } from "../../lib/admin-control-center";
+import type { AdminAITableContext } from "../../lib/admin-ai/adminAITableCopilot";
 import type { AdminV2ActionActivityInput } from "../../lib/admin-v2-access";
+import { AdminAIAskButton } from "./admin-ai/AdminAIAskButton";
+import { AdminV2PortalScope } from "./admin-v2-portal-scope";
 import styles from "./admin-v2-production-parity.module.css";
 
 const ADMIN_CSRF_HEADER_NAME = "x-yw-admin-csrf";
@@ -78,41 +81,43 @@ function AdminV2NativeDialog({
   if (!open || typeof document === "undefined") return null;
 
   return createPortal(
-    <div
-      className={styles.dialogBackdrop}
-      data-od-theme={theme}
-      data-tone={tone}
-      onMouseDown={(event) => {
-        if (event.currentTarget === event.target) onClose();
-      }}
-      role="presentation"
-    >
+    <AdminV2PortalScope theme={theme}>
       <div
-        aria-labelledby={titleId}
-        aria-modal="true"
-        className={styles.dialogPanel}
-        ref={dialogRef}
-        role="dialog"
-        tabIndex={-1}
+        className={styles.dialogBackdrop}
+        data-od-theme={theme}
+        data-tone={tone}
+        onMouseDown={(event) => {
+          if (event.currentTarget === event.target) onClose();
+        }}
+        role="presentation"
       >
-        <header className={styles.dialogHeader}>
-          <div>
-            <span>Protected admin action</span>
-            <h3 id={titleId}>{title}</h3>
-          </div>
-          <button
-            aria-label={`Close ${title}`}
-            className="btn btn-sm"
-            onClick={onClose}
-            type="button"
-          >
-            Close
-          </button>
-        </header>
-        <div className={styles.dialogBody}>{children}</div>
-        {footer ? <footer className={styles.dialogFooter}>{footer}</footer> : null}
+        <div
+          aria-labelledby={titleId}
+          aria-modal="true"
+          className={styles.dialogPanel}
+          ref={dialogRef}
+          role="dialog"
+          tabIndex={-1}
+        >
+          <header className={styles.dialogHeader}>
+            <div>
+              <span>Protected admin action</span>
+              <h3 id={titleId}>{title}</h3>
+            </div>
+            <button
+              aria-label={`Close ${title}`}
+              className="btn btn-sm"
+              onClick={onClose}
+              type="button"
+            >
+              Close
+            </button>
+          </header>
+          <div className={styles.dialogBody}>{children}</div>
+          {footer ? <footer className={styles.dialogFooter}>{footer}</footer> : null}
+        </div>
       </div>
-    </div>,
+    </AdminV2PortalScope>,
     document.body
   );
 }
@@ -508,12 +513,14 @@ type PrivateLinkMetadata = {
 export function AdminV2PaidMasterclassPanel({
   csrfToken,
   links,
+  onAIContextChange,
   onAdminActivity,
   source,
   theme
 }: {
   csrfToken: string;
   links: AdminPaidMasterclassLink[];
+  onAIContextChange: (context: AdminAITableContext) => void;
   onAdminActivity: (activity: AdminV2ActionActivityInput) => void;
   source: string;
   theme: "dark" | "light";
@@ -552,8 +559,40 @@ export function AdminV2PaidMasterclassPanel({
     };
   }, []);
 
-  const activeLinks = links.filter((link) => link.status !== "archived");
+  const activeLinks = useMemo(() => links.filter((link) => link.status !== "archived"), [links]);
   const managedMetadata = managed ? metadata[managed.funnelId] : undefined;
+  const tableAiContext = useMemo<AdminAITableContext>(
+    () => ({
+      filters: { source },
+      rows: activeLinks.map((link) => {
+        const row = metadata[link.funnelId];
+        const missingDestinations = [
+          row?.paymentPageConfigured ?? link.paymentStatus !== "missing",
+          row?.configured ?? link.privateWhatsappStatus !== "missing"
+        ].filter((configured) => !configured).length;
+        return {
+          duplicateKey: link.entryCode,
+          groupKey: link.coachName,
+          id: link.funnelId,
+          label: link.displayName || link.coachName,
+          linkValid: Boolean(
+            link.entryPath?.startsWith("/") && link.successPath?.startsWith("/")
+          ),
+          requiredDataComplete: Boolean(link.entryCode && link.entryPath && link.successPath),
+          status: link.status,
+          unresolvedErrors: missingDestinations
+        };
+      }),
+      selectedIds: [],
+      sort: { direction: "asc", field: "label" },
+      tableId: "paid-masterclass"
+    }),
+    [activeLinks, metadata, source]
+  );
+
+  useEffect(() => {
+    onAIContextChange(tableAiContext);
+  }, [onAIContextChange, tableAiContext]);
 
   async function postPaidAction(
     action: "reveal" | "send_otp" | "update_payment" | "update_whatsapp"
@@ -665,11 +704,19 @@ export function AdminV2PaidMasterclassPanel({
       </div>
       <section className={styles.parityCard}>
         <header>
-          <span>Private access</span>
-          <h3>Masterclass link matrix</h3>
-          <p>
-            Public paths are visible; private destinations stay server-side until OTP verification.
-          </p>
+          <div>
+            <span>Private access</span>
+            <h3>Masterclass link matrix</h3>
+            <p>
+              Public paths are visible; private destinations stay server-side until OTP verification.
+            </p>
+          </div>
+          <AdminAIAskButton
+            className="btn btn-sm"
+            label="Analyze paid masterclass table"
+            query="Summarize the visible paid masterclass rows and identify records needing attention."
+            scope="page"
+          />
         </header>
         <div className="table-wrap">
           <table>
@@ -995,10 +1042,12 @@ const EMPTY_ADMIN_FORM: AdminFormState = {
 
 export function AdminV2AdminUsersPanel({
   csrfToken,
+  onAIContextChange,
   onAdminActivity,
   theme
 }: {
   csrfToken: string;
+  onAIContextChange: (context: AdminAITableContext) => void;
   onAdminActivity: (activity: AdminV2ActionActivityInput) => void;
   theme: "dark" | "light";
 }) {
@@ -1195,9 +1244,33 @@ export function AdminV2AdminUsersPanel({
     );
   }
 
-  const admins = payload.admins || [];
+  const admins = useMemo(() => payload.admins || [], [payload.admins]);
   const invites = payload.invites || [];
   const preflight = payload.strictRolePreflight;
+  const tableAiContext = useMemo<AdminAITableContext>(
+    () => ({
+      filters: { loading, ownerOnly: true },
+      rows: admins.map((admin) => ({
+        duplicateKey: admin.email,
+        groupKey: admin.roleKey,
+        id: admin.email,
+        label: admin.displayName || admin.email,
+        permissionIssue:
+          admin.isOwner || admin.permissions.length ? "" : "No permissions are assigned.",
+        requiredDataComplete: Boolean(admin.email && admin.roleKey),
+        status: admin.status,
+        unresolvedErrors: admin.status === "active" ? 0 : 1
+      })),
+      selectedIds: [],
+      sort: { direction: "asc", field: "label" },
+      tableId: "managed-admins"
+    }),
+    [admins, loading]
+  );
+
+  useEffect(() => {
+    onAIContextChange(tableAiContext);
+  }, [onAIContextChange, tableAiContext]);
 
   return (
     <div className={styles.parityStack} data-parity-panel="admin-users">
@@ -1236,8 +1309,16 @@ export function AdminV2AdminUsersPanel({
 
       <section className={styles.parityCard}>
         <header>
-          <span>Active directory</span>
-          <h3>Managed administrators</h3>
+          <div>
+            <span>Active directory</span>
+            <h3>Managed administrators</h3>
+          </div>
+          <AdminAIAskButton
+            className="btn btn-sm"
+            label="Analyze managed administrators table"
+            query="Summarize the visible managed administrators and identify records needing attention."
+            scope="page"
+          />
         </header>
         <div className="table-wrap">
           <table>

@@ -2,13 +2,25 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { type CSSProperties, type FormEvent, useEffect, useMemo, useState } from "react";
-import { AdminDashboardShell } from "./admin-dashboard-shell";
-import { AdminV2DashboardShell } from "./admin-v2-shell";
+import {
+  lazy,
+  Suspense,
+  type CSSProperties,
+  type FormEvent,
+  useEffect,
+  useMemo,
+  useState
+} from "react";
 import { AdminMatrixBackground } from "./admin-matrix-background";
 import styles from "./admin-auth-shell.module.css";
 import { BorderGlow } from "./border-glow";
+import {
+  adminV2NavSections,
+  type AdminV2CoachSiteFocus,
+  type AdminV2ViewId
+} from "../../lib/admin-v2-access";
 import { isAdminV2Enabled } from "../../lib/admin-v2-feature-flags";
+import { parseAdminV2CoachSiteFocus } from "../../lib/admin-v2-navigation";
 
 export type AdminAuthStep = "dashboard" | "forgot" | "login" | "reset" | "verify";
 
@@ -52,8 +64,12 @@ type AccessIssueState = {
 const GENERIC_AUTH_ERROR = "Invalid credentials or unauthorized admin access.";
 const FORGOT_PASSWORD_SUCCESS = "If this email is authorized, reset instructions will be sent.";
 const ADMIN_REDIRECT_LOOP_KEY = "yw-admin-access-redirect-loop";
+const ADMIN_AI_SESSION_STORAGE_PREFIX = "yw-admin-ai:";
 const ADMIN_REDIRECT_LOOP_LIMIT = 2;
 const ADMIN_REDIRECT_LOOP_WINDOW_MS = 15_000;
+const ADMIN_VIEW_IDS = new Set(
+  adminV2NavSections.flatMap((section) => section.items.map((item) => item.id))
+);
 const ADMIN_LOGIN_BORDER_GLOW_PROPS = {
   animated: true,
   backgroundColor: "#10151c",
@@ -66,6 +82,16 @@ const ADMIN_LOGIN_BORDER_GLOW_PROPS = {
   glowIntensity: 1.35,
   glowRadius: 42
 };
+const LazyAdminDashboardShell = lazy(() =>
+  import("./admin-dashboard-shell").then((module) => ({
+    default: module.AdminDashboardShell
+  }))
+);
+const LazyAdminV2DashboardShell = lazy(() =>
+  import("./admin-v2-shell").then((module) => ({
+    default: module.AdminV2DashboardShell
+  }))
+);
 
 export function AdminAuthShell({
   initialStep = "login",
@@ -77,6 +103,9 @@ export function AdminAuthShell({
   const [csrfToken, setCsrfToken] = useState("");
   const [sessionEmail, setSessionEmail] = useState("");
   const [accessIssue, setAccessIssue] = useState<AccessIssueState>(null);
+  const [requestedCoachSiteFocus, setRequestedCoachSiteFocus] =
+    useState<AdminV2CoachSiteFocus | null>(null);
+  const [requestedView, setRequestedView] = useState<AdminV2ViewId>();
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginMessage, setLoginMessage] = useState<MessageState>(null);
@@ -96,6 +125,18 @@ export function AdminAuthShell({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [resetMessage, setResetMessage] = useState<MessageState>(null);
   const [resetSubmitting, setResetSubmitting] = useState(false);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const view = searchParams.get("view") as AdminV2ViewId | null;
+    if (!view || !ADMIN_VIEW_IDS.has(view)) return;
+    const coachSiteFocus = view === "coach-sites" ? parseAdminV2CoachSiteFocus(searchParams) : null;
+    const frame = window.requestAnimationFrame(() => {
+      setRequestedCoachSiteFocus(coachSiteFocus);
+      setRequestedView(view);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -171,7 +212,8 @@ export function AdminAuthShell({
             setAccessIssue({
               actionHref: "/admin/dashboard",
               actionLabel: "Retry",
-              message: "We could not verify the admin session. Retry, or sign in again if the session expired.",
+              message:
+                "We could not verify the admin session. Retry, or sign in again if the session expired.",
               title: "Unable to Check Session"
             });
             setStep("login");
@@ -200,11 +242,13 @@ export function AdminAuthShell({
 
     const messageByStatus: Record<string, string> = {
       cancelled: "Google sign-in was cancelled.",
-      access_denied: "Access denied. Use the invited admin email or ask the owner to enable your account.",
+      access_denied:
+        "Access denied. Use the invited admin email or ask the owner to enable your account.",
       failed: GENERIC_AUTH_ERROR,
       not_configured: GENERIC_AUTH_ERROR,
       rate_limited: "Too many admin sign-in attempts. Please try again shortly.",
-      unauthorized: "Access denied. Use the invited admin email or ask the owner to enable your account."
+      unauthorized:
+        "Access denied. Use the invited admin email or ask the owner to enable your account."
     };
 
     const frame = window.requestAnimationFrame(() => {
@@ -395,6 +439,16 @@ export function AdminAuthShell({
     try {
       await postAdminApi("/api/admin/auth/logout", {}, csrfToken);
     } finally {
+      try {
+        for (let index = window.sessionStorage.length - 1; index >= 0; index -= 1) {
+          const key = window.sessionStorage.key(index);
+          if (key?.startsWith(ADMIN_AI_SESSION_STORAGE_PREFIX)) {
+            window.sessionStorage.removeItem(key);
+          }
+        }
+      } catch {
+        // Logout and server-side session invalidation must continue if storage is unavailable.
+      }
       setCsrfToken("");
       setSessionEmail("");
       setAdminAccess(null);
@@ -697,19 +751,46 @@ export function AdminAuthShell({
   }
 
   function renderDashboard() {
-    const DashboardShell = isAdminV2Enabled() ? AdminV2DashboardShell : AdminDashboardShell;
+    const DashboardShell = isAdminV2Enabled() ? LazyAdminV2DashboardShell : LazyAdminDashboardShell;
+
+    function handleActiveViewChange(
+      viewId: AdminV2ViewId,
+      coachSiteFocus?: AdminV2CoachSiteFocus | null
+    ) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("view", viewId);
+      if (viewId === "coach-sites" && coachSiteFocus?.siteId) {
+        url.searchParams.set("site", coachSiteFocus.siteId);
+      } else {
+        url.searchParams.delete("site");
+      }
+      if (viewId === "coach-sites" && (coachSiteFocus?.coachSlug || coachSiteFocus?.coachId)) {
+        url.searchParams.set("coach", coachSiteFocus.coachSlug || coachSiteFocus.coachId || "");
+      } else {
+        url.searchParams.delete("coach");
+      }
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${url.pathname}${url.search}${url.hash}`
+      );
+      setRequestedCoachSiteFocus(viewId === "coach-sites" ? coachSiteFocus || null : null);
+      setRequestedView(viewId);
+    }
 
     return (
-      <section
-        className={styles.dashboardPanel}
-        aria-labelledby="admin-dashboard-title"
-      >
-        <DashboardShell
-          csrfToken={csrfToken}
-          adminAccess={adminAccess}
-          onLogout={handleLogout}
-          sessionEmail={sessionEmail}
-        />
+      <section className={styles.dashboardPanel} aria-labelledby="admin-dashboard-title">
+        <Suspense fallback={<AdminDashboardLoading />}>
+          <DashboardShell
+            csrfToken={csrfToken}
+            adminAccess={adminAccess}
+            onActiveViewChange={handleActiveViewChange}
+            onLogout={handleLogout}
+            requestedCoachSiteFocus={requestedCoachSiteFocus}
+            requestedView={requestedView}
+            sessionEmail={sessionEmail}
+          />
+        </Suspense>
       </section>
     );
   }
@@ -737,13 +818,7 @@ export function AdminAuthShell({
           <span className={styles.logoOrbit} aria-hidden="true" />
           <span className={styles.logoScan} aria-hidden="true" />
           <span className={styles.logoPips} aria-hidden="true" />
-          <Image
-            alt=""
-            height={994}
-            priority
-            src="/images/yw-nutritech-logo.png"
-            width={1302}
-          />
+          <Image alt="" height={994} priority src="/images/yw-nutritech-logo.png" width={1302} />
         </div>
         <p className={styles.brandKicker}>YW Coach Admin</p>
         <h2>Controlled access for coach platform operations.</h2>
@@ -764,7 +839,9 @@ export function AdminAuthShell({
   }
 
   return (
-    <main className={`${styles.adminPage} ${step === "dashboard" ? styles.adminDashboardPage : ""}`}>
+    <main
+      className={`${styles.adminPage} ${step === "dashboard" ? styles.adminDashboardPage : ""}`}
+    >
       {step === "dashboard" ? null : (
         <AdminMatrixBackground className={styles.matrixBackgroundLayer} />
       )}
@@ -775,6 +852,23 @@ export function AdminAuthShell({
         {renderPanel()}
       </div>
     </main>
+  );
+}
+
+function AdminDashboardLoading() {
+  return (
+    <div className={styles.authPanel} aria-busy="true" aria-live="polite">
+      <p className={styles.eyebrow}>Admin Security</p>
+      <h1 className={styles.title} id="admin-dashboard-title">
+        Loading Admin Dashboard
+      </h1>
+      <p className={styles.subtitle}>Preparing your permission-filtered admin modules.</p>
+      <div className={styles.loadingBars} aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
+    </div>
   );
 }
 
@@ -864,9 +958,7 @@ function getAdminLoginPath() {
   if (typeof window === "undefined") return "/admin/login";
 
   const nextPath =
-    window.location.pathname === "/admin/dashboard"
-      ? "/admin/dashboard"
-      : getSafeAdminNextPath();
+    window.location.pathname === "/admin/dashboard" ? "/admin/dashboard" : getSafeAdminNextPath();
   const params = new URLSearchParams();
   if (nextPath) params.set("next", nextPath);
 
@@ -879,7 +971,9 @@ function shouldStopAdminRedirectLoop(targetPath: string) {
 
   try {
     const now = Date.now();
-    const previous = parseAdminRedirectLoopState(window.sessionStorage.getItem(ADMIN_REDIRECT_LOOP_KEY));
+    const previous = parseAdminRedirectLoopState(
+      window.sessionStorage.getItem(ADMIN_REDIRECT_LOOP_KEY)
+    );
     const nextCount =
       previous &&
       previous.targetPath === targetPath &&

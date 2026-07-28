@@ -184,3 +184,7 @@ export const nonEditableCoachTemplateRules = [
 export const requiredCoachTemplateContentFields = coachTemplateContentSlots
   .filter((slot) => slot.required)
   .map((slot) => slot.field);
+
+export const aiRegeneratableCoachTemplateContentFields = coachTemplateContentSlots
+  .filter((slot) => slot.aiRegeneratable)
+  .map((slot) => slot.field);

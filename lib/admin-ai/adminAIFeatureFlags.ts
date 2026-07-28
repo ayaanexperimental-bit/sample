@@ -34,16 +34,25 @@ export function getAdminAIFeatureFlags(overrides: AdminAIFeatureFlagInput = {}):
   };
 
   return {
-    actions: readFlag(overrides.actions ?? env.actions, true),
+    actions: readFlag(overrides.actions ?? env.actions, false),
     copilot: readFlag(overrides.copilot ?? env.copilot, true),
     globalMode: readFlag(overrides.globalMode ?? env.globalMode, true),
-    incidentMode: readFlag(overrides.incidentMode ?? env.incidentMode, true),
+    incidentMode: readFlag(overrides.incidentMode ?? env.incidentMode, false),
     memory: readFlag(overrides.memory ?? env.memory, true),
     proactiveAlerts: readFlag(overrides.proactiveAlerts ?? env.proactiveAlerts, true),
     scheduledBriefings: readFlag(overrides.scheduledBriefings ?? env.scheduledBriefings, false),
     sensitiveActions: readFlag(overrides.sensitiveActions ?? env.sensitiveActions, false),
     voice: readFlag(overrides.voice ?? env.voice, false),
   };
+}
+
+export function scopeAdminAIExperimentalFlags(
+  flags: AdminAIFeatureFlags,
+  isOwner: boolean
+): AdminAIFeatureFlags {
+  return isOwner
+    ? flags
+    : { ...flags, incidentMode: false, scheduledBriefings: false, voice: false };
 }
 
 function readFlag(value: boolean | string | undefined, fallback: boolean) {

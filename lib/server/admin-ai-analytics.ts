@@ -1,10 +1,12 @@
 import type { D1Database } from "@cloudflare/workers-types";
+import { buildAdminAIContentBoundary } from "../admin-ai/adminAIContentTrust";
 import { createStableAiHash, getCachedAiResult, setCachedAiResult } from "./ai-cache-service";
 import { getAiModelConfig, type AiModelConfigEnv } from "./ai-model-config";
 import { estimateAiTokens, type AiUsageEstimate } from "./ai-token-estimator";
 
 export type AdminAiAnalyticsEnv = AiModelConfigEnv & {
   ADMIN_DB?: D1Database;
+  AI_ANALYTICS_REQUEST_TIMEOUT_MS?: string;
   OPENAI_API_KEY?: string;
 };
 
@@ -19,6 +21,20 @@ export type AdminAiAnalyticsInsight = {
   recommendations: string[];
   summary: string;
   warnings: string[];
+};
+
+export type AdminAiAnalyticsFailure = {
+  attempts: number;
+  code:
+    | "invalid_provider_response"
+    | "provider_rate_limited"
+    | "provider_rejected_request"
+    | "provider_timeout"
+    | "provider_unavailable"
+    | "request_limit"
+    | "usage_limit_unavailable";
+  retryAfterSeconds?: number;
+  retryable: boolean;
 };
 
 export type AdminAiAnalyticsResult =
@@ -36,6 +52,7 @@ export type AdminAiAnalyticsResult =
     }
   | {
       configured: true;
+      failure: AdminAiAnalyticsFailure;
       message: "AI analytics generation failed.";
       ok: false;
     };
@@ -80,6 +97,22 @@ const AI_ANALYTICS_CACHE_SCHEMA = [
     ON ai_analytics_cache (data_hash, model)`
 ];
 
+const PROVIDER_MAX_ATTEMPTS = 2;
+const PROVIDER_TIMEOUT_DEFAULT_MS = 12_000;
+const PROVIDER_TIMEOUT_MAX_MS = 30_000;
+const PROVIDER_TIMEOUT_MIN_MS = 25;
+const MAX_AGGREGATE_COUNT = 99_999_999;
+const USAGE_LIMIT_MAX_REQUESTS = 12;
+const USAGE_LIMIT_WINDOW_SECONDS = 60;
+const usageLimitSchemaReady = new WeakSet<D1Database>();
+
+const AI_ANALYTICS_USAGE_SCHEMA = `CREATE TABLE IF NOT EXISTS ai_analytics_usage_limits (
+  identity_hash TEXT PRIMARY KEY,
+  request_count INTEGER NOT NULL,
+  reset_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+)`;
+
 const AI_ANALYTICS_SCHEMA = {
   name: "admin_analytics_insight",
   schema: {
@@ -114,6 +147,15 @@ const AI_ANALYTICS_SCHEMA = {
   type: "json_schema"
 };
 
+export function validateAdminAiAnalyticsPayload(value: unknown, scope: AdminAiAnalyticsScope) {
+  if (!isRecord(value)) return false;
+  const payload =
+    scope === "overview"
+      ? createOverviewAnalyticsPayload(value)
+      : createCoachAnalyticsPayload(value);
+  return Object.keys(payload).length > 0;
+}
+
 export async function generateAdminAiAnalyticsInsight(
   input: AdminAiAnalyticsInput,
   env: AdminAiAnalyticsEnv
@@ -128,10 +170,11 @@ export async function generateAdminAiAnalyticsInsight(
   }
 
   const config = getAiModelConfig(env);
-  const compactPayload = createCompactPayload(input.payload, config.maxInputTokens);
+  const dateRange = normalizeDateRange(input.dateRange);
+  const compactPayload = createCompactPayload(input.payload, input.scope, config.maxInputTokens);
   const dataHash = createStableAiHash(
     JSON.stringify({
-      dateRange: input.dateRange,
+      dateRange,
       payload: compactPayload,
       scope: input.scope
     })
@@ -139,13 +182,13 @@ export async function generateAdminAiAnalyticsInsight(
   const cacheKey = createStableAiHash(
     JSON.stringify({
       dataHash,
-      dateRange: input.dateRange,
+      dateRange,
       model: config.analyticsModel,
       scope: input.scope
     })
   );
   const prompt = createAnalyticsPrompt({
-    dateRange: input.dateRange,
+    dateRange,
     payload: compactPayload,
     scope: input.scope
   });
@@ -169,45 +212,40 @@ export async function generateAdminAiAnalyticsInsight(
     }
   }
 
-  try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      body: JSON.stringify({
-        input: prompt,
-        instructions:
-          "You are an admin analytics assistant for Yours Wellness/YW Nutritech. Analyze only compact aggregate data. Do not request or reveal secrets, OTPs, payment IDs, private WhatsApp links, personal user data, raw logs, or technical internals. Use cautious language such as likely trend and suggested action. Do not invent data.",
-        max_output_tokens: maxOutputTokens,
-        model: config.analyticsModel,
-        reasoning: {
-          effort: "minimal"
-        },
-        store: false,
-        text: {
-          format: AI_ANALYTICS_SCHEMA
-        }
-      }),
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        "content-type": "application/json"
+  const providerResult = await requestAnalyticsProvider({
+    apiKey,
+    body: JSON.stringify({
+      input: prompt,
+      instructions:
+        "You are an admin analytics assistant for Yours Wellness/YW Nutritech. Analyze only compact aggregate data. Do not request or reveal secrets, OTPs, payment IDs, private WhatsApp links, personal user data, raw logs, or technical internals. Use cautious language such as likely trend and suggested action. Do not invent data.",
+      max_output_tokens: maxOutputTokens,
+      model: config.analyticsModel,
+      reasoning: {
+        effort: "minimal"
       },
-      method: "POST"
-    });
+      store: false,
+      text: {
+        format: AI_ANALYTICS_SCHEMA
+      }
+    }),
+    timeoutMs: parseBoundedInteger(
+      env.AI_ANALYTICS_REQUEST_TIMEOUT_MS,
+      PROVIDER_TIMEOUT_DEFAULT_MS,
+      PROVIDER_TIMEOUT_MIN_MS,
+      PROVIDER_TIMEOUT_MAX_MS
+    )
+  });
+  if (!providerResult.ok) return providerFailure(providerResult.failure);
 
-    if (!response.ok) {
-      return {
-        configured: true,
-        message: "AI analytics generation failed.",
-        ok: false
-      };
-    }
-
-    const payload = (await response.json()) as OpenAiResponse;
+  try {
+    const payload = JSON.parse(providerResult.body) as OpenAiResponse;
     const parsed = parseInsight(extractResponseText(payload));
     if (!parsed) {
-      return {
-        configured: true,
-        message: "AI analytics generation failed.",
-        ok: false
-      };
+      return providerFailure({
+        attempts: providerResult.attempts,
+        code: "invalid_provider_response",
+        retryable: false
+      });
     }
 
     const insight: AdminAiAnalyticsInsight = {
@@ -226,7 +264,7 @@ export async function generateAdminAiAnalyticsInsight(
       await setCachedInsightInD1(env, {
         cacheKey,
         dataHash,
-        dateRange: input.dateRange,
+        dateRange,
         insight,
         model: config.analyticsModel,
         scope: input.scope
@@ -241,12 +279,192 @@ export async function generateAdminAiAnalyticsInsight(
       usageEstimate
     };
   } catch {
+    return providerFailure({
+      attempts: providerResult.attempts,
+      code: "invalid_provider_response",
+      retryable: false
+    });
+  }
+}
+
+export async function consumeAdminAiAnalyticsUsage(
+  identity: string,
+  env: AdminAiAnalyticsEnv,
+  now = Math.floor(Date.now() / 1000)
+) {
+  const db = env.ADMIN_DB;
+  if (!db) {
     return {
-      configured: true,
-      message: "AI analytics generation failed.",
-      ok: false
+      allowed: false as const,
+      reason: "unavailable" as const,
+      retryAfterSeconds: USAGE_LIMIT_WINDOW_SECONDS
     };
   }
+
+  try {
+    if (!usageLimitSchemaReady.has(db)) {
+      await db.prepare(AI_ANALYTICS_USAGE_SCHEMA).run();
+      usageLimitSchemaReady.add(db);
+    }
+    const identityHash = createStableAiHash(identity.trim().toLowerCase() || "unknown-admin");
+    const resetAt = now + USAGE_LIMIT_WINDOW_SECONDS;
+    const consumed = await db
+      .prepare(
+        `INSERT INTO ai_analytics_usage_limits (
+          identity_hash, request_count, reset_at, updated_at
+        ) VALUES (?1, 1, ?2, ?3)
+        ON CONFLICT(identity_hash) DO UPDATE SET
+          request_count = CASE
+            WHEN reset_at <= ?3 THEN 1
+            ELSE request_count + 1
+          END,
+          reset_at = CASE
+            WHEN reset_at <= ?3 THEN ?2
+            ELSE reset_at
+          END,
+          updated_at = ?3
+        WHERE reset_at <= ?3 OR request_count < ?4
+        RETURNING request_count, reset_at`
+      )
+      .bind(identityHash, resetAt, now, USAGE_LIMIT_MAX_REQUESTS)
+      .first<{ request_count: number; reset_at: number }>();
+
+    return consumed
+      ? { allowed: true as const }
+      : {
+          allowed: false as const,
+          reason: "limit" as const,
+          retryAfterSeconds: USAGE_LIMIT_WINDOW_SECONDS
+        };
+  } catch {
+    return {
+      allowed: false as const,
+      reason: "unavailable" as const,
+      retryAfterSeconds: USAGE_LIMIT_WINDOW_SECONDS
+    };
+  }
+}
+
+async function requestAnalyticsProvider({
+  apiKey,
+  body,
+  timeoutMs
+}: {
+  apiKey: string;
+  body: string;
+  timeoutMs: number;
+}): Promise<
+  { attempts: number; body: string; ok: true } | { failure: AdminAiAnalyticsFailure; ok: false }
+> {
+  for (let attempt = 1; attempt <= PROVIDER_MAX_ATTEMPTS; attempt += 1) {
+    let responseReceived = false;
+    try {
+      const response = await fetch("https://api.openai.com/v1/responses", {
+        body,
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          "content-type": "application/json"
+        },
+        method: "POST",
+        signal: AbortSignal.timeout(timeoutMs)
+      });
+      responseReceived = true;
+      if (response.ok) return { attempts: attempt, body: await response.text(), ok: true };
+      const failure = classifyProviderResponse(response, attempt);
+      if (attempt < PROVIDER_MAX_ATTEMPTS && shouldRetryProviderStatus(response.status)) {
+        continue;
+      }
+      return { failure, ok: false };
+    } catch (error) {
+      if (isTimeoutError(error)) {
+        return {
+          failure: {
+            attempts: attempt,
+            code: "provider_timeout",
+            retryable: true
+          },
+          ok: false
+        };
+      }
+      if (responseReceived) {
+        if (attempt < PROVIDER_MAX_ATTEMPTS) continue;
+        return {
+          failure: {
+            attempts: attempt,
+            code: "provider_unavailable",
+            retryable: true
+          },
+          ok: false
+        };
+      }
+      if (attempt < PROVIDER_MAX_ATTEMPTS) continue;
+      return {
+        failure: {
+          attempts: attempt,
+          code: "provider_unavailable",
+          retryable: true
+        },
+        ok: false
+      };
+    }
+  }
+
+  return {
+    failure: {
+      attempts: PROVIDER_MAX_ATTEMPTS,
+      code: "provider_unavailable",
+      retryable: true
+    },
+    ok: false
+  };
+}
+
+function classifyProviderResponse(response: Response, attempts: number): AdminAiAnalyticsFailure {
+  if (response.status === 429) {
+    const retryAfterSeconds = parseRetryAfter(response.headers.get("retry-after"));
+    return {
+      attempts,
+      code: "provider_rate_limited",
+      ...(retryAfterSeconds ? { retryAfterSeconds } : {}),
+      retryable: true
+    };
+  }
+  if (shouldRetryProviderStatus(response.status)) {
+    return { attempts, code: "provider_unavailable", retryable: true };
+  }
+  return { attempts, code: "provider_rejected_request", retryable: false };
+}
+
+function providerFailure(failure: AdminAiAnalyticsFailure): AdminAiAnalyticsResult {
+  return {
+    configured: true,
+    failure,
+    message: "AI analytics generation failed.",
+    ok: false
+  };
+}
+
+function shouldRetryProviderStatus(status: number) {
+  return status === 408 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+function isTimeoutError(error: unknown) {
+  return isRecord(error) && (error.name === "AbortError" || error.name === "TimeoutError");
+}
+
+function parseRetryAfter(value: string | null) {
+  const seconds = Number.parseInt(value || "", 10);
+  return Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds, 3600) : null;
+}
+
+function parseBoundedInteger(
+  value: string | undefined,
+  fallback: number,
+  minimum: number,
+  maximum: number
+) {
+  const parsed = Number.parseInt(value || "", 10);
+  return Number.isFinite(parsed) ? Math.max(minimum, Math.min(maximum, parsed)) : fallback;
 }
 
 async function ensureAiAnalyticsCacheSchema(env: AdminAiAnalyticsEnv) {
@@ -279,23 +497,24 @@ async function getCachedInsightFromD1(env: AdminAiAnalyticsEnv, cacheKey: string
   }
 }
 
-async function setCachedInsightInD1({
-  ADMIN_DB
-}: AdminAiAnalyticsEnv, {
-  cacheKey,
-  dataHash,
-  dateRange,
-  insight,
-  model,
-  scope
-}: {
-  cacheKey: string;
-  dataHash: string;
-  dateRange: string;
-  insight: AdminAiAnalyticsInsight;
-  model: string;
-  scope: AdminAiAnalyticsScope;
-}) {
+async function setCachedInsightInD1(
+  { ADMIN_DB }: AdminAiAnalyticsEnv,
+  {
+    cacheKey,
+    dataHash,
+    dateRange,
+    insight,
+    model,
+    scope
+  }: {
+    cacheKey: string;
+    dataHash: string;
+    dateRange: string;
+    insight: AdminAiAnalyticsInsight;
+    model: string;
+    scope: AdminAiAnalyticsScope;
+  }
+) {
   if (!ADMIN_DB) return;
 
   try {
@@ -325,45 +544,118 @@ async function setCachedInsightInD1({
   }
 }
 
-function createCompactPayload(value: unknown, maxInputTokens: number) {
-  const cleaned = cleanAnalyticsData(value);
+function createCompactPayload(
+  value: unknown,
+  scope: AdminAiAnalyticsScope,
+  maxInputTokens: number
+) {
+  const cleaned =
+    scope === "overview"
+      ? createOverviewAnalyticsPayload(value)
+      : createCoachAnalyticsPayload(value);
   const maxCharacters = Math.max(1800, Math.min(maxInputTokens * 4, 18000));
   const json = JSON.stringify(cleaned);
 
   if (json.length <= maxCharacters) return cleaned;
 
-  return {
-    truncated: true,
-    value: json.slice(0, maxCharacters)
-  };
+  return { truncated: true };
 }
 
-function cleanAnalyticsData(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.slice(0, 20).map((item) => cleanAnalyticsData(item));
-  }
+function createOverviewAnalyticsPayload(value: unknown) {
+  const input = asRecord(value);
+  const systemIssues = asRecord(input.systemIssues);
+  const portfolio = asRecord(input.portfolio);
+  const riskQueue = asArray(input.riskQueue);
 
-  if (isRecord(value)) {
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter(([key]) => !isSensitiveKey(key))
-        .slice(0, 40)
-        .map(([key, item]) => [sanitizeText(key, 60), cleanAnalyticsData(item)])
-        .filter(([key]) => key)
-    );
-  }
+  return compactRecord({
+    activeFunnelsBand: aggregateCountBand(input.activeFunnels),
+    funnelSplit: sanitizeFunnelSplit(input.funnelSplit),
+    healthAlertCountBand: arrayCountBand(input.healthAlerts),
+    lowPerformingCoachCountBand: arrayCountBand(input.lowPerformingCoaches),
+    portfolio: compactRecord({
+      ...countBandRecord(portfolio, [
+        "coachCount",
+        "highRiskCount",
+        "totalRegisterClicks",
+        "totalVisits"
+      ]),
+      paymentHealthPercent: percentageNumber(portfolio.paymentHealth),
+      performanceScorePercent: percentageNumber(portfolio.performanceScore)
+    }),
+    portfolioVisitDeltaPercent: signedPercentageNumber(portfolio.visitDeltaLabel),
+    recentActivityCountBand: arrayCountBand(input.recentActivity),
+    recentEventCountBand: arrayCountBand(input.recentEvents),
+    riskQueue: Array.isArray(input.riskQueue) ? summarizeRiskQueue(riskQueue) : {},
+    systemIssues: countBandRecord(systemIssues, ["unresolvedCount"]),
+    topCoachMetrics: asArray(input.topCoaches)
+      .slice(0, 5)
+      .map((item) => {
+        const row = asRecord(item);
+        return compactRecord({
+          clicksBand: aggregateCountBand(row.clicks),
+          conversionRatePercent: percentageNumber(row.conversionRate),
+          visitsBand: aggregateCountBand(row.visits)
+        });
+      })
+      .filter((row) => Object.keys(row).length > 0),
+    totals: countBandRecord(asRecord(input.totals), ["registerClicks", "visits", "whatsappClicks"]),
+    trendBars: sanitizeTrendBars(input.trendBars)
+  });
+}
 
-  if (typeof value === "string") {
-    return sanitizeText(value, 260);
-  }
+function createCoachAnalyticsPayload(value: unknown) {
+  const input = asRecord(value);
+  const coach = asRecord(input.coach);
+  const risk = asRecord(coach.risk);
+  const combined = asRecord(input.combined);
+  const freeFunnel = asRecord(input.freeFunnel);
+  const paidFunnel = asRecord(input.paidFunnel);
 
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0;
-  }
-
-  if (typeof value === "boolean") return value;
-
-  return "";
+  return compactRecord({
+    activeTab: enumValue(input.activeTab, ["combined", "free", "paid"]),
+    coachMetrics: compactRecord({
+      clicksBand: aggregateCountBand(coach.clicks),
+      ctrPercent: percentageNumber(coach.ctr),
+      hasPaidFunnel: booleanValue(coach.hasPaidFunnel),
+      lastActivityRecency: activityRecency(coach.lastActivity),
+      risk: compactRecord({
+        priority: enumValue(risk.priority, ["critical", "good", "high", "medium"]),
+        scorePercent: percentageNumber(risk.score)
+      }),
+      status: enumValue(coach.status, ["archived", "draft", "paused", "published", "removed"]),
+      visitsBand: aggregateCountBand(coach.visits)
+    }),
+    combined: compactRecord({
+      clicksBand: aggregateCountBand(combined.clicks),
+      conversionRatePercent: percentageNumber(combined.conversionRate),
+      lastActivityRecency: activityRecency(combined.lastActivity),
+      visitsBand: aggregateCountBand(combined.visits)
+    }),
+    deviceBreakdown: countBandRecord(asRecord(input.deviceBreakdown), [
+      "desktop",
+      "mobile",
+      "tablet"
+    ]),
+    freeFunnel: compactRecord({
+      ...countBandRecord(freeFunnel, ["registerClicks", "videoPlays", "visits", "whatsappClicks"]),
+      googleFormStatus: enumValue(freeFunnel.googleFormStatus, ["configured", "missing"]),
+      supportStatus: enumValue(freeFunnel.supportStatus, [
+        "coach-specific contact available",
+        "fallback support used"
+      ])
+    }),
+    lowActivityReasonCountBand: arrayCountBand(input.lowActivityReasons),
+    paidFunnel: countBandRecord(paidFunnel, [
+      "paymentButtonClicks",
+      "paymentInitiated",
+      "paymentSuccess",
+      "paymentToSuccessDropOff",
+      "registerClicks",
+      "successPageViews",
+      "visits",
+      "whatsappClicks"
+    ])
+  });
 }
 
 function createAnalyticsPrompt({
@@ -375,14 +667,20 @@ function createAnalyticsPrompt({
   payload: unknown;
   scope: AdminAiAnalyticsScope;
 }) {
+  const boundary = buildAdminAIContentBoundary({
+    content: JSON.stringify(payload),
+    source: "form-submission"
+  });
   return [
     `Scope: ${scope === "overview" ? "Main Overview AI Insights" : "Per-Coach AI Insights"}`,
-    `Date range: ${sanitizeText(dateRange, 80) || "Selected period"}`,
+    `Date range: ${normalizeDateRange(dateRange)}`,
     "Use only this compact aggregate JSON. If data is insufficient, say so clearly.",
     "Return concise admin-facing insights only. No markdown tables.",
     "Required tone: practical, honest, cautious, executive, health-tech operations focused.",
     "Do not mention raw logs, secrets, private links, payment IDs, OTPs, or personal user data.",
-    JSON.stringify(payload)
+    `Content trust: ${boundary.trust}; source: ${boundary.source}; action authority: ${boundary.actionAuthority}.`,
+    boundary.instruction,
+    boundary.content
   ].join("\n");
 }
 
@@ -461,16 +759,175 @@ function normalizeStringList(value: unknown[], maxItems: number) {
     .slice(0, maxItems);
 }
 
-function isSensitiveKey(key: string) {
-  return /secret|token|otp|password|authorization|cookie|private|joinUrl|paymentId|orderId/i.test(
-    key
+function sanitizeFunnelSplit(value: unknown) {
+  const labels = ["Both", "Free only", "No funnel", "Paid only"] as const;
+  return asArray(value)
+    .slice(0, labels.length)
+    .map((item) => {
+      const row = asRecord(item);
+      return compactRecord({
+        label: enumValue(row.label, labels),
+        percent: percentageNumber(row.percent),
+        valueBand: aggregateCountBand(row.value)
+      });
+    })
+    .filter((row) => typeof row.label === "string" && Object.keys(row).length > 1);
+}
+
+function sanitizeTrendBars(value: unknown) {
+  const labels = [
+    "Previous clicks",
+    "Previous visits",
+    "Register clicks",
+    "Selected clicks",
+    "Selected visits",
+    "WhatsApp clicks"
+  ] as const;
+  return asArray(value)
+    .slice(0, labels.length)
+    .map((item) => {
+      const row = asRecord(item);
+      return compactRecord({
+        label: enumValue(row.label, labels),
+        valueBand: aggregateCountBand(row.value)
+      });
+    })
+    .filter((row) => Object.keys(row).length === 2);
+}
+
+function summarizeRiskQueue(items: unknown[]) {
+  const priorities = ["critical", "good", "high", "medium"] as const;
+  const counts = Object.fromEntries(priorities.map((priority) => [priority, 0])) as Record<
+    (typeof priorities)[number],
+    number
+  >;
+  items.slice(0, 20).forEach((item) => {
+    const priority = enumValue(asRecord(item).priority, priorities);
+    if (priority) counts[priority] += 1;
+  });
+
+  return compactRecord({
+    countBand: aggregateCountBand(items.length),
+    priorityCounts: compactRecord(
+      Object.fromEntries(
+        Object.entries(counts).map(([priority, count]) => [
+          `${priority}Band`,
+          count > 0 ? aggregateCountBand(count) : undefined
+        ])
+      )
+    )
+  });
+}
+
+function countBandRecord(input: Record<string, unknown>, keys: readonly string[]) {
+  return compactRecord(
+    Object.fromEntries(keys.map((key) => [`${key}Band`, aggregateCountBand(input[key])]))
   );
 }
 
+function compactRecord(input: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(input).filter(([, value]) => {
+      if (value === undefined || value === null) return false;
+      if (Array.isArray(value)) return value.length > 0;
+      return !isRecord(value) || Object.keys(value).length > 0;
+    })
+  );
+}
+
+function aggregateCountBand(value: unknown) {
+  if (
+    typeof value !== "number" ||
+    !Number.isSafeInteger(value) ||
+    value < 0 ||
+    value > MAX_AGGREGATE_COUNT
+  ) {
+    return undefined;
+  }
+  if (value === 0) return "0";
+  if (value < 10) return "1-9";
+  if (value < 100) return "10-99";
+  if (value < 1_000) return "100-999";
+  if (value < 10_000) return "1k-9.9k";
+  if (value < 100_000) return "10k-99.9k";
+  if (value < 1_000_000) return "100k-999.9k";
+  if (value < 10_000_000) return "1m-9.9m";
+  return "10m-99.9m";
+}
+
+function percentageNumber(value: unknown) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : undefined;
+  }
+  if (typeof value !== "string" || !/^\d{1,3}(?:\.\d+)?%?$/.test(value.trim())) return undefined;
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? Math.max(0, Math.min(100, parsed)) : undefined;
+}
+
+function signedPercentageNumber(value: unknown) {
+  if (typeof value !== "string" || !/^[+-]?\d{1,3}(?:\.\d+)?%$/.test(value.trim())) {
+    return undefined;
+  }
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? Math.max(-100, Math.min(100, parsed)) : undefined;
+}
+
+function booleanValue(value: unknown) {
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function enumValue<const T extends string>(value: unknown, allowed: readonly T[]): T | undefined {
+  return typeof value === "string" && allowed.includes(value as T) ? (value as T) : undefined;
+}
+
+function activityRecency(value: unknown) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T/.test(value)) return undefined;
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return undefined;
+  const ageDays = (Date.now() - timestamp) / 86_400_000;
+  if (ageDays < 0) return "future-date";
+  if (ageDays <= 1) return "last-24-hours";
+  if (ageDays <= 7) return "1-7-days";
+  if (ageDays <= 30) return "8-30-days";
+  if (ageDays <= 90) return "31-90-days";
+  return "older-than-90-days";
+}
+
+function arrayCountBand(value: unknown) {
+  return Array.isArray(value) ? aggregateCountBand(value.length) : undefined;
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return isRecord(value) ? value : {};
+}
+
+function normalizeDateRange(value: unknown) {
+  const normalized = sanitizeText(value, 80);
+  const known = new Map([
+    ["today", "Today"],
+    ["7 days", "7 days"],
+    ["30 days", "30 days"],
+    ["90 days", "90 days"],
+    ["1 year", "1 year"],
+    ["365 days", "365 days"],
+    ["all stored", "All stored"],
+    ["all stored data", "All stored data"],
+    ["current week", "Current week"],
+    ["current month", "Current month"],
+    ["selected period", "Selected period"]
+  ]);
+  const fixed = known.get(normalized.toLowerCase());
+  if (fixed) return fixed;
+  if (/^\d{4}-\d{2}-\d{2} to \d{4}-\d{2}-\d{2}$/.test(normalized)) return normalized;
+  return "Selected period";
+}
+
 function sanitizeText(value: unknown, maxLength: number) {
-  return typeof value === "string"
-    ? value.replace(/\s+/g, " ").trim().slice(0, maxLength)
-    : "";
+  return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, maxLength) : "";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

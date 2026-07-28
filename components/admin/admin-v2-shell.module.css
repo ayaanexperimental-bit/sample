@@ -291,7 +291,8 @@
 
 .v2DangerFeedback {
   margin: 0;
-  border-left: 3px solid var(--admin-v2-warning);
+  border: 1px solid color-mix(in srgb, var(--admin-v2-warning) 42%, transparent);
+  border-radius: 10px;
   padding: 9px 11px;
   color: var(--admin-v2-text);
   background: color-mix(in srgb, var(--admin-v2-warning) 9%, transparent);
@@ -697,7 +698,7 @@
 }
 
 .aiAssistantRobotSvg :global(.admin-v2-bot-confused-mark) {
-  animation: admin-v2-bot-confused-bounce 1.1s ease-in-out infinite;
+  animation: admin-v2-bot-confused-pulse 1.1s ease-in-out infinite;
 }
 
 .aiAssistantRobotSvg :global(.admin-v2-bot-sleep-z) {
@@ -2258,14 +2259,14 @@
   }
 }
 
-@keyframes admin-v2-bot-confused-bounce {
+@keyframes admin-v2-bot-confused-pulse {
   0%,
   100% {
-    transform: translateY(0);
+    opacity: 0.72;
   }
 
   50% {
-    transform: translateY(-4px);
+    opacity: 1;
   }
 }
 
@@ -2440,6 +2441,67 @@
   margin: 5px 0 0;
 }
 
+.adminV2Mount :global(.v2-creator-ai-review) {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  border-color: color-mix(in srgb, var(--admin-v2-accent) 46%, var(--admin-v2-border));
+}
+
+.adminV2Mount :global(.v2-creator-ai-review-list) {
+  display: grid;
+  gap: 10px;
+  max-height: min(52vh, 620px);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.adminV2Mount :global(.v2-creator-ai-review-item) {
+  overflow: hidden;
+  border: 1px solid var(--admin-v2-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--admin-v2-panel-2) 88%, transparent);
+}
+
+.adminV2Mount :global(.v2-creator-ai-review-item > summary) {
+  padding: 12px 14px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.adminV2Mount :global(.v2-creator-ai-review-values) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0 14px 14px;
+}
+
+.adminV2Mount :global(.v2-creator-ai-review-values > div) {
+  min-width: 0;
+  border: 1px solid var(--admin-v2-border);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.adminV2Mount :global(.v2-creator-ai-review-values dt) {
+  margin-bottom: 6px;
+  color: var(--admin-v2-text-muted);
+  font: 700 0.72rem/1.2 var(--font-mono, ui-monospace, monospace);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adminV2Mount :global(.v2-creator-ai-review-values dd) {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.adminV2Mount :global(.v2-creator-ai-review-values > .v2-creator-ai-review-reason) {
+  grid-column: 1 / -1;
+}
+
 .adminV2Mount :global(.v2-creator-details) {
   overflow: hidden;
   border: 1px solid var(--admin-v2-border);
@@ -2527,6 +2589,14 @@
   .adminV2Mount :global(.v2-creator-details > summary) {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .adminV2Mount :global(.v2-creator-ai-review-values) {
+    grid-template-columns: 1fr;
+  }
+
+  .adminV2Mount :global(.v2-creator-ai-review-values > .v2-creator-ai-review-reason) {
+    grid-column: auto;
   }
 }
 

@@ -2,22 +2,24 @@ export type AiCompressedContext = {
   compactText: string;
   removedCharacters: number;
   sourceCharacters: number;
+  truncated: boolean;
 };
 
 const FOOTER_NOISE_PATTERNS = [
-  /\bprivacy policy\b/gi,
-  /\brefund policy\b/gi,
-  /\bterms\b/gi,
-  /\bdisclaimer\b/gi,
-  /\bcopyright\b/gi,
-  /\bfacebook\b/gi,
-  /\bmeta platforms\b/gi
+  /\bprivacy policy\b/i,
+  /\brefund policy\b/i,
+  /\bterms\b/i,
+  /\bdisclaimer\b/i,
+  /\bcopyright\b/i,
+  /\bfacebook\b/i,
+  /\bmeta platforms\b/i
 ];
 
 export function compressAiContext(value: string, maxTokens = 8_000): AiCompressedContext {
   const sourceCharacters = value.length;
-  const maxCharacters = Math.max(1_000, maxTokens * 4);
-  const compactText = Array.from(
+  const safeMaxTokens = Number.isFinite(maxTokens) ? Math.max(1, Math.floor(maxTokens)) : 8_000;
+  const maxCharacters = safeMaxTokens * 4;
+  const compact = Array.from(
     new Set(
       stripHiddenTechnicalText(value)
         .split(/\n+|(?<=[.!?])\s+/)
@@ -27,13 +29,14 @@ export function compressAiContext(value: string, maxTokens = 8_000): AiCompresse
     )
   )
     .join("\n")
-    .slice(0, maxCharacters)
     .trim();
+  const compactText = compact.slice(0, maxCharacters).trim();
 
   return {
     compactText,
     removedCharacters: Math.max(0, sourceCharacters - compactText.length),
-    sourceCharacters
+    sourceCharacters,
+    truncated: compact.length > compactText.length
   };
 }
 

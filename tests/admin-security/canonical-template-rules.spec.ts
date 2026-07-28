@@ -33,6 +33,14 @@ import {
   validateShopBuilderState
 } from "../../lib/shop-builder";
 import { onRequest as handleCoachMediaRequest } from "../../functions/api/coach-media";
+import {
+  aiRegeneratableCoachTemplateContentFields,
+  coachTemplateContentSlots
+} from "../../lib/coach-template-content-slots";
+import {
+  getCoachCopyScopeFields,
+  type CoachCopyScope
+} from "../../lib/server/coach-copy-ai";
 
 const EXPECTED_ACTIVE_SKIN_IDS = [
   CANONICAL_COACH_TEMPLATE_THEME_ID,
@@ -84,6 +92,51 @@ const STALE_DETERMINISTIC_DEFAULT_COPY =
 const REPO_ROOT = process.cwd();
 
 test.describe("canonical coach template rules", () => {
+  test("AI copy scopes exclude every protected or fixed template field", () => {
+    const scopes: CoachCopyScope[] = [
+      "all",
+      "benefits",
+      "cta",
+      "faq",
+      "footer",
+      "hero",
+      "intro",
+      "journey",
+      "media",
+      "problem",
+      "vision"
+    ];
+    const allowedFields = new Set(aiRegeneratableCoachTemplateContentFields);
+    const protectedFields = [
+      "benefits",
+      "footerBrandLine",
+      "footerText",
+      "supportPrivacyNote"
+    ] as const;
+
+    expect(scopes).toHaveLength(11);
+    for (const scope of scopes) {
+      const fields = getCoachCopyScopeFields(scope);
+
+      expect(fields.length).toBeGreaterThan(0);
+      expect(fields.filter((field) => !allowedFields.has(field))).toEqual([]);
+      for (const field of protectedFields) expect(fields).not.toContain(field);
+    }
+
+    expect(getCoachCopyScopeFields("all")).toEqual(aiRegeneratableCoachTemplateContentFields);
+    expect(getCoachCopyScopeFields("benefits")).toEqual([
+      "benefitsSectionLabel",
+      "benefitsHeading",
+      "benefitDescriptions"
+    ]);
+    expect(
+      coachTemplateContentSlots
+        .filter((slot) => !slot.aiRegeneratable)
+        .map((slot) => slot.field)
+    ).toEqual(["footerBrandLine", "footerText", "supportPrivacyNote"]);
+    expect(getCoachCopyScopeFields("footer")).toEqual(["footerHeadline"]);
+  });
+
   test("canonical renderer exposes only the protected visual skins and old IDs normalize safely", () => {
     expect(COACH_TEMPLATE_THEME_IDS).toEqual(EXPECTED_ACTIVE_SKIN_IDS);
     expect(coachTemplateThemes.map((theme) => theme.id)).toEqual(EXPECTED_ACTIVE_SKIN_IDS);

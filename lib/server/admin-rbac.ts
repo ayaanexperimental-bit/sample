@@ -140,6 +140,26 @@ export const ADMIN_ROLE_TEMPLATES: Array<{
     )
   },
   {
+    description: "Review Shop purchases, payment settings, reports, and recovery workflows.",
+    key: "shop",
+    label: "Shop Admin",
+    permissions: ALL_PERMISSION_KEYS.filter((key) => key.startsWith("shop."))
+  },
+  {
+    description: "Triage customer-impacting reports and maintain non-security support settings.",
+    key: "support",
+    label: "Support Admin",
+    permissions: [
+      "overview.view",
+      "overview.alerts",
+      "coach_sites.view",
+      "error_reports.view",
+      "error_reports.mark_status",
+      "settings.view",
+      "settings.support"
+    ]
+  },
+  {
     description: "Review reports and mark issues fixed without destructive cleanup.",
     key: "reports",
     label: "Reports",

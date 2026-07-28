@@ -5,15 +5,21 @@ export function AdminAIAskButton({
   className,
   label = "Ask Copilot",
   query,
-  scope = "page",
+  selectedEntityIds,
+  scope = "page"
 }: {
   className?: string;
   label?: string;
   query: string;
+  selectedEntityIds?: string[];
   scope?: AdminAIScope;
 }) {
   return (
-    <button className={className} onClick={() => dispatchAdminAIAsk(query, scope)} type="button">
+    <button
+      className={className}
+      onClick={() => dispatchAdminAIAsk(query, scope, selectedEntityIds)}
+      type="button"
+    >
       {label}
     </button>
   );
