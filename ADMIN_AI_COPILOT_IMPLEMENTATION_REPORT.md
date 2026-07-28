@@ -3,21 +3,28 @@
 Date: 2026-07-29 IST
 Workspace: `C:\Users\Yours Wellness\Documents\Codex`
 Branch: `integration/admin-v2-od-real-wiring-20260703-231720`
-Scope: final local/non-production completion of the 65-section Admin AI / Admin V2 specification
+Scope: final completion and production release of the 65-section Admin AI / Admin V2 specification
 
 ## Final Status
 
-**Completed and tested**
+**Completed, tested, committed, pushed, deployed, and production-smoked**
 
 - Authoritative requirements: **1,173**
 - Completed: **1,173**
 - Pending: **0**
 - Internal blockers: **0**
+- Implementation commit: `b592bf176f978d05cdce68713233ea3244411d74`
+- Remote branch: `origin/integration/admin-v2-od-real-wiring-20260703-231720`
+- Production Pages deployment: `ce564041-47f8-4adf-9738-29ef0b752cb5`
+- Production Pages URL: `https://ce564041.ywcoach.pages.dev`
+- Custom production domains: `https://ywcoach.com`, `https://www.ywcoach.com`
+- Production Worker version: `e315e786-7d31-4d42-a8c4-f29c1d067d93`
+- Production Worker URL: `https://ywcoach-live-viewers.ayaanexperimental.workers.dev`
 - Runtime verified: `http://127.0.0.1:4802`
 - Persistent local D1: `.wrangler-admin-v2-current-4802`
 - Headroom: protected port `8787`, HTTP 200 healthy
 
-No commit, push, deploy, production mutation, reset, revert, clean, staging, or production credential use was performed.
+The reviewed 152-file implementation scope was committed and pushed before deployment. The additive production D1 migration created exactly 8 Admin AI tables and 12 indexes; no existing table was dropped, altered, or replaced. The verified Worker and exact prebuilt Pages artifact were deployed. No reset, revert, force-push, `git clean`, unrelated-file deletion, payment mutation, production email send, paid image-provider call, or sensitive AI action was performed.
 
 ## Authoritative Sources
 
@@ -71,7 +78,7 @@ The approved continuity/model-routing implementation contract is `ADMIN_AI_API_C
 - `CURRENT_ADMIN_AI_SPEC_REQUIREMENT_CHECKLIST.md`
 - `ADMIN_AI_COPILOT_IMPLEMENTATION_REPORT.md`
 
-The wider inherited Admin AI implementation remains intentionally dirty and preserved. The current pre-release inventory is **56 tracked + 95 untracked = 151 paths**; no unrelated path was reset, reverted, cleaned, staged, or deleted.
+Implementation commit `b592bf1` contains the reviewed **152-path** Admin AI/Admin V2 scope with outside-scope files `0`. The worktree was clean before this deployment-evidence update; no unrelated path was reset, reverted, cleaned, staged, or deleted.
 
 ## Fresh Commands And Results
 
@@ -84,8 +91,9 @@ The wider inherited Admin AI implementation remains intentionally dirty and pres
 | `pnpm run build:pages-functions` | PASS; Worker compiled |
 | `pnpm run test:admin-security` | PASS; **498/498** |
 | Focused Impeccable/lifecycle/rendering/model-routing/OD-scope/performance regression | PASS; **67/67** |
-| Impeccable detector over exact Admin V2/Admin AI targets | PASS; `[]` |
+| Fresh Impeccable detector over `app/admin` + `components/admin` | 4 warnings, **0 P0/P1 blockers**: 3 bounded width transitions and 1 Admin V2 status-message side accent |
 | `pnpm run check:admin-performance` | PASS; `1,692,905` bytes vs `2,100,000` budget, no forbidden markers |
+| Fresh isolated responsive audit | PASS at **320, 375, 390, 414, 768, 1024, 1280, 1440, and 1920px**; no page overflow, dialog clipping, legacy markers, console/page errors, or protected-API errors |
 | Owner Pages exact-artifact controls/navigation smoke | PASS; **1/1** in 48.9s |
 | Desktop exact-artifact Copilot smoke | PASS; **3/3** in 2.4m |
 | Desktop exact-artifact resilience matrix | PASS; **6/6** in 7.0m |
@@ -98,6 +106,11 @@ The wider inherited Admin AI implementation remains intentionally dirty and pres
 | Coach Sites/public lifecycle | PASS; **1/1** in 2.4m |
 | Final D1 hygiene readback | PASS; all **12** disposable lifecycle rows are `removed`; `active_disposable = 0` |
 | `graphify update .` | PASS; **5,481 nodes / 11,858 edges / 275 communities** |
+| Additive production D1 migration | PASS; **20/20** statements, 8 tables + 12 indexes, destructive/non-additive statements `0` |
+| Worker deployment | PASS; version `e315e786-7d31-4d42-a8c4-f29c1d067d93`, 100% traffic, cron `17 2 * * *` |
+| Pages deployment | PASS; production ID `ce564041-47f8-4adf-9738-29ef0b752cb5`, source `b592bf1` |
+| Production HTTP/auth smoke | PASS; `/admin` and `/admin/login` 200; unauthenticated `/admin/dashboard` 302 to login; four Admin AI APIs 401 |
+| Production provider configuration | PASS; encrypted `OPENAI_API_KEY`, provider enabled, Luna Low/Medium routing enabled, provider storage disabled in code |
 
 The first combined resilience run reused one identity enough times to hit the intentional five-per-15-minute local OTP limit. No product bug occurred and the security limit was not weakened. Tablet and desktop reruns used separate allowlisted identities and passed against the same candidate artifact.
 
@@ -113,19 +126,30 @@ The first combined resilience run reused one identity enough times to hit the in
 
 Impeccable v4.0.3 was used as an operator, not implemented as a literal “human intent” product feature:
 
-- Read-only `critique` used independent design-review and detector/evidence assessments.
+- Read-only `critique` used sequential design-review and detector/evidence assessments in separate fresh browser tabs. The run is transparently degraded from the preferred dual-agent method because delegation was disabled by the active environment.
 - Read-only `audit` covered accessibility, performance, theming, responsive behavior, and anti-patterns.
-- The deterministic scan returned `[]` across the Admin AI component directory and the Admin V2 shell.
+- The final deterministic scan reported four non-blocking warnings: the auth strength meter and two legacy/fallback progress indicators transition width, and one Admin V2 status message uses a 3px left accent. None is a P0/P1 functional or accessibility blocker.
 - Technical audit score: **18/20 (Excellent)** — accessibility `4/4`; performance `3/4` because the candidate passes its budget but remains a substantial admin bundle; theming `4/4`; responsive `4/4`; anti-patterns `3/4` because the source retains a few intentionally non-blocking P3 rounding/shadow/ambient effects.
 - The pre-fix source critique scored **27/40 (Acceptable)** and found no P0. Its only concrete release-relevant P1 was the busy Close/Escape no-op; that issue now has a failing-then-passing regression test.
+- The fresh post-fix rendered critique scores **33/40 (Good)**. Its remaining P2/P3 design debt is information density and duplicated operational guidance, especially where Coach Sites repeats “Signal to action” and AI operations recommendations. No edit was made from this final read-only scan.
 - Current Playwright rendered evidence verifies the labelled navigation/dialog tree, keyboard selection, focus restoration, failure-safe states, real filter/navigation behavior, and zero page/console errors on the exact flagged Pages artifact.
 - The audit also found the inert Overview controls and dishonest global-search scope described above; both were fixed and protected by source-contract plus exact-artifact browser tests.
 - Subjective large-scale identity, typography, and information-architecture suggestions were not applied mechanically without rendered evidence because doing so immediately before release would create unverified visual risk.
 - Snapshot not persisted; the critique remained chat-only and created no `.impeccable` project state.
 
+## Production Release Evidence
+
+- Production Pages deployment `ce564041-47f8-4adf-9738-29ef0b752cb5` is the current `main` deployment and records source commit `b592bf1`.
+- `https://ce564041.ywcoach.pages.dev/admin` and `/admin/login` byte-match the exact local artifact. The custom domain matches after removing Cloudflare's expected 358-byte Web Analytics beacon injection.
+- `https://ywcoach.com/admin` and `/admin/login` return 200. Unauthenticated `/admin/dashboard` returns 302 to `/admin/login?next=%2Fadmin%2Fdashboard`.
+- Unauthenticated `/api/admin/ai-tasks`, `/api/admin/ai-settings`, `/api/admin/ai-observability`, and `/api/admin/ai-provider` each return 401.
+- The live Viewer Worker returns a valid numeric viewer count and routes 100% of traffic to version `e315e786-7d31-4d42-a8c4-f29c1d067d93`.
+- Remote `ywcoach-admin` contains all 8 expected Admin AI tables and all 12 expected indexes; each new table was queryable after deployment.
+- Production Pages configuration contains an encrypted `OPENAI_API_KEY`, `ADMIN_AI_OPENAI_PROVIDER=true`, `ADMIN_AI_FAST_MODEL=gpt-5.6-luna`, `ADMIN_AI_REASONING_MODEL=gpt-5.6-luna`, and `ADMIN_AI_LUNA_MEDIUM_ROUTE=true`. `lib/server/admin-ai-openai.ts` sends every provider request with `store: false`.
+
 ## External Boundary
 
-Live model-provider output, scheduled production email delivery, optional voice, production data mutation/migration, real payment/email/image-provider execution, deployment, and production authentication remain intentionally unexecuted. Their local contracts, feature flags, authorization boundaries, unavailable/fallback states, audit behavior, and failure-safe UI are implemented and tested; they are not local pending requirements.
+The application, schema, Worker, Pages artifact, provider configuration, routing, auth guards, and production unavailable/fallback states are live. An authenticated production prompt was not sent because that would require a real admin login/OTP session; therefore provider configuration is confirmed, while a real billed model response is not claimed. Scheduled production briefing/email delivery, optional voice, real payment/email/image-provider execution, and sensitive AI mutations remain intentionally disabled or unexecuted. The daily Worker cron is live only for 90-day Admin AI retention cleanup.
 
 Graphify refreshed `graph.json` and `GRAPH_REPORT.md`. It intentionally skipped `graph.html` because the graph has 5,481 nodes, above the 5,000-node visualization safety limit; this does not affect the structural graph/report.
 
@@ -135,7 +159,7 @@ The sections below preserve the detailed implementation inventory. Their older t
 
 The contextual Admin AI pill is implemented as a native Admin V2 operating layer, not a generic chatbot. It uses compact permission-filtered context, deterministic local analysis, allowlisted knowledge, registered actions, explicit confirmation, existing RBAC/CSRF/API enforcement, bounded audit data, and honest missing-data/failure states.
 
-No deploy, staging migration, production D1/R2 mutation, real payment, production email, paid image-provider call, live AI-provider call, or sensitive autonomous action was performed.
+The additive production D1 migration and production Worker/Pages deployments described above were performed after the implementation gates passed. No R2 mutation, real payment, production email send, paid image-provider call, authenticated live AI prompt, or sensitive autonomous action was performed.
 
 ## 1. Modules Integrated
 
@@ -302,7 +326,7 @@ PASS for deterministic refusal of permission override, OTP request, validation b
 
 ## 22. Remaining Risks And Production Exclusions
 
-- Live model output requires a valid application AI provider/backend credential.
+- Production has an encrypted OpenAI credential and Luna Low/Medium routing enabled. An authenticated, billed live-model response still requires a real admin login/OTP smoke and is not claimed by this release evidence.
 - Durable scheduled briefing/email requires an approved job and email provider configuration.
 - Optional voice requires an approved secure microphone/transcription design and remains disabled.
 - Sensitive/destructive AI actions remain disabled; production OTP and protected workflows stay authoritative.
@@ -333,5 +357,8 @@ Client preview mirrors use the corresponding `NEXT_PUBLIC_` variables. Sensitive
 - Headroom is healthy on protected port `8787`.
 - Admin V2 is served from the flagged local Pages build on `http://127.0.0.1:4802`.
 - Project-local Graphify structural graph is refreshed to 5,481 nodes / 11,858 edges / 275 communities and the Copilot architecture query resolves the changed source/report nodes.
+- Production Pages deployment `ce564041-47f8-4adf-9738-29ef0b752cb5` serves source commit `b592bf1`; custom-domain Admin and login routes are live.
+- Production Worker version `e315e786-7d31-4d42-a8c4-f29c1d067d93` serves the live viewer count and owns the daily 90-day retention cleanup cron.
+- Remote D1 verification confirms all 8 Admin AI tables and all 12 indexes after the additive migration.
 
-Historical 2026-07-11 verdict: **PASS for local/non-production scope.** The fresh 2026-07-28 status, counts, commands, and exact-artifact browser evidence at the top of this report supersede the historical counts in this detailed record.
+Historical 2026-07-11 verdict: **PASS for local/non-production scope.** The fresh 2026-07-29 production release status, counts, deployment IDs, and smoke evidence at the top of this report supersede the historical counts in this detailed record.

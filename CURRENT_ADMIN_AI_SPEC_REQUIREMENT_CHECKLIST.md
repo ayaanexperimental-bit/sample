@@ -1,7 +1,7 @@
 # Current Admin AI Copilot Specification Requirement Checklist
 
 Status date: 2026-07-29 IST
-Final status: **Completed and tested**
+Final status: **Completed, tested, committed, pushed, deployed, and production-smoked**
 
 ## Authoritative source of truth
 
@@ -22,7 +22,7 @@ Both files and hashes were freshly rechecked on 2026-07-28. Older prompts, repor
 |---:|---:|---:|---:|
 | **1,173** | **1,173** | **0** | **0** |
 
-Conditional production integrations are complete at their local contract boundary: permission checks, feature flags, provider-unavailable behavior, validation, audit, and failure-safe UI are implemented and tested. Live provider output, scheduled email delivery, production mutation, and deployment were not executed because they require external credentials/authority and are not local pending requirements. Optional voice remains disabled and owner-isolated as specified.
+Conditional production integrations are complete at their implemented boundary: permission checks, feature flags, provider-unavailable behavior, validation, audit, and failure-safe UI are implemented and tested. The reviewed implementation commit was pushed; the additive D1 schema, Worker, and exact Pages artifact were deployed and production-smoked. Production has an encrypted OpenAI credential with Luna Low/Medium routing enabled, but an authenticated billed prompt was not sent because that requires a real admin login/OTP session. Scheduled briefing/email delivery, real payment/email/image-provider execution, sensitive AI mutation, and optional voice remain intentionally disabled or unexecuted rather than hidden internal requirements.
 
 ## Evidence keys
 
@@ -33,7 +33,8 @@ Conditional production integrations are complete at their local contract boundar
 - **E5 — Public/persistence lifecycle:** Coach Sites create/media/preview/publish/public route/copy review/archive/restore/remove/draft-delete → **1 passed**; D1 readback shows all 12 disposable rows removed and zero active disposable records.
 - **E6 — Source/artifact gates:** type-check, full lint, standard build, flagged Pages build, Pages Functions build, and Admin performance artifact check all passed; Admin initial export is `1,692,905 / 2,100,000` bytes; refreshed Graphify scope is `5,481 nodes / 11,858 edges / 275 communities`.
 - **E7 — Failure boundaries:** live-provider unavailable/retry, audit fail-closed, service outage, stale state, reload persistence, rollback, OTP, redaction, prompt-injection, and feature-flag paths are covered by E1/E2.
-- **E8 — Impeccable design quality:** v4.0.3 read-only `critique`, technical `audit`, context signals, exact-target detector, source review, accessibility tree, and rendered Playwright inspection were used as an operator on the Admin surface. The exact Admin V2/Admin AI detector returned `[]`; technical audit is **18/20 (Excellent)** with only non-blocking P3 rounding/shadow/ambient observations. The audit's functional P1 findings—five inert Overview controls, dishonest global-search scope, and hard-coded mobile expanded state—were fixed. Focused lifecycle/rendering/model-routing/OD-scope/performance regression → **67 passed**; browser evidence verifies the native labelled modal/navigation, keyboard selection, initial Close focus, Escape dismissal/focus restoration, real filter/pagination/Shop navigation, no document-level overflow in prior responsive evidence, and no page/console errors.
+- **E8 — Impeccable design quality:** v4.0.3 read-only `critique`, technical `audit`, context signals, exact-target detector, source review, accessibility tree, and rendered browser inspection were used as an operator on the Admin surface. The final scan reported 4 non-blocking warnings and 0 P0/P1 blockers: three bounded width transitions and one Admin V2 status-message side accent. Technical audit remains **18/20 (Excellent)**; the fresh post-fix critique is **33/40 (Good)** with P2/P3 information-density and repeated-guidance debt only. The audit's functional P1 findings—five inert Overview controls, dishonest global-search scope, and hard-coded mobile expanded state—were fixed. Focused lifecycle/rendering/model-routing/OD-scope/performance regression → **67 passed**; fresh responsive evidence passes 9 widths from 320 to 1920px with no overflow, dialog clipping, legacy markers, console/page errors, or protected-API errors.
+- **E9 — Production release:** implementation commit `b592bf1` is pushed; Pages production deployment `ce564041-47f8-4adf-9738-29ef0b752cb5` records that source; Worker version `e315e786-7d31-4d42-a8c4-f29c1d067d93` receives 100% traffic; the daily `17 2 * * *` retention cron is live; remote D1 contains all 8 Admin AI tables and 12 indexes; `/admin` and `/admin/login` return 200, unauthenticated `/admin/dashboard` redirects to login, and four Admin AI APIs return 401 without a session. Production config has encrypted `OPENAI_API_KEY`, `ADMIN_AI_OPENAI_PROVIDER=true`, both model routes set to `gpt-5.6-luna`, medium reasoning enabled, and provider storage disabled in source with `store: false`.
 
 ## Sections 1-13 — 252 requirements
 
@@ -64,7 +65,7 @@ Conditional production integrations are complete at their local contract boundar
 | 18 Action registry | 15 | 15 | 0 | E1, E7 |
 | 19 Audit logging | 10 | 10 | 0 | E1, E7 |
 | 20 Testing requirements | 29 | 29 | 0 | E1-E6, E8 |
-| 21 Acceptance criteria | 16 | 16 | 0 | E1-E8 |
+| 21 Acceptance criteria | 16 | 16 | 0 | E1-E9 |
 | 22 Global + section Copilot | 24 | 24 | 0 | E1, E2 |
 | 23 Continuous experience | 16 | 16 | 0 | E1, E2 |
 | 24 Command center | 21 | 21 | 0 | E1, E2 |
@@ -120,10 +121,10 @@ Conditional production integrations are complete at their local contract boundar
 | 59 Performance | 9 | 9 | 0 | E1, E2, E3, E6, E8 |
 | 60 Advanced UI states | 19 | 19 | 0 | E1, E2, E8 |
 | 61 Mobile Copilot | 10 | 10 | 0 | E1, E3, E8 |
-| 62 Phased implementation | 18 | 18 | 0 | E1-E8 |
+| 62 Phased implementation | 18 | 18 | 0 | E1-E9 |
 | 63 Feature flags | 12 | 12 | 0 | E1, E6, E7 |
-| 64 Final test matrix | 21 | 21 | 0 | E1-E8 |
-| 65 Delivery report | 25 | 25 | 0 | E1-E8 |
+| 64 Final test matrix | 21 | 21 | 0 | E1-E9 |
+| 65 Delivery report | 25 | 25 | 0 | E1-E9 |
 
 ## Final reconciliation
 
@@ -131,5 +132,6 @@ Conditional production integrations are complete at their local contract boundar
 - Completed: `1,173`.
 - Pending: `0`.
 - Current implementation report: `ADMIN_AI_COPILOT_IMPLEMENTATION_REPORT.md`.
-- Runtime verified: `http://127.0.0.1:4802`, persistent D1 `.wrangler-admin-v2-current-4802`.
-- At this evidence checkpoint, no commit, push, deploy, production mutation, reset, revert, clean, or staging action had been performed.
+- Local runtime verified: `http://127.0.0.1:4802`, persistent D1 `.wrangler-admin-v2-current-4802`.
+- Production verified: `https://ywcoach.com`, Pages deployment `ce564041-47f8-4adf-9738-29ef0b752cb5`, Worker version `e315e786-7d31-4d42-a8c4-f29c1d067d93`, and remote `ywcoach-admin` additive schema.
+- Commit, push, additive migration, Worker deployment, Pages deployment, and production smoke were performed. No reset, revert, force-push, `git clean`, unrelated-file deletion, payment mutation, production email send, paid image-provider call, authenticated live AI prompt, or sensitive AI action was performed.
