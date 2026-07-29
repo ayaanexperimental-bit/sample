@@ -14,7 +14,7 @@ Final status: **Completed, tested, committed, pushed, deployed, and production-s
    - Sections: 22-65
    - SHA-256: `5B438515D09C477CBC52C19FD1D47A4C14F3EF534806D68CA9EC98176E3B206C`
 
-Both files and hashes were freshly rechecked on 2026-07-28. Older prompts, reports, and handoffs remain evidence only.
+Both files and hashes were freshly rechecked on 2026-07-29. Older prompts, reports, and handoffs remain evidence only.
 
 ## Final requirement count
 
@@ -26,15 +26,15 @@ Conditional production integrations are complete at their implemented boundary: 
 
 ## Evidence keys
 
-- **E1 — Security/contract:** `pnpm run test:admin-security` → **498 passed**.
+- **E1 — Security/contract:** `pnpm run test:admin-security` → **502 passed**.
 - **E2 — Exact-artifact owner browser:** Pages controls/navigation → **1 passed**; contextual Copilot → **3 passed**; desktop resilience matrix → **6 passed** against `http://127.0.0.1:4802`.
 - **E3 — Exact-artifact responsive browser:** mobile → **2 passed**; tablet → **2 passed**; desktop covered by E2.
 - **E4 — Genuine limited role:** persisted D1 `reports` role, permission-filtered UI, no forbidden preload, allowed API 200, forbidden API 403.
 - **E5 — Public/persistence lifecycle:** Coach Sites create/media/preview/publish/public route/copy review/archive/restore/remove/draft-delete → **1 passed**; D1 readback shows all 12 disposable rows removed and zero active disposable records.
-- **E6 — Source/artifact gates:** type-check, full lint, standard build, flagged Pages build, Pages Functions build, and Admin performance artifact check all passed; Admin initial export is `1,692,905 / 2,100,000` bytes; refreshed Graphify scope is `5,481 nodes / 11,858 edges / 275 communities`.
+- **E6 — Source/artifact gates:** type-check, full lint, standard build, flagged Pages build, Pages Functions build, and Admin performance artifact check all passed; Admin initial export is `1,685,523 / 2,100,000` bytes; refreshed Graphify scope is `5,486 nodes / 11,866 edges / 291 communities`.
 - **E7 — Failure boundaries:** live-provider unavailable/retry, audit fail-closed, service outage, stale state, reload persistence, rollback, OTP, redaction, prompt-injection, and feature-flag paths are covered by E1/E2.
-- **E8 — Impeccable design quality:** v4.0.3 read-only `critique`, technical `audit`, context signals, exact-target detector, source review, accessibility tree, and rendered browser inspection were used as an operator on the Admin surface. The final scan reported 4 non-blocking warnings and 0 P0/P1 blockers: three bounded width transitions and one Admin V2 status-message side accent. Technical audit remains **18/20 (Excellent)**; the fresh post-fix critique is **33/40 (Good)** with P2/P3 information-density and repeated-guidance debt only. The audit's functional P1 findings—five inert Overview controls, dishonest global-search scope, and hard-coded mobile expanded state—were fixed. Focused lifecycle/rendering/model-routing/OD-scope/performance regression → **67 passed**; fresh responsive evidence passes 9 widths from 320 to 1920px with no overflow, dialog clipping, legacy markers, console/page errors, or protected-API errors.
-- **E9 — Production release:** implementation commit `b592bf1` is pushed; Pages production deployment `ce564041-47f8-4adf-9738-29ef0b752cb5` records that source; Worker version `e315e786-7d31-4d42-a8c4-f29c1d067d93` receives 100% traffic; the daily `17 2 * * *` retention cron is live; remote D1 contains all 8 Admin AI tables and 12 indexes; `/admin` and `/admin/login` return 200, unauthenticated `/admin/dashboard` redirects to login, and four Admin AI APIs return 401 without a session. Production config has encrypted `OPENAI_API_KEY`, `ADMIN_AI_OPENAI_PROVIDER=true`, both model routes set to `gpt-5.6-luna`, medium reasoning enabled, and provider storage disabled in source with `store: false`.
+- **E8 — Impeccable design quality:** Impeccable v4.0.3 drove the Admin Operate refinement through `critique`, technical `audit`, `quieter`, `distill`, `typeset`, `layout`, `adapt`, `clarify`, `harden`, `optimize`, state-only `animate`, semantic `colorize`, contextual `onboard`, and final `polish`. `bolder` and `overdrive` were deliberately excluded because the audited Admin surface needed lower cognitive load, not more intensity. The exact-target final detector returned `[]`; focused Operate regression → **4/4**; exact-artifact companion flows → **4/4**; mobile/tablet/desktop resilience → **2/2, 2/2, 6/6**. One real mobile Copilot-trigger overlap was fixed while preserving a 44px target; progressive disclosure remains keyboard-accessible and all commands, context evidence, feedback, observability, and Admin modules remain available on demand.
+- **E9 — Production release:** complete implementation commit `b592bf1` and Impeccable Operate release commit `8961405` are pushed; Pages production deployment `b3e9518d-e812-491d-83e8-39ec7f8c1131` records source `8961405`. The separately deployed Worker version `e315e786-7d31-4d42-a8c4-f29c1d067d93` was intentionally left unchanged and continues to own the daily `17 2 * * *` retention cron; remote D1 retains all 8 Admin AI tables and 12 indexes. On `https://ywcoach.com`, `/admin` and `/admin/login` return 200 with CSP/HSTS/XFO/nosniff, unauthenticated `/admin/dashboard` redirects to login, all 19 referenced Admin JS/CSS assets return 200, and five real-method Admin AI API checks return 401 with `no-store`. Production config has encrypted `OPENAI_API_KEY`, `ADMIN_AI_OPENAI_PROVIDER=true`, both model routes set to `gpt-5.6-luna`, medium reasoning enabled, and provider storage disabled in source with `store: false`.
 
 ## Sections 1-13 — 252 requirements
 
@@ -133,5 +133,5 @@ Conditional production integrations are complete at their implemented boundary: 
 - Pending: `0`.
 - Current implementation report: `ADMIN_AI_COPILOT_IMPLEMENTATION_REPORT.md`.
 - Local runtime verified: `http://127.0.0.1:4802`, persistent D1 `.wrangler-admin-v2-current-4802`.
-- Production verified: `https://ywcoach.com`, Pages deployment `ce564041-47f8-4adf-9738-29ef0b752cb5`, Worker version `e315e786-7d31-4d42-a8c4-f29c1d067d93`, and remote `ywcoach-admin` additive schema.
+- Production verified: `https://ywcoach.com`, Pages deployment `b3e9518d-e812-491d-83e8-39ec7f8c1131` from source `8961405`, unchanged Worker version `e315e786-7d31-4d42-a8c4-f29c1d067d93`, and remote `ywcoach-admin` additive schema.
 - Commit, push, additive migration, Worker deployment, Pages deployment, and production smoke were performed. No reset, revert, force-push, `git clean`, unrelated-file deletion, payment mutation, production email send, paid image-provider call, authenticated live AI prompt, or sensitive AI action was performed.
