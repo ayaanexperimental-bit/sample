@@ -1672,21 +1672,11 @@ function AdminV2Sidebar({
         id="admin-sidebar"
       >
         <div className="brand">
-          <div className="brand-mark logo-mark" aria-label="YW Nutritech">
+          <div className="brand-mark logo-mark">
             <Image
               alt="YW Nutritech"
-              aria-label="Close navigation panel"
               height={34}
-              onClick={onCloseMobile}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" && event.key !== " ") return;
-                event.preventDefault();
-                onCloseMobile();
-              }}
-              role="button"
               src="/assets/yw-nutritech-logo.png"
-              tabIndex={0}
-              title="Close navigation panel"
               unoptimized
               width={34}
             />
@@ -1695,6 +1685,14 @@ function AdminV2Sidebar({
             <strong>YWcoach Admin</strong>
             <span>Production operations</span>
           </div>
+          <button
+            aria-label="Close navigation panel"
+            className={styles.v2SidebarClose}
+            onClick={onCloseMobile}
+            type="button"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
         </div>
 
         <nav className="nav-section" aria-label="Primary admin rail">
@@ -1872,12 +1870,11 @@ function AdminV2Header({
       <header className="topbar">
         <div className="topbar-left">
           <div className="topbar-title">
-            <div className="page-kicker">Verified admin session</div>
             <div className="page-heading-row">
               <h1 className="page-title">{activeTitle}</h1>
-              <span className="page-dropdown" aria-label="Admin workspace">
-                <span>Admin</span>
-                <span className="page-chevron" aria-hidden="true" />
+              <span className="session-status" role="status">
+                <span className="session-status-dot" aria-hidden="true" />
+                <span>Verified session</span>
               </span>
             </div>
             <p className="page-subtitle">
@@ -7405,6 +7402,170 @@ const ADMIN_V2_OD_RUNTIME_CSS = `
     content: none !important;
     display: none !important;
   }
+
+  /* Impeccable Operate refinement: preserve Admin behavior, reduce visual noise. */
+  [data-admin-v2="true"] .dashboard-console {
+    font-family: var(--font-sans);
+    background-image: none !important;
+    box-shadow: none;
+  }
+
+  [data-admin-v2="true"] .console-card,
+  [data-admin-v2="true"] .console-chart,
+  [data-admin-v2="true"] .console-mini,
+  [data-admin-v2="true"] .radial-card,
+  [data-admin-v2="true"] .finance-card,
+  [data-admin-v2="true"] .insight-card,
+  [data-admin-v2="true"] .addon-panel,
+  [data-admin-v2="true"] .panel,
+  [data-admin-v2="true"] .card {
+    border-radius: 12px !important;
+    box-shadow: none !important;
+    background-image: none !important;
+  }
+
+  [data-admin-v2="true"] .console-mini,
+  [data-admin-v2="true"][data-od-theme="light"] .console-mini {
+    border-inline-start-width: 1px !important;
+  }
+
+  [data-admin-v2="true"] .page-heading-row {
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  [data-admin-v2="true"] .page-title {
+    font-size: 1.75rem;
+    line-height: 1.15;
+    letter-spacing: -.02em;
+    text-wrap: balance;
+  }
+
+  [data-admin-v2="true"] .session-status {
+    display: inline-flex;
+    min-height: 30px;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid color-mix(in oklab, var(--console-line), transparent 62%);
+    border-radius: 999px;
+    padding: 5px 10px;
+    color: var(--console-text);
+    background: color-mix(in oklab, var(--console-line), transparent 90%);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  [data-admin-v2="true"] .session-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--console-line);
+  }
+
+  [data-admin-v2="true"] .console-eyebrow,
+  [data-admin-v2="true"] .nav-title,
+  [data-admin-v2="true"] .addon-panel small,
+  [data-admin-v2="true"] .console-mini small,
+  [data-admin-v2="true"] .score-copy > span,
+  [data-admin-v2="true"] .helper {
+    font-family: var(--font-sans) !important;
+    font-size: 13px !important;
+    font-weight: 650;
+    line-height: 1.4;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+  }
+
+  [data-admin-v2="true"] .admin-more {
+    overflow: clip;
+    padding: 0;
+  }
+
+  [data-admin-v2="true"] .admin-more > summary {
+    display: flex;
+    min-height: 56px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  [data-admin-v2="true"] .admin-more > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  [data-admin-v2="true"] .admin-more > summary > span:first-child {
+    display: grid;
+    gap: 2px;
+  }
+
+  [data-admin-v2="true"] .admin-more > summary strong {
+    color: var(--console-text);
+    font-size: 14px;
+  }
+
+  [data-admin-v2="true"] .admin-more > summary small,
+  [data-admin-v2="true"] .admin-more > summary > span:last-child {
+    color: var(--console-muted);
+    font-size: 12px;
+  }
+
+  [data-admin-v2="true"] .admin-more[open] > summary {
+    border-bottom: 1px solid color-mix(in oklab, var(--console-line), transparent 72%);
+  }
+
+  [data-admin-v2="true"] .admin-more > summary:focus-visible {
+    outline: 3px solid color-mix(in oklab, var(--console-cyan), transparent 58%);
+    outline-offset: -3px;
+  }
+
+  [data-admin-v2="true"] .v2-ai-bot-pill {
+    border-radius: 12px;
+    background: var(--console-panel-2);
+    background-image: none;
+    box-shadow: none;
+    animation: none;
+  }
+
+  [data-admin-v2="true"] .v2-ai-bot-pill::before,
+  [data-admin-v2="true"] .v2-ai-bot-pill::after {
+    content: none;
+    display: none;
+  }
+
+  [data-admin-v2="true"] .v2-ai-bot-label {
+    font-size: 11px;
+    letter-spacing: 0;
+    box-shadow: none;
+  }
+
+  @media (max-width: 680px) {
+    [data-admin-v2="true"] .page-title {
+      font-size: 1.35rem;
+    }
+
+    [data-admin-v2="true"] .session-status {
+      min-height: 28px;
+      padding-inline: 8px;
+      font-size: 12px;
+    }
+
+    [data-admin-v2="true"] .admin-more > summary {
+      min-height: 52px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-admin-v2="true"] .admin-more *,
+    [data-admin-v2="true"] .session-status {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
 `;
 
 function AdminV2OdRuntimeStyle() {
@@ -8097,7 +8258,14 @@ function AdminV2OdDashboard({
           />
         </section>
 
-        <section className="console-card dashboard-admin-addon" aria-label="Admin module coverage">
+        <details className="console-card dashboard-admin-addon admin-more">
+          <summary>
+            <span>
+              <strong>More Admin modules</strong>
+              <small>Shortcuts and operational totals</small>
+            </span>
+            <span aria-hidden="true">Review</span>
+          </summary>
           <div className="admin-addon-shell">
             <div className="addon-header">
               <div>
@@ -8224,7 +8392,7 @@ function AdminV2OdDashboard({
               </section>
             </div>
           </div>
-        </section>
+        </details>
       </div>
     </div>
   );

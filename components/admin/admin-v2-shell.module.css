@@ -60,6 +60,33 @@
   -webkit-backdrop-filter: blur(4px);
 }
 
+.v2SidebarClose {
+  display: none;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  margin-inline-start: auto;
+  border: 1px solid var(--admin-v2-border);
+  border-radius: 10px;
+  color: var(--admin-v2-text);
+  background: var(--admin-v2-panel-2);
+  font: inherit;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.v2SidebarClose:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--admin-v2-accent-cyan), transparent 55%);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .v2SidebarClose {
+    display: inline-flex;
+  }
+}
+
 .v2DialogLayer {
   --admin-v2-bg: #06110b;
   --admin-v2-panel: #0d1f15;

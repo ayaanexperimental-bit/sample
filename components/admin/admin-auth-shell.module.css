@@ -103,10 +103,7 @@
   object-fit: contain;
   position: relative;
   z-index: 1;
-  filter:
-    brightness(0.68)
-    contrast(1.28)
-    saturate(1.18)
+  filter: brightness(0.68) contrast(1.28) saturate(1.18)
     drop-shadow(0 0 0.55rem color-mix(in oklch, var(--od-accent) 26%, transparent))
     drop-shadow(0 0.45rem 0.75rem rgb(0 0 0 / 0.32));
   transform: translateZ(0);
@@ -408,11 +405,13 @@
 
 .strengthMeter span {
   display: block;
-  width: var(--admin-strength);
+  width: 100%;
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #d94683, #d79a50, #087a73);
-  transition: width 180ms ease;
+  transform: scaleX(var(--admin-strength));
+  transform-origin: left center;
+  transition: transform 180ms cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .passwordChecklist {
@@ -645,15 +644,32 @@
   --od-danger: oklch(68% 0.19 28);
   --od-radius: 8px;
   --od-font-ui: "IBM Plex Sans", Aptos, "Segoe UI", system-ui, sans-serif;
-  --od-font-mono: "JetBrains Mono", "IBM Plex Mono", "Cascadia Code", ui-monospace,
-    SFMono-Regular, Menlo, monospace;
+  --od-font-mono:
+    "JetBrains Mono", "IBM Plex Mono", "Cascadia Code", ui-monospace, SFMono-Regular, Menlo,
+    monospace;
   place-items: center;
   background:
-    linear-gradient(90deg, color-mix(in oklch, var(--od-border) 20%, transparent) 1px, transparent 1px),
-    linear-gradient(0deg, color-mix(in oklch, var(--od-border) 18%, transparent) 1px, transparent 1px),
-    radial-gradient(circle at 52% 0%, color-mix(in oklch, var(--od-accent-2) 13%, transparent), transparent 34rem),
+    linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--od-border) 20%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      0deg,
+      color-mix(in oklch, var(--od-border) 18%, transparent) 1px,
+      transparent 1px
+    ),
+    radial-gradient(
+      circle at 52% 0%,
+      color-mix(in oklch, var(--od-accent-2) 13%, transparent),
+      transparent 34rem
+    ),
     var(--od-bg);
-  background-size: 56px 56px, 56px 56px, auto, auto;
+  background-size:
+    56px 56px,
+    56px 56px,
+    auto,
+    auto;
   color: var(--od-fg);
   font-family: var(--od-font-ui);
 }
@@ -667,18 +683,42 @@
   justify-items: stretch;
   align-items: start;
   background:
-    linear-gradient(90deg, color-mix(in oklch, var(--od-border) 20%, transparent) 1px, transparent 1px),
-    linear-gradient(0deg, color-mix(in oklch, var(--od-border) 18%, transparent) 1px, transparent 1px),
-    radial-gradient(circle at 52% 0%, color-mix(in oklch, var(--od-accent-2) 13%, transparent), transparent 34rem),
+    linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--od-border) 20%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      0deg,
+      color-mix(in oklch, var(--od-border) 18%, transparent) 1px,
+      transparent 1px
+    ),
+    radial-gradient(
+      circle at 52% 0%,
+      color-mix(in oklch, var(--od-accent-2) 13%, transparent),
+      transparent 34rem
+    ),
     var(--od-bg);
-  background-size: 56px 56px, 56px 56px, auto, auto;
+  background-size:
+    56px 56px,
+    56px 56px,
+    auto,
+    auto;
 }
 
 .backdrop,
 .adminDashboardPage .backdrop {
   background-image:
-    radial-gradient(circle at 20% 18%, color-mix(in oklch, var(--od-accent) 8%, transparent), transparent 26rem),
-    radial-gradient(circle at 80% 8%, color-mix(in oklch, var(--od-accent-2) 9%, transparent), transparent 28rem);
+    radial-gradient(
+      circle at 20% 18%,
+      color-mix(in oklch, var(--od-accent) 8%, transparent),
+      transparent 26rem
+    ),
+    radial-gradient(
+      circle at 80% 8%,
+      color-mix(in oklch, var(--od-accent-2) 9%, transparent),
+      transparent 28rem
+    );
   background-size: auto;
   mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.72), transparent 88%);
 }
@@ -737,7 +777,11 @@
   border-radius: var(--od-radius);
   background:
     radial-gradient(circle at 34% 22%, rgb(255 255 255 / 0.22), transparent 22%),
-    linear-gradient(135deg, color-mix(in oklch, var(--od-accent) 34%, transparent), transparent 72%),
+    linear-gradient(
+      135deg,
+      color-mix(in oklch, var(--od-accent) 34%, transparent),
+      transparent 72%
+    ),
     color-mix(in oklch, var(--od-surface-3) 72%, transparent);
   box-shadow:
     0 0 0 1px color-mix(in oklch, var(--od-accent) 16%, transparent),
@@ -746,7 +790,9 @@
     inset 0 0 18px color-mix(in oklch, var(--od-accent) 22%, transparent),
     inset 0 -18px 34px rgb(0 0 0 / 0.2);
   transform-origin: center;
-  animation: admin-logo-float 4.8s ease-in-out infinite, admin-logo-hue 7.6s ease-in-out infinite;
+  animation:
+    admin-logo-float 4.8s ease-in-out infinite,
+    admin-logo-hue 7.6s ease-in-out infinite;
 }
 
 .logoMark::before,
@@ -761,18 +807,35 @@
 .logoMark::before {
   border: 1px solid color-mix(in oklch, var(--od-accent) 42%, transparent);
   background:
-    linear-gradient(90deg, transparent 48%, color-mix(in oklch, var(--od-accent) 38%, transparent) 50%, transparent 52%),
-    linear-gradient(0deg, transparent 48%, color-mix(in oklch, var(--od-accent-2) 28%, transparent) 50%, transparent 52%);
+    linear-gradient(
+      90deg,
+      transparent 48%,
+      color-mix(in oklch, var(--od-accent) 38%, transparent) 50%,
+      transparent 52%
+    ),
+    linear-gradient(
+      0deg,
+      transparent 48%,
+      color-mix(in oklch, var(--od-accent-2) 28%, transparent) 50%,
+      transparent 52%
+    );
   box-shadow:
     0 0 1.2rem color-mix(in oklch, var(--od-accent) 34%, transparent),
     inset 0 0 1.1rem color-mix(in oklch, var(--od-accent) 16%, transparent);
   opacity: 0.58;
-  animation: admin-logo-orbit 3.4s ease-in-out infinite, admin-logo-reticle 8s linear infinite;
+  animation:
+    admin-logo-orbit 3.4s ease-in-out infinite,
+    admin-logo-reticle 8s linear infinite;
 }
 
 .logoMark::after {
   inset: 0;
-  background: linear-gradient(115deg, transparent 0 28%, rgb(255 255 255 / 0.28) 42%, transparent 58% 100%);
+  background: linear-gradient(
+    115deg,
+    transparent 0 28%,
+    rgb(255 255 255 / 0.28) 42%,
+    transparent 58% 100%
+  );
   mix-blend-mode: screen;
   opacity: 0;
   transform: translateX(-120%);
@@ -791,15 +854,14 @@
   inset: -1rem;
   z-index: -2;
   border-radius: inherit;
-  background:
-    conic-gradient(
-      from 0deg,
-      transparent,
-      color-mix(in oklch, var(--od-accent) 42%, transparent),
-      transparent,
-      color-mix(in oklch, var(--od-accent-2) 34%, transparent),
-      transparent
-    );
+  background: conic-gradient(
+    from 0deg,
+    transparent,
+    color-mix(in oklch, var(--od-accent) 42%, transparent),
+    transparent,
+    color-mix(in oklch, var(--od-accent-2) 34%, transparent),
+    transparent
+  );
   filter: blur(9px);
   opacity: 0.52;
   animation: admin-logo-aura 5.2s linear infinite;
@@ -852,7 +914,12 @@
   height: 55%;
   background:
     linear-gradient(180deg, transparent, rgb(255 255 255 / 0.16), transparent),
-    linear-gradient(90deg, transparent, color-mix(in oklch, var(--od-accent) 62%, transparent), transparent);
+    linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--od-accent) 62%, transparent),
+      transparent
+    );
   transform: translateY(-90%);
   animation: admin-logo-scanline 3.3s cubic-bezier(0.64, 0, 0.16, 1) infinite;
 }
@@ -959,6 +1026,104 @@
   box-shadow: none;
 }
 
+/* Impeccable Operate refinement: calm, readable, task-first Admin access. */
+.adminPage,
+.adminDashboardPage {
+  background: var(--od-bg);
+  background-image: none;
+}
+
+.backdrop,
+.adminDashboardPage .backdrop {
+  background: none;
+  mask-image: none;
+}
+
+.brandPanel,
+.authPanel {
+  min-height: 32rem;
+  border: 1px solid var(--od-border);
+  border-radius: 12px;
+  background: var(--od-surface);
+  box-shadow: none;
+}
+
+.logoMark {
+  width: 4.25rem;
+  border: 1px solid var(--od-border);
+  border-radius: 12px;
+  background: var(--od-surface-2);
+  box-shadow: none;
+  animation: none;
+}
+
+.logoMark::before,
+.logoMark::after,
+.logoAura,
+.logoOrbit,
+.logoScan,
+.logoPips {
+  display: none;
+}
+
+.brandPanel h2,
+.title {
+  max-width: 20ch;
+  font-family: var(--od-font-ui);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.brandPanel p:last-child,
+.subtitle,
+.securityNotice {
+  max-width: 65ch;
+  color: var(--od-muted);
+  font-size: 1rem;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.field {
+  color: var(--od-fg);
+  font: 650 0.875rem/1.35 var(--od-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.field input,
+.googleButton,
+.primaryButton,
+.secondaryButton,
+.linkButton {
+  min-height: 2.75rem;
+}
+
+.field input:focus,
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible,
+.googleButton:focus-visible,
+.linkButton:focus-visible {
+  outline: 3px solid color-mix(in oklch, var(--od-accent-2) 38%, transparent);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+@media (max-width: 640px) {
+  .authPanel {
+    min-height: auto;
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+
+  .title {
+    font-size: 1.75rem;
+  }
+}
+
 .googleButton:hover,
 .secondaryButton:hover,
 .linkButton:hover {
@@ -976,6 +1141,20 @@
 .primaryButton:hover:not(:disabled) {
   background: color-mix(in oklch, var(--od-accent) 24%, transparent);
   box-shadow: 0 0 24px color-mix(in oklch, var(--od-accent) 18%, transparent);
+}
+
+.primaryButton {
+  border-color: var(--od-accent);
+  color: var(--od-bg);
+  background: var(--od-accent);
+  box-shadow: none;
+}
+
+.primaryButton:hover:not(:disabled) {
+  color: var(--od-bg);
+  background: color-mix(in oklch, var(--od-accent) 88%, white);
+  box-shadow: none;
+  transform: none;
 }
 
 .statusMessage {

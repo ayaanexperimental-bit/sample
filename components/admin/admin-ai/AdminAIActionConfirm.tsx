@@ -85,41 +85,15 @@ export function AdminAIActionConfirm({
       <small>Confirmation required</small>
       <h4>{copy.title}</h4>
       <p>{copy.body}</p>
-      <dl>
+      <strong className={styles.confirmSummaryTitle}>Decision summary</strong>
+      <dl className={styles.confirmDecision}>
         <div>
-          <dt>Action ID</dt>
-          <dd>{command.id}</dd>
-        </div>
-        <div>
-          <dt>Handler ID</dt>
-          <dd>{command.handlerId || "No server handler (review only)"}</dd>
-        </div>
-        <div>
-          <dt>Issue classification</dt>
-          <dd>{formatContractValue(contract.issueClassification)}</dd>
-        </div>
-        <div>
-          <dt>Execution availability</dt>
-          <dd>{formatExecutionAvailability(contract.availability)}</dd>
+          <dt>Recommended by AI</dt>
+          <dd>{command.label}</dd>
         </div>
         <div>
           <dt>Affected records</dt>
           <dd>{visibleRecords.length ? visibleRecords.join(", ") : "No record selected"}</dd>
-        </div>
-        <div>
-          <dt>Selection limit</dt>
-          <dd>
-            {contract.minSelectedRecords}-{contract.maxSelectedRecords} records;{" "}
-            {affectedRecords.length} selected
-          </dd>
-        </div>
-        <div>
-          <dt>Batch limit</dt>
-          <dd>
-            {contract.maxBatchSize
-              ? `${contract.maxBatchSize} record${contract.maxBatchSize === 1 ? "" : "s"} per execution`
-              : "No direct mutation batch"}
-          </dd>
         </div>
         <div>
           <dt>Current state ({contract.currentStateLabel})</dt>
@@ -130,20 +104,8 @@ export function AdminAIActionConfirm({
           <dd>{proposedState}</dd>
         </div>
         <div>
-          <dt>Dependencies</dt>
-          <dd>{contract.dependencies.join("; ")}</dd>
-        </div>
-        <div>
-          <dt>Blocked / skipped reason</dt>
-          <dd>{blockedOrSkippedReason}</dd>
-        </div>
-        <div>
           <dt>Requested by</dt>
           <dd>{requestedBy || "Authenticated admin"}</dd>
-        </div>
-        <div>
-          <dt>Recommended by AI</dt>
-          <dd>{command.label}</dd>
         </div>
         <div>
           <dt>Impact</dt>
@@ -161,15 +123,59 @@ export function AdminAIActionConfirm({
           <dt>OTP</dt>
           <dd>{command.otpRequired ? "Existing OTP required" : "Not required"}</dd>
         </div>
-        <div>
-          <dt>Rollback</dt>
-          <dd>{command.rollback.replace(/-/g, " ")}</dd>
-        </div>
-        <div>
-          <dt>Confirmation time</dt>
-          <dd>{new Date().toLocaleString()}</dd>
-        </div>
       </dl>
+      <details className={styles.confirmTechnical}>
+        <summary>Technical contract and safeguards</summary>
+        <dl>
+          <div>
+            <dt>Action ID</dt>
+            <dd>{command.id}</dd>
+          </div>
+          <div>
+            <dt>Handler ID</dt>
+            <dd>{command.handlerId || "No server handler (review only)"}</dd>
+          </div>
+          <div>
+            <dt>Issue classification</dt>
+            <dd>{formatContractValue(contract.issueClassification)}</dd>
+          </div>
+          <div>
+            <dt>Execution availability</dt>
+            <dd>{formatExecutionAvailability(contract.availability)}</dd>
+          </div>
+          <div>
+            <dt>Selection limit</dt>
+            <dd>
+              {contract.minSelectedRecords}-{contract.maxSelectedRecords} records;{" "}
+              {affectedRecords.length} selected
+            </dd>
+          </div>
+          <div>
+            <dt>Batch limit</dt>
+            <dd>
+              {contract.maxBatchSize
+                ? `${contract.maxBatchSize} record${contract.maxBatchSize === 1 ? "" : "s"} per execution`
+                : "No direct mutation batch"}
+            </dd>
+          </div>
+          <div>
+            <dt>Dependencies</dt>
+            <dd>{contract.dependencies.join("; ")}</dd>
+          </div>
+          <div>
+            <dt>Blocked / skipped reason</dt>
+            <dd>{blockedOrSkippedReason}</dd>
+          </div>
+          <div>
+            <dt>Rollback</dt>
+            <dd>{command.rollback.replace(/-/g, " ")}</dd>
+          </div>
+          <div>
+            <dt>Confirmation time</dt>
+            <dd>{new Date().toLocaleString()}</dd>
+          </div>
+        </dl>
+      </details>
       <div>
         <button
           data-admin-ai-confirm-cancel="true"

@@ -31,7 +31,7 @@ type ModuleScenario = {
 
 const MODULE_SCENARIOS: ModuleScenario[] = [
   {
-    heading: "Open admin modules",
+    heading: "Revenue readiness",
     id: "overview",
     nav: "Overview",
     sectionName: "Admin Overview"
@@ -198,7 +198,8 @@ test.describe("Admin V2 Copilot resilience and final browser matrix", () => {
         drawer,
         page.getByRole("button", { name: /Close .* Admin Copilot/ })
       );
-      await drawer.getByRole("button", { name: /Summarize this page/ }).click();
+      const summarizeCommand = await revealCopilotCommand(drawer, /Summarize this page/);
+      await summarizeCommand.click();
       await expect(drawer.locator('[data-admin-ai-response="true"]')).toHaveAttribute(
         "data-state",
         "offline-error"
@@ -232,7 +233,8 @@ test.describe("Admin V2 Copilot resilience and final browser matrix", () => {
       const drawer = page.getByRole("dialog", {
         name: `${moduleScenario.sectionName} Admin Copilot`
       });
-      await drawer.getByRole("button", { name: /Generate report/ }).click();
+      const generateReport = await revealCopilotCommand(drawer, /Generate report/);
+      await generateReport.click();
       const copyReport = drawer.getByRole("button", { name: "Copy report" });
       await expect(copyReport).not.toBeVisible();
       const confirmation = drawer.getByRole("alertdialog", {
@@ -425,10 +427,10 @@ test.describe("Admin V2 Copilot resilience and final browser matrix", () => {
       await openModule(page, moduleScenario);
       const drawer = await openCopilot(page, moduleScenario.sectionName);
 
-      const commandButton = drawer.getByRole("button", {
-        name: new RegExp(`^${escapeRegExp(command.label)}(?:\\s|$)`)
-      });
-      await expect(commandButton).toBeVisible();
+      const commandButton = await revealCopilotCommand(
+        drawer,
+        new RegExp(`^${escapeRegExp(command.label)}(?:\\s|$)`)
+      );
       await commandButton.click();
       let confirmation = drawer.getByRole("alertdialog", { name: command.label, exact: true });
       await expect(confirmation).toBeVisible();
@@ -613,6 +615,15 @@ async function openCopilot(page: Page, sectionName: string) {
   return drawer;
 }
 
+async function revealCopilotCommand(drawer: Locator, name: RegExp | string) {
+  const command = drawer.getByRole("button", { name });
+  if (!(await command.isVisible().catch(() => false))) {
+    await drawer.locator("details").filter({ hasText: "More commands" }).locator("summary").click();
+  }
+  await expect(command).toBeVisible();
+  return command;
+}
+
 function getPrimaryTarget(page: Page, moduleId: RegistryModuleId): Locator {
   switch (moduleId) {
     case "overview":
@@ -755,18 +766,35 @@ async function assertLiveServiceFailureKeepsOverviewUsable(page: Page) {
   await page.route("**/api/admin/analytics-insights", handler);
 
   const drawer = await openCopilot(page, overview.sectionName);
-  await drawer.getByRole("button", { name: /^Generate live insight(?:\s|$)/ }).click();
-  await expect(drawer.getByRole("heading", { name: "Live AI insight unavailable" })).toBeVisible();
+  const generateLiveInsight = await revealCopilotCommand(drawer, /^Generate live insight(?:\s|$)/);
+  await generateLiveInsight.click();
+  const liveInsightUnavailable = drawer.getByRole("heading", {
+    name: /^Live AI insight (?:is disabled|unavailable)$/
+  });
+  await expect(liveInsightUnavailable).toBeVisible();
   await expect(drawer.locator('[data-admin-ai-response="true"]')).toHaveAttribute(
     "data-state",
     "offline-error"
   );
   const retry = drawer.getByRole("button", { name: /Retry request/ });
   await expect(retry).toBeVisible();
-  const retryResponse = page.waitForResponse("**/api/admin/analytics-insights");
-  await retry.click();
-  await retryResponse;
-  await expect.poll(() => requestCount).toBe(2);
+  const liveModelDisabled = await drawer
+    .getByRole("heading", { name: "Live AI insight is disabled" })
+    .isVisible();
+  if (liveModelDisabled) {
+    expect(requestCount).toBe(0);
+    await retry.click();
+    await expect(drawer.locator('[data-admin-ai-response="true"]')).toHaveAttribute(
+      "data-state",
+      "offline-error"
+    );
+    expect(requestCount).toBe(0);
+  } else {
+    const retryResponse = page.waitForResponse("**/api/admin/analytics-insights");
+    await retry.click();
+    await retryResponse;
+    await expect.poll(() => requestCount).toBe(2);
+  }
   await expect(drawer.getByRole("button", { name: "Cancel", exact: true })).not.toBeVisible();
   await page.keyboard.press("Escape");
   await page.unroute("**/api/admin/analytics-insights", handler);
@@ -953,6 +981,7 @@ async function expectFocusedCoachSite(page: Page, site: CoachSiteRecord) {
 async function expectSingleCoachSiteCopilotSelection(page: Page, site: CoachSiteRecord) {
   const drawer = await openCopilot(page, "Coach Sites");
   await expect(drawer.getByText(/1 selected \/ \d+ indexed records/)).toBeVisible();
+  await drawer.locator("details").filter({ hasText: "Context details" }).locator("summary").click();
   await expect(
     drawer.getByText(`Selected entity: ${site.coachName}`, { exact: true })
   ).toBeVisible();
@@ -987,6 +1016,7 @@ async function expectCoachSiteFocusToFailClosed(page: Page) {
 
   const drawer = await openCopilot(page, "Coach Sites");
   await expect(drawer.getByText(/0 selected \/ \d+ indexed records/)).toBeVisible();
+  await drawer.locator("details").filter({ hasText: "Context details" }).locator("summary").click();
   await expect(drawer.getByText("Selected entity: None", { exact: true })).toBeVisible();
   await expect(
     drawer.getByRole("button", { name: "Selected Records", exact: true })
@@ -1041,9 +1071,35 @@ async function assertRouteChangeContinuesLongRead(page: Page) {
   await page.route("**/api/admin/analytics-insights", handler);
 
   const drawer = await openCopilot(page, overview.sectionName);
-  const requestStarted = page.waitForRequest("**/api/admin/analytics-insights");
-  await drawer.getByRole("button", { name: /^Generate live insight(?:\s|$)/ }).click();
-  await requestStarted;
+  const requestStarted = page.waitForRequest("**/api/admin/analytics-insights").catch(() => null);
+  const generateLiveInsight = await revealCopilotCommand(drawer, /^Generate live insight(?:\s|$)/);
+  await generateLiveInsight.click();
+  const disabledResponse = drawer.getByRole("heading", {
+    name: "Live AI insight is disabled"
+  });
+  const liveModelDisabled = await disabledResponse
+    .waitFor({ state: "visible", timeout: 1_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (liveModelDisabled) {
+    releaseRoute();
+    await page.unroute("**/api/admin/analytics-insights", handler);
+    await page.keyboard.press("Escape");
+    await openModule(page, getModuleScenario("coach-analytics"));
+    await expect(page.locator('[data-admin-version="v2"]')).toBeVisible();
+    const analyticsDrawer = await openCopilot(page, "Coach Analytics");
+    await expect(analyticsDrawer.locator('[data-admin-ai-response="true"]')).toHaveAttribute(
+      "data-state",
+      "offline-error"
+    );
+    await expect(
+      analyticsDrawer.getByRole("heading", { name: "Live AI insight is disabled" })
+    ).toBeVisible();
+    await expect(analyticsDrawer).not.toContainText(/cancelled because the admin context changed/i);
+    await page.keyboard.press("Escape");
+    return;
+  }
+  expect(await requestStarted).not.toBeNull();
   const menuButton = page.getByRole("button", { name: /Open (admin )?navigation/i });
   if (await menuButton.isVisible().catch(() => false)) {
     await menuButton.focus();
@@ -1180,18 +1236,22 @@ async function verifySettingsActionLifecycle(page: Page, csrfToken: string) {
 }
 
 async function openAndCancelRegisteredAction(drawer: Locator, label: string) {
-  await drawer
-    .getByRole("button", { name: new RegExp(`^${escapeRegExp(label)}(?:\\s|$)`) })
-    .click();
+  const command = await revealCopilotCommand(
+    drawer,
+    new RegExp(`^${escapeRegExp(label)}(?:\\s|$)`)
+  );
+  await command.click();
   const confirmation = drawer.getByRole("alertdialog", { name: label, exact: true });
   await confirmation.getByRole("button", { name: "Cancel" }).click();
   await expect(drawer.getByRole("heading", { name: "Action cancelled" })).toBeVisible();
 }
 
 async function confirmRegisteredAction(drawer: Locator, label: string) {
-  await drawer
-    .getByRole("button", { name: new RegExp(`^${escapeRegExp(label)}(?:\\s|$)`) })
-    .click();
+  const command = await revealCopilotCommand(
+    drawer,
+    new RegExp(`^${escapeRegExp(label)}(?:\\s|$)`)
+  );
+  await command.click();
   const confirmation = drawer.getByRole("alertdialog", { name: label, exact: true });
   await confirmation.getByRole("button", { name: "Confirm action" }).click();
 }

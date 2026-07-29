@@ -364,8 +364,8 @@
 
 .statusLine {
   margin: 0;
-  border-left: 3px solid var(--accent, #b8ff4d);
-  border-radius: 4px 12px 12px 4px;
+  border: 1px solid color-mix(in oklab, var(--accent, #b8ff4d), transparent 48%);
+  border-radius: 12px;
   padding: 11px 13px;
   color: var(--console-text, #f4fff0);
   background: var(--console-soft, rgba(183, 255, 60, 0.12));

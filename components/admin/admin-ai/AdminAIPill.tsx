@@ -358,12 +358,7 @@ function AdminAIMemoryClearConfirm({
         >
           Keep memory
         </button>
-        <button
-          data-primary="true"
-          disabled={busy}
-          onClick={() => void onConfirm()}
-          type="button"
-        >
+        <button data-primary="true" disabled={busy} onClick={() => void onConfirm()} type="button">
           {busy ? "Clearing memory..." : "Clear memory and feedback"}
         </button>
       </div>
@@ -2349,10 +2344,7 @@ export function AdminAIPill({
             query: request
           },
           csrfToken,
-          createAdminAIIdempotencyKey(
-            "checkpoint",
-            `${taskForRequest.id}-${requestFingerprint}`
-          )
+          createAdminAIIdempotencyKey("checkpoint", `${taskForRequest.id}-${requestFingerprint}`)
         );
         if (checkpoint.ok && checkpoint.payload.task) {
           taskForRequest = checkpoint.payload.task;
@@ -2604,7 +2596,8 @@ export function AdminAIPill({
     );
     if (!result.ok || !result.payload.task) {
       setSavedTaskStatus(
-        result.error || "Local context cleared, but the durable conversation boundary was not updated."
+        result.error ||
+          "Local context cleared, but the durable conversation boundary was not updated."
       );
       return;
     }
@@ -2753,9 +2746,14 @@ export function AdminAIPill({
                 );
               })}
             </div>
-            <p>Context path: {contextTrail.join(" -> ")}</p>
-            <p>Selected entity: {selectedEntitySummary || "None"}</p>
-            <p>Current filters: {filterSummary || "None"}</p>
+            <details className={styles.scopeDetails}>
+              <summary>Context details</summary>
+              <div>
+                <p>Context path: {contextTrail.join(" -> ")}</p>
+                <p>Selected entity: {selectedEntitySummary || "None"}</p>
+                <p>Current filters: {filterSummary || "None"}</p>
+              </div>
+            </details>
           </section>
 
           <section className={styles.savedTasksPanel} aria-label="Saved tasks">
@@ -2777,13 +2775,14 @@ export function AdminAIPill({
             </button>
             {savedTasksOpen ? (
               <div className={styles.savedTasksBody}>
-                <p>
-                  Resume is always explicit. Permissions and data will be checked again.
-                </p>
+                <p>Resume is always explicit. Permissions and data will be checked again.</p>
                 {savedTasks.length ? (
                   <ul className={styles.savedTaskList}>
                     {savedTasks.map((task) => (
-                      <li data-active={activeSavedTask?.id === task.id ? "true" : "false"} key={task.id}>
+                      <li
+                        data-active={activeSavedTask?.id === task.id ? "true" : "false"}
+                        key={task.id}
+                      >
                         <div>
                           <strong>{task.title}</strong>
                           <span>
@@ -2800,7 +2799,11 @@ export function AdminAIPill({
                   <p>No saved tasks yet. Run a request to create a secure task boundary.</p>
                 )}
                 {resumeCandidate ? (
-                  <div className={styles.resumePreview} role="group" aria-label="Saved task resume preview">
+                  <div
+                    className={styles.resumePreview}
+                    role="group"
+                    aria-label="Saved task resume preview"
+                  >
                     <strong>{resumeCandidate.title}</strong>
                     <p>{resumeCandidate.goal}</p>
                     <dl>
@@ -2902,36 +2905,42 @@ export function AdminAIPill({
             </small>
           </form>
 
-          <section className={styles.contextSummary} aria-label="Current section context">
-            <div>
-              <small>Current section</small>
+          <details className={styles.contextSummary} aria-label="Current section context">
+            <summary>
+              <span>Current context</span>
               <strong>{context.sectionName}</strong>
-              <span>{context.dateRange}</span>
+            </summary>
+            <div className={styles.contextSummaryGrid}>
+              <div>
+                <small>Current section</small>
+                <strong>{context.sectionName}</strong>
+                <span>{context.dateRange}</span>
+              </div>
+              <div>
+                <small>Permission boundary</small>
+                <strong>{rolePersonalization?.label}</strong>
+                <span>
+                  {commands.length} allowed commands · {rolePersonalization?.focus}
+                </span>
+                {unavailableCapabilityReason ? (
+                  <button onClick={explainUnavailableCapabilities} type="button">
+                    Why are some actions unavailable?
+                  </button>
+                ) : null}
+              </div>
+              <div>
+                <small>Source state</small>
+                <strong>
+                  {effectiveContext.loadingState
+                    ? "Loading"
+                    : effectiveContext.errors.length
+                      ? "Unavailable source"
+                      : "Ready"}
+                </strong>
+                <span>{effectiveContext.relatedAPIs.length} registered sources</span>
+              </div>
             </div>
-            <div>
-              <small>Permission boundary</small>
-              <strong>{rolePersonalization?.label}</strong>
-              <span>
-                {commands.length} allowed commands · {rolePersonalization?.focus}
-              </span>
-              {unavailableCapabilityReason ? (
-                <button onClick={explainUnavailableCapabilities} type="button">
-                  Why are some actions unavailable?
-                </button>
-              ) : null}
-            </div>
-            <div>
-              <small>Source state</small>
-              <strong>
-                {effectiveContext.loadingState
-                  ? "Loading"
-                  : effectiveContext.errors.length
-                    ? "Unavailable source"
-                    : "Ready"}
-              </strong>
-              <span>{effectiveContext.relatedAPIs.length} registered sources</span>
-            </div>
-          </section>
+          </details>
 
           {alertCount ? (
             <section className={styles.alertStrip} aria-label="Real data alerts">
@@ -3067,52 +3076,55 @@ export function AdminAIPill({
           ) : null}
 
           {response && !busy ? (
-            <section className={styles.feedbackPanel} aria-label="Copilot response feedback">
-              <strong>Evaluate this response</strong>
-              <div>
-                {FEEDBACK.map((item) => (
-                  <button key={item.id} onClick={() => recordFeedback(item.id)} type="button">
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-              <div className={styles.settingsGrid}>
-                <label>
-                  Structured correction category
-                  <select
-                    onChange={(event) =>
-                      setCorrectionCategory(
-                        event.target.value as (typeof CORRECTION_CATEGORIES)[number]["id"]
-                      )
-                    }
-                    value={correctionCategory}
+            <details className={styles.feedbackPanel} aria-label="Copilot response feedback">
+              <summary>Response feedback and correction</summary>
+              <div className={styles.feedbackBody}>
+                <strong>Evaluate this response</strong>
+                <div>
+                  {FEEDBACK.map((item) => (
+                    <button key={item.id} onClick={() => recordFeedback(item.id)} type="button">
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+                <div className={styles.settingsGrid}>
+                  <label>
+                    Structured correction category
+                    <select
+                      onChange={(event) =>
+                        setCorrectionCategory(
+                          event.target.value as (typeof CORRECTION_CATEGORIES)[number]["id"]
+                        )
+                      }
+                      value={correctionCategory}
+                    >
+                      {CORRECTION_CATEGORIES.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Correction for evaluation
+                    <textarea
+                      maxLength={800}
+                      onChange={(event) => setCorrectionText(event.target.value)}
+                      placeholder="Describe the corrected interpretation or workflow preference."
+                      value={correctionText}
+                    />
+                  </label>
+                  <button
+                    disabled={!correctionText.trim()}
+                    onClick={() => void submitCorrection()}
+                    type="button"
                   >
-                    {CORRECTION_CATEGORIES.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Correction for evaluation
-                  <textarea
-                    maxLength={800}
-                    onChange={(event) => setCorrectionText(event.target.value)}
-                    placeholder="Describe the corrected interpretation or workflow preference."
-                    value={correctionText}
-                  />
-                </label>
-                <button
-                  disabled={!correctionText.trim()}
-                  onClick={() => void submitCorrection()}
-                  type="button"
-                >
-                  Submit for owner review
-                </button>
+                    Submit for owner review
+                  </button>
+                </div>
+                {feedbackStatus ? <p role="status">{feedbackStatus}</p> : null}
               </div>
-              {feedbackStatus ? <p role="status">{feedbackStatus}</p> : null}
-            </section>
+            </details>
           ) : null}
 
           <section className={styles.settingsPanel} aria-label="Admin Copilot settings">
@@ -3806,56 +3818,65 @@ export function AdminAIPill({
           </section>
 
           {profile?.isOwner ? (
-            <section className={styles.observabilityPanel} aria-label="Owner AI observability">
-              <div>
-                <small>Durable requests</small>
-                <strong>
-                  {observabilityDashboard?.usage.requests ?? observationSummary?.requests ?? 0}
-                </strong>
-              </div>
-              <div>
-                <small>Action success</small>
-                <strong>
-                  {observabilityDashboard?.actionSuccess.rate ??
-                    observationSummary?.successRate ??
-                    0}
-                  %
-                </strong>
-              </div>
-              <div>
-                <small>Blocked</small>
-                <strong>
-                  {observabilityDashboard?.failures.blocked ?? observationSummary?.blocked ?? 0}
-                </strong>
-              </div>
-              <div>
-                <small>Average latency</small>
-                <strong>
-                  {observabilityDashboard?.latency.averageMs ??
-                    observationSummary?.averageLatencyMs ??
-                    0}{" "}
-                  ms
-                </strong>
-              </div>
-              <div>
-                <small>Dangerous actions blocked</small>
-                <strong>{observabilityDashboard?.blockedDangerousActions ?? 0}</strong>
-              </div>
-              <div>
-                <small>Feedback score</small>
-                <strong>{observabilityDashboard?.feedback.score ?? 0}%</strong>
-              </div>
-              <div>
-                <small>Pending corrections</small>
-                <strong>{observabilityDashboard?.corrections.pending ?? 0}</strong>
-              </div>
-              <div>
-                <small>Estimated cost</small>
-                <strong>
-                  {formatMicrousd(observabilityDashboard?.cost.estimatedMicrousd ?? 0)}
-                </strong>
-              </div>
-            </section>
+            <details className={styles.observabilityDisclosure} aria-label="Owner AI observability">
+              <summary>
+                <span>
+                  <strong>AI observability</strong>
+                  <small>Owner-only usage, reliability, safety, and cost signals</small>
+                </span>
+                <span aria-hidden="true">Review</span>
+              </summary>
+              <section className={styles.observabilityPanel}>
+                <div>
+                  <small>Durable requests</small>
+                  <strong>
+                    {observabilityDashboard?.usage.requests ?? observationSummary?.requests ?? 0}
+                  </strong>
+                </div>
+                <div>
+                  <small>Action success</small>
+                  <strong>
+                    {observabilityDashboard?.actionSuccess.rate ??
+                      observationSummary?.successRate ??
+                      0}
+                    %
+                  </strong>
+                </div>
+                <div>
+                  <small>Blocked</small>
+                  <strong>
+                    {observabilityDashboard?.failures.blocked ?? observationSummary?.blocked ?? 0}
+                  </strong>
+                </div>
+                <div>
+                  <small>Average latency</small>
+                  <strong>
+                    {observabilityDashboard?.latency.averageMs ??
+                      observationSummary?.averageLatencyMs ??
+                      0}{" "}
+                    ms
+                  </strong>
+                </div>
+                <div>
+                  <small>Dangerous actions blocked</small>
+                  <strong>{observabilityDashboard?.blockedDangerousActions ?? 0}</strong>
+                </div>
+                <div>
+                  <small>Feedback score</small>
+                  <strong>{observabilityDashboard?.feedback.score ?? 0}%</strong>
+                </div>
+                <div>
+                  <small>Pending corrections</small>
+                  <strong>{observabilityDashboard?.corrections.pending ?? 0}</strong>
+                </div>
+                <div>
+                  <small>Estimated cost</small>
+                  <strong>
+                    {formatMicrousd(observabilityDashboard?.cost.estimatedMicrousd ?? 0)}
+                  </strong>
+                </div>
+              </section>
+            </details>
           ) : null}
 
           <section className={styles.activityStream} aria-label="Copilot action audit stream">
