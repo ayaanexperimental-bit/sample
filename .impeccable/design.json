@@ -1,0 +1,432 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-29T22:22:55.1013272+05:30",
+  "title": "Design System: YW Coach Admin Operate",
+  "extensions": {
+    "colorMeta": {
+      "action-lime": {
+        "role": "primary",
+        "displayName": "Verified Lime",
+        "canonical": "oklch(92.1% 0.214 129.0)",
+        "tonalRamp": [
+          "oklch(15% 0.214 129.0)",
+          "oklch(27% 0.214 129.0)",
+          "oklch(39% 0.214 129.0)",
+          "oklch(51% 0.214 129.0)",
+          "oklch(63% 0.214 129.0)",
+          "oklch(75% 0.214 129.0)",
+          "oklch(87% 0.214 129.0)",
+          "oklch(95% 0.214 129.0)"
+        ]
+      },
+      "action-lime-soft": {
+        "role": "primary",
+        "displayName": "Operational Green",
+        "canonical": "oklch(89.4% 0.200 148.3)",
+        "tonalRamp": [
+          "oklch(15% 0.200 148.3)",
+          "oklch(27% 0.200 148.3)",
+          "oklch(39% 0.200 148.3)",
+          "oklch(51% 0.200 148.3)",
+          "oklch(63% 0.200 148.3)",
+          "oklch(75% 0.200 148.3)",
+          "oklch(87% 0.200 148.3)",
+          "oklch(95% 0.200 148.3)"
+        ]
+      },
+      "signal-cyan": {
+        "role": "secondary",
+        "displayName": "Signal Cyan",
+        "canonical": "oklch(86.8% 0.161 170.8)",
+        "tonalRamp": [
+          "oklch(15% 0.161 170.8)",
+          "oklch(27% 0.161 170.8)",
+          "oklch(39% 0.161 170.8)",
+          "oklch(51% 0.161 170.8)",
+          "oklch(63% 0.161 170.8)",
+          "oklch(75% 0.161 170.8)",
+          "oklch(87% 0.161 170.8)",
+          "oklch(95% 0.161 170.8)"
+        ]
+      },
+      "dark-canvas": {
+        "role": "neutral",
+        "displayName": "Night Operations Canvas",
+        "canonical": "oklch(16.6% 0.017 181.9)",
+        "tonalRamp": [
+          "oklch(15% 0.017 181.9)",
+          "oklch(27% 0.017 181.9)",
+          "oklch(39% 0.017 181.9)",
+          "oklch(51% 0.017 181.9)",
+          "oklch(63% 0.017 181.9)",
+          "oklch(75% 0.017 181.9)",
+          "oklch(87% 0.017 181.9)",
+          "oklch(95% 0.017 181.9)"
+        ]
+      },
+      "dark-surface": {
+        "role": "neutral",
+        "displayName": "Night Operations Surface",
+        "canonical": "oklch(19.1% 0.019 177.8)",
+        "tonalRamp": [
+          "oklch(15% 0.019 177.8)",
+          "oklch(27% 0.019 177.8)",
+          "oklch(39% 0.019 177.8)",
+          "oklch(51% 0.019 177.8)",
+          "oklch(63% 0.019 177.8)",
+          "oklch(75% 0.019 177.8)",
+          "oklch(87% 0.019 177.8)",
+          "oklch(95% 0.019 177.8)"
+        ]
+      },
+      "dark-panel": {
+        "role": "neutral",
+        "displayName": "Night Operations Panel",
+        "canonical": "oklch(22.8% 0.030 168.8)",
+        "tonalRamp": [
+          "oklch(15% 0.030 168.8)",
+          "oklch(27% 0.030 168.8)",
+          "oklch(39% 0.030 168.8)",
+          "oklch(51% 0.030 168.8)",
+          "oklch(63% 0.030 168.8)",
+          "oklch(75% 0.030 168.8)",
+          "oklch(87% 0.030 168.8)",
+          "oklch(95% 0.030 168.8)"
+        ]
+      },
+      "text-on-dark": {
+        "role": "neutral",
+        "displayName": "Verified Light Ink",
+        "canonical": "oklch(98.8% 0.023 137.2)",
+        "tonalRamp": [
+          "oklch(15% 0.023 137.2)",
+          "oklch(27% 0.023 137.2)",
+          "oklch(39% 0.023 137.2)",
+          "oklch(51% 0.023 137.2)",
+          "oklch(63% 0.023 137.2)",
+          "oklch(75% 0.023 137.2)",
+          "oklch(87% 0.023 137.2)",
+          "oklch(95% 0.023 137.2)"
+        ]
+      },
+      "muted-on-dark": {
+        "role": "neutral",
+        "displayName": "Muted Dark Evidence",
+        "canonical": "oklch(69.2% 0.024 171.4)",
+        "tonalRamp": [
+          "oklch(15% 0.024 171.4)",
+          "oklch(27% 0.024 171.4)",
+          "oklch(39% 0.024 171.4)",
+          "oklch(51% 0.024 171.4)",
+          "oklch(63% 0.024 171.4)",
+          "oklch(75% 0.024 171.4)",
+          "oklch(87% 0.024 171.4)",
+          "oklch(95% 0.024 171.4)"
+        ]
+      },
+      "light-canvas": {
+        "role": "neutral",
+        "displayName": "Day Operations Canvas",
+        "canonical": "oklch(96.4% 0.035 126.5)",
+        "tonalRamp": [
+          "oklch(15% 0.035 126.5)",
+          "oklch(27% 0.035 126.5)",
+          "oklch(39% 0.035 126.5)",
+          "oklch(51% 0.035 126.5)",
+          "oklch(63% 0.035 126.5)",
+          "oklch(75% 0.035 126.5)",
+          "oklch(87% 0.035 126.5)",
+          "oklch(95% 0.035 126.5)"
+        ]
+      },
+      "light-surface": {
+        "role": "neutral",
+        "displayName": "Day Operations Surface",
+        "canonical": "oklch(99.0% 0.021 130.0)",
+        "tonalRamp": [
+          "oklch(15% 0.021 130.0)",
+          "oklch(27% 0.021 130.0)",
+          "oklch(39% 0.021 130.0)",
+          "oklch(51% 0.021 130.0)",
+          "oklch(63% 0.021 130.0)",
+          "oklch(75% 0.021 130.0)",
+          "oklch(87% 0.021 130.0)",
+          "oklch(95% 0.021 130.0)"
+        ]
+      },
+      "text-on-light": {
+        "role": "neutral",
+        "displayName": "Deep Green Ink",
+        "canonical": "oklch(18.3% 0.030 153.8)",
+        "tonalRamp": [
+          "oklch(15% 0.030 153.8)",
+          "oklch(27% 0.030 153.8)",
+          "oklch(39% 0.030 153.8)",
+          "oklch(51% 0.030 153.8)",
+          "oklch(63% 0.030 153.8)",
+          "oklch(75% 0.030 153.8)",
+          "oklch(87% 0.030 153.8)",
+          "oklch(95% 0.030 153.8)"
+        ]
+      },
+      "muted-on-light": {
+        "role": "neutral",
+        "displayName": "Muted Light Evidence",
+        "canonical": "oklch(48.4% 0.036 152.1)",
+        "tonalRamp": [
+          "oklch(15% 0.036 152.1)",
+          "oklch(27% 0.036 152.1)",
+          "oklch(39% 0.036 152.1)",
+          "oklch(51% 0.036 152.1)",
+          "oklch(63% 0.036 152.1)",
+          "oklch(75% 0.036 152.1)",
+          "oklch(87% 0.036 152.1)",
+          "oklch(95% 0.036 152.1)"
+        ]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Controlled Danger",
+        "canonical": "oklch(68.9% 0.200 22.4)",
+        "tonalRamp": [
+          "oklch(15% 0.200 22.4)",
+          "oklch(27% 0.200 22.4)",
+          "oklch(39% 0.200 22.4)",
+          "oklch(51% 0.200 22.4)",
+          "oklch(63% 0.200 22.4)",
+          "oklch(75% 0.200 22.4)",
+          "oklch(87% 0.200 22.4)",
+          "oklch(95% 0.200 22.4)"
+        ]
+      },
+      "warning": {
+        "role": "tertiary",
+        "displayName": "Attention Amber",
+        "canonical": "oklch(85.4% 0.150 88.7)",
+        "tonalRamp": [
+          "oklch(15% 0.150 88.7)",
+          "oklch(27% 0.150 88.7)",
+          "oklch(39% 0.150 88.7)",
+          "oklch(51% 0.150 88.7)",
+          "oklch(63% 0.150 88.7)",
+          "oklch(75% 0.150 88.7)",
+          "oklch(87% 0.150 88.7)",
+          "oklch(95% 0.150 88.7)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Auth and major one-task headings."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Admin page titles."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card, section, and dialog titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Operational explanation and state content."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Controls, metadata, disclosures, and status labels."
+      },
+      "mono": {
+        "displayName": "Exact Data",
+        "purpose": "Identifiers, values, timestamps, routes, and audit references."
+      }
+    },
+    "shadows": [
+      {
+        "name": "structural-overlay",
+        "value": "0 26px 70px rgba(0, 0, 0, 0.42)",
+        "purpose": "True modal or blocking drawer separation in dark mode."
+      },
+      {
+        "name": "structural-overlay-light",
+        "value": "0 24px 64px rgba(36, 68, 36, 0.18)",
+        "purpose": "True modal or blocking drawer separation in light mode."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-fast",
+        "value": "140ms",
+        "purpose": "Hover, focus, pressed, and compact state feedback."
+      },
+      {
+        "name": "state-base",
+        "value": "220ms",
+        "purpose": "Drawer, disclosure, and bounded state transitions."
+      },
+      {
+        "name": "state-ease",
+        "value": "cubic-bezier(0.2, 0, 0, 1)",
+        "purpose": "Standard quick ease-out for Admin state changes."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "560px"
+      },
+      {
+        "name": "auth-compact",
+        "value": "640px"
+      },
+      {
+        "name": "compact-admin",
+        "value": "680px"
+      },
+      {
+        "name": "responsive-drawer",
+        "value": "900px"
+      },
+      {
+        "name": "wide-collapse",
+        "value": "1120px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one decisive action on the current surface.",
+      "html": "<button class=\"ds-button-primary\" type=\"button\">Review source</button>",
+      "css": ".ds-button-primary { min-height: 44px; border: 1px solid #B8FF4D; border-radius: 8px; padding: 10px 14px; color: #06110F; background: #B8FF4D; font: 650 13px/1.4 Manrope, ui-sans-serif, system-ui, sans-serif; cursor: pointer; transition: background-color 140ms cubic-bezier(0.2,0,0,1), border-color 140ms cubic-bezier(0.2,0,0,1); } .ds-button-primary:hover { background: #C8FF72; } .ds-button-primary:focus-visible { outline: 3px solid rgba(51,245,197,.45); outline-offset: 2px; } .ds-button-primary:active { background: #A7EB3E; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A bounded alternative action that does not compete with the primary decision.",
+      "html": "<button class=\"ds-button-secondary\" type=\"button\">View report</button>",
+      "css": ".ds-button-secondary { min-height: 44px; border: 1px solid rgba(184,255,77,.28); border-radius: 8px; padding: 10px 14px; color: #F4FFF0; background: #0D211A; font: 650 13px/1.4 Manrope, ui-sans-serif, system-ui, sans-serif; cursor: pointer; transition: background-color 140ms cubic-bezier(0.2,0,0,1), border-color 140ms cubic-bezier(0.2,0,0,1); } .ds-button-secondary:hover { border-color: rgba(51,245,197,.58); background: #102719; } .ds-button-secondary:focus-visible { outline: 3px solid rgba(51,245,197,.38); outline-offset: 2px; } .ds-button-secondary:active { background: #0A1714; }"
+    },
+    {
+      "name": "Admin Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "A compact field for search, commands, filters, and operational data.",
+      "html": "<label class=\"ds-field\"><span>Search Admin modules</span><input class=\"ds-input\" placeholder=\"Search modules…\" /></label>",
+      "css": ".ds-field { display: grid; gap: 6px; color: #F4FFF0; font: 650 13px/1.4 Manrope, ui-sans-serif, system-ui, sans-serif; } .ds-input { min-height: 44px; border: 1px solid rgba(184,255,77,.22); border-radius: 6px; padding: 0 12px; color: #F4FFF0; background: #06110F; font: 500 14px/1.5 Manrope, ui-sans-serif, system-ui, sans-serif; } .ds-input::placeholder { color: #8EA19A; } .ds-input:hover { border-color: rgba(184,255,77,.4); } .ds-input:focus-visible { border-color: #33F5C5; outline: 3px solid rgba(51,245,197,.22); outline-offset: 1px; }"
+    },
+    {
+      "name": "Verified Status Chip",
+      "kind": "chip",
+      "refersTo": "status-chip",
+      "description": "A text-backed compact state indicator for verified or current status.",
+      "html": "<span class=\"ds-status-chip\"><span class=\"ds-status-dot\" aria-hidden=\"true\"></span>Verified session</span>",
+      "css": ".ds-status-chip { display: inline-flex; min-height: 30px; align-items: center; gap: 7px; border: 1px solid rgba(184,255,77,.38); border-radius: 999px; padding: 5px 10px; color: #F4FFF0; background: #0D211A; font: 650 13px/1 Manrope, ui-sans-serif, system-ui, sans-serif; } .ds-status-dot { width: 7px; height: 7px; border-radius: 999px; background: #B8FF4D; }"
+    },
+    {
+      "name": "Operational Surface",
+      "kind": "card",
+      "refersTo": "surface-card",
+      "description": "A flat, bounded working area for data, evidence, or state.",
+      "html": "<section class=\"ds-surface\"><h3>Operational signal</h3><p>No coach-site signal is available yet.</p></section>",
+      "css": ".ds-surface { display: grid; gap: 6px; border: 1px solid rgba(184,255,77,.16); border-radius: 12px; padding: 16px; color: #F4FFF0; background: #0D211A; } .ds-surface h3 { margin: 0; font: 700 16px/1.3 Manrope, ui-sans-serif, system-ui, sans-serif; } .ds-surface p { margin: 0; max-width: 65ch; color: #8EA19A; font: 500 14px/1.5 Manrope, ui-sans-serif, system-ui, sans-serif; }"
+    },
+    {
+      "name": "Progressive Disclosure",
+      "kind": "custom",
+      "refersTo": "disclosure-summary",
+      "description": "Keeps secondary commands and technical detail available without competing with the next decision.",
+      "html": "<details class=\"ds-disclosure\"><summary><span><strong>More commands</strong><small>All approved actions remain available</small></span><span aria-hidden=\"true\">+</span></summary><div class=\"ds-disclosure-body\">Permission-filtered commands</div></details>",
+      "css": ".ds-disclosure { overflow: clip; border: 1px solid rgba(184,255,77,.16); border-radius: 12px; color: #F4FFF0; background: #0D211A; } .ds-disclosure summary { display: flex; min-height: 52px; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; cursor: pointer; list-style: none; } .ds-disclosure summary::-webkit-details-marker { display: none; } .ds-disclosure summary > span:first-child { display: grid; gap: 2px; } .ds-disclosure strong { font: 650 13px/1.4 Manrope, ui-sans-serif, system-ui, sans-serif; } .ds-disclosure small { color: #8EA19A; font: 500 12px/1.4 Manrope, ui-sans-serif, system-ui, sans-serif; } .ds-disclosure summary:hover { background: #102719; } .ds-disclosure summary:focus-visible { outline: 3px solid rgba(51,245,197,.38); outline-offset: -3px; } .ds-disclosure-body { border-top: 1px solid rgba(184,255,77,.16); padding: 14px; color: #8EA19A; }"
+    },
+    {
+      "name": "Admin AI Trigger",
+      "kind": "custom",
+      "refersTo": "admin-ai-trigger",
+      "description": "A restrained entry to contextual assistance, not a decorative mascot stage.",
+      "html": "<button class=\"ds-ai-trigger\" type=\"button\"><span class=\"ds-ai-mark\" aria-hidden=\"true\">AI</span><span><strong>Admin Copilot</strong><small>Ready for current context</small></span></button>",
+      "css": ".ds-ai-trigger { display: grid; grid-template-columns: 44px minmax(0,1fr); min-height: 44px; align-items: center; gap: 9px; border: 1px solid rgba(51,245,197,.34); border-radius: 12px; padding: 5px 9px 5px 5px; color: #F4FFF0; background: #0D211A; text-align: left; cursor: pointer; } .ds-ai-mark { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid rgba(51,245,197,.3); border-radius: 10px; color: #06110F; background: #B8FF4D; font: 800 12px/1 Manrope, ui-sans-serif, system-ui, sans-serif; } .ds-ai-trigger > span:last-child { display: grid; gap: 2px; min-width: 0; } .ds-ai-trigger strong { font: 700 13px/1.25 Manrope, ui-sans-serif, system-ui, sans-serif; } .ds-ai-trigger small { overflow: hidden; color: #8EA19A; font: 500 12px/1.25 Manrope, ui-sans-serif, system-ui, sans-serif; text-overflow: ellipsis; white-space: nowrap; } .ds-ai-trigger:hover { border-color: rgba(51,245,197,.58); background: #102719; } .ds-ai-trigger:focus-visible { outline: 3px solid rgba(51,245,197,.38); outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Verified Control Room",
+    "overview": "YW Coach Admin feels like a calm operations room in active use: dense enough for real work, quiet enough to scan under pressure, and explicit about which signals are current, missing, blocked, or actionable. The dark theme uses deep green-black tonal layers with a rare high-energy lime action voice; the light theme is a true structural counterpart with pale green canvases, near-white working surfaces, and deep green ink.\n\nThe system rejects generic AI-tool theater, marketing-dashboard composition, fake production data, and any visual wrapper that hides legacy Admin UI. Repeated operational detail is progressively disclosed. AI remains a contextual instrument inside the product rather than the product's visual protagonist.",
+    "keyCharacteristics": [
+      "Evidence-first hierarchy with the next decision visible.",
+      "Restrained semantic color and flat-by-default surfaces.",
+      "Compact, familiar controls with complete interaction states.",
+      "Permission-aware navigation and honest empty, blocked, and failure states.",
+      "Responsive structural changes without ornamental choreography."
+    ],
+    "rules": [
+      {
+        "name": "The One Action Voice Rule",
+        "body": "Verified Lime is rare: use it for the current choice, the primary action, or a verified live signal—not for decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Theme Parity Rule",
+        "body": "Light mode must express the same hierarchy with its own canvas, surface, border, text, map, and state treatments; it must never look like a translucent skin over dark mode.",
+        "section": "colors"
+      },
+      {
+        "name": "The Semantic Restraint Rule",
+        "body": "Danger, warning, success, and information colors communicate state. Never use them as interchangeable decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Sentence-Case Rule",
+        "body": "Labels explain tasks; do not turn every section into tracked uppercase scaffolding.",
+        "section": "typography"
+      },
+      {
+        "name": "The Data-Is-Exact Rule",
+        "body": "Use monospace only when the content benefits from character-level comparison or exact reference.",
+        "section": "typography"
+      },
+      {
+        "name": "The Compact Scale Rule",
+        "body": "Product hierarchy stays within a tight fixed scale; fluid marketing typography is prohibited inside Admin.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-by-Default Rule",
+        "body": "If a surface is part of the normal page flow, it does not need a shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The One Depth Signal Rule",
+        "body": "Use either a boundary or structural shadow for separation; never combine a wide decorative shadow with a routine one-pixel card border.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Blocking-Only Lift Rule",
+        "body": "Elevated depth belongs to UI that genuinely blocks or floats above the current task.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep the next operator decision visible and place supporting evidence immediately nearby.",
+      "Do use Verified Lime (#B8FF4D) for one primary action, active choice, or verified signal at a time.",
+      "Do preserve complete loading, empty, blocked, stale, partial, unavailable, success, and failure states.",
+      "Do progressively disclose commands, context, technical safeguards, feedback, observability, and duplicate module navigation.",
+      "Do keep every module, record, action, and explanation aligned with current RBAC.",
+      "Do use one-pixel boundaries, 12px surfaces, 44px touch targets, visible focus, and reduced-motion alternatives.",
+      "Do keep model recommendations subordinate to deterministic authorization, execution, receipts, and audit history."
+    ],
+    "donts": [
+      "Don't present a generic AI chatbot or autonomous-agent spectacle that competes with the operator's task.",
+      "Don't build a marketing-style SaaS dashboard from hero metrics, decorative gradients, glass panels, or repeated promotional cards.",
+      "Don't present mock, prototype, placeholder, or fabricated production data as real.",
+      "Don't mount legacy Admin wrappers, hidden old UI, stale labels, dead controls, or a visual skin that conceals an older interface.",
+      "Don't expand every command, context block, recommendation, safeguard, and technical detail at once.",
+      "Don't use model output as permission, payment, validation, calculation, OTP, route-protection, or destructive-action authority.",
+      "Don't add gradient text, decorative grid overlays, ambient glows, side-stripe accents over 1px, or wide ghost-card shadows to new routine Admin surfaces.",
+      "Don't exceed 16px card radii; full pills are reserved for chips and compact controls.",
+      "Don't communicate warning, danger, success, selection, or availability through color alone."
+    ]
+  }
+}
