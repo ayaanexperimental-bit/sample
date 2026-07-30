@@ -8,9 +8,9 @@ Local candidate: `http://127.0.0.1:4802`
 
 ## Outcome
 
-The current Admin V2 and Admin AI release has completed the full-panel Impeccable Operate implementation, local verification, exact-scope publication, Cloudflare Pages production deployment, and production-safe smoke. The pass covers the authentication routes, all 11 permission-visible Admin modules, Admin AI, shared dialogs/drawers, light and dark themes, and the supported responsive width matrix.
+The current Admin V2 and Admin AI release has completed full-panel Impeccable Operate implementation, local verification, exact-scope publication, Cloudflare Pages production deployment, and authenticated read-only production acceptance. The pass covers the authentication routes, all 11 permission-visible Admin modules, Admin AI, shared dialogs/drawers, light and dark themes, and the supported responsive width matrix.
 
-No production data, payment, email, image-provider operation, authenticated billed AI prompt, or sensitive Admin AI mutation was used to obtain this evidence.
+No customer/business record, payment, email, image-provider operation, scheduled delivery, voice action, approval, OTP-protected action, or sensitive Admin AI mutation was used to obtain this evidence. The authenticated acceptance created the expected Admin AI task/checkpoint/audit metadata for two bounded Copilot requests; exactly one request reached the Luna medium provider route and then failed closed to deterministic output because provider output validation returned `invalid-provider-response`.
 
 The release completed through implementation commit `4bb590b` and Cloudflare Pages deployment `7184f86e-87a8-43c2-b50a-a8e2333b503b`. The separate live-viewer Worker was intentionally left unchanged.
 
@@ -95,23 +95,61 @@ Authentication routes covered:
 
 ### Target A — OpenDesign Analytics
 
-A fresh OpenDesign recapture was unavailable during this final continuation:
+Fresh recapture completed on 2026-07-30 at `12:29:42.975 +05:30` (`06:59:42.975Z`):
 
-- Raw-project server previously used on port `56156`: offline.
-- OpenDesign daemon previously used on port `7456`: unreachable.
+- OpenDesign daemon: `127.0.0.1:7456`, restarted with the real `release-stable-win` data directory.
+- Project: `Analytics`
+- Project ID: `50769cfd-c70f-4fab-8f06-3acc73cbe3b5`
+- Resolved entry: `index.html`
+- Resolved project file count: `45`
+- Deterministic project-tree SHA-256: `bf65859297668be94995981c3962f8d1aba5ce932c8b310e6b244e75c5f9403b`
+- `index.html`: `432,667` bytes, SHA-256 `c523d719dc4812b14c2599902f7972f5a4bc84ee3e92ec97877a63383ed9f79c`
+- `coachsignal-analytics-dashboard.html`: `427,010` bytes, SHA-256 `1c7631adb657ad7d30a023d83738f1b0be469af1f8caa09ae8bb62b8416f61fb`
+- `ADMIN_V2_FUNCTIONAL_COVERAGE.md`: SHA-256 `9b4d0601d53b62ec63aa855737504dd396cb3acaf8f0e4f51263827ea946a5b3`
+- `brand-spec.md`: SHA-256 `db170996b4cd1b89d3bf05c08abf86a282e0249a4828f47294919a85b5042c3e`
 
-The retained authoritative Target A inventory was used only as historical comparison evidence:
-
-- File: `artifacts/dom/A_OD_INVENTORY.json`
-- SHA-256: `FA9510374DB2855806F154AEA2B84264C44AF84E7D7C285EC55C150B99223AFB`
-
-This report does **not** describe that retained inventory as a fresh OD scan.
+OpenDesign `get_project` and `get_artifact(include="all")` identified the live project and entry. Because the bundle response reported `truncated: true`, the fresh inventory and tree hash were calculated read-only from the exact `resolvedDir`; the retained `artifacts/dom/A_OD_INVENTORY.json` was not relabelled as fresh evidence.
 
 ### Target B — production functionality
 
-Production auth/RBAC/API/business behavior remains the functional source of truth. Existing production-transfer evidence and current source tests show native Admin V2 renderers for the 11 modules, headless reuse of security/business logic, and no old visible Admin component mount in the V2 path.
+Production auth/RBAC/API/business behavior remains the functional source of truth. Authenticated acceptance used an existing allowlisted Google admin session on `https://ywcoach.com/admin/dashboard` and verified:
 
-No authenticated production mutation or billed AI request was used in this pass.
+- Native `[data-admin-v2="true"]` rendering, exact title/guidance, and zero horizontal overflow for all 11 modules in the initial dark theme at 1280px.
+- All 11 modules in the light theme at 1280px.
+- All 11 modules at a 390 × 844 viewport with visible mobile navigation.
+- Mobile drawer width `304px`, 11 visible drawer buttons, minimum touch target `44px`, close-button focus on open, Escape close, and focus return to `Open navigation`.
+- Admin Copilot dialog open/close, focus placement/return, global scope selection, and 90-day task/audit settings.
+- Browser runtime errors: `0`.
+- Temporary viewport override reset, original dark-theme preference restored, and task-created browser tabs closed.
+
+Admin AI production evidence:
+
+- Default, complex, and fallback model fields all resolve to `gpt-5.6-luna`.
+- Saved-task retention is `90` days and audit retention is fixed at `90` days.
+- First bounded compatibility request was classified as an `action-plan` because prohibited-action words inside the negative guard still matched `MUTATION_WORDS`; it remained non-executable and made no provider call.
+- Second bounded request was classified correctly as `requirement-conflict-analysis`, routed to Luna with medium reasoning, and made the single authorized provider attempt.
+- The provider output was rejected by numeric/schema grounding and the UI displayed: `Deterministic fallback: invalid-provider-response`.
+- Manual Admin V2 remained usable, no registered executable action matched, no approval/dry-run/sensitive action was used, and the safe deterministic result remained visible.
+- Continuity checkpoint was saved under `Read-only compatibility and conflict check`; explicit resume language revalidates permissions and data.
+- Observability showed two durable requests and `$0.0000` estimated cost; the session action stream recorded both grounded completions.
+
+The Reports counter changed from `67` to `71` during acceptance. Read-only inspection showed the four newest rows were concurrent `Payment flow issue` reports for `/gyana/pcos-51` at 15:16 IST, not Admin AI provider-validation records.
+
+#### Production Admin AI acceptance defect
+
+The Luna call exposed a real code-fixable PRD mismatch:
+
+1. `buildProtectedProviderInput()` sends only bounded section/date/metric metadata into the provider-grounding validator. It does not include allowlisted numeric facts from the sanitized requirement query.
+2. The accepted conflict query contained the locked `90-day` retention requirement. Luna could legitimately repeat `90`, but numeric validation only considered protected metric values and rejected the response as `invalid-provider-response`.
+3. The deterministic fallback was safe and manual Admin V2 stayed usable, but the task still received a checkpoint and the activity stream reported `Grounded Entire Admin Panel request completed.`
+4. `ADMIN_AI_API_CONTINUITY_AND_MODEL_ROUTING_PRD.md` requires invalid/unsafe provider output to be rejected with a safe reason code and **not** update the task as completed.
+
+Required fix before a clean provider-acceptance verdict:
+
+- Add sanitized, allowlisted requirement facts/IDs to the provider grounding contract without persisting raw sensitive prompts.
+- Test valid numeric requirements such as 90-day retention, unsupported numeric claims, malformed output, and provider fallback.
+- Mark invalid-provider fallback as failed-safe/degraded in checkpoint and activity status instead of a provider-completed task.
+- Re-run one authorized bounded Luna acceptance against the exact redeployed production artifact.
 
 ### Target C — final local candidate
 
@@ -170,6 +208,11 @@ The current candidate passes the no-wrapper boundary:
 | CSS source/generated parity | Pass through Admin security CSS-scope gates |
 | `git diff --check` | Pass; line-ending notices only |
 | Graphify incremental refresh | `5,557 nodes / 11,935 edges / 275 communities` |
+| Fresh OpenDesign Target A recapture | Pass; 45 files, tree SHA-256 `bf65859297668be94995981c3962f8d1aba5ce932c8b310e6b244e75c5f9403b` |
+| Authenticated production Admin V2 | Pass; 11/11 dark desktop, 11/11 light desktop, 11/11 mobile |
+| Production mobile navigation | Pass; 304px drawer, 44px minimum target, Escape/focus return, no overflow |
+| Production Luna medium provider | Degraded; provider attempted, output rejected as `invalid-provider-response`, deterministic fallback remained safe |
+| Production continuity/audit | Pass with defect note; checkpoint and 90-day settings verified, but invalid-provider fallback was incorrectly reported as completed |
 
 The final full-panel browser test covers:
 
@@ -231,9 +274,11 @@ Graphify emitted one non-blocking zero-node retry warning for `.impeccable/desig
 - **Local implementation and final candidate:** passed.
 - **No-wrapper / no-old-UI leak:** passed.
 - **Admin AI 90-day retention and safe continuity contract:** preserved.
-- **Strict fresh A/B/C verdict:** `NEEDS_MANUAL_VERIFICATION` only because a fresh Target A OpenDesign recapture was unavailable and authenticated production mutation/provider execution was intentionally not performed.
-- **Code-fixable Admin/Impeccable blocker:** none.
-- **Authorized delivery:** implementation commit, push, Cloudflare Pages deployment, and production-safe smoke completed; final clean-worktree confirmation follows the documentation-only closure commit.
+- **Fresh Target A OpenDesign verdict:** passed with a new 45-file inventory and deterministic tree hash.
+- **Authenticated production Admin V2/Impeccable verdict:** passed for all 11 modules, dark/light themes, desktop/mobile, navigation, Copilot drawer, and runtime-error checks.
+- **Luna provider acceptance verdict:** `DEGRADED_FAIL_SAFE`; routing reached `gpt-5.6-luna` with medium reasoning, then rejected provider output as `invalid-provider-response` and used deterministic fallback.
+- **Code-fixable blocker:** provider grounding excludes allowlisted numeric requirement facts, and invalid-provider fallback is checkpointed/reported as completed contrary to the PRD failure contract.
+- **Authorized delivery state:** the existing production code remains deployment `7184f86e-87a8-43c2-b50a-a8e2333b503b`; this continuation changes evidence only and does not redeploy code.
 
 ## Production release closure
 
@@ -246,6 +291,6 @@ Graphify emitted one non-blocking zero-node retry warning for `.impeccable/desig
 - Production security/header results: deployment URL and both custom domains return CSP, HSTS, X-Frame-Options `DENY`, nosniff, and `no-store` on the checked Admin routes.
 - Production Admin assets: all 19 referenced JS/CSS assets on `ywcoach.com` return 200 with expected JavaScript or CSS content types.
 - Production Admin AI auth boundary: five safe GET endpoints checked on the deployment URL and `ywcoach.com`; all 10 requests return 401 with `no-store`.
-- Production mutation boundary: no authenticated billed prompt, real provider/customer mutation, payment, email, image-provider operation, D1/R2 mutation, or sensitive Admin action was performed.
+- Production acceptance boundary: one authenticated Luna medium provider attempt was made and expected Admin AI task/checkpoint/audit metadata was created. No customer/business record, payment, email, image-provider operation, scheduled delivery, voice action, approval, OTP-protected action, or sensitive Admin action was performed.
 - Worker boundary: the separately deployed live-viewer/retention Worker was not deployed or changed by this release.
 - Final local closure: upstream divergence `0/0`, Git worktree clean, preview port `4802` closed, and protected Headroom port `8787` still listening with healthy status.
