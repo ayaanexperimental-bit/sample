@@ -8,11 +8,13 @@ Local candidate: `http://127.0.0.1:4802`
 
 ## Outcome
 
-The current Admin V2 and Admin AI release has completed full-panel Impeccable Operate implementation, local verification, exact-scope publication, Cloudflare Pages production deployment, and authenticated read-only production acceptance. The pass covers the authentication routes, all 11 permission-visible Admin modules, Admin AI, shared dialogs/drawers, light and dark themes, and the supported responsive width matrix.
+The current Admin V2 and Admin AI continuation has completed the code-fixable Luna acceptance repair and exact-artifact local verification without restarting the completed full-panel Impeccable work. The current candidate preserves the authentication routes, all 11 permission-visible Admin modules, Admin AI, shared dialogs/drawers, light and dark themes, and the supported responsive width matrix.
 
-No customer/business record, payment, email, image-provider operation, scheduled delivery, voice action, approval, OTP-protected action, or sensitive Admin AI mutation was used to obtain this evidence. The authenticated acceptance created the expected Admin AI task/checkpoint/audit metadata for two bounded Copilot requests; exactly one request reached the Luna medium provider route and then failed closed to deterministic output because provider output validation returned `invalid-provider-response`.
+The prior authenticated production acceptance created the expected Admin AI task/checkpoint/audit metadata for two bounded Copilot requests. Exactly one request reached the Luna medium provider route and then failed closed to deterministic output because provider output validation returned `invalid-provider-response`. That acceptance exposed two code-fixable defects: sanitized `90-day` requirement facts were absent from grounding, and a degraded provider result could still be checkpointed/reported as completed.
 
-The release completed through implementation commit `4bb590b` and Cloudflare Pages deployment `7184f86e-87a8-43c2-b50a-a8e2333b503b`. The separate live-viewer Worker was intentionally left unchanged.
+The current candidate now admits only bounded, allowlisted requirement facts; recomputes them from the server-visible query; validates provider output before checkpointing; strips rejected provider narrative from the API response; records invalid/unavailable provider outcomes as `failed-safe`; and reports degraded UI observation/activity as failure/warning rather than success. No customer/business record, payment, email, image-provider operation, scheduled delivery, voice action, approval, OTP-protected action, or sensitive Admin AI mutation was used for the local repair evidence.
+
+The currently live release remains implementation commit `4bb590b` and Cloudflare Pages deployment `7184f86e-87a8-43c2-b50a-a8e2333b503b` until the repaired candidate is committed, pushed, redeployed, and accepted. The separate live-viewer Worker remains intentionally unchanged.
 
 ## Authoritative product boundary
 
@@ -135,7 +137,7 @@ Admin AI production evidence:
 
 The Reports counter changed from `67` to `71` during acceptance. Read-only inspection showed the four newest rows were concurrent `Payment flow issue` reports for `/gyana/pcos-51` at 15:16 IST, not Admin AI provider-validation records.
 
-#### Production Admin AI acceptance defect
+#### Production Admin AI acceptance defect and candidate resolution
 
 The Luna call exposed a real code-fixable PRD mismatch:
 
@@ -144,12 +146,16 @@ The Luna call exposed a real code-fixable PRD mismatch:
 3. The deterministic fallback was safe and manual Admin V2 stayed usable, but the task still received a checkpoint and the activity stream reported `Grounded Entire Admin Panel request completed.`
 4. `ADMIN_AI_API_CONTINUITY_AND_MODEL_ROUTING_PRD.md` requires invalid/unsafe provider output to be rejected with a safe reason code and **not** update the task as completed.
 
-Required fix before a clean provider-acceptance verdict:
+Implemented in the current candidate:
 
-- Add sanitized, allowlisted requirement facts/IDs to the provider grounding contract without persisting raw sensitive prompts.
-- Test valid numeric requirements such as 90-day retention, unsupported numeric claims, malformed output, and provider fallback.
-- Mark invalid-provider fallback as failed-safe/degraded in checkpoint and activity status instead of a provider-completed task.
-- Re-run one authorized bounded Luna acceptance against the exact redeployed production artifact.
+- Provider input schema version `2` carries at most eight sanitized requirement facts as `{ id, unit, value }`; no raw prompt is added to durable memory.
+- Requirement facts are accepted only for `requirement-conflict-analysis`, and the durable route recomputes them from the server-visible query instead of trusting client facts.
+- Numeric grounding accepts the two explicit `90-day` facts, rejects unsupported values such as `365`, and rejects unit substitution such as `90-year`.
+- The durable route validates provider output before checkpointing and removes rejected provider narrative from the API response while preserving safe model/usage metadata.
+- Invalid-provider and other degraded provider fallbacks use a validated `failed-safe` checkpoint disposition and safe reason code.
+- Admin AI observation, activity, assistant state, and checkpoint copy now show failure/warning for degraded output instead of success/completed.
+- Focused provider/continuity verification passes `21/21`; exact-artifact Copilot resilience passes mobile `3/3`, tablet `2/2`, and desktop `6/6`.
+- One bounded Luna acceptance against the repaired production deployment remains the required delivery proof.
 
 ### Target C — final local candidate
 
@@ -191,6 +197,20 @@ The current candidate passes the no-wrapper boundary:
 - Fix: wait for the disclosure, inspect its actual `open` state, and click only when closed.
 - Green evidence: desktop reran `1/1`; the shared helper then reran mobile/tablet `2/2`.
 
+### 3. Requirement facts excluded from provider grounding
+
+- Red evidence: the production `90-day` compatibility request reached Luna medium but the valid repeated requirement value was rejected as `invalid-provider-response`.
+- Root cause: protected provider input contained bounded metrics but not sanitized numeric requirement facts.
+- Fix: add versioned structured requirement facts only for conflict analysis and recompute them from the server-visible query.
+- Green evidence: valid `90-day`/`90-day` output is accepted; unsupported `365-day`, malformed output, and `90-year` unit substitution are rejected.
+
+### 4. Rejected provider output could still cross the durable API boundary
+
+- Red evidence: final review showed the durable route marked invalid output failed-safe but still returned the original provider payload for client-side revalidation.
+- Root cause: checkpoint disposition and response redaction were handled independently.
+- Fix: strip rejected narrative before the durable API response while retaining safe model/version/provider/usage metadata; the client then deterministically resolves `invalid-provider-response`.
+- Green evidence: focused test proves rejected narrative is removed, and the durable route validates before the checkpoint call.
+
 ## Fresh verification
 
 | Gate | Final result |
@@ -199,20 +219,20 @@ The current candidate passes the no-wrapper boundary:
 | TypeScript | Pass |
 | Full lint | Pass; 0 errors, 9 warnings only from generated Wrangler temp bundles |
 | Pages Functions build | Pass |
-| Admin security | `503/503` |
+| Admin security | `510/510` |
+| Focused provider grounding + durable continuity | `21/21` |
 | Focused lifecycle + Operate source gates | `34/34` |
 | Full-panel Impeccable browser regression | `4/4` |
-| 11-module Copilot performance/CLS matrix | Mobile `1/1`, tablet + desktop `2/2` |
-| Non-executable confirmation/OTP matrix | Mobile + tablet `2/2`, desktop `1/1` |
+| Copilot resilience matrix | Mobile `3/3`, tablet `2/2`, desktop `6/6` |
 | Admin initial artifact budget | `1,686,590 / 2,100,000` bytes |
 | CSS source/generated parity | Pass through Admin security CSS-scope gates |
 | `git diff --check` | Pass; line-ending notices only |
-| Graphify incremental refresh | `5,557 nodes / 11,935 edges / 275 communities` |
+| Graphify incremental refresh | `5,579 nodes / 11,997 edges / 291 communities`; HTML skipped above 5,000-node safety limit |
 | Fresh OpenDesign Target A recapture | Pass; 45 files, tree SHA-256 `bf65859297668be94995981c3962f8d1aba5ce932c8b310e6b244e75c5f9403b` |
 | Authenticated production Admin V2 | Pass; 11/11 dark desktop, 11/11 light desktop, 11/11 mobile |
 | Production mobile navigation | Pass; 304px drawer, 44px minimum target, Escape/focus return, no overflow |
-| Production Luna medium provider | Degraded; provider attempted, output rejected as `invalid-provider-response`, deterministic fallback remained safe |
-| Production continuity/audit | Pass with defect note; checkpoint and 90-day settings verified, but invalid-provider fallback was incorrectly reported as completed |
+| Existing production Luna medium provider | Degraded on deployment `7184f86e`; repaired-deployment acceptance pending |
+| Current candidate continuity/audit | Pass locally; invalid/degraded output is failed-safe and not reported completed |
 
 The final full-panel browser test covers:
 
@@ -276,9 +296,11 @@ Graphify emitted one non-blocking zero-node retry warning for `.impeccable/desig
 - **Admin AI 90-day retention and safe continuity contract:** preserved.
 - **Fresh Target A OpenDesign verdict:** passed with a new 45-file inventory and deterministic tree hash.
 - **Authenticated production Admin V2/Impeccable verdict:** passed for all 11 modules, dark/light themes, desktop/mobile, navigation, Copilot drawer, and runtime-error checks.
-- **Luna provider acceptance verdict:** `DEGRADED_FAIL_SAFE`; routing reached `gpt-5.6-luna` with medium reasoning, then rejected provider output as `invalid-provider-response` and used deterministic fallback.
-- **Code-fixable blocker:** provider grounding excludes allowlisted numeric requirement facts, and invalid-provider fallback is checkpointed/reported as completed contrary to the PRD failure contract.
-- **Authorized delivery state:** the existing production code remains deployment `7184f86e-87a8-43c2-b50a-a8e2333b503b`; this continuation changes evidence only and does not redeploy code.
+- **Existing-production Luna verdict:** `DEGRADED_FAIL_SAFE`; deployment `7184f86e` reached `gpt-5.6-luna` medium, rejected the provider narrative, and used deterministic fallback.
+- **Current-candidate Luna contract:** code-fixable grounding, checkpoint, API-redaction, observation, and activity defects are fixed and locally verified.
+- **Code-fixable blocker:** none in the current candidate.
+- **Remaining delivery gate:** commit/push, Pages/Functions redeploy, and one bounded authenticated Luna acceptance against that exact deployment.
+- **Authorized delivery state:** the existing production deployment remains `7184f86e-87a8-43c2-b50a-a8e2333b503b` until the repaired release is published.
 
 ## Production release closure
 

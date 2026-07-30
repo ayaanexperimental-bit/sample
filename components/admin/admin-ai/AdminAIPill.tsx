@@ -94,6 +94,7 @@ import {
   runAdminAINaturalLanguageQueryWithModel,
   simulateAdminAIPlan
 } from "../../../lib/admin-ai/adminAIOrchestrator";
+import { getAdminAIResponseOutcome } from "../../../lib/admin-ai/adminAIResponseOutcome";
 import {
   evaluateAdminAIReportPreflight,
   type AdminAIReportPreflightDecision
@@ -2345,18 +2346,25 @@ export function AdminAIPill({
       let next = await generate();
       if (operationRef.current !== operationId || controller.signal.aborted) return;
       next = enforceResponsePolicy(next);
+      const responseOutcome = getAdminAIResponseOutcome(next, formatScope(taskScope));
       const providerCheckpointedTask = providerCheckpoint.task;
       if (providerCheckpointedTask) {
         taskForRequest = providerCheckpointedTask;
         setActiveSavedTask(providerCheckpointedTask);
         upsertSavedTask(providerCheckpointedTask);
-        setSavedTaskStatus(`Checkpoint saved to “${providerCheckpointedTask.title}”.`);
+        setSavedTaskStatus(
+          providerCheckpointedTask.status === "failed-safe"
+            ? `Failed-safe checkpoint saved to “${providerCheckpointedTask.title}”.`
+            : `Checkpoint saved to “${providerCheckpointedTask.title}”.`
+        );
       } else if (taskForRequest) {
         const checkpoint = await checkpointAdminAISavedTask(
           taskForRequest,
           {
             assistantSummary: createAdminAISafeCheckpointSummary(next),
-            query: request
+            query: request,
+            reasonCode: responseOutcome.checkpointReasonCode,
+            status: responseOutcome.checkpointStatus
           },
           csrfToken,
           createAdminAIIdempotencyKey("checkpoint", `${taskForRequest.id}-${requestFingerprint}`)
@@ -2365,7 +2373,11 @@ export function AdminAIPill({
           taskForRequest = checkpoint.payload.task;
           setActiveSavedTask(checkpoint.payload.task);
           upsertSavedTask(checkpoint.payload.task);
-          setSavedTaskStatus(`Checkpoint saved to “${checkpoint.payload.task.title}”.`);
+          setSavedTaskStatus(
+            checkpoint.payload.task.status === "failed-safe"
+              ? `Failed-safe checkpoint saved to “${checkpoint.payload.task.title}”.`
+              : `Checkpoint saved to “${checkpoint.payload.task.title}”.`
+          );
         } else {
           setSavedTaskStatus(
             checkpoint.error ||
@@ -2406,7 +2418,7 @@ export function AdminAIPill({
       const attestation = await attestAdminAINaturalLanguageRead(
         {
           module: observationModule,
-          outcome: blocked ? "blocked" : "success"
+          outcome: responseOutcome.observationOutcome
         },
         { csrfToken }
       );
@@ -2423,23 +2435,25 @@ export function AdminAIPill({
           latencyMs: Math.max(0, Math.round(monotonicTimeMs() - startedAt)),
           model: next.modelRoute?.mode || "deterministic",
           module: observationModule,
-          outcome: blocked ? "blocked" : "success",
+          outcome: responseOutcome.observationOutcome,
           safetyRefusal: blocked && /safety/i.test(next.title)
         },
         {
           actionOutcome: "not-applicable",
-          errorCodes: blocked ? [next.state] : [],
+          errorCodes: blocked
+            ? [next.state]
+            : next.providerFallbackReason
+              ? [next.providerFallbackReason]
+              : [],
           permissionDenied: blocked
         },
         attestation.ok ? attestation.requestId : ""
       );
-      onAssistantStateChange(blocked ? "warning" : "success", 2400);
+      onAssistantStateChange(responseOutcome.assistantState, 2400);
       onActivity({
-        detail: blocked
-          ? "A natural-language request was blocked by safety policy."
-          : `Grounded ${formatScope(taskScope)} request completed.`,
+        detail: responseOutcome.activityDetail,
         label: "Admin Copilot",
-        status: blocked ? "error" : "success"
+        status: responseOutcome.activityStatus
       });
     } catch (error) {
       if (operationRef.current !== operationId || controller.signal.aborted) return;
@@ -2730,10 +2744,10 @@ export function AdminAIPill({
         : "idle";
 
   const panel = (
-      <AdminAIDrawer
-        onClose={close}
-        onContentHidden={releaseResponseLayout}
-        open={open}
+    <AdminAIDrawer
+      onClose={close}
+      onContentHidden={releaseResponseLayout}
+      open={open}
       sectionName={scope === "global" ? "Global Admin" : section.name}
       stateLabel={`${context.dataFreshness} / ${formatCopilotState(copilotDisplayState)}`}
       theme={theme}

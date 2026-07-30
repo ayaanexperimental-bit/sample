@@ -5,7 +5,7 @@ import type { investigateAdminAIError } from "./adminAIErrorInvestigation";
 import type { AdminAIAnomalyAnalysis } from "./adminAIHealth";
 import type { AdminAIIncident } from "./adminAIIncident";
 import type { AdminAIPreferences } from "./adminAIMemory";
-import { selectAdminAIModelRoute } from "./adminAIModelRouting";
+import { selectAdminAIModelRoute, type AdminAIModelFallbackReason } from "./adminAIModelRouting";
 import { ADMIN_AI_SETTINGS_FIELD_DEFINITIONS } from "./adminAIOperationalContext";
 import { getAdminAISection, type AdminAICommand } from "./adminAIRegistry";
 import type { AdminAIReport as AdminAIStructuredReport } from "./adminAIReports";
@@ -85,6 +85,7 @@ export type AdminAIResponse = {
   modelRoute?: AdminAIModelRoute;
   plan?: AdminAIPlan;
   progress?: AdminAIProgressStep[];
+  providerFallbackReason?: Exclude<AdminAIModelFallbackReason, "deterministic-task">;
   report?: AdminAIReport;
   rollbackAction?: AdminAIRollbackAction;
   searchResults?: AdminAISearchResult[];
@@ -120,11 +121,7 @@ export function runAdminAICommand(
     return groundAdminAIResponse(buildBuilderDraftTextPreview(context), context);
   }
 
-  const focusedResponse = buildFocusedAdminAICommandResponse(
-    command,
-    context,
-    preferences
-  );
+  const focusedResponse = buildFocusedAdminAICommandResponse(command, context, preferences);
   if (focusedResponse) return groundAdminAIResponse(focusedResponse, context);
 
   if (command.responseHandlerId === "report")
@@ -362,7 +359,10 @@ function evidenceMatchesConclusionSource(
 }
 
 function canonicalEvidenceKey(value: string) {
-  const normalized = value.trim().toLowerCase().replace(/[?#].*$/, "");
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[?#].*$/, "");
   const adminAPI = normalized.match(/^(?:https?:\/\/[^/]+)?\/api\/admin\/(.+)$/);
   return normalizeEvidenceKey(adminAPI?.[1] || normalized);
 }
@@ -649,8 +649,7 @@ function missingRequiredSettings(context: AdminAISectionContext) {
 function selectedAdminAIEntities(context: AdminAISectionContext) {
   const selected = new Set(context.selectedRows.map((value) => value.toLowerCase()));
   return context.entities.filter(
-    (entity) =>
-      selected.has(entity.id.toLowerCase()) || selected.has(entity.label.toLowerCase())
+    (entity) => selected.has(entity.id.toLowerCase()) || selected.has(entity.label.toLowerCase())
   );
 }
 

@@ -25,6 +25,50 @@ export type AdminAITaskStatus =
   | "failed-safe"
   | "paused";
 
+export type AdminAICheckpointDisposition = {
+  reasonCode:
+    | "input-ceiling-exceeded"
+    | "invalid-provider-response"
+    | "provider-cancelled"
+    | "provider-failure"
+    | "provider-timeout"
+    | "provider-unavailable"
+    | "safe-checkpoint";
+  status: "active" | "failed-safe";
+};
+
+const ADMIN_AI_FAILED_SAFE_CHECKPOINT_REASONS = new Set([
+  "input-ceiling-exceeded",
+  "invalid-provider-response",
+  "provider-cancelled",
+  "provider-failure",
+  "provider-timeout",
+  "provider-unavailable"
+]);
+
+export function normalizeAdminAICheckpointDisposition(
+  status: unknown,
+  reasonCode: unknown
+): AdminAICheckpointDisposition | null {
+  if (
+    (status === undefined || status === "active") &&
+    (reasonCode === undefined || reasonCode === "safe-checkpoint")
+  ) {
+    return { reasonCode: "safe-checkpoint", status: "active" };
+  }
+  if (
+    status === "failed-safe" &&
+    typeof reasonCode === "string" &&
+    ADMIN_AI_FAILED_SAFE_CHECKPOINT_REASONS.has(reasonCode)
+  ) {
+    return {
+      reasonCode: reasonCode as AdminAICheckpointDisposition["reasonCode"],
+      status: "failed-safe"
+    };
+  }
+  return null;
+}
+
 export type AdminAIContinuityActor = {
   isOwner: boolean;
   modules: string[];
@@ -242,7 +286,11 @@ export function normalizeAdminAITaskCreateInput(
   const pinnedRequirements = normalizePinnedRequirements(value.pinnedRequirements);
   const selectedEntityRefs = normalizeSelectedEntityRefs(value.selectedEntityRefs);
   if (!pinnedRequirements || !selectedEntityRefs) {
-    return failure("invalid-task", "Saved-task references are invalid or exceed the safe limit.", 400);
+    return failure(
+      "invalid-task",
+      "Saved-task references are invalid or exceed the safe limit.",
+      400
+    );
   }
 
   const input: AdminAITaskCreateInput = {
@@ -385,7 +433,8 @@ export async function createAdminAITask({
     version: 1
   };
   const capsuleJson = serializeCapsule(capsule);
-  if (!capsuleJson) return failure("context-ceiling-exceeded", "The saved-task context is too large.", 413);
+  if (!capsuleJson)
+    return failure("context-ceiling-exceeded", "The saved-task context is too large.", 413);
   const title = createTaskTitle(normalized.value.goal);
 
   await db.batch([
@@ -433,14 +482,7 @@ export async function createAdminAITask({
           result_reference, created_at, expires_at
         ) VALUES (?, 'create', ?, ?, ?, ?, ?)`
       )
-      .bind(
-        actor.subjectId,
-        keyHash,
-        requestFingerprint,
-        taskId,
-        nowSeconds,
-        expiresAt
-      )
+      .bind(actor.subjectId, keyHash, requestFingerprint, taskId, nowSeconds, expiresAt)
   ]);
   return {
     ok: true,
@@ -519,9 +561,7 @@ export async function getAdminAITaskExecutionContext({
   expectedVersion: number;
   nowSeconds?: number;
   taskId: string;
-}): Promise<
-  ContinuityResult<{ providerContext: string; task: AdminAITaskClient }>
-> {
+}): Promise<ContinuityResult<{ providerContext: string; task: AdminAITaskClient }>> {
   await ensureAdminAIContinuitySchema(db);
   const row = await readTask(db, actor.subjectId, safeIdentifier(taskId, 100), nowSeconds);
   if (!row) return taskNotFound();
@@ -629,6 +669,8 @@ export async function checkpointAdminAITask({
   expectedVersion,
   idempotencyKey,
   nowSeconds = currentSeconds(),
+  reasonCode,
+  status,
   taskId,
   userSummary
 }: {
@@ -639,10 +681,20 @@ export async function checkpointAdminAITask({
   expectedVersion: number;
   idempotencyKey: string;
   nowSeconds?: number;
+  reasonCode?: unknown;
+  status?: unknown;
   taskId: string;
   userSummary: string;
 }): Promise<ContinuityResult<AdminAITaskClient>> {
   await ensureAdminAIContinuitySchema(db);
+  const disposition = normalizeAdminAICheckpointDisposition(status, reasonCode);
+  if (!disposition) {
+    return failure(
+      "invalid-checkpoint-disposition",
+      "The task checkpoint status or reason code is invalid.",
+      400
+    );
+  }
   const safeUser = safeText(redactAdminAIText(userSummary), 1_000);
   const safeAssistant = safeText(redactAdminAIText(assistantSummary), 4_000);
   if (
@@ -660,7 +712,9 @@ export async function checkpointAdminAITask({
   if (!access.ok) return access;
   const key = normalizeIdempotencyKey(idempotencyKey);
   if (!key) return failure("idempotency-required", "A valid idempotency key is required.", 400);
-  const fingerprint = await sha256(`${safeUser}\n${safeAssistant}\n${artifactId || ""}`);
+  const fingerprint = await sha256(
+    `${safeUser}\n${safeAssistant}\n${artifactId || ""}\n${disposition.status}\n${disposition.reasonCode}`
+  );
   const keyHash = await sha256(key);
   const replay = await readIdempotency(db, actor.subjectId, "checkpoint", keyHash, nowSeconds);
   if (replay) {
@@ -690,19 +744,21 @@ export async function checkpointAdminAITask({
     lastActivityAt: toIso(nowSeconds),
     recentTurnDigests,
     safeConversationSummary: safeAssistant,
-    status: "active",
+    status: disposition.status,
     version: nextVersion
   };
   const capsuleJson = serializeCapsule(nextCapsule);
-  if (!capsuleJson) return failure("context-ceiling-exceeded", "The task checkpoint is too large.", 413);
+  if (!capsuleJson)
+    return failure("context-ceiling-exceeded", "The task checkpoint is too large.", 413);
   const update = db
     .prepare(
       `UPDATE admin_ai_tasks
-       SET status = 'active', capsule_json = ?, version = ?, last_activity_at = ?, expires_at = ?
+       SET status = ?, capsule_json = ?, version = ?, last_activity_at = ?, expires_at = ?
        WHERE id = ? AND admin_subject_id = ? AND version = ?
          AND deleted_at IS NULL AND expires_at > ?`
     )
     .bind(
+      disposition.status,
       capsuleJson,
       nextVersion,
       nowSeconds,
@@ -740,7 +796,12 @@ export async function checkpointAdminAITask({
         checkpointId,
         row.id,
         sequence,
-        JSON.stringify({ assistantSummary: safeAssistant, userSummary: safeUser }),
+        JSON.stringify({
+          assistantSummary: safeAssistant,
+          reasonCode: disposition.reasonCode,
+          status: disposition.status,
+          userSummary: safeUser
+        }),
         artifactId ? safeIdentifier(artifactId, 100) : null,
         nowSeconds,
         expiresAt
@@ -753,10 +814,10 @@ export async function checkpointAdminAITask({
       fromStatus: row.status,
       occurredAt: nowSeconds,
       requirePriorChange: true,
-      reasonCode: "safe-checkpoint",
+      reasonCode: disposition.reasonCode,
       taskId: row.id,
       taskVersion: nextVersion,
-      toStatus: "active"
+      toStatus: disposition.status
     }),
     db
       .prepare(
@@ -767,14 +828,7 @@ export async function checkpointAdminAITask({
         SELECT ?, 'checkpoint', ?, ?, ?, ?, ?
         WHERE changes() = 1`
       )
-      .bind(
-        actor.subjectId,
-        keyHash,
-        fingerprint,
-        checkpointId,
-        nowSeconds,
-        expiresAt
-      )
+      .bind(actor.subjectId, keyHash, fingerprint, checkpointId, nowSeconds, expiresAt)
   );
   const checkpointResults = await db.batch(checkpointStatements);
   if (!changed(checkpointResults[0])) return taskVersionConflict(row);
@@ -785,7 +839,7 @@ export async function checkpointAdminAITask({
       capsule_json: capsuleJson,
       expires_at: expiresAt,
       last_activity_at: nowSeconds,
-      status: "active",
+      status: disposition.status,
       version: nextVersion
     })
   };
@@ -947,13 +1001,7 @@ async function transitionAdminAITask(
   if (!key) return failure("idempotency-required", "A valid idempotency key is required.", 400);
   const keyHash = await sha256(key);
   const fingerprint = await sha256(`${row.id}|${args.expectedVersion}|${args.eventType}`);
-  const replay = await readIdempotency(
-    args.db,
-    args.actor.subjectId,
-    args.eventType,
-    keyHash,
-    now
-  );
+  const replay = await readIdempotency(args.db, args.actor.subjectId, args.eventType, keyHash, now);
   if (replay) {
     if (replay.requestFingerprint !== fingerprint) {
       return failure("idempotency-conflict", "The idempotency key is already in use.", 409);
@@ -984,7 +1032,8 @@ async function transitionAdminAITask(
     ? args.updateCapsule(baseCapsule, now, conversationId)
     : baseCapsule;
   const capsuleJson = serializeCapsule(nextCapsule);
-  if (!capsuleJson) return failure("context-ceiling-exceeded", "The saved-task context is too large.", 413);
+  if (!capsuleJson)
+    return failure("context-ceiling-exceeded", "The saved-task context is too large.", 413);
   const statements = [
     args.db
       .prepare(
@@ -1029,15 +1078,7 @@ async function transitionAdminAITask(
         SELECT ?, ?, ?, ?, ?, ?, ?
         WHERE changes() = 1`
       )
-      .bind(
-        args.actor.subjectId,
-        args.eventType,
-        keyHash,
-        fingerprint,
-        row.id,
-        now,
-        expiry
-      )
+      .bind(args.actor.subjectId, args.eventType, keyHash, fingerprint, row.id, now, expiry)
   );
   if ((args.closeConversation || args.startNewConversation) && priorConversationId) {
     statements.push(
@@ -1091,7 +1132,10 @@ function validateCurrentBoundary(
     );
   }
   const required = new Set(capsule.selectedEntityRefs.flatMap((ref) => ref.requiredPermissions));
-  if (!actor.isOwner && [...required].some((permission) => !actor.permissions.includes(permission))) {
+  if (
+    !actor.isOwner &&
+    [...required].some((permission) => !actor.permissions.includes(permission))
+  ) {
     return failure(
       "access-changed",
       "A required capability is no longer available for this saved task.",
@@ -1140,12 +1184,7 @@ async function blockTaskForAccessChange(
   ]);
 }
 
-async function readTask(
-  db: D1Database,
-  subjectId: string,
-  taskId: string,
-  nowSeconds: number
-) {
+async function readTask(db: D1Database, subjectId: string, taskId: string, nowSeconds: number) {
   if (!taskId) return null;
   return db
     .prepare(
@@ -1231,8 +1270,7 @@ function taskClient(row: TaskRow): AdminAITaskClient {
     goal: row.goal_summary,
     id: row.id,
     lastActivityAt: toIso(numberValue(row.last_activity_at)),
-    lastSafeStep:
-      capsule.completedSteps.at(-1)?.summary || capsule.safeConversationSummary || null,
+    lastSafeStep: capsule.completedSteps.at(-1)?.summary || capsule.safeConversationSummary || null,
     scope: capsule.scope,
     status: row.status,
     title: row.title,

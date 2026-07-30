@@ -6,6 +6,7 @@ import {
   ADMIN_AI_TASK_RETENTION_DAYS,
   buildAdminAIPermissionBoundaryHash,
   isAdminAITaskReadableAt,
+  normalizeAdminAICheckpointDisposition,
   normalizeAdminAITaskCreateInput
 } from "../../lib/server/admin-ai-continuity";
 import {
@@ -13,6 +14,7 @@ import {
   selectAdminAIModelRoute
 } from "../../lib/admin-ai/adminAIModelRouting";
 import { DEFAULT_ADMIN_AI_OWNER_POLICY } from "../../lib/admin-ai/adminAIPolicy";
+import { getAdminAIResponseOutcome } from "../../lib/admin-ai/adminAIResponseOutcome";
 import { runAdminAIOpenAI } from "../../lib/server/admin-ai-openai";
 
 const repoRoot = path.resolve(process.cwd());
@@ -26,6 +28,51 @@ test("locks saved-task and audit retention to 90 days", () => {
   expect(ADMIN_AI_AUDIT_RETENTION_DAYS).toBe(90);
   expect(DEFAULT_ADMIN_AI_OWNER_POLICY.retentionPeriodDays).toBe(90);
   expect(DEFAULT_ADMIN_AI_OWNER_POLICY.auditConfiguration.retentionDays).toBe(90);
+});
+
+test("marks invalid-provider fallback as failed-safe before reporting activity", () => {
+  expect(normalizeAdminAICheckpointDisposition("failed-safe", "invalid-provider-response")).toEqual(
+    {
+      reasonCode: "invalid-provider-response",
+      status: "failed-safe"
+    }
+  );
+  expect(normalizeAdminAICheckpointDisposition("failed-safe", "completed")).toBeNull();
+
+  expect(
+    getAdminAIResponseOutcome(
+      {
+        body: "A deterministic fallback remained available.",
+        items: [],
+        providerFallbackReason: "invalid-provider-response",
+        state: "ready",
+        title: "Grounded fallback"
+      },
+      "Entire Admin Panel"
+    )
+  ).toEqual({
+    activityDetail:
+      "Provider result degraded safely (invalid-provider-response); deterministic fallback remained available.",
+    activityStatus: "error",
+    assistantState: "warning",
+    checkpointReasonCode: "invalid-provider-response",
+    checkpointStatus: "failed-safe",
+    degraded: true,
+    observationOutcome: "failed"
+  });
+});
+
+test("validates durable provider output before committing its checkpoint", () => {
+  const operation = read("functions/api/admin/ai-tasks/[taskId]/[operation].ts");
+  const validationIndex = operation.indexOf("isAdminAIProviderNarrativeGrounded");
+  const checkpointIndex = operation.indexOf("checkpointAdminAITask({");
+
+  expect(validationIndex).toBeGreaterThan(-1);
+  expect(checkpointIndex).toBeGreaterThan(validationIndex);
+  expect(operation).toMatch(/status:\s*providerOutputValid\s*\?\s*"active"\s*:\s*"failed-safe"/);
+  expect(operation).toMatch(
+    /reasonCode:\s*providerOutputValid\s*\?\s*"safe-checkpoint"\s*:\s*"invalid-provider-response"/
+  );
 });
 
 test("routes routine and compatibility work to Luna low and medium", () => {
@@ -120,7 +167,7 @@ test("server provider adapter owns Responses API calls with store false", () => 
   const endpoint = read("functions/api/admin/ai-provider.ts");
   expect(provider).toContain("https://api.openai.com/v1/responses");
   expect(provider).toMatch(/store:\s*false/);
-  expect(provider).toContain('effort: route.reasoningEffort');
+  expect(provider).toContain("effort: route.reasoningEffort");
   expect(provider).toContain("OPENAI_API_KEY");
   expect(endpoint).toContain("requireAdmin");
   expect(endpoint).toContain('requireCsrf: request.method === "POST"');

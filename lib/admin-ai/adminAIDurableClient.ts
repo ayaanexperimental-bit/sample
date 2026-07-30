@@ -1,8 +1,5 @@
 import type { AdminAIFeedbackKind } from "./adminAITypes";
-import type {
-  AdminAIProviderRequest,
-  AdminAIProviderResponse
-} from "./adminAIModelRouting";
+import type { AdminAIProviderRequest, AdminAIProviderResponse } from "./adminAIModelRouting";
 
 export type AdminAISavedTaskClient = {
   accessChanged?: boolean;
@@ -341,10 +338,10 @@ export async function mutateAdminAISchedule(
 }
 
 export async function loadAdminAISavedTasks(signal?: AbortSignal) {
-  return requestJson<{ ok?: boolean; tasks?: AdminAISavedTaskClient[] }>(
-    "/api/admin/ai-tasks",
-    { method: "GET", signal }
-  );
+  return requestJson<{ ok?: boolean; tasks?: AdminAISavedTaskClient[] }>("/api/admin/ai-tasks", {
+    method: "GET",
+    signal
+  });
 }
 
 export async function loadAdminAISavedTask(id: string, signal?: AbortSignal) {
@@ -382,12 +379,7 @@ export async function mutateAdminAISavedTask(
 ) {
   return requestJson<{ ok?: boolean; task?: AdminAISavedTaskClient }>(
     `/api/admin/ai-tasks/${encodeURIComponent(task.id)}/${operation}`,
-    taskWriteRequest(
-      "POST",
-      { expectedVersion: task.version },
-      csrfToken,
-      idempotencyKey
-    )
+    taskWriteRequest("POST", { expectedVersion: task.version }, csrfToken, idempotencyKey)
   );
 }
 
@@ -440,7 +432,12 @@ export async function requestAdminAIProviderDurably(
 
 export async function checkpointAdminAISavedTask(
   task: Pick<AdminAISavedTaskClient, "id" | "version">,
-  input: { assistantSummary: string; query: string },
+  input: {
+    assistantSummary: string;
+    query: string;
+    reasonCode?: string;
+    status?: "active" | "failed-safe";
+  },
   csrfToken: string,
   idempotencyKey: string
 ) {
@@ -452,7 +449,9 @@ export async function checkpointAdminAISavedTask(
         assistantSummary: input.assistantSummary,
         expectedVersion: task.version,
         mode: "checkpoint",
-        query: input.query
+        query: input.query,
+        reasonCode: input.reasonCode,
+        status: input.status
       },
       csrfToken,
       idempotencyKey

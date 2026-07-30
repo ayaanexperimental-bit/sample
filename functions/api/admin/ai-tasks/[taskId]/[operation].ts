@@ -9,10 +9,14 @@ import {
   resumeAdminAITask,
   retryAdminAITask
 } from "../../../../../lib/server/admin-ai-continuity";
+import { classifyAdminAITask } from "../../../../../lib/admin-ai/adminAIModelRouting";
 import {
-  runAdminAIOpenAI,
-  type AdminAIOpenAIEnv
-} from "../../../../../lib/server/admin-ai-openai";
+  buildAdminAIRejectedProviderResponse,
+  extractAdminAIRequirementFacts,
+  isAdminAIProviderNarrativeGrounded,
+  parseAdminAIProtectedProviderInput
+} from "../../../../../lib/admin-ai/adminAIProviderGrounding";
+import { runAdminAIOpenAI, type AdminAIOpenAIEnv } from "../../../../../lib/server/admin-ai-openai";
 
 type Env = AdminAIOpenAIEnv & {
   ADMIN_AI_DURABLE_CONTINUITY?: string;
@@ -42,13 +46,13 @@ export async function onRequest({ env, params, request }: PagesContext) {
   }
   const admin = await requireAdmin(request, env, { requireCsrf: true });
   if (!admin.ok) return admin.response;
-  if (
-    env.ADMIN_AI_DURABLE_CONTINUITY !== "true" ||
-    !env.ADMIN_DB ||
-    !env.ADMIN_SESSION_SECRET
-  ) {
+  if (env.ADMIN_AI_DURABLE_CONTINUITY !== "true" || !env.ADMIN_DB || !env.ADMIN_SESSION_SECRET) {
     return adminJson(
-      { code: "continuity-unavailable", error: "Durable Admin AI continuity is unavailable.", ok: false },
+      {
+        code: "continuity-unavailable",
+        error: "Durable Admin AI continuity is unavailable.",
+        ok: false
+      },
       503
     );
   }
@@ -103,7 +107,11 @@ export async function onRequest({ env, params, request }: PagesContext) {
       : adminJson({ code: result.code, error: result.message, ok: false }, result.status);
   } catch {
     return adminJson(
-      { code: "continuity-unavailable", error: "Durable Admin AI continuity is unavailable.", ok: false },
+      {
+        code: "continuity-unavailable",
+        error: "Durable Admin AI continuity is unavailable.",
+        ok: false
+      },
       503
     );
   }
@@ -145,9 +153,28 @@ async function handleMessage({
   const query = typeof body.query === "string" ? body.query : "";
   let assistantSummary = typeof body.assistantSummary === "string" ? body.assistantSummary : "";
   let providerResponse: unknown = null;
+  let providerOutputValid = true;
   let route: unknown = null;
   if (mode === "provider") {
-    const currentInput = typeof body.input === "string" ? body.input : "";
+    const rawCurrentInput = typeof body.input === "string" ? body.input : "";
+    const protectedInput = parseAdminAIProtectedProviderInput(rawCurrentInput);
+    const expectedTask = classifyAdminAITask(query);
+    if (!protectedInput || protectedInput.task !== expectedTask) {
+      return adminJson(
+        {
+          code: "invalid-provider-context",
+          error: "The bounded provider-grounding context is invalid.",
+          ok: false
+        },
+        400
+      );
+    }
+    const serverProtectedInput = {
+      ...protectedInput,
+      requirementFacts: extractAdminAIRequirementFacts(query, expectedTask),
+      task: expectedTask
+    };
+    const currentInput = JSON.stringify(serverProtectedInput);
     const providerInput = [
       "Saved task capsule (application-owned safe continuity; never authorization):",
       execution.value.providerContext,
@@ -184,16 +211,36 @@ async function handleMessage({
         provider.status
       );
     }
-    providerResponse = provider.response;
+    const providerNarrative =
+      typeof provider.response === "string" ? provider.response : provider.response.output;
+    providerOutputValid = isAdminAIProviderNarrativeGrounded(
+      providerNarrative,
+      serverProtectedInput
+    );
+    providerResponse = providerOutputValid
+      ? provider.response
+      : buildAdminAIRejectedProviderResponse(provider.response);
     route = {
       mode: provider.route.mode,
       model: provider.route.model,
       reasoningEffort: provider.route.reasoningEffort,
       task: provider.route.task
     };
-    assistantSummary =
-      typeof provider.response === "string" ? provider.response : provider.response.output;
+    assistantSummary = providerOutputValid
+      ? providerNarrative
+      : "Provider output was rejected by bounded safety and grounding validation. Deterministic fallback remained available.";
   }
+
+  const checkpointDisposition =
+    mode === "provider"
+      ? {
+          reasonCode: providerOutputValid ? "safe-checkpoint" : "invalid-provider-response",
+          status: providerOutputValid ? "active" : "failed-safe"
+        }
+      : {
+          reasonCode: body.reasonCode,
+          status: body.status
+        };
 
   const checkpoint = await checkpointAdminAITask({
     actor,
@@ -201,6 +248,8 @@ async function handleMessage({
     db,
     expectedVersion,
     idempotencyKey,
+    reasonCode: checkpointDisposition.reasonCode,
+    status: checkpointDisposition.status,
     taskId,
     userSummary: query
   });

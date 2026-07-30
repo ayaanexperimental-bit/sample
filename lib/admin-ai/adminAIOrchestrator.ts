@@ -29,6 +29,11 @@ import {
   type AdminAIProviderAdapter
 } from "./adminAIModelRouting";
 import {
+  ADMIN_AI_PROMPT_INJECTION_PATTERNS,
+  extractAdminAIRequirementFacts,
+  isAdminAIProviderNarrativeGrounded
+} from "./adminAIProviderGrounding";
+import {
   ADMIN_AI_EXECUTIVE_REPORT_TYPES,
   evaluateAdminAIReportPreflight,
   formatAdminAIReportText as formatStructuredReport,
@@ -82,18 +87,6 @@ const ACTION_MATCH_STOP_WORDS = new Set([
   "update",
   "workflow"
 ]);
-const PROMPT_INJECTION_PATTERNS = [
-  /ignore (all |any |the )?(admin|previous|security|system) (instructions|permissions|rules)/i,
-  /ignore (all |any |the )?permissions/i,
-  /bypass .{0,24}\b(confirmation|otp|permission|rbac|security|validation)/i,
-  /\b(give|reveal|show).{0,24}\b(otp|session cookie|secret|token)\b/i,
-  /reveal (api|payment|private|session).{0,20}(key|secret|token|cookie)/i,
-  /show (all )?(otp|session cookie|secret|token)/i,
-  /call (an )?(arbitrary|unknown|unregistered) (api|tool)/i,
-  /pretend (the )?action (worked|succeeded)/i,
-  /fabricate (analytics|data|metric|result)/i
-];
-
 type RunAdminAIQueryInput = {
   context: AdminAISectionContext;
   featureFlags: AdminAIFeatureFlags;
@@ -484,9 +477,7 @@ export async function runAdminAINaturalLanguageQueryWithModel({
     query: safeQuery,
     requestedMaxOutputTokens,
     signal,
-    validateProviderOutput: (value) =>
-      isSafeProviderNarrative(value) &&
-      isProviderNarrativeNumericallyGrounded(value, protectedInput)
+    validateProviderOutput: (value) => isAdminAIProviderNarrativeGrounded(value, protectedInput)
   });
   const fallbackReason = dispatch.fallbackReason
     ? ` Deterministic fallback: ${dispatch.fallbackReason}.`
@@ -497,7 +488,14 @@ export async function runAdminAINaturalLanguageQueryWithModel({
   };
 
   if (dispatch.source !== "provider") {
-    return { ...deterministic, modelRoute };
+    return {
+      ...deterministic,
+      modelRoute,
+      providerFallbackReason:
+        dispatch.fallbackReason && dispatch.fallbackReason !== "deterministic-task"
+          ? dispatch.fallbackReason
+          : undefined
+    };
   }
 
   const providerNarrative = sanitizeProviderNarrative(dispatch.output);
@@ -605,6 +603,7 @@ function buildProtectedProviderInput(
   query: string
 ) {
   const scopedEntityCount = getEntitiesForScope(context, scope).length;
+  const task = classifyAdminAITask(query);
   return {
     dateRange: normalizeProviderDateRange(context.dateRange),
     freshness: classifyProviderFreshness(context.dataFreshness),
@@ -615,10 +614,11 @@ function buildProtectedProviderInput(
         scope === "selection" ? 0 : getVisibleMetricsForScope(context, scope).length,
       warningCount: context.warnings.length
     },
+    requirementFacts: extractAdminAIRequirementFacts(query, task),
     scope,
     section: context.sectionId,
-    task: classifyAdminAITask(query),
-    version: 1
+    task,
+    version: 2 as const
   };
 }
 
@@ -639,46 +639,6 @@ function classifyProviderFreshness(value: string) {
   if (/day|today|yesterday/i.test(value)) return "within-days";
   if (/stale|week|month/i.test(value)) return "stale";
   return "unknown";
-}
-
-function isSafeProviderNarrative(value: string) {
-  if (!value.trim() || value.length > 4_000) return false;
-  if (PROMPT_INJECTION_PATTERNS.some((pattern) => pattern.test(value))) return false;
-  return ![
-    /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i,
-    /(?:\+\d[\d\s().-]{7,}\d|\(\d{2,4}\)\s*\d[\d\s.-]{5,}\d|\b\d{10,15}\b)/,
-    /\b(?:api[-_ ]?key|access[-_ ]?token|client[-_ ]?secret|password|otp|private[-_ ]?key)\s*[:=]\s*\S+/i,
-    /\b(?:sk|pk|rk)[-_](?:live|test)[-_][A-Za-z0-9_-]{6,}\b/i,
-    /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/,
-    /-----BEGIN [A-Z ]*PRIVATE KEY-----/
-  ].some((pattern) => pattern.test(value));
-}
-
-function isProviderNarrativeNumericallyGrounded(
-  value: string,
-  protectedInput: ReturnType<typeof buildProtectedProviderInput>
-) {
-  const claims = extractNumericClaims(value);
-  if (!claims.length) return true;
-
-  const evidenceValues = Object.values(protectedInput.metrics).filter(Number.isFinite);
-  const supportedNumbers = new Set(evidenceValues);
-  const supportedPercentages = new Set<number>();
-
-  for (const left of evidenceValues) {
-    for (const right of evidenceValues) {
-      if (right !== 0) {
-        addRoundedValues(supportedNumbers, left / right);
-        addRoundedValues(supportedPercentages, (left / right) * 100);
-      }
-    }
-  }
-
-  return claims.every((claim) => {
-    if (claim.unit === "currency") return false;
-    const supported = claim.unit === "percent" ? supportedPercentages : supportedNumbers;
-    return Array.from(supported).some((value) => numbersMatch(value, claim.value));
-  });
 }
 
 function extractNumericClaims(value: string) {
@@ -703,16 +663,6 @@ function extractNumericClaims(value: string) {
   });
 }
 
-function addRoundedValues(target: Set<number>, value: number) {
-  for (let precision = 0; precision <= 2; precision += 1) {
-    target.add(Number(value.toFixed(precision)));
-  }
-}
-
-function numbersMatch(left: number, right: number) {
-  return Math.abs(left - right) <= Math.max(1e-9, Math.abs(left) * 1e-9);
-}
-
 function sanitizeProviderNarrative(value: string) {
   return value
     .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, " ")
@@ -730,9 +680,7 @@ function splitProviderNarrativeClaims(value: string) {
   return sentences.flatMap((sentence) => {
     const text = sentence.trim().replace(/[.!?]+$/, "");
     const clauses =
-      extractNumericClaims(text).length > 1
-        ? text.split(/\s*(?:,\s*)?\b(?:and|so)\b\s*/i)
-        : [text];
+      extractNumericClaims(text).length > 1 ? text.split(/\s*(?:,\s*)?\b(?:and|so)\b\s*/i) : [text];
     return clauses.flatMap((clause) => {
       const trimmed = clause.trim().replace(/^[,;:\s]+|[,;:\s]+$/g, "");
       if (!trimmed) return [];
@@ -3584,7 +3532,7 @@ function getMutationApprovalLevel(query: string): 2 | 3 | null {
 }
 
 function isPromptInjectionAttempt(query: string) {
-  return PROMPT_INJECTION_PATTERNS.some((pattern) => pattern.test(query));
+  return ADMIN_AI_PROMPT_INJECTION_PATTERNS.some((pattern) => pattern.test(query));
 }
 
 function sanitizeQuery(value: string) {
