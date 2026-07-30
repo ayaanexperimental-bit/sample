@@ -238,7 +238,7 @@ Graphify emitted one non-blocking zero-node retry warning for `.impeccable/desig
 ## Production release closure
 
 - Implementation commit: `4bb590b` (`Release full-panel Admin Impeccable refinement`), pushed to `origin/integration/admin-v2-od-real-wiring-20260703-231720`.
-- Evidence-only follow-up commit: the documentation-only commit immediately following `4bb590b` in branch history records this closure without changing production code.
+- Evidence-only follow-up commit: `f8f5315` (`Record Admin Impeccable production release evidence`), pushed immediately after `4bb590b` without changing production code.
 - Pages deployment ID: `7184f86e-87a8-43c2-b50a-a8e2333b503b`.
 - Pages deployment URL: `https://7184f86e.ywcoach.pages.dev`.
 - Deployment source: Cloudflare records `4bb590b` on production branch `main`.
@@ -248,4 +248,4 @@ Graphify emitted one non-blocking zero-node retry warning for `.impeccable/desig
 - Production Admin AI auth boundary: five safe GET endpoints checked on the deployment URL and `ywcoach.com`; all 10 requests return 401 with `no-store`.
 - Production mutation boundary: no authenticated billed prompt, real provider/customer mutation, payment, email, image-provider operation, D1/R2 mutation, or sensitive Admin action was performed.
 - Worker boundary: the separately deployed live-viewer/retention Worker was not deployed or changed by this release.
-- Final upstream divergence and worktree state: recorded after the documentation-only closure commit and local preview shutdown.
+- Final local closure: upstream divergence `0/0`, Git worktree clean, preview port `4802` closed, and protected Headroom port `8787` still listening with healthy status.
