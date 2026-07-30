@@ -424,6 +424,7 @@ export async function requestAdminAIProviderDurably(
         requestedMaxOutputTokens: request.maxOutputTokens
       };
   return requestJson<{
+    observationRequestId?: string | null;
     ok?: boolean;
     response?: AdminAIProviderResponse;
     task?: AdminAISavedTaskClient;

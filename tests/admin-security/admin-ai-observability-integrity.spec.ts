@@ -4,7 +4,11 @@ import type { AdminSessionPayload } from "../../lib/server/admin-auth";
 import { createAdminCsrfToken, createAdminSessionCookie } from "../../lib/server/admin-auth";
 import { onRequest as handleAdminAIAction } from "../../functions/api/admin/ai-actions";
 import { onRequest as handleAdminAIObservability } from "../../functions/api/admin/ai-observability";
-import { recordAdminAIObservation } from "../../lib/server/admin-ai-observability";
+import { onRequest as handleAdminAIProvider } from "../../functions/api/admin/ai-provider";
+import {
+  recordAdminAIObservation,
+  recordAdminAIProviderReadAttestation
+} from "../../lib/server/admin-ai-observability";
 
 const ADMIN_EMAIL = "integrity-admin@example.com";
 const SESSION_SECRET = "admin-ai-observability-integrity-secret";
@@ -65,6 +69,192 @@ test.describe("Admin AI observability integrity", () => {
     });
     expect(replayWithFreshClientId).toMatchObject({ code: "conflict", ok: false, status: 409 });
     expect(db.observations).toHaveLength(1);
+  });
+
+  test("persists server-attested Luna telemetry while ignoring forged client values", async () => {
+    const db = new IntegrityFakeD1();
+    const attestation = await recordAdminAIProviderReadAttestation({
+      adminEmail: ADMIN_EMAIL,
+      env: { ADMIN_DB: db.asD1(), ADMIN_SESSION_SECRET: SESSION_SECRET },
+      latencyMs: 842,
+      module: "global",
+      outcome: "success",
+      request: apiRequest("/api/admin/ai-tasks/task-1/messages", {}, {}),
+      response: {
+        model: "gpt-5.6-luna",
+        output: "Both verified requirements use a 90-day retention policy.",
+        provider: "openai",
+        usage: { inputTokens: 137, outputTokens: 29 }
+      }
+    });
+    expect(attestation?.requestId).toMatch(/^aip-/);
+
+    const recorded = await recordAdminAIObservation({
+      adminEmail: ADMIN_EMAIL,
+      db: db.asD1(),
+      observation: forgedObservation({
+        command: "natural-language",
+        module: "global",
+        requestId: attestation?.requestId
+      })
+    });
+
+    expect(recorded).toMatchObject({ ok: true, status: 201 });
+    expect(db.observations).toHaveLength(1);
+    expect(db.observations[0]).toMatchObject({
+      command: "natural-language",
+      input_tokens: 137,
+      latency_ms: 842,
+      model: "gpt-5.6-luna",
+      model_version: null,
+      module: "global",
+      outcome: "success",
+      output_tokens: 29,
+      provider: "openai",
+      request_id: attestation?.requestId,
+      server_reference: db.auditEvents[0].id,
+      total_tokens: 166
+    });
+    expect(db.observations[0]).not.toMatchObject({
+      input_tokens: 9_000_000,
+      model: "forged-model",
+      output_tokens: 9_000_000,
+      provider: "forged-provider"
+    });
+  });
+
+  test("keeps rejected provider output failed-safe while accounting server usage", async () => {
+    const db = new IntegrityFakeD1();
+    const attestation = await recordAdminAIProviderReadAttestation({
+      adminEmail: ADMIN_EMAIL,
+      env: { ADMIN_DB: db.asD1(), ADMIN_SESSION_SECRET: SESSION_SECRET },
+      latencyMs: 603,
+      module: "global",
+      outcome: "failed",
+      request: apiRequest("/api/admin/ai-tasks/task-2/messages", {}, {}),
+      response: {
+        model: "gpt-5.6-luna",
+        output: "Rejected ungrounded provider output.",
+        provider: "openai",
+        usage: { inputTokens: 101, outputTokens: 17 }
+      }
+    });
+    expect(attestation?.requestId).toMatch(/^aip-/);
+
+    const recorded = await recordAdminAIObservation({
+      adminEmail: ADMIN_EMAIL,
+      db: db.asD1(),
+      observation: forgedObservation({
+        command: "natural-language",
+        module: "global",
+        outcome: "success",
+        requestId: attestation?.requestId
+      })
+    });
+
+    expect(recorded).toMatchObject({ ok: true, status: 201 });
+    expect(db.observations[0]).toMatchObject({
+      error_codes_json: JSON.stringify(["server-recorded-failure"]),
+      input_tokens: 101,
+      model: "gpt-5.6-luna",
+      outcome: "failed",
+      output_tokens: 17,
+      provider: "openai",
+      total_tokens: 118
+    });
+  });
+
+  test("provider endpoint issues the opaque telemetry reference used by observation storage", async () => {
+    const db = new IntegrityFakeD1();
+    const session = await createAdminTestSession();
+    const env = {
+      ADMIN_AI_OPENAI_PROVIDER: "true",
+      ADMIN_ALLOWED_EMAILS: ADMIN_EMAIL,
+      ADMIN_AUTH_DEMO_ENABLED: "true",
+      ADMIN_DB: db.asD1(),
+      ADMIN_REQUIRE_DB_ADMIN_ROLES: "false",
+      ADMIN_SESSION_SECRET: SESSION_SECRET,
+      OPENAI_API_KEY: "test-provider-key",
+      ROOT_OWNER_EMAIL: ADMIN_EMAIL
+    };
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify({
+          model: "gpt-5.6-luna",
+          output_text:
+            "Both bounded requirements specify 90 days, so there is no direct duration conflict.",
+          status: "completed",
+          usage: { input_tokens: 211, output_tokens: 31 }
+        }),
+        { headers: { "content-type": "application/json" }, status: 200 }
+      );
+
+    try {
+      const query =
+        "Check these two requirements for compatibility conflicts: audit logs must be retained 90 days and saved task memory must be retained 90 days.";
+      const providerResponse = await handleAdminAIProvider({
+        env,
+        request: apiRequest(
+          "/api/admin/ai-provider",
+          {
+            cookie: session.cookie,
+            "x-yw-admin-csrf": session.csrfToken
+          },
+          {
+            input: JSON.stringify({
+              dateRange: "unavailable",
+              freshness: "recent",
+              metrics: {
+                permissionVisibleEntityCount: 0,
+                sourceErrorCount: 0,
+                visibleMetricCount: 0,
+                warningCount: 0
+              },
+              requirementFacts: [],
+              scope: "Entire Admin Panel",
+              section: "Admin Overview",
+              task: "requirement-conflict-analysis",
+              version: 2
+            }),
+            query,
+            requestedMaxOutputTokens: 240
+          }
+        )
+      });
+      expect(providerResponse.status).toBe(200);
+      const payload = (await providerResponse.json()) as {
+        observationRequestId?: string;
+        response?: { output?: string };
+      };
+      expect(payload).toMatchObject({
+        observationRequestId: expect.stringMatching(/^aip-/),
+        response: {
+          output: expect.stringContaining("no direct duration conflict")
+        }
+      });
+
+      const recorded = await recordAdminAIObservation({
+        adminEmail: ADMIN_EMAIL,
+        db: db.asD1(),
+        observation: forgedObservation({
+          command: "natural-language",
+          module: "global",
+          requestId: payload.observationRequestId
+        })
+      });
+      expect(recorded).toMatchObject({ ok: true, status: 201 });
+      expect(db.observations[0]).toMatchObject({
+        input_tokens: 211,
+        model: "gpt-5.6-luna",
+        outcome: "success",
+        output_tokens: 31,
+        provider: "openai",
+        total_tokens: 242
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   test("rejects fabricated and cross-admin request identifiers", async () => {
@@ -142,11 +332,15 @@ test.describe("Admin AI observability integrity", () => {
 
     const missingCsrf = await handleAdminAIAction({
       env,
-      request: apiRequest("/api/admin/ai-actions", { cookie: session.cookie }, {
-        mode: "attest-read",
-        module: "global",
-        outcome: "success"
-      })
+      request: apiRequest(
+        "/api/admin/ai-actions",
+        { cookie: session.cookie },
+        {
+          mode: "attest-read",
+          module: "global",
+          outcome: "success"
+        }
+      )
     });
     expect(missingCsrf.status).toBe(403);
 
@@ -439,8 +633,7 @@ class IntegrityStatement {
     if (this.sql.includes("UPDATE admin_ai_observations")) {
       const [feedbackKind, requestId, adminEmail] = this.params;
       const observation = this.db.observations.find(
-        (row) =>
-          row.request_id === String(requestId) && row.admin_email === String(adminEmail)
+        (row) => row.request_id === String(requestId) && row.admin_email === String(adminEmail)
       );
       if (!observation) return d1Result(0);
       observation.feedback_kind = String(feedbackKind);
@@ -546,11 +739,7 @@ async function createAdminTestSession() {
   return { cookie: cookie.split(";")[0], csrfToken };
 }
 
-function apiRequest(
-  path: string,
-  headers: Record<string, string>,
-  body: Record<string, unknown>
-) {
+function apiRequest(path: string, headers: Record<string, string>, body: Record<string, unknown>) {
   return new Request(`http://127.0.0.1:4802${path}`, {
     body: JSON.stringify(body),
     headers: {

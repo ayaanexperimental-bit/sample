@@ -17,6 +17,7 @@ import {
   parseAdminAIProtectedProviderInput
 } from "../../../../../lib/admin-ai/adminAIProviderGrounding";
 import { runAdminAIOpenAI, type AdminAIOpenAIEnv } from "../../../../../lib/server/admin-ai-openai";
+import { recordAdminAIProviderReadAttestation } from "../../../../../lib/server/admin-ai-observability";
 
 type Env = AdminAIOpenAIEnv & {
   ADMIN_AI_DURABLE_CONTINUITY?: string;
@@ -83,6 +84,7 @@ export async function onRequest({ env, params, request }: PagesContext) {
     const actor = await buildAdminAIContinuityActor(admin.admin, env.ADMIN_SESSION_SECRET);
     if (operation === "messages") {
       return handleMessage({
+        adminEmail: admin.admin.email,
         actor,
         body,
         db: env.ADMIN_DB,
@@ -118,6 +120,7 @@ export async function onRequest({ env, params, request }: PagesContext) {
 }
 
 async function handleMessage({
+  adminEmail,
   actor,
   body,
   db,
@@ -127,6 +130,7 @@ async function handleMessage({
   request,
   taskId
 }: {
+  adminEmail: string;
   actor: Awaited<ReturnType<typeof buildAdminAIContinuityActor>>;
   body: Record<string, unknown>;
   db: D1Database;
@@ -154,6 +158,7 @@ async function handleMessage({
   let assistantSummary = typeof body.assistantSummary === "string" ? body.assistantSummary : "";
   let providerResponse: unknown = null;
   let providerOutputValid = true;
+  let providerObservationRequestId: string | null = null;
   let route: unknown = null;
   if (mode === "provider") {
     const rawCurrentInput = typeof body.input === "string" ? body.input : "";
@@ -191,6 +196,7 @@ async function handleMessage({
         413
       );
     }
+    const providerStartedAt = Date.now();
     const provider = await runAdminAIOpenAI(env, {
       input: providerInput,
       query,
@@ -226,6 +232,30 @@ async function handleMessage({
       reasoningEffort: provider.route.reasoningEffort,
       task: provider.route.task
     };
+    const observationModule =
+      execution.value.task.scope.mode === "global" ? "global" : execution.value.task.scope.module;
+    const providerAttestation = await recordAdminAIProviderReadAttestation({
+      adminEmail,
+      env,
+      latencyMs: Date.now() - providerStartedAt,
+      module: observationModule,
+      outcome: providerOutputValid ? "success" : "failed",
+      request,
+      response: provider.response
+    });
+    if (!providerAttestation) {
+      return adminJson(
+        {
+          code: "provider-observability-unavailable",
+          error:
+            "The provider response was rejected because its server telemetry attestation could not be persisted.",
+          ok: false,
+          retryable: false
+        },
+        503
+      );
+    }
+    providerObservationRequestId = providerAttestation.requestId;
     assistantSummary = providerOutputValid
       ? providerNarrative
       : "Provider output was rejected by bounded safety and grounding validation. Deterministic fallback remained available.";
@@ -265,6 +295,7 @@ async function handleMessage({
     );
   }
   return adminJson({
+    observationRequestId: providerObservationRequestId,
     ok: true,
     response: providerResponse,
     route,

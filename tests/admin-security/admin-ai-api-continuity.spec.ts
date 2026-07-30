@@ -75,6 +75,24 @@ test("validates durable provider output before committing its checkpoint", () =>
   );
 });
 
+test("carries server-issued provider telemetry reference into durable observation write", () => {
+  const operation = read("functions/api/admin/ai-tasks/[taskId]/[operation].ts");
+  const providerEndpoint = read("functions/api/admin/ai-provider.ts");
+  const client = read("lib/admin-ai/adminAIDurableClient.ts");
+  const panel = read("components/admin/admin-ai/AdminAIPill.tsx");
+
+  expect(operation).toContain("recordAdminAIProviderReadAttestation");
+  expect(operation).toContain("observationRequestId: providerObservationRequestId");
+  expect(providerEndpoint).toContain("recordAdminAIProviderReadAttestation");
+  expect(providerEndpoint).toContain("buildAdminAIRejectedProviderResponse");
+  expect(providerEndpoint).toContain("observationRequestId: providerAttestation.requestId");
+  expect(client).toContain("observationRequestId?: string | null");
+  expect(panel).toContain("providerCheckpoint.observationRequestId");
+  expect(panel).toMatch(
+    /providerCheckpoint\.observationRequestId\s*\?\s*\{\s*ok:\s*true,\s*requestId:/
+  );
+});
+
 test("routes routine and compatibility work to Luna low and medium", () => {
   const routine = selectAdminAIModelRoute("Summarize this page");
   expect(routine).toMatchObject({

@@ -1,5 +1,7 @@
 import type { D1Database, D1Result } from "@cloudflare/workers-types";
 import type { AdminAIFeedbackKind } from "../admin-ai/adminAITypes";
+import type { AdminAIProviderResponse } from "../admin-ai/adminAIModelRouting";
+import { recordAdminAuditEvent, type AdminAuditEnv } from "./admin-audit";
 import { runCachedD1SchemaSetup, type D1SchemaCacheEntry } from "./d1-schema-cache";
 import { getAdminAIRetentionCutoffSeconds } from "./admin-ai-retention-policy";
 
@@ -191,20 +193,20 @@ type VerifiedAdminAIObservation = {
   errorCodes: string[];
   estimatedCostMicrousd: 0;
   feedbackKind: null;
-  inputTokens: 0;
-  latencyMs: 0;
-  model: "deterministic";
-  modelVersion: null;
+  inputTokens: number;
+  latencyMs: number;
+  model: string;
+  modelVersion: string | null;
   module: string;
   outcome: AdminAIObservationOutcome;
-  outputTokens: 0;
+  outputTokens: number;
   permissionDenied: false;
-  provider: "deterministic";
+  provider: string;
   requestId: string;
   safetyRefusal: false;
   serverReference: string;
   toolCalls: string[];
-  totalTokens: 0;
+  totalTokens: number;
 };
 
 const FEEDBACK_KINDS = new Set<AdminAIFeedbackKind>([
@@ -217,6 +219,57 @@ const FEEDBACK_KINDS = new Set<AdminAIFeedbackKind>([
 const CORRECTION_CATEGORIES = new Set<AdminAICorrectionCategory>(ADMIN_AI_CORRECTION_CATEGORIES);
 const schemaCache = new WeakMap<D1Database, D1SchemaCacheEntry>();
 const OBSERVATION_ATTESTATION_MAX_AGE_SECONDS = 10 * 60;
+
+export async function recordAdminAIProviderReadAttestation({
+  adminEmail,
+  env,
+  latencyMs,
+  module,
+  outcome,
+  request,
+  response
+}: {
+  adminEmail: string;
+  env: AdminAuditEnv;
+  latencyMs: number;
+  module: string;
+  outcome: "failed" | "success";
+  request: Request;
+  response: AdminAIProviderResponse;
+}) {
+  const value = typeof response === "string" ? null : response;
+  const provider = parseIdentifier(value?.provider, 120);
+  const model = parseIdentifier(value?.model, 120);
+  const moduleId = parseIdentifier(module, 80);
+  if (!provider || !model || !moduleId) return null;
+
+  const inputTokens = providerTokenCount(value?.usage?.inputTokens);
+  const outputTokens = providerTokenCount(value?.usage?.outputTokens);
+  const modelVersion = parseIdentifier(value?.modelVersion, 120);
+  const requestId = `aip-${crypto.randomUUID()}`;
+  const phase = outcome === "success" ? "completed" : "failed";
+  const reason = [
+    "copilot:natural-language",
+    `section:${moduleId}`,
+    "type:read",
+    `phase:${phase}`,
+    `request:${requestId}`,
+    `provider:${provider}`,
+    `model:${model}`,
+    `input-tokens:${inputTokens}`,
+    `output-tokens:${outputTokens}`,
+    `latency-ms:${parseAdminAITelemetryInteger(String(Math.max(0, Math.round(latencyMs))), 3_600_000)}`,
+    ...(modelVersion ? [`model-version:${modelVersion}`] : [])
+  ].join("|");
+  const persisted = await recordAdminAuditEvent({
+    email: adminEmail,
+    env,
+    reason,
+    request,
+    type: "ai_action"
+  });
+  return persisted ? { requestId } : null;
+}
 
 const OBSERVABILITY_SCHEMA = [
   `CREATE TABLE IF NOT EXISTS admin_ai_observations (
@@ -841,20 +894,20 @@ async function verifyObservation(
       errorCodes: candidate.outcome === "failed" ? ["server-recorded-failure"] : [],
       estimatedCostMicrousd: 0,
       feedbackKind: null,
-      inputTokens: 0,
-      latencyMs: 0,
-      model: "deterministic",
-      modelVersion: null,
+      inputTokens: candidate.inputTokens,
+      latencyMs: candidate.latencyMs,
+      model: candidate.model,
+      modelVersion: candidate.modelVersion,
       module: candidate.module,
       outcome: candidate.outcome,
-      outputTokens: 0,
+      outputTokens: candidate.outputTokens,
       permissionDenied: false,
-      provider: "deterministic",
+      provider: candidate.provider,
       requestId: locator.requestId,
       safetyRefusal: false,
       serverReference: candidate.serverReference,
       toolCalls: [],
-      totalTokens: 0
+      totalTokens: candidate.totalTokens
     };
   }
   return null;
@@ -865,7 +918,7 @@ function parseAdminAIAuditEvent(row: AdminAIAuditEventRow) {
   const reason = typeof row.reason === "string" ? row.reason : "";
   if (!id || !reason) return null;
   const normalizedReason = reason.replace(
-    /_(?=(?:section|type|phase|confirmation|records|request|path|fp):)/g,
+    /_(?=(?:section|type|phase|confirmation|records|request|provider|model|model-version|input-tokens|output-tokens|latency-ms|path|fp):)/g,
     "|"
   );
   const fields = new Map<string, string>();
@@ -884,6 +937,7 @@ function parseAdminAIAuditEvent(row: AdminAIAuditEventRow) {
   const command = parseIdentifier(action || copilot, 120);
   const moduleId = parseIdentifier(fields.get("section"), 80);
   if (!command || !moduleId) return null;
+  const providerTelemetry = parseAdminAIProviderTelemetry(fields);
 
   if (action) {
     const receiptId = parseAdminAIReceiptId(fields.get("receipt"));
@@ -893,6 +947,7 @@ function parseAdminAIAuditEvent(row: AdminAIAuditEventRow) {
       actionOutcome: "success" as const,
       command,
       dangerousActionBlocked: false,
+      ...deterministicAdminAITelemetry(),
       module: moduleId,
       outcome: "success" as const,
       receiptId,
@@ -923,12 +978,60 @@ function parseAdminAIAuditEvent(row: AdminAIAuditEventRow) {
             : ("failed" as const),
     command,
     dangerousActionBlocked: actionType === "dangerous" && outcome !== "success",
+    ...providerTelemetry,
     module: moduleId,
     outcome,
     receiptId: null,
     references: [id, ...(requestId ? [requestId] : [])],
     serverReference: id
   };
+}
+
+function parseAdminAIProviderTelemetry(fields: ReadonlyMap<string, string>) {
+  const provider = parseIdentifier(fields.get("provider"), 120);
+  const model = parseIdentifier(fields.get("model"), 120);
+  if (!provider || !model) return deterministicAdminAITelemetry();
+
+  const inputTokens = parseAdminAITelemetryInteger(fields.get("input-tokens"), 10_000_000);
+  const outputTokens = parseAdminAITelemetryInteger(fields.get("output-tokens"), 10_000_000);
+  const latencyMs = parseAdminAITelemetryInteger(fields.get("latency-ms"), 3_600_000);
+  const modelVersion = parseIdentifier(fields.get("model-version"), 120);
+  return {
+    inputTokens,
+    latencyMs,
+    model,
+    modelVersion: modelVersion || null,
+    outputTokens,
+    provider,
+    totalTokens: inputTokens + outputTokens
+  };
+}
+
+function deterministicAdminAITelemetry() {
+  return {
+    inputTokens: 0,
+    latencyMs: 0,
+    model: "deterministic",
+    modelVersion: null,
+    outputTokens: 0,
+    provider: "deterministic",
+    totalTokens: 0
+  } as const;
+}
+
+function parseAdminAITelemetryInteger(value: string | undefined, ceiling: number) {
+  if (!value || !/^\d+$/.test(value)) return 0;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 && parsed <= ceiling ? parsed : 0;
+}
+
+function providerTokenCount(value: unknown) {
+  return typeof value === "number" &&
+    Number.isSafeInteger(value) &&
+    value >= 0 &&
+    value <= 10_000_000
+    ? value
+    : 0;
 }
 
 async function verifyActionReceipt(
@@ -1149,7 +1252,7 @@ function correctionReviewUpdate(
 async function readCorrectionRow(db: D1Database, id: string) {
   return db
     .prepare(
-       `SELECT id, request_id, admin_email, module, command, feedback_kind, category,
+      `SELECT id, request_id, admin_email, module, command, feedback_kind, category,
                correction_text, evaluation_status, review_status, automatic_retraining,
                reviewed_by, reviewed_at, review_reason, created_at
         FROM admin_ai_corrections WHERE id = ?1 AND created_at > ?2 LIMIT 1`

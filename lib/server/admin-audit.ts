@@ -60,7 +60,7 @@ export async function recordAdminAuditEvent(event: AdminAuditEvent) {
 async function createAuditReason(event: AdminAuditEvent) {
   const url = new URL(event.request.url);
   const parts = [
-    sanitizeAuditPart(event.reason),
+    sanitizeAuditPart(event.reason, 360),
     `path:${sanitizeAuditPart(url.pathname)}`,
     `fp:${await createRequestFingerprint(event.request, event.env)}`
   ].filter(Boolean);
@@ -95,10 +95,10 @@ function normalizeAuditEmail(email?: string) {
   return normalized && normalized.includes("@") ? normalized.slice(0, 254) : null;
 }
 
-function sanitizeAuditPart(value?: string) {
+function sanitizeAuditPart(value?: string, maxLength = 160) {
   if (!value) return "";
 
-  return value.replace(/[^a-zA-Z0-9:./@_-]/g, "_").slice(0, 160);
+  return value.replace(/[^a-zA-Z0-9:./@_-]/g, "_").slice(0, maxLength);
 }
 
 function getNowSeconds() {

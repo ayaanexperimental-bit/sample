@@ -2240,6 +2240,7 @@ export function AdminAIPill({
     const requestFingerprint = hashAdminAIText(`${requestKey}|${operationId}|${now}`);
     let taskForRequest = activeSavedTask;
     const providerCheckpoint = {
+      observationRequestId: "",
       task: null as AdminAISavedTaskClient | null
     };
     const controller = beginAbortableOperation();
@@ -2333,6 +2334,9 @@ export function AdminAIPill({
               if (result.payload.task) {
                 providerCheckpoint.task = result.payload.task;
               }
+              if (result.payload.observationRequestId) {
+                providerCheckpoint.observationRequestId = result.payload.observationRequestId;
+              }
               return result.payload.response;
             }
           },
@@ -2415,13 +2419,15 @@ export function AdminAIPill({
       if (operationRef.current !== operationId || controller.signal.aborted) return;
       const blocked = next.state === "insufficient-permission";
       const observationModule = taskScope === "global" ? "global" : taskContext.sectionId;
-      const attestation = await attestAdminAINaturalLanguageRead(
-        {
-          module: observationModule,
-          outcome: responseOutcome.observationOutcome
-        },
-        { csrfToken }
-      );
+      const attestation = providerCheckpoint.observationRequestId
+        ? { ok: true, requestId: providerCheckpoint.observationRequestId }
+        : await attestAdminAINaturalLanguageRead(
+            {
+              module: observationModule,
+              outcome: responseOutcome.observationOutcome
+            },
+            { csrfToken }
+          );
       if (operationRef.current !== operationId || controller.signal.aborted) return;
       next.progress = [
         { id: "scope", label: "Applying scope and permissions", status: "complete" },
