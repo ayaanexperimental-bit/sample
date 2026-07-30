@@ -8,11 +8,11 @@ Local candidate: `http://127.0.0.1:4802`
 
 ## Outcome
 
-The current Admin V2 and Admin AI candidate has completed the full-panel Impeccable Operate implementation and local verification phase. The pass covers the authentication routes, all 11 permission-visible Admin modules, Admin AI, shared dialogs/drawers, light and dark themes, and the supported responsive width matrix.
+The current Admin V2 and Admin AI release has completed the full-panel Impeccable Operate implementation, local verification, exact-scope publication, Cloudflare Pages production deployment, and production-safe smoke. The pass covers the authentication routes, all 11 permission-visible Admin modules, Admin AI, shared dialogs/drawers, light and dark themes, and the supported responsive width matrix.
 
 No production data, payment, email, image-provider operation, authenticated billed AI prompt, or sensitive Admin AI mutation was used to obtain this evidence.
 
-At the time this report was first written, commit, push, and Cloudflare Pages release were the remaining authorized delivery steps. The release section is updated after those steps complete.
+The release completed through implementation commit `4bb590b` and Cloudflare Pages deployment `7184f86e-87a8-43c2-b50a-a8e2333b503b`. The separate live-viewer Worker was intentionally left unchanged.
 
 ## Authoritative product boundary
 
@@ -233,17 +233,19 @@ Graphify emitted one non-blocking zero-node retry warning for `.impeccable/desig
 - **Admin AI 90-day retention and safe continuity contract:** preserved.
 - **Strict fresh A/B/C verdict:** `NEEDS_MANUAL_VERIFICATION` only because a fresh Target A OpenDesign recapture was unavailable and authenticated production mutation/provider execution was intentionally not performed.
 - **Code-fixable Admin/Impeccable blocker:** none.
-- **Remaining authorized delivery work at report draft:** exact-scope commit, push, Cloudflare Pages deployment, production-safe smoke, and final clean-worktree confirmation.
+- **Authorized delivery:** implementation commit, push, Cloudflare Pages deployment, and production-safe smoke completed; final clean-worktree confirmation follows the documentation-only closure commit.
 
 ## Production release closure
 
-To be completed after the authorized Cloudflare Pages deployment:
-
-- Implementation commit:
-- Evidence-only follow-up commit:
-- Pages deployment ID:
-- Pages deployment URL:
-- Custom-domain verification:
-- Production security/header and Admin API results:
-- Final upstream divergence:
-- Final worktree state:
+- Implementation commit: `4bb590b` (`Release full-panel Admin Impeccable refinement`), pushed to `origin/integration/admin-v2-od-real-wiring-20260703-231720`.
+- Evidence-only follow-up commit: the documentation-only commit immediately following `4bb590b` in branch history records this closure without changing production code.
+- Pages deployment ID: `7184f86e-87a8-43c2-b50a-a8e2333b503b`.
+- Pages deployment URL: `https://7184f86e.ywcoach.pages.dev`.
+- Deployment source: Cloudflare records `4bb590b` on production branch `main`.
+- Custom-domain verification: `https://ywcoach.com` and `https://www.ywcoach.com` both serve `/admin` and `/admin/login` with 200; unauthenticated `/admin/dashboard` redirects 302 to login.
+- Production security/header results: deployment URL and both custom domains return CSP, HSTS, X-Frame-Options `DENY`, nosniff, and `no-store` on the checked Admin routes.
+- Production Admin assets: all 19 referenced JS/CSS assets on `ywcoach.com` return 200 with expected JavaScript or CSS content types.
+- Production Admin AI auth boundary: five safe GET endpoints checked on the deployment URL and `ywcoach.com`; all 10 requests return 401 with `no-store`.
+- Production mutation boundary: no authenticated billed prompt, real provider/customer mutation, payment, email, image-provider operation, D1/R2 mutation, or sensitive Admin action was performed.
+- Worker boundary: the separately deployed live-viewer/retention Worker was not deployed or changed by this release.
+- Final upstream divergence and worktree state: recorded after the documentation-only closure commit and local preview shutdown.

@@ -2,7 +2,7 @@
 
 ## Current status — 2026-07-30 full-panel Impeccable continuation
 
-Delivery status at this update: **local candidate complete and verified; authorized commit, push, and Cloudflare Pages release pending**.
+Delivery status at this update: **full-panel release committed, pushed, deployed to Cloudflare Pages, and production-smoked**.
 
 Strict current A/B/C verdict: `NEEDS_MANUAL_VERIFICATION`.
 
@@ -21,6 +21,10 @@ Current Target B/C and source evidence:
 - Initial Admin artifact: `1,686,590 / 2,100,000` bytes.
 - Impeccable detector over `app/admin components/admin`: 1,579 advisories, 0 warnings, 0 errors.
 - Graphify code graph after `graphify update .`: 5,557 nodes / 11,935 edges / 275 communities; one advisory zero-node retry warning for `.impeccable/design.json`.
+- Exact 28-file implementation commit `4bb590b` is pushed to `origin/integration/admin-v2-od-real-wiring-20260703-231720`.
+- Cloudflare Pages production deployment `7184f86e-87a8-43c2-b50a-a8e2333b503b` records source `4bb590b` at `https://7184f86e.ywcoach.pages.dev`; both `ywcoach.com` custom domains serve it.
+- Production-safe smoke: Admin entry routes 200 with CSP/HSTS/XFO/nosniff and `no-store`; unauthenticated dashboard 302 to login; Admin assets `19/19`; five safe GET Admin AI endpoints on two hosts `10/10` return 401 with `no-store`.
+- The separate Worker was not deployed or changed, and no authenticated prompt, provider/customer/payment/email/image operation, D1/R2 mutation, or sensitive Admin action was performed.
 - Detailed evidence: `ADMIN_IMPECCABLE_FULL_PANEL_EVIDENCE_REPORT.md`.
 
 The earlier dated phases below are retained as historical evidence. Their then-current release/authorization statements do not override this current status block.
@@ -837,4 +841,6 @@ Current verdict:
 - No-wrapper/no-old-UI leak: pass.
 - Code-fixable Admin/Impeccable blocker: none.
 - Strict A/B/C status: `NEEDS_MANUAL_VERIFICATION` because fresh Target A recapture is unavailable.
-- Delivery: authorized commit, push, Cloudflare Pages deploy, production-safe smoke, and clean-worktree closure remain pending at this report update.
+- Delivery: exact 28-file implementation commit `4bb590b` was pushed; Cloudflare Pages production deployment `7184f86e-87a8-43c2-b50a-a8e2333b503b` records that source; both custom domains and the production-safe route/asset/API/header matrix pass.
+- Release safety: the separate Worker was not changed, and no authenticated billed prompt, real provider/customer mutation, payment, email, image-provider operation, D1/R2 mutation, or sensitive Admin action was performed.
+- Closure: only the documentation-only evidence commit, upstream parity check, local preview `4802` shutdown, and clean-worktree confirmation remain after this report update.
