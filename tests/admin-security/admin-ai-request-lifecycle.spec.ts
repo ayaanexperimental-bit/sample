@@ -158,7 +158,8 @@ test("lets admins dismiss busy Copilot work without cancelling the request", () 
 
   expect(closeStart).toBeGreaterThan(-1);
   expect(closeHandler).not.toContain("if (busy) return");
-  expect(closeHandler).toContain("setDrawerDismissed(true)");
+  expect(closeHandler).toContain("onOpenChange(false)");
+  expect(closeHandler).not.toContain("operationAbortRef.current?.abort()");
   expect(pillSource).toContain('aria-controls="admin-ai-copilot-dialog"');
   expect(drawerSource).toContain('id="admin-ai-copilot-dialog"');
 });
@@ -381,7 +382,7 @@ test("attaches source-labelled provenance to every durable incident response", (
   expect(helper).toContain("evidence: buildAdminAIIncidentProvenance(record.incident, context)");
 
   expect(pillSource).toMatch(
-    /\}, \[busy, effectiveContext, featureFlags\.incidentMode, panelContentReady, profile\?\.isOwner\]\);/
+    /\}, \[busy, effectiveContext, featureFlags\.incidentMode, panelContentActive, profile\?\.isOwner\]\);/
   );
 });
 
@@ -457,11 +458,11 @@ test("wires artifact creation through approval, Reports save, version checks, an
 test("refreshes approved report knowledge only for an authenticated open Copilot", () => {
   const loadAt = pillSource.indexOf("loadAdminAIArtifacts(controller.signal)");
   const effectStart = pillSource.lastIndexOf("useEffect(() => {", loadAt);
-  const effectEnd = pillSource.indexOf("}, [panelContentReady, profile?.email", loadAt);
+  const effectEnd = pillSource.indexOf("}, [panelContentActive, profile?.email", loadAt);
   const refreshEffect = pillSource.slice(effectStart, effectEnd);
 
   expect(loadAt).toBeGreaterThan(-1);
-  expect(refreshEffect).toContain("if (!panelContentReady || !profile?.email)");
+  expect(refreshEffect).toContain("if (!panelContentActive || !profile?.email)");
   expect(refreshEffect).toContain("controller.abort()");
   expect(pillSource).toContain("indexAdminAIApprovedReportArtifacts(");
   expect(pillSource).toContain("mergeAdminAIKnowledgeIndexes(");

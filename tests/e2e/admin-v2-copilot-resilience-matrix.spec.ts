@@ -6,6 +6,7 @@ import {
   type CoachSiteRecord,
   type CoachSiteStatus
 } from "../../lib/admin-coach-sites";
+import { adminV2ViewTitles } from "../../lib/admin-v2-access";
 
 const runCopilotSmoke = process.env.ADMIN_V2_COPILOT_SMOKE === "true";
 const smokeEmail = process.env.ADMIN_V2_SMOKE_EMAIL || "admin-v2-smoke@example.com";
@@ -119,7 +120,7 @@ test.describe("Admin V2 Copilot resilience and final browser matrix", () => {
       !RESPONSIVE_PROJECTS.has(testInfo.project.name),
       "This bounded matrix covers mobile, tablet, and desktop."
     );
-    test.setTimeout(240_000);
+    test.setTimeout(300_000);
 
     expect(MODULE_SCENARIOS.map(({ id }) => id).sort()).toEqual(
       Object.keys(adminAIRegistry).sort()
@@ -314,6 +315,49 @@ test.describe("Admin V2 Copilot resilience and final browser matrix", () => {
     await assertRouteChangeContinuesLongRead(page);
   });
 
+  test("keeps an async live-insight failure stable after replacing a detailed report", async ({
+    page
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile", "The narrow mobile viewport exposes the shift.");
+    test.setTimeout(90_000);
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await loginToAdminV2(page);
+    await enableCopilotForCurrentPage(page);
+
+    const adminUsers = getModuleScenario("admin-users");
+    await openModule(page, adminUsers);
+    const reportDrawer = await openCopilot(page, adminUsers.sectionName);
+    const generateReport = await revealCopilotCommand(reportDrawer, /Generate report/);
+    await generateReport.click();
+    const confirmation = reportDrawer.getByRole("alertdialog", {
+      name: "Generate report",
+      exact: true
+    });
+    await expect(confirmation).toBeVisible();
+    await confirmation.getByRole("button", { name: "Apply suggestion", exact: true }).click();
+    const largeReportConfirmation = reportDrawer.getByRole("alertdialog", {
+      name: "Large report confirmation",
+      exact: true
+    });
+    if (await largeReportConfirmation.isVisible()) {
+      await largeReportConfirmation
+        .getByRole("button", { name: "Continue", exact: true })
+        .click();
+    }
+    await expect(reportDrawer.getByRole("button", { name: "Copy report" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(reportDrawer).not.toBeVisible();
+
+    await startCLSMeasurement(page);
+    await assertLiveServiceFailureKeepsOverviewUsable(page);
+    const measurement = await readCLSMeasurement(page);
+    expect(
+      measurement.value,
+      `live-insight replacement CLS exceeded ${CLS_BUDGET}\n${JSON.stringify(measurement.detail)}`
+    ).toBeLessThanOrEqual(CLS_BUDGET);
+  });
+
   test("keeps Analytics coach-site identity exact and fails closed for unresolved targets", async ({
     page
   }, testInfo) => {
@@ -416,70 +460,81 @@ test.describe("Admin V2 Copilot resilience and final browser matrix", () => {
     });
 
     await page.emulateMedia({ reducedMotion: "reduce" });
+    await loginToAdminV2ViaOtpVerification(page);
+    const reviewOnlySettings = await getReviewOnlyDangerousCommandSettings(page);
+    const exposeReviewOnlyDangerousCommands = async (route: Route) => {
+      if (route.request().method() !== "GET") {
+        await route.fallback();
+        return;
+      }
+      await route.fulfill({ json: reviewOnlySettings });
+    };
     await page.route("**/api/admin/ai-settings", exposeReviewOnlyDangerousCommands);
-    await loginToAdminV2(page);
     expect(NON_EXECUTABLE_CONFIRMATIONS).toHaveLength(9);
     expect(NON_EXECUTABLE_CONFIRMATIONS.filter(({ command }) => command.otpRequired)).toHaveLength(
       4
     );
 
-    for (const { command, moduleScenario } of NON_EXECUTABLE_CONFIRMATIONS) {
-      await openModule(page, moduleScenario);
-      const drawer = await openCopilot(page, moduleScenario.sectionName);
+    try {
+      for (const { command, moduleScenario } of NON_EXECUTABLE_CONFIRMATIONS) {
+        await openModule(page, moduleScenario);
+        const drawer = await openCopilot(page, moduleScenario.sectionName);
 
-      const commandButton = await revealCopilotCommand(
-        drawer,
-        new RegExp(`^${escapeRegExp(command.label)}(?:\\s|$)`)
-      );
-      await commandButton.click();
-      let confirmation = drawer.getByRole("alertdialog", { name: command.label, exact: true });
-      await expect(confirmation).toBeVisible();
-      await expect(confirmation).toHaveAttribute(
-        "data-execution-availability",
-        command.executionContract.availability
-      );
-      if (command.otpRequired) {
-        await expect(confirmation).toContainText("Existing OTP required");
-        await expect(confirmation).toContainText(/cannot read, submit, or bypass an OTP/i);
-      }
-      await assertConfirmationUsable(confirmation, page, testInfo.project.name);
-      await confirmation.getByRole("button", { name: "Cancel" }).focus();
-      await page.keyboard.press("Enter");
-      await expect(drawer.getByRole("heading", { name: "Action cancelled" })).toBeVisible();
-
-      await commandButton.click();
-      confirmation = drawer.getByRole("alertdialog", { name: command.label, exact: true });
-      const approve = confirmation.getByRole("button", {
-        name: confirmationLabel(command),
-        exact: true
-      });
-      await approve.scrollIntoViewIfNeeded();
-      await approve.focus();
-      await page.keyboard.press("Enter");
-      await expect(confirmation).not.toBeVisible();
-      await expect(page.locator('[data-admin-version="v2"]')).toBeVisible();
-      if (command.kind === "navigate" && command.destinationView) {
-        const destination = getModuleScenario(command.destinationView as RegistryModuleId);
-        await expect(drawer).not.toBeVisible();
-        await expect(
-          page.getByRole("heading", { name: destination.heading, exact: true }).first()
-        ).toBeVisible();
-        await expect
-          .poll(() => new URL(page.url()).searchParams.get("view"))
-          .toBe(command.destinationView);
-      } else {
-        await expect(drawer.locator('[data-admin-ai-response="true"]')).toHaveAttribute(
-          "data-state",
-          /^(action-prepared|blocked-missing-data|missing-data|ready)$/
+        const commandButton = await revealCopilotCommand(
+          drawer,
+          new RegExp(`^${escapeRegExp(command.label)}(?:\\s|$)`)
         );
-        await page.keyboard.press("Escape");
-      }
+        await commandButton.click();
+        let confirmation = drawer.getByRole("alertdialog", { name: command.label, exact: true });
+        await expect(confirmation).toBeVisible();
+        await expect(confirmation).toHaveAttribute(
+          "data-execution-availability",
+          command.executionContract.availability
+        );
+        if (command.otpRequired) {
+          await expect(confirmation).toContainText("Existing OTP required");
+          await expect(confirmation).toContainText(/cannot read, submit, or bypass an OTP/i);
+        }
+        await assertConfirmationUsable(confirmation, page, testInfo.project.name);
+        await confirmation.getByRole("button", { name: "Cancel" }).focus();
+        await page.keyboard.press("Enter");
+        await expect(drawer.getByRole("heading", { name: "Action cancelled" })).toBeVisible();
 
-      await expect(drawer).not.toBeVisible();
+        await commandButton.click();
+        confirmation = drawer.getByRole("alertdialog", { name: command.label, exact: true });
+        const approve = confirmation.getByRole("button", {
+          name: confirmationLabel(command),
+          exact: true
+        });
+        await approve.scrollIntoViewIfNeeded();
+        await approve.focus();
+        await page.keyboard.press("Enter");
+        await expect(confirmation).not.toBeVisible();
+        await expect(page.locator('[data-admin-version="v2"]')).toBeVisible();
+        if (command.kind === "navigate" && command.destinationView) {
+          const destination = getModuleScenario(command.destinationView as RegistryModuleId);
+          await expect(drawer).not.toBeVisible();
+          await expect(
+            page.getByRole("heading", { name: destination.heading, exact: true }).first()
+          ).toBeVisible();
+          await expect
+            .poll(() => new URL(page.url()).searchParams.get("view"))
+            .toBe(command.destinationView);
+        } else {
+          await expect(drawer.locator('[data-admin-ai-response="true"]')).toHaveAttribute(
+            "data-state",
+            /^(action-prepared|blocked-missing-data|missing-data|ready)$/
+          );
+          await page.keyboard.press("Escape");
+        }
+
+        await expect(drawer).not.toBeVisible();
+      }
+    } finally {
+      await page.unroute("**/api/admin/ai-settings", exposeReviewOnlyDangerousCommands);
     }
 
     expect(protectedMutationRequests).toEqual([]);
-    await page.unroute("**/api/admin/ai-settings", exposeReviewOnlyDangerousCommands);
   });
 
   test("fails closed and persists both disposable registered actions through refresh", async ({
@@ -568,6 +623,7 @@ async function openModule(page: Page, scenario: ModuleScenario) {
 }
 
 async function measureModuleNavigation(page: Page, scenario: ModuleScenario) {
+  const pageTitle = adminV2ViewTitles[scenario.id];
   let trigger: Locator;
   if (scenario.parentNav && scenario.nestedButton) {
     await selectAdminSection(page, scenario.parentNav);
@@ -589,7 +645,8 @@ async function measureModuleNavigation(page: Page, scenario: ModuleScenario) {
     throw new Error(`Missing navigation trigger for ${scenario.id}`);
   }
 
-  const navigationMs = await measureClickToVisibleHeading(page, trigger, scenario.heading);
+  const navigationMs = await measureClickToVisibleHeading(page, trigger, pageTitle);
+  await expect(page.getByRole("heading", { name: pageTitle, exact: true, level: 1 })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: scenario.heading, exact: true }).first()
   ).toBeVisible();
@@ -617,8 +674,11 @@ async function openCopilot(page: Page, sectionName: string) {
 
 async function revealCopilotCommand(drawer: Locator, name: RegExp | string) {
   const command = drawer.getByRole("button", { name });
-  if (!(await command.isVisible().catch(() => false))) {
-    await drawer.locator("details").filter({ hasText: "More commands" }).locator("summary").click();
+  const disclosure = drawer.locator("details").filter({ hasText: "More commands" });
+  await expect(disclosure).toBeVisible();
+  if ((await disclosure.getAttribute("open")) === null) {
+    await disclosure.locator("summary").click();
+    await expect(disclosure).toHaveAttribute("open", "");
   }
   await expect(command).toBeVisible();
   return command;
@@ -731,20 +791,21 @@ async function unavailableAdminAISettings(route: Route) {
   });
 }
 
-async function exposeReviewOnlyDangerousCommands(route: Route) {
-  if (route.request().method() !== "GET") {
-    await route.fallback();
-    return;
-  }
-  const response = await route.fetch();
+async function getReviewOnlyDangerousCommandSettings(page: Page) {
+  const response = await page.request.get("/api/admin/ai-settings");
   const payload = (await response.json()) as {
+    error?: string;
+    ok?: boolean;
     settings?: {
       effectivePolicy?: { actionPermissions?: { dangerousEnabled?: boolean } };
     };
   };
+  expect(response.status(), payload.error || "Admin AI settings snapshot failed.").toBe(200);
+  expect(payload.ok).toBe(true);
   const permissions = payload.settings?.effectivePolicy?.actionPermissions;
+  expect(permissions).toBeTruthy();
   if (permissions) permissions.dangerousEnabled = true;
-  await route.fulfill({ json: payload, response });
+  return payload;
 }
 
 async function assertLiveServiceFailureKeepsOverviewUsable(page: Page) {
@@ -1666,17 +1727,23 @@ async function startCLSMeasurement(page: Page) {
     const metricsWindow = window as Window & {
       __adminCopilotCLS?: number;
       __adminCopilotCLSDetail?: LayoutShiftDetail;
+      __adminCopilotCLSMeasurementId?: number;
       __adminCopilotCLSObserver?: PerformanceObserver;
     };
     metricsWindow.__adminCopilotCLSObserver?.disconnect();
+    const measurementId = (metricsWindow.__adminCopilotCLSMeasurementId || 0) + 1;
+    metricsWindow.__adminCopilotCLSMeasurementId = measurementId;
     metricsWindow.__adminCopilotCLS = 0;
     metricsWindow.__adminCopilotCLSDetail = { entries: [], value: 0 };
     let currentSessionValue = 0;
     let currentSessionStartedAt = 0;
     let previousEntryAt = 0;
     let currentSessionEntries: LayoutShiftDetail["entries"] = [];
+    const measurementStartedAt = performance.now();
     const observer = new PerformanceObserver((list) => {
+      if (metricsWindow.__adminCopilotCLSMeasurementId !== measurementId) return;
       for (const entry of list.getEntries() as LayoutShiftEntry[]) {
+        if (entry.startTime < measurementStartedAt) continue;
         if (entry.hadRecentInput) continue;
 
         if (

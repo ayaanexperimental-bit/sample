@@ -11,10 +11,8 @@
 .metric {
   border: 1px solid var(--console-border, rgba(183, 255, 60, 0.2));
   color: var(--console-text, #f4fff0);
-  background:
-    linear-gradient(135deg, var(--console-card-glint, rgba(255, 255, 255, 0.04)), transparent 42%),
-    var(--console-panel, #0d211a);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  background: var(--console-panel, #0d211a);
+  box-shadow: none;
 }
 
 .commandStrip {
@@ -24,22 +22,13 @@
   justify-content: space-between;
   gap: 20px;
   overflow: hidden;
-  border-radius: 18px;
+  border-radius: 12px;
   padding: 18px 20px;
 }
 
 .commandStrip::after {
-  position: absolute;
-  inset: auto -32px -52px auto;
-  width: 150px;
-  height: 150px;
-  border: 1px solid color-mix(in oklab, var(--accent, #b8ff4d), transparent 72%);
-  border-radius: 50%;
-  content: "";
-  pointer-events: none;
-  box-shadow:
-    0 0 0 22px color-mix(in oklab, var(--accent, #b8ff4d), transparent 94%),
-    0 0 60px color-mix(in oklab, var(--accent, #b8ff4d), transparent 88%);
+  content: none;
+  display: none;
 }
 
 .commandStrip > * {
@@ -66,23 +55,23 @@
 .metric {
   display: grid;
   align-content: space-between;
-  min-height: 128px;
+  min-height: 104px;
   gap: 8px;
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 16px;
 }
 
 .metric span,
 .parityCard header > span {
   color: var(--accent, #b8ff4d);
-  font: 700 0.68rem/1.2 var(--font-mono, ui-monospace, monospace);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  font: 650 0.8125rem/1.35 var(--font-sans, var(--font-body), ui-sans-serif, system-ui);
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .metric strong {
   color: var(--console-text, #f4fff0);
-  font: 760 clamp(1.4rem, 2.4vw, 2rem)/1 var(--font-mono, ui-monospace, monospace);
+  font: 760 1.5rem/1.1 var(--font-mono, ui-monospace, monospace);
 }
 
 .metric small {
@@ -100,7 +89,7 @@
 .parityCard {
   min-width: 0;
   overflow: hidden;
-  border-radius: 18px;
+  border-radius: 12px;
   padding: 20px;
 }
 
@@ -138,7 +127,7 @@
   width: 100%;
   min-width: 0;
   border: 1px solid var(--console-border, rgba(183, 255, 60, 0.2));
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 11px 12px;
   color: var(--console-text, #f4fff0);
   background: var(--console-panel-2, #102719);
@@ -214,9 +203,9 @@
 
 .definitionGrid dt {
   color: var(--console-muted, #8ea19a);
-  font-size: 0.7rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font: 650 0.8125rem/1.35 var(--font-sans, var(--font-body), ui-sans-serif, system-ui);
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .definitionGrid dd {
@@ -286,7 +275,7 @@
 }
 
 .roleGrid {
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 .roleGrid button {
@@ -315,16 +304,16 @@
 .permissionGrid fieldset {
   min-width: 0;
   border: 1px solid var(--console-border, rgba(183, 255, 60, 0.2));
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 12px;
 }
 
 .permissionGrid legend {
   padding: 0 6px;
   color: var(--accent, #b8ff4d);
-  font: 700 0.7rem/1 var(--font-mono, ui-monospace, monospace);
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font: 650 0.8125rem/1.35 var(--font-sans, var(--font-body), ui-sans-serif, system-ui);
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .permissionGrid label,
@@ -369,6 +358,91 @@
   padding: 11px 13px;
   color: var(--console-text, #f4fff0);
   background: var(--console-soft, rgba(183, 255, 60, 0.12));
+}
+
+.formSectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.formSectionHeader h4,
+.formSectionHeader p {
+  margin: 0;
+}
+
+.formSectionHeader h4 {
+  color: var(--console-text, #f4fff0);
+  font-size: 0.95rem;
+}
+
+.formSectionHeader p,
+.formSectionHeader > span {
+  color: var(--console-muted, #8ea19a);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.formSectionHeader p {
+  margin-top: 4px;
+}
+
+.formSectionHeader > span {
+  flex: 0 0 auto;
+}
+
+.permissionDisclosure {
+  overflow: clip;
+  border: 1px solid var(--console-border, rgba(183, 255, 60, 0.2));
+  border-radius: 12px;
+  color: var(--console-text, #f4fff0);
+  background: var(--console-panel-2, #102719);
+}
+
+.permissionDisclosure > summary {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.permissionDisclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.permissionDisclosure > summary > span:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.permissionDisclosure > summary strong {
+  font-size: 0.875rem;
+}
+
+.permissionDisclosure > summary small,
+.permissionDisclosure > summary > span:last-child {
+  color: var(--console-muted, #8ea19a);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.permissionDisclosure > summary:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--accent, #b8ff4d), transparent 62%);
+  outline-offset: -3px;
+}
+
+.permissionDisclosure[open] > summary {
+  border-bottom: 1px solid var(--console-border, rgba(183, 255, 60, 0.2));
+}
+
+.permissionDisclosure .permissionGrid {
+  padding: 14px;
 }
 
 .revealedSecret {
@@ -425,15 +499,9 @@
   max-height: min(860px, calc(100dvh - 40px));
   overflow: auto;
   border: 1px solid var(--console-border);
-  border-radius: 22px;
+  border-radius: 12px;
   color: var(--console-text);
-  background:
-    radial-gradient(
-      circle at 12% 0%,
-      color-mix(in oklab, var(--accent), transparent 82%),
-      transparent 34%
-    ),
-    var(--console-panel);
+  background: var(--console-panel);
   box-shadow: 0 30px 100px rgba(0, 0, 0, 0.52);
   outline: none;
 }
@@ -466,9 +534,9 @@
 
 .dialogHeader span {
   color: var(--accent);
-  font: 700 0.66rem/1 var(--font-mono, ui-monospace, monospace);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  font: 650 0.8125rem/1.35 var(--font-sans, var(--font-body), ui-sans-serif, system-ui);
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .dialogHeader h3 {
@@ -505,6 +573,7 @@
 
 @media (max-width: 640px) {
   .commandStrip,
+  .formSectionHeader,
   .dialogHeader,
   .dialogFooter {
     align-items: stretch;

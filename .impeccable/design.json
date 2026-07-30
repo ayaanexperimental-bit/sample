@@ -127,31 +127,31 @@
       "light-canvas": {
         "role": "neutral",
         "displayName": "Day Operations Canvas",
-        "canonical": "oklch(96.4% 0.035 126.5)",
+        "canonical": "oklch(96.7% 0.011 136.6)",
         "tonalRamp": [
-          "oklch(15% 0.035 126.5)",
-          "oklch(27% 0.035 126.5)",
-          "oklch(39% 0.035 126.5)",
-          "oklch(51% 0.035 126.5)",
-          "oklch(63% 0.035 126.5)",
-          "oklch(75% 0.035 126.5)",
-          "oklch(87% 0.035 126.5)",
-          "oklch(95% 0.035 126.5)"
+          "oklch(15% 0.011 136.6)",
+          "oklch(27% 0.011 136.6)",
+          "oklch(39% 0.011 136.6)",
+          "oklch(51% 0.011 136.6)",
+          "oklch(63% 0.011 136.6)",
+          "oklch(75% 0.011 136.6)",
+          "oklch(87% 0.011 136.6)",
+          "oklch(95% 0.011 136.6)"
         ]
       },
       "light-surface": {
         "role": "neutral",
         "displayName": "Day Operations Surface",
-        "canonical": "oklch(99.0% 0.021 130.0)",
+        "canonical": "oklch(99.1% 0.006 128.5)",
         "tonalRamp": [
-          "oklch(15% 0.021 130.0)",
-          "oklch(27% 0.021 130.0)",
-          "oklch(39% 0.021 130.0)",
-          "oklch(51% 0.021 130.0)",
-          "oklch(63% 0.021 130.0)",
-          "oklch(75% 0.021 130.0)",
-          "oklch(87% 0.021 130.0)",
-          "oklch(95% 0.021 130.0)"
+          "oklch(15% 0.006 128.5)",
+          "oklch(27% 0.006 128.5)",
+          "oklch(39% 0.006 128.5)",
+          "oklch(51% 0.006 128.5)",
+          "oklch(63% 0.006 128.5)",
+          "oklch(75% 0.006 128.5)",
+          "oklch(87% 0.006 128.5)",
+          "oklch(95% 0.006 128.5)"
         ]
       },
       "text-on-light": {

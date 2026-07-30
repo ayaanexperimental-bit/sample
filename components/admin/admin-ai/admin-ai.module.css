@@ -153,6 +153,12 @@
   -webkit-backdrop-filter: blur(4px);
 }
 
+.scrim[hidden],
+.drawer[hidden] {
+  display: none !important;
+  pointer-events: none !important;
+}
+
 .drawer {
   --ai-border-danger: #ff6675;
   --ai-border-info: #57a8ff;
@@ -183,6 +189,7 @@
   align-content: start;
   gap: 12px;
   width: min(620px, calc(100vw - 24px));
+  contain: layout paint style;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -208,6 +215,12 @@
   padding: 12px 16px;
   color: #f4f8f3;
   background: #07130c;
+}
+
+.drawerBody[data-visible="false"] {
+  contain-intrinsic-size: auto 900px;
+  content-visibility: hidden;
+  visibility: hidden;
 }
 
 .scopePanel,
@@ -266,9 +279,17 @@
   padding: 12px;
 }
 
-.approvalReceipt header {
+.approvalReceipt > summary {
   display: grid;
   gap: 2px;
+  min-height: 44px;
+  align-content: center;
+  cursor: pointer;
+  list-style: none;
+}
+
+.approvalReceipt > summary::-webkit-details-marker {
+  display: none;
 }
 
 .approvalReceipt dl {
@@ -1346,6 +1367,13 @@
 .responsePanel[data-state="confirmation-required"],
 .confirmPanel {
   border-color: rgba(247, 201, 72, 0.34);
+}
+
+.responsePanel[data-layout-stable="true"] {
+  block-size: min(540px, calc(100dvh - 176px));
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .responsePanel h4,

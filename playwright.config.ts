@@ -4,11 +4,13 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? process.env.SITE_URL ?? "http
 const runDestructiveCoachSitesSmoke = process.env.ADMIN_V2_COACH_SITES_SMOKE === "true";
 const runAdminV2CopilotSmoke = process.env.ADMIN_V2_COPILOT_SMOKE === "true";
 const runAdminV2ActivityChartSmoke = process.env.ADMIN_V2_ACTIVITY_CHART_SMOKE === "true";
+const runAdminImpeccableSmoke = process.env.ADMIN_IMPECCABLE_SMOKE === "true";
 const runAdminV2PagesSmoke = process.env.ADMIN_V2_SMOKE === "true";
 const runAdminV2Phase8Smoke = process.env.ADMIN_V2_PHASE8_SMOKE === "true";
 const runShopBuilderSmoke = process.env.SHOP_BUILDER_SMOKE === "true";
 const runSerialLocalAdminSmoke =
   runDestructiveCoachSitesSmoke ||
+  runAdminImpeccableSmoke ||
   runAdminV2CopilotSmoke ||
   runAdminV2ActivityChartSmoke ||
   runAdminV2PagesSmoke ||
@@ -16,9 +18,7 @@ const runSerialLocalAdminSmoke =
   runShopBuilderSmoke;
 
 if (runSerialLocalAdminSmoke && !isLocalBaseUrl(baseURL)) {
-  throw new Error(
-    "Admin V2 mutation/audit smoke tests must use a localhost PLAYWRIGHT_BASE_URL."
-  );
+  throw new Error("Admin V2 mutation/audit smoke tests must use a localhost PLAYWRIGHT_BASE_URL.");
 }
 
 export default defineConfig({

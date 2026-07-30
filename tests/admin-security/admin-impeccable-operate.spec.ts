@@ -12,6 +12,9 @@ test.describe("Admin Impeccable Operate refinements", () => {
     expect(shell).not.toContain('aria-label="Close navigation panel"\n              height={34}');
     expect(shell).toContain('aria-label="Close navigation panel"');
     expect(shell).toContain("styles.v2SidebarClose");
+    expect(shell).toContain("width: min(304px, calc(100vw - 24px))");
+    expect(shell).toContain("data-admin-v2-sidebar-close");
+    expect(shell).toContain("onCloseMobileRef.current()");
   });
 
   test("removes faux header controls and progressively discloses duplicate module shortcuts", () => {
@@ -48,5 +51,18 @@ test.describe("Admin Impeccable Operate refinements", () => {
     expect(shell).toContain("Impeccable Operate refinement");
     expect(shell).toContain('[data-admin-v2="true"] .dashboard-console');
     expect(shell).toContain("box-shadow: none;");
+  });
+
+  test("uses route-specific operator guidance and progressively discloses custom permissions", () => {
+    const access = readSource("lib/admin-v2-access.ts");
+    const parity = readSource("components/admin/admin-v2-production-parity.tsx");
+    const shell = readSource("components/admin/admin-v2-shell.tsx");
+
+    expect(access).toContain("adminV2ViewSubtitles");
+    expect(shell).toContain("activeSubtitle={adminV2ViewSubtitles[activeView]}");
+    expect(shell).not.toContain("Manage coach pages, reports, payments, and admin actions.");
+    expect(parity).toContain("Customize permissions");
+    expect(parity).toContain("<details");
+    expect(parity).toContain('aria-label="Admin permissions"');
   });
 });

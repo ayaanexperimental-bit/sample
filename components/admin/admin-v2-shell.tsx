@@ -8,6 +8,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
   useCallback,
+  useDeferredValue,
   useEffect,
   useId,
   useImperativeHandle,
@@ -19,6 +20,7 @@ import { createPortal, flushSync } from "react-dom";
 import {
   adminV2MergedNavViews,
   adminV2NavSections,
+  adminV2ViewSubtitles,
   adminV2ViewTitles,
   canAccessAdminV2View,
   hasAdminV2Permission,
@@ -372,36 +374,77 @@ type AdminV2ShopApiPayload = {
   shop?: AdminV2ShopSnapshot;
 };
 
-type AdminAIPillHostProps = Omit<ComponentProps<typeof AdminAIPill>, "onOpenChange" | "open"> & {
-  onOpenStateChange: (open: boolean) => void;
-};
+type AdminAIPillHostProps = Omit<
+  ComponentProps<typeof AdminAIPill>,
+  "assistantState" | "onAssistantStateChange" | "onOpenChange" | "open" | "orbContent"
+>;
 
 type AdminAIPillHostHandle = {
   close: () => void;
   open: () => void;
+  setAssistantState: (state: AdminV2AiAssistantState, resetMs?: number) => void;
 };
 
 const AdminAIPillHost = forwardRef<AdminAIPillHostHandle, AdminAIPillHostProps>(
-  function AdminAIPillHost({ onOpenStateChange, ...props }, ref) {
+  function AdminAIPillHost(props, ref) {
     const [open, setOpen] = useState(false);
-    const handleOpenChange = useCallback(
-      (nextOpen: boolean) => {
-        setOpen(nextOpen);
-        onOpenStateChange(nextOpen);
+    const [assistantState, setAssistantState] = useState<AdminV2AiAssistantState>("idle");
+    const openRef = useRef(false);
+    const assistantStateResetTimerRef = useRef<number | null>(null);
+    const handleOpenChange = useCallback((nextOpen: boolean) => {
+      openRef.current = nextOpen;
+      setOpen(nextOpen);
+    }, []);
+    const setAssistantMood = useCallback(
+      (state: AdminV2AiAssistantState, resetMs = 0) => {
+        if (assistantStateResetTimerRef.current !== null) {
+          window.clearTimeout(assistantStateResetTimerRef.current);
+          assistantStateResetTimerRef.current = null;
+        }
+
+        setAssistantState(state);
+
+        if (resetMs > 0) {
+          assistantStateResetTimerRef.current = window.setTimeout(() => {
+            setAssistantState(openRef.current ? "listen" : "idle");
+            assistantStateResetTimerRef.current = null;
+          }, resetMs);
+        }
       },
-      [onOpenStateChange]
+      []
+    );
+
+    useEffect(
+      () => () => {
+        if (assistantStateResetTimerRef.current !== null) {
+          window.clearTimeout(assistantStateResetTimerRef.current);
+        }
+      },
+      []
     );
 
     useImperativeHandle(
       ref,
       () => ({
         close: () => handleOpenChange(false),
-        open: () => handleOpenChange(true)
+        open: () => handleOpenChange(true),
+        setAssistantState: setAssistantMood
       }),
-      [handleOpenChange]
+      [handleOpenChange, setAssistantMood]
     );
 
-    return <AdminAIPill {...props} onOpenChange={handleOpenChange} open={open} />;
+    return (
+      <AdminAIPill
+        {...props}
+        assistantState={assistantState}
+        onAssistantStateChange={setAssistantMood}
+        onOpenChange={handleOpenChange}
+        open={open}
+        orbContent={
+          <AdminV2AiBotSvg className={styles.aiAssistantRobot} state={assistantState} />
+        }
+      />
+    );
   }
 );
 
@@ -418,12 +461,12 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
   const [snapshotStatus, setSnapshotStatus] = useState<AdminV2DataStatus | "loading">("loading");
   const [snapshot, setSnapshot] = useState<AdminV2DashboardData | null>(null);
   const [activeView, setActiveView] = useState<AdminV2ViewId>(requestedView || "overview");
+  const deferredActiveView = useDeferredValue(activeView);
+  const moduleTransitionPending = deferredActiveView !== activeView;
   const [adminTheme, setAdminTheme] = useState<"dark" | "light">("dark");
   const [themeSweepActive, setThemeSweepActive] = useState(false);
   const themeSweepTimeoutRef = useRef<number | null>(null);
-  const aiStateResetTimerRef = useRef<number | null>(null);
   const activityCenterRef = useRef<AdminAIPillHostHandle>(null);
-  const activityCenterOpenRef = useRef(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [actionDialog, setActionDialog] = useState<AdminV2ActionDialogState>(null);
   const [adminActionActivity, setAdminActionActivity] = useState<AdminV2ActionActivity[]>([]);
@@ -493,7 +536,6 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
   const canUseAiInsights =
     featureFlags.aiInsights && hasAdminV2Permission(adminAccess, "coach_analytics.ai_insights");
   const [aiBusy, setAiBusy] = useState(false);
-  const [aiAssistantState, setAiAssistantState] = useState<AdminV2AiAssistantState>("idle");
   const [builderAiContext, setBuilderAiContext] = useState<AdminAIBuilderSnapshot | null>(null);
   const [coachSitesAiTableContext, setCoachSitesAiTableContext] =
     useState<AdminAITableContext | null>(null);
@@ -561,24 +603,12 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
         .filter((section) => section.items.length > 0),
     [adminAccess]
   );
-  const setAiAssistantMood = useCallback((state: AdminV2AiAssistantState, resetMs = 0) => {
-    if (aiStateResetTimerRef.current !== null) {
-      window.clearTimeout(aiStateResetTimerRef.current);
-      aiStateResetTimerRef.current = null;
-    }
-
-    setAiAssistantState(state);
-
-    if (resetMs > 0) {
-      aiStateResetTimerRef.current = window.setTimeout(() => {
-        setAiAssistantState(activityCenterOpenRef.current ? "listen" : "idle");
-        aiStateResetTimerRef.current = null;
-      }, resetMs);
-    }
-  }, []);
-  const trackActivityCenterOpen = useCallback((open: boolean) => {
-    activityCenterOpenRef.current = open;
-  }, []);
+  const setAiAssistantMood = useCallback(
+    (state: AdminV2AiAssistantState, resetMs = 0) => {
+      activityCenterRef.current?.setAssistantState(state, resetMs);
+    },
+    []
+  );
   const hasVisibleAdminViews = visibleNavSections.length > 0;
   const activeCopilotSection = getAdminAISection(activeView);
   const shellShopAiSnapshot = useMemo(
@@ -843,9 +873,6 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
     () => () => {
       if (themeSweepTimeoutRef.current !== null) {
         window.clearTimeout(themeSweepTimeoutRef.current);
-      }
-      if (aiStateResetTimerRef.current !== null) {
-        window.clearTimeout(aiStateResetTimerRef.current);
       }
     },
     []
@@ -1331,6 +1358,8 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
         Ask the owner to add at least one permission before using the admin console.
       </div>
     </section>
+  ) : moduleTransitionPending ? (
+    <AdminV2ModuleTransition view={activeView} />
   ) : (
     <>
       {activeView === "overview" ? (
@@ -1556,6 +1585,7 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
 
         <div className="main-shell">
           <AdminV2Header
+            activeSubtitle={adminV2ViewSubtitles[activeView]}
             activeTitle={adminV2ViewTitles[activeView]}
             activityCount={adminActionActivity.length}
             adminDisplayName={adminDisplayName}
@@ -1609,25 +1639,39 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
         </AdminV2ActionDialog>
         <AdminAIPillHost
           activity={adminActionActivity}
-          assistantState={aiAssistantState}
           context={adminAiContext}
           csrfToken={csrfToken}
           onActivity={recordAdminV2ActionActivity}
-          onAssistantStateChange={setAiAssistantMood}
           onExternalCommand={(_command, _context, options) =>
             generateFloatingAiInsight(false, options.signal)
           }
           onNavigate={selectView}
-          onOpenStateChange={trackActivityCenterOpen}
-          orbContent={
-            <AdminV2AiBotSvg className={styles.aiAssistantRobot} state={aiAssistantState} />
-          }
           profile={adminAccess}
           ref={activityCenterRef}
           theme={adminTheme}
         />
       </section>
     </div>
+  );
+}
+
+function AdminV2ModuleTransition({ view }: { view: AdminV2ViewId }) {
+  return (
+    <section
+      aria-label={`${adminV2ViewTitles[view]} workspace loading`}
+      className={styles.v2ModuleTransition}
+      role="status"
+    >
+      <div>
+        <h2>{adminV2ViewTitles[view]}</h2>
+        <p>{adminV2ViewSubtitles[view]}</p>
+      </div>
+      <div aria-hidden="true" className={styles.v2ModuleTransitionBars}>
+        <span />
+        <span />
+        <span />
+      </div>
+    </section>
   );
 }
 
@@ -1654,6 +1698,61 @@ function AdminV2Sidebar({
   const displayName = adminDisplayName || sessionEmail || "Admin user";
   const roleLabel = adminRoleLabel || "Admin";
   const initials = getAdminV2Initials(displayName);
+  const sidebarRef = useRef<HTMLElement | null>(null);
+  const onCloseMobileRef = useRef(onCloseMobile);
+
+  useEffect(() => {
+    onCloseMobileRef.current = onCloseMobile;
+  }, [onCloseMobile]);
+
+  useEffect(() => {
+    if (!mobileOpen || !sidebarRef.current) return;
+
+    const sidebar = sidebarRef.current;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const frame = window.requestAnimationFrame(() => {
+      sidebar.querySelector<HTMLElement>('[data-admin-v2-sidebar-close="true"]')?.focus();
+    });
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseMobileRef.current();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const focusable = Array.from(
+        sidebar.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+        )
+      );
+      if (!focusable.length) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      if (previous?.isConnected) previous.focus();
+    };
+  }, [mobileOpen]);
 
   return (
     <>
@@ -1670,6 +1769,7 @@ function AdminV2Sidebar({
         className="sidebar"
         data-open={mobileOpen ? "true" : "false"}
         id="admin-sidebar"
+        ref={sidebarRef}
       >
         <div className="brand">
           <div className="brand-mark logo-mark">
@@ -1688,6 +1788,7 @@ function AdminV2Sidebar({
           <button
             aria-label="Close navigation panel"
             className={styles.v2SidebarClose}
+            data-admin-v2-sidebar-close="true"
             onClick={onCloseMobile}
             type="button"
           >
@@ -1756,6 +1857,7 @@ function AdminV2Sidebar({
 }
 
 function AdminV2Header({
+  activeSubtitle,
   activeTitle,
   activityCount = 0,
   adminDisplayName,
@@ -1774,6 +1876,7 @@ function AdminV2Header({
   theme,
   themeSweepActive = false
 }: {
+  activeSubtitle: string;
   activeTitle: string;
   activityCount?: number;
   adminDisplayName?: string;
@@ -1877,9 +1980,7 @@ function AdminV2Header({
                 <span>Verified session</span>
               </span>
             </div>
-            <p className="page-subtitle">
-              Manage coach pages, reports, payments, and admin actions.
-            </p>
+            <p className="page-subtitle">{activeSubtitle}</p>
           </div>
         </div>
         <div className="top-actions">
@@ -7556,6 +7657,243 @@ const ADMIN_V2_OD_RUNTIME_CSS = `
 
     [data-admin-v2="true"] .admin-more > summary {
       min-height: 52px;
+    }
+  }
+
+  /* Impeccable full-panel pass: one calm Operate system across every module. */
+  [data-admin-v2="true"] {
+    --font-sans: var(--font-body), Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-display: var(--font-sans);
+    --dash-radius-card: 12px;
+    --dash-radius-panel: 12px;
+    --dash-shadow-card: none;
+    background: var(--bg) !important;
+  }
+
+  [data-admin-v2="true"] .app,
+  [data-admin-v2="true"] .main-shell,
+  [data-admin-v2="true"] .dashboard-console {
+    background-image: none !important;
+  }
+
+  [data-admin-v2="true"] .sidebar,
+  [data-admin-v2="true"] .topbar {
+    border-radius: 12px !important;
+    background-image: none !important;
+    box-shadow: none !important;
+  }
+
+  [data-admin-v2="true"] .panel::before,
+  [data-admin-v2="true"] .card::before,
+  [data-admin-v2="true"] .console-card::before,
+  [data-admin-v2="true"] .addon-panel::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  [data-admin-v2="true"] .page-subtitle {
+    max-width: 70ch;
+    color: var(--console-muted);
+    font-size: 14px;
+    line-height: 1.5;
+    text-wrap: pretty;
+  }
+
+  [data-admin-v2="true"] label,
+  [data-admin-v2="true"] th,
+  [data-admin-v2="true"] .metric-label,
+  [data-admin-v2="true"] .console-stat small,
+  [data-admin-v2="true"] .signal-row small,
+  [data-admin-v2="true"] .addon-panel-head small,
+  [data-admin-v2="true"] .v2-sites-search label,
+  [data-admin-v2="true"] .v2-coach-report-dock label,
+  [data-admin-v2="true"] .v2-dedicated-kpi-card small,
+  [data-admin-v2="true"] .v2-dedicated-meta-grid small,
+  [data-admin-v2="true"] .v2-dedicated-event-list small,
+  [data-admin-v2="true"] .v2-command-node small,
+  [data-admin-v2="true"] .v2-ops-action-panel small,
+  [data-admin-v2="true"] .v2-ops-queue-panel small,
+  [data-admin-v2="true"] .v2-ai-ops-primary small {
+    font-family: var(--font-sans) !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+  }
+
+  [data-admin-v2="true"] .metric-card {
+    min-height: 0 !important;
+    gap: 12px;
+  }
+
+  [data-admin-v2="true"] .grid-6 {
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  }
+
+  [data-admin-v2="true"][data-od-theme="light"] {
+    --bg: #f1f6ef;
+    --surface: #e8f0e5;
+    --panel: #fbfdf9;
+    --border: #bfd0bd;
+    --console-bg: #f1f6ef;
+    --console-panel: #fbfdf9;
+    --console-panel-2: #edf3eb;
+    --console-panel-3: #e3ede0;
+    --dash-bg: #f1f6ef;
+    --dash-panel: #fbfdf9;
+    --dash-panel-soft: #edf3eb;
+  }
+
+  [data-admin-v2="true"][data-od-theme="light"] .sidebar,
+  [data-admin-v2="true"][data-od-theme="light"] .topbar,
+  [data-admin-v2="true"][data-od-theme="light"] .panel,
+  [data-admin-v2="true"][data-od-theme="light"] .card,
+  [data-admin-v2="true"][data-od-theme="light"] .console-card,
+  [data-admin-v2="true"][data-od-theme="light"] .console-chart,
+  [data-admin-v2="true"][data-od-theme="light"] .console-mini,
+  [data-admin-v2="true"][data-od-theme="light"] .addon-panel {
+    background-color: var(--console-panel) !important;
+    background-image: none !important;
+    box-shadow: none !important;
+  }
+
+  @media (max-width: 1100px) {
+    [data-admin-v2="true"] .sidebar {
+      width: min(304px, calc(100vw - 24px)) !important;
+      height: calc(100dvh - 24px);
+      max-height: calc(100dvh - 24px);
+      inset: 12px auto auto max(12px, env(safe-area-inset-left));
+      align-items: stretch;
+      gap: 10px;
+      padding: 14px;
+      overflow: hidden;
+    }
+
+    [data-admin-v2="true"] .sidebar .brand {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) 44px;
+      place-items: initial;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 12px;
+    }
+
+    [data-admin-v2="true"] .sidebar .brand > div:not(.brand-mark) {
+      position: static;
+      min-width: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      opacity: 1;
+      pointer-events: none;
+      transform: none;
+    }
+
+    [data-admin-v2="true"] .sidebar .brand > div:not(.brand-mark) strong,
+    [data-admin-v2="true"] .sidebar .brand > div:not(.brand-mark) span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    [data-admin-v2="true"] .sidebar .nav-section {
+      align-items: stretch;
+      gap: 4px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding: 0 2px 4px 0;
+      scrollbar-width: thin;
+    }
+
+    [data-admin-v2="true"] .sidebar .nav-btn {
+      width: 100% !important;
+      height: auto !important;
+      min-height: 52px !important;
+      grid-template-columns: 44px minmax(0, 1fr);
+      place-items: center start;
+      gap: 10px;
+      padding: 4px 10px 4px 4px;
+      border-radius: 8px;
+      text-align: start;
+    }
+
+    [data-admin-v2="true"] .sidebar .nav-btn::before {
+      left: -2px;
+      width: 2px;
+      box-shadow: none;
+    }
+
+    [data-admin-v2="true"] .sidebar .nav-btn::after {
+      content: none;
+      display: none;
+    }
+
+    [data-admin-v2="true"] .sidebar .nav-icon {
+      width: 40px;
+      height: 40px;
+    }
+
+    [data-admin-v2="true"] .sidebar .nav-copy {
+      position: static;
+      width: 100%;
+      min-width: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      opacity: 1;
+      pointer-events: none;
+      transform: none;
+    }
+
+    [data-admin-v2="true"] .sidebar .nav-copy span {
+      overflow: visible;
+      text-overflow: clip;
+      white-space: normal;
+    }
+
+    [data-admin-v2="true"] .sidebar .sidebar-footer {
+      display: grid !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: none !important;
+      height: auto !important;
+      min-height: 52px !important;
+      grid-template-columns: 40px minmax(0, 1fr);
+      flex-basis: auto !important;
+      gap: 10px;
+      margin: 0 !important;
+      padding: 5px;
+      border-radius: 8px;
+      text-align: start;
+    }
+
+    [data-admin-v2="true"] .sidebar .sidebar-user-tip {
+      position: static;
+      min-width: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      opacity: 1;
+      pointer-events: none;
+      transform: none;
+    }
+
+    [data-admin-v2="true"] .sidebar .secure-row {
+      display: none !important;
+    }
+  }
+
+  @media (max-width: 680px) {
+    [data-admin-v2="true"] .top-actions .btn,
+    [data-admin-v2="true"] .top-actions button,
+    [data-admin-v2="true"] .mobile-menu {
+      min-height: 44px !important;
+    }
+
+    [data-admin-v2="true"] .page-title {
+      font-size: 1.35rem !important;
+      line-height: 1.15;
     }
   }
 

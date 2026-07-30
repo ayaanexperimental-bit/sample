@@ -11,6 +11,7 @@ import { GlobalYWLoader } from "@/components/loaders/GlobalYWLoader";
 import "./globals.css";
 
 const displayFont = Bodoni_Moda({
+  preload: false,
   subsets: ["latin"],
   variable: "--font-display",
   weight: ["600", "700", "800", "900"],
@@ -18,6 +19,7 @@ const displayFont = Bodoni_Moda({
 });
 
 const accentFont = Cormorant_Garamond({
+  preload: false,
   subsets: ["latin"],
   variable: "--font-accent",
   weight: ["500", "600", "700"],
@@ -25,6 +27,7 @@ const accentFont = Cormorant_Garamond({
 });
 
 const editorialFont = Libre_Baskerville({
+  preload: false,
   subsets: ["latin"],
   variable: "--font-editorial",
   weight: ["400", "700"],
@@ -39,6 +42,7 @@ const bodyFont = Manrope({
 });
 
 const conversionFont = Montserrat({
+  preload: false,
   subsets: ["latin"],
   variable: "--font-conversion",
   weight: ["400", "500", "600", "700", "800", "900"],
@@ -46,6 +50,7 @@ const conversionFont = Montserrat({
 });
 
 const techDisplayFont = Urbanist({
+  preload: false,
   subsets: ["latin"],
   variable: "--font-tech-display",
   weight: ["500", "600", "700", "800", "900"],

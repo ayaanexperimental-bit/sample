@@ -105,6 +105,24 @@ export const adminV2ViewTitles: Record<AdminV2ViewId, string> = {
   "top-coaches": "Coaches"
 };
 
+export const adminV2ViewSubtitles: Record<AdminV2ViewId, string> = {
+  "admin-users": "Invite administrators and manage roles, permissions, and account lifecycle.",
+  "backup-cleanup": "Review retention health and run bounded backup or cleanup controls.",
+  "coach-analytics":
+    "Compare coach-level traffic, funnel signals, audiences, and source freshness.",
+  "coach-sites": "Search, review, preview, edit, publish, archive, or restore coach websites.",
+  "create-coach-site":
+    "Create or update a coach website through a verified draft, preview, and publish flow.",
+  "error-reports":
+    "Investigate active issues, update status, and retain a traceable support record.",
+  overview:
+    "Review current performance, operational risk, and the next actions that need attention.",
+  "paid-masterclass-settings": "Maintain paid-entry links and protected redirect destinations.",
+  settings: "Maintain support defaults, protected controls, and permission-aware configuration.",
+  shop: "Manage website purchases, payment handoffs, recovery, and operational exports.",
+  "top-coaches": "Find the strongest performers and inspect the evidence behind each ranking."
+};
+
 export const adminV2ViewPermissionById: Record<AdminV2ViewId, string> = {
   "admin-users": "admin_users.manage",
   "backup-cleanup": "backup_cleanup.view",

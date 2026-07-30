@@ -10,8 +10,8 @@ colors:
   dark-panel: "#0D211A"
   text-on-dark: "#F4FFF0"
   muted-on-dark: "#8EA19A"
-  light-canvas: "#EDF8DF"
-  light-surface: "#F7FFF0"
+  light-canvas: "#F1F6EF"
+  light-surface: "#FBFDF9"
   text-on-light: "#07160C"
   muted-on-light: "#506555"
   danger: "#FF5A5F"
@@ -151,8 +151,8 @@ The palette pairs near-black green operational layers with one vivid lime action
 - **Night Operations Panel** (`#0D211A`): Primary dark cards, controls, drawers, and bounded content.
 - **Verified Light Ink** (`#F4FFF0`): Primary text on dark surfaces.
 - **Muted Dark Evidence** (`#8EA19A`): Secondary text and supporting metadata on dark surfaces.
-- **Day Operations Canvas** (`#EDF8DF`): Light-mode application background.
-- **Day Operations Surface** (`#F7FFF0`): Primary light cards and content surfaces.
+- **Day Operations Canvas** (`#F1F6EF`): Quiet light-mode application background with only a restrained green tint.
+- **Day Operations Surface** (`#FBFDF9`): Near-white working surfaces that preserve the dark theme's hierarchy without a green wash.
 - **Deep Green Ink** (`#07160C`): Primary text on light surfaces.
 - **Muted Light Evidence** (`#506555`): Secondary text and supporting metadata on light surfaces.
 

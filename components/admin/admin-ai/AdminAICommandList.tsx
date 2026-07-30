@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { AdminAICommand } from "../../../lib/admin-ai/adminAIRegistry";
 import styles from "./admin-ai.module.css";
 
@@ -12,6 +13,8 @@ export function AdminAICommandList({
   onSelect: (command: AdminAICommand) => void;
   selectedId: string;
 }) {
+  const [additionalCommandsOpen, setAdditionalCommandsOpen] = useState(false);
+
   if (!commands.length) {
     return (
       <p className={styles.emptyState} role="status">
@@ -44,8 +47,16 @@ export function AdminAICommandList({
     <div aria-label="Contextual Copilot commands" className={styles.commandList}>
       <div className={styles.commandGrid}>{primaryCommands.map(renderCommand)}</div>
       {additionalCommands.length ? (
-        <details className={styles.commandDisclosure}>
-          <summary>
+        <details
+          className={styles.commandDisclosure}
+          open={additionalCommandsOpen}
+        >
+          <summary
+            onClick={(event) => {
+              event.preventDefault();
+              setAdditionalCommandsOpen((current) => !current);
+            }}
+          >
             <span>
               <strong>More commands</strong>
               <small>{additionalCommands.length} additional permission-filtered actions</small>

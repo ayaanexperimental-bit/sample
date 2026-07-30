@@ -643,7 +643,7 @@
   --od-warn: oklch(78% 0.16 82);
   --od-danger: oklch(68% 0.19 28);
   --od-radius: 8px;
-  --od-font-ui: "IBM Plex Sans", Aptos, "Segoe UI", system-ui, sans-serif;
+  --od-font-ui: var(--font-body), Manrope, Aptos, "Segoe UI", system-ui, sans-serif;
   --od-font-mono:
     "JetBrains Mono", "IBM Plex Mono", "Cascadia Code", ui-monospace, SFMono-Regular, Menlo,
     monospace;

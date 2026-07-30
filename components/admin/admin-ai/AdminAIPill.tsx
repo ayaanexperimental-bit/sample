@@ -485,18 +485,32 @@ export function AdminAIPill({
   const [scope, setScope] = useState<AdminAIScope>("page");
   const [selectedEntityIds, setSelectedEntityIds] = useState<string[]>([]);
   const [preparedPanelSectionId, setPreparedPanelSectionId] = useState("");
-  const [drawerDismissed, setDrawerDismissed] = useState(false);
-  const closeFrameRef = useRef(0);
-  const panelContentReady = open && preparedPanelSectionId === context.sectionId;
+  const panelContentReady = preparedPanelSectionId === context.sectionId;
+  const [networkActiveSectionId, setNetworkActiveSectionId] = useState("");
+  const panelContentActive =
+    open && panelContentReady && networkActiveSectionId === context.sectionId;
   useEffect(() => {
-    if (!open) {
-      const resetId = window.setTimeout(() => setPreparedPanelSectionId(""), 0);
-      return () => window.clearTimeout(resetId);
+    if (panelContentReady) return;
+    if (open) {
+      const activationId = window.setTimeout(() => {
+        startTransition(() => setPreparedPanelSectionId(context.sectionId));
+      }, 200);
+      return () => window.clearTimeout(activationId);
     }
     return scheduleAdminAIPanelContent(() => {
       startTransition(() => setPreparedPanelSectionId(context.sectionId));
     });
-  }, [context.sectionId, open]);
+  }, [context.sectionId, open, panelContentReady]);
+  useEffect(() => {
+    if (!open || !panelContentReady) {
+      const resetId = window.setTimeout(() => setNetworkActiveSectionId(""), 0);
+      return () => window.clearTimeout(resetId);
+    }
+    const activationId = window.setTimeout(() => {
+      startTransition(() => setNetworkActiveSectionId(context.sectionId));
+    }, 120);
+    return () => window.clearTimeout(activationId);
+  }, [context.sectionId, open, panelContentReady]);
   const effectiveContext = useMemo(() => {
     if (!panelContentReady) return context;
     return scopeAdminAIContext(context, scope, selectedEntityIds);
@@ -637,6 +651,8 @@ export function AdminAIPill({
   const [canRetry, setCanRetry] = useState(false);
   const [pendingReportDecision, setPendingReportDecision] =
     useState<PendingAdminAIReportDecision | null>(null);
+  const [responseLayoutStable, setResponseLayoutStable] = useState(false);
+  const releaseResponseLayout = useCallback(() => setResponseLayoutStable(false), []);
   const auditQueueRef = useRef<Promise<AdminAIActionAuditResult>>(
     Promise.resolve({ ok: true, requestId: "" })
   );
@@ -980,7 +996,7 @@ export function AdminAIPill({
   }, []);
 
   useEffect(() => {
-    if (!panelContentReady || busy || !profile?.isOwner || !featureFlags.incidentMode) return;
+    if (!panelContentActive || busy || !profile?.isOwner || !featureFlags.incidentMode) return;
     const controller = new AbortController();
     void fetch("/api/admin/ai-incidents", {
       cache: "no-store",
@@ -1000,10 +1016,10 @@ export function AdminAIPill({
       })
       .catch(() => undefined);
     return () => controller.abort();
-  }, [busy, effectiveContext, featureFlags.incidentMode, panelContentReady, profile?.isOwner]);
+  }, [busy, effectiveContext, featureFlags.incidentMode, panelContentActive, profile?.isOwner]);
 
   useEffect(() => {
-    if (!panelContentReady || !profile?.email) return;
+    if (!panelContentActive || !profile?.email) return;
     const controller = new AbortController();
     void loadAdminAIArtifacts(controller.signal).then((result) => {
       if (controller.signal.aborted) return;
@@ -1012,10 +1028,10 @@ export function AdminAIPill({
       );
     });
     return () => controller.abort();
-  }, [panelContentReady, profile?.email]);
+  }, [panelContentActive, profile?.email]);
 
   useEffect(() => {
-    if (!panelContentReady || !profile?.email) return;
+    if (!panelContentActive || !profile?.email) return;
     const controller = new AbortController();
     void loadAdminAISettings(controller.signal).then((result) => {
       if (controller.signal.aborted) return;
@@ -1040,10 +1056,10 @@ export function AdminAIPill({
       setSettingsStatus("Durable AI settings loaded.");
     });
     return () => controller.abort();
-  }, [panelContentReady, profile?.email]);
+  }, [panelContentActive, profile?.email]);
 
   useEffect(() => {
-    if (!panelContentReady || !profile?.email) return;
+    if (!panelContentActive || !profile?.email) return;
     const controller = new AbortController();
     void loadAdminAISavedTasks(controller.signal).then((result) => {
       if (controller.signal.aborted) return;
@@ -1061,10 +1077,10 @@ export function AdminAIPill({
       );
     });
     return () => controller.abort();
-  }, [panelContentReady, profile?.email]);
+  }, [panelContentActive, profile?.email]);
 
   useEffect(() => {
-    if (!panelContentReady || !profile?.isOwner) return;
+    if (!panelContentActive || !profile?.isOwner) return;
     const controller = new AbortController();
     void loadAdminAIObservability(controller.signal).then((result) => {
       if (!controller.signal.aborted && result.ok && result.payload.dashboard) {
@@ -1072,10 +1088,10 @@ export function AdminAIPill({
       }
     });
     return () => controller.abort();
-  }, [panelContentReady, profile?.isOwner]);
+  }, [panelContentActive, profile?.isOwner]);
 
   useEffect(() => {
-    if (!panelContentReady || !settingsOpen || !profile?.isOwner) return;
+    if (!panelContentActive || !settingsOpen || !profile?.isOwner) return;
     const controller = new AbortController();
     void loadAdminAISchedules(controller.signal).then((result) => {
       if (!controller.signal.aborted && result.ok && result.payload.schedules) {
@@ -1083,7 +1099,7 @@ export function AdminAIPill({
       }
     });
     return () => controller.abort();
-  }, [panelContentReady, profile?.isOwner, settingsOpen]);
+  }, [panelContentActive, profile?.isOwner, settingsOpen]);
 
   useEffect(() => {
     function openCommandCenter(event: KeyboardEvent) {
@@ -1119,17 +1135,9 @@ export function AdminAIPill({
   const close = useCallback(() => {
     setPendingCommand(null);
     setClearMemoryConfirmOpen(false);
-    setDrawerDismissed(true);
-    window.cancelAnimationFrame(closeFrameRef.current);
-    closeFrameRef.current = window.requestAnimationFrame(() => {
-      closeFrameRef.current = window.requestAnimationFrame(() => {
-        setPreparedPanelSectionId("");
-        onOpenChange(false);
-        startTransition(() => onAssistantStateChange("idle"));
-        setDrawerDismissed(false);
-        closeFrameRef.current = 0;
-      });
-    });
+    setNetworkActiveSectionId("");
+    onOpenChange(false);
+    startTransition(() => onAssistantStateChange("idle"));
   }, [onAssistantStateChange, onOpenChange]);
 
   function updatePreferences(next: AdminAIPreferences) {
@@ -1719,6 +1727,7 @@ export function AdminAIPill({
       : () => void execute(command, confirmed);
     setCanRetry(!serverOwnsExecutionAudit);
     const startedAt = monotonicTimeMs();
+    setResponseLayoutStable(true);
     setBusy(true);
     setSelectedId(command.id);
     setResponse({
@@ -1851,6 +1860,11 @@ export function AdminAIPill({
                 }
               }
             : nextResponse;
+      responseWithReceipt.progress = [
+        { id: "context", label: "Reading permission-filtered context", status: "complete" },
+        { id: "command", label: "Running registered command", status: "complete" },
+        { id: "verify", label: "Verifying result", status: "complete" }
+      ];
       setResponse(responseWithReceipt);
       onAssistantStateChange(failed ? "confused" : "success", 2400);
       onActivity({
@@ -2232,6 +2246,7 @@ export function AdminAIPill({
     retryOperationRef.current = () => void submitQuery(undefined, request);
     setCanRetry(true);
     const startedAt = monotonicTimeMs();
+    setResponseLayoutStable(true);
     setBusy(true);
     setPendingCommand(null);
     setSelectedId("");
@@ -2396,6 +2411,11 @@ export function AdminAIPill({
         { csrfToken }
       );
       if (operationRef.current !== operationId || controller.signal.aborted) return;
+      next.progress = [
+        { id: "scope", label: "Applying scope and permissions", status: "complete" },
+        { id: "retrieve", label: "Retrieving bounded evidence", status: "complete" },
+        { id: "answer", label: "Preparing grounded result", status: "complete" }
+      ];
       setResponse(next);
       recordObservation(
         {
@@ -2709,10 +2729,11 @@ export function AdminAIPill({
         ? "listening"
         : "idle";
 
-  const panel = open ? (
-    <AdminAIDrawer
-      dismissed={drawerDismissed}
-      onClose={close}
+  const panel = (
+      <AdminAIDrawer
+        onClose={close}
+        onContentHidden={releaseResponseLayout}
+        open={open}
       sectionName={scope === "global" ? "Global Admin" : section.name}
       stateLabel={`${context.dataFreshness} / ${formatCopilotState(copilotDisplayState)}`}
       theme={theme}
@@ -3023,6 +3044,7 @@ export function AdminAIPill({
               }
               response={response}
               selectedSearchResultIds={selectedEntityIds}
+              stabilizeLayout={responseLayoutStable}
             />
           </Suspense>
 
@@ -3906,7 +3928,7 @@ export function AdminAIPill({
         </div>
       )}
     </AdminAIDrawer>
-  ) : null;
+  );
 
   if (!featureFlags.copilot) return null;
 
@@ -3929,9 +3951,6 @@ export function AdminAIPill({
             close();
             return;
           }
-          window.cancelAnimationFrame(closeFrameRef.current);
-          closeFrameRef.current = 0;
-          setDrawerDismissed(false);
           onOpenChange(!open);
           startTransition(() => onAssistantStateChange(open ? "idle" : "listen"));
         }}
@@ -3957,7 +3976,9 @@ export function AdminAIPill({
       </button>
       {panel && typeof document !== "undefined"
         ? createPortal(
-            <AdminV2PortalScope theme={theme}>{panel}</AdminV2PortalScope>,
+            <AdminV2PortalScope active={open} theme={theme}>
+              {panel}
+            </AdminV2PortalScope>,
             document.body
           )
         : panel}
