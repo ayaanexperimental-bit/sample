@@ -1,7 +1,14 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { getCoachById, getFunnelById, isPaidProgramFunnel } from "../../../lib/coach-platform";
 import { recordAnalyticsEvent } from "../../../lib/server/analytics-events";
-import { verifyFunnelAccessFromCookie } from "../../../lib/server/funnel-access";
+import {
+  FUNNEL_ACCESS_HASH_QUERY,
+  verifyFunnelAccessFromCookie
+} from "../../../lib/server/funnel-access";
+import {
+  createPaymentAccessCookie,
+  verifyPaymentAttemptFromCookie
+} from "../../../lib/server/payment-access";
 import {
   paidFunnelSupportResponse,
   type PaidFunnelSupportEnv
@@ -31,23 +38,46 @@ export async function onRequest({ request, env }: PagesContext) {
     });
   }
 
-  const activeFunnel = await getActivePaidFunnel(request, env);
-  if (!activeFunnel) {
+  const accessSecret = env.SUCCESS_ACCESS_SECRET || env.RAZORPAY_KEY_SECRET;
+  const activeAccess = await getActivePaidFunnel(request, env);
+  const paymentAttempt = accessSecret
+    ? await verifyPaymentAttemptFromCookie({
+        cookieHeader: request.headers.get("cookie"),
+        secret: accessSecret
+      })
+    : null;
+  if (
+    !accessSecret ||
+    !activeAccess ||
+    !paymentAttempt ||
+    paymentAttempt.funnelId !== activeAccess.funnel.id ||
+    paymentAttempt.accessHash !== activeAccess.accessHash
+  ) {
     return paidFunnelSupportResponse({
       env,
-      funnel: null,
+      funnel: activeAccess?.funnel || null,
       funnelStep: "paid_success",
       request,
-      safeMessage: "We could not verify this paid success session. Please contact support for help.",
+      safeMessage:
+        "We could not verify this paid success session. Please contact support for help.",
       status: 403,
-      technicalDigest: "paid_success_access_missing",
+      technicalDigest: "paid_success_browser_hash_or_attempt_missing",
       userAction: "Open paid success page"
     });
   }
 
+  const { accessHash, funnel: activeFunnel } = activeAccess;
+  const paidCookie = await createPaymentAccessCookie({
+    accessHash,
+    funnelId: activeFunnel.id,
+    paymentId: paymentAttempt.attemptId,
+    secret: accessSecret,
+    source: "razorpay_hosted_page_redirect"
+  });
+
   await recordPaidSuccessEvent({ env, funnelId: activeFunnel.id, request });
 
-  return redirectToProgramSuccess(request, activeFunnel.successPath);
+  return redirectToProgramSuccess(request, activeFunnel.successPath, accessHash, paidCookie);
 }
 
 async function getActivePaidFunnel(request: Request, env: Env) {
@@ -62,17 +92,24 @@ async function getActivePaidFunnel(request: Request, env: Env) {
 
   const funnel = getFunnelById(funnelAccess.funnelId);
 
-  return isPaidProgramFunnel(funnel) ? funnel : null;
+  return isPaidProgramFunnel(funnel) ? { accessHash: funnelAccess.accessHash, funnel } : null;
 }
 
-function redirectToProgramSuccess(request: Request, successPath: string) {
+function redirectToProgramSuccess(
+  request: Request,
+  successPath: string,
+  accessHash: string,
+  paidCookie: string
+) {
   const url = new URL(successPath, request.url);
+  url.searchParams.set(FUNNEL_ACCESS_HASH_QUERY, accessHash);
 
   return new Response(null, {
     status: 302,
     headers: {
       ...NO_STORE_HEADERS,
-      location: url.toString()
+      location: url.toString(),
+      "set-cookie": paidCookie
     }
   });
 }

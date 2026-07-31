@@ -2,22 +2,26 @@ const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
 export const PAYMENT_ACCESS_COOKIE = "yw_paid_access";
+export const PAYMENT_ACCESS_MAX_AGE_SECONDS = 10 * 365 * 24 * 60 * 60;
 export const PAYMENT_ACCESS_TTL_SECONDS = 7 * 60;
 export const PAYMENT_ATTEMPT_COOKIE = "yw_payment_attempt";
 export const PAYMENT_ATTEMPT_FIELD = "registration_id";
 export const PAYMENT_ATTEMPT_TTL_SECONDS = 30 * 60;
 
 export type PaymentAccessPayload = {
-  expiresAt: number;
+  accessHash: string;
+  funnelId: string;
   paymentId: string;
   source: string;
   verifiedAt: number;
 };
 
 export type PaymentAttemptPayload = {
+  accessHash: string;
   attemptId: string;
   createdAt: number;
   expiresAt: number;
+  funnelId: string;
   source: "payment_page";
 };
 
@@ -31,10 +35,14 @@ export function createPaymentAttemptId() {
 }
 
 export async function createPaymentAccessCookie({
+  accessHash,
+  funnelId,
   paymentId,
   secret,
   source
 }: {
+  accessHash: string;
+  funnelId: string;
   paymentId: string;
   secret: string;
   source: string;
@@ -42,17 +50,18 @@ export async function createPaymentAccessCookie({
   const now = Math.floor(Date.now() / 1000);
   const token = await createSignedToken(
     {
+      accessHash,
+      funnelId,
       paymentId,
       source,
-      verifiedAt: now,
-      expiresAt: now + PAYMENT_ACCESS_TTL_SECONDS
+      verifiedAt: now
     },
     secret
   );
 
   return [
     `${PAYMENT_ACCESS_COOKIE}=${token}`,
-    `Max-Age=${PAYMENT_ACCESS_TTL_SECONDS}`,
+    `Max-Age=${PAYMENT_ACCESS_MAX_AGE_SECONDS}`,
     "Path=/",
     "HttpOnly",
     "Secure",
@@ -61,19 +70,25 @@ export async function createPaymentAccessCookie({
 }
 
 export async function createPaymentAttemptCookie({
+  accessHash,
   attemptId,
+  funnelId,
   secret
 }: {
+  accessHash: string;
   attemptId: string;
+  funnelId: string;
   secret: string;
 }) {
   const now = Math.floor(Date.now() / 1000);
   const token = await createSignedToken(
     {
+      accessHash,
       attemptId,
-      source: "payment_page",
       createdAt: now,
-      expiresAt: now + PAYMENT_ATTEMPT_TTL_SECONDS
+      expiresAt: now + PAYMENT_ATTEMPT_TTL_SECONDS,
+      funnelId,
+      source: "payment_page"
     },
     secret
   );
@@ -122,9 +137,6 @@ export async function verifyPaymentAccessFromCookie({
 
   const payload = await verifySignedToken(token, secret);
   if (!isPaymentAccessPayload(payload)) return null;
-
-  const now = Math.floor(Date.now() / 1000);
-  if (payload.expiresAt <= now) return null;
 
   return payload;
 }
@@ -186,24 +198,37 @@ async function verifySignedToken(token: string, secret: string) {
   }
 }
 
-function isPaymentAccessPayload(payload: SignedTokenPayload | null): payload is PaymentAccessPayload {
+function isPaymentAccessPayload(
+  payload: SignedTokenPayload | null
+): payload is PaymentAccessPayload {
   return (
     isRecord(payload) &&
+    typeof payload.accessHash === "string" &&
+    isAccessHash(payload.accessHash) &&
+    typeof payload.funnelId === "string" &&
     typeof payload.paymentId === "string" &&
     typeof payload.source === "string" &&
-    typeof payload.verifiedAt === "number" &&
-    typeof payload.expiresAt === "number"
+    typeof payload.verifiedAt === "number"
   );
 }
 
-function isPaymentAttemptPayload(payload: SignedTokenPayload | null): payload is PaymentAttemptPayload {
+function isPaymentAttemptPayload(
+  payload: SignedTokenPayload | null
+): payload is PaymentAttemptPayload {
   return (
     isRecord(payload) &&
+    typeof payload.accessHash === "string" &&
+    isAccessHash(payload.accessHash) &&
     payload.source === "payment_page" &&
     typeof payload.attemptId === "string" &&
     typeof payload.createdAt === "number" &&
-    typeof payload.expiresAt === "number"
+    typeof payload.expiresAt === "number" &&
+    typeof payload.funnelId === "string"
   );
+}
+
+function isAccessHash(value: string) {
+  return /^[A-Za-z0-9_-]{32,128}$/.test(value);
 }
 
 async function hmacSha256Base64Url(payload: string, secret: string) {

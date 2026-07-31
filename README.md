@@ -65,14 +65,29 @@ Required Cloudflare secret before preview/production. This must be a separate ra
 FUNNEL_ACCESS_SECRET
 ```
 
-Payment redirect currently uses a server-only signing secret for the temporary Razorpay attempt ID:
+The paid-funnel entry, payment attempt, and long-lived browser access cookies use separate
+server-only signing secrets:
 
 ```txt
 RAZORPAY_KEY_SECRET
 SUCCESS_ACCESS_SECRET
 ```
 
-WhatsApp access is scoped by the active paid funnel session, not by payment webhook verification in v1.
+Set the Gyana Razorpay Hosted Payment Page's successful-payment redirect to:
+
+```txt
+https://ywcoach.com/api/razorpay/success
+```
+
+Share only `https://ywcoach.com/go/gyana-pcos-51`. The paid page, success page, and WhatsApp
+access are bound to the same browser cookie and URL hash. Copying a paid or success URL into
+another browser remains blocked. The paid browser cookie no longer has the old seven-minute
+server expiry.
+
+This simple hosted-page flow prevents direct and copied-link access, but the redirect itself is
+not signed proof from Razorpay. Cryptographic payment verification requires the existing Razorpay
+webhook flow to be configured.
+
 Private WhatsApp/group invite URLs must stay server-only in D1. Do not maintain them as Cloudflare secrets/vars. Use Admin -> Paid Masterclass Links/Settings -> Manage -> Save Server Link, which writes to the `private_funnel_links` table in `ADMIN_DB`.
 
 Do not put secrets in `NEXT_PUBLIC_` variables unless the value is intentionally public.

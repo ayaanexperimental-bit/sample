@@ -29,7 +29,7 @@ export function WhatsAppAccessButton({
     setState("checking");
 
     try {
-      const response = await fetch("/api/whatsapp-access", {
+      const response = await fetch(getWhatsAppAccessUrl(), {
         cache: "no-store",
         credentials: "same-origin",
         headers: {
@@ -79,6 +79,13 @@ export function WhatsAppAccessButton({
       ) : null}
     </div>
   );
+}
+
+function getWhatsAppAccessUrl() {
+  const accessHash = new URLSearchParams(window.location.search).get("access");
+  if (!accessHash) return "/api/whatsapp-access";
+
+  return `/api/whatsapp-access?access=${encodeURIComponent(accessHash)}`;
 }
 
 async function recordPaidWhatsappClick({

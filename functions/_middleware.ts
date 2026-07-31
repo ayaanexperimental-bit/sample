@@ -9,15 +9,19 @@ import {
 } from "../lib/coach-platform";
 import { blockedLinkResponse } from "../lib/server/blocked-response";
 import {
+  createFunnelAccessHash,
   createFunnelAccessCookie,
+  FUNNEL_ACCESS_HASH_QUERY,
   verifyFunnelAccessFromCookie
 } from "../lib/server/funnel-access";
+import { verifyPaymentAccessFromCookie } from "../lib/server/payment-access";
 import { verifyAdminSessionFromRequest } from "../lib/server/admin-auth";
 import { getAdminAccessProfile } from "../lib/server/admin-rbac";
 import {
   paidFunnelSupportResponse,
   type PaidFunnelSupportEnv
 } from "../lib/server/paid-funnel-support";
+import { funnelSocialPreviewResponse, isSocialPreviewRequest } from "../lib/server/funnel-preview";
 
 type Env = PaidFunnelSupportEnv & {
   ADMIN_ALLOWED_EMAILS?: string;
@@ -27,6 +31,7 @@ type Env = PaidFunnelSupportEnv & {
   ADMIN_REQUIRE_DB_ADMIN_ROLES?: string;
   ADMIN_SESSION_SECRET?: string;
   FUNNEL_ACCESS_SECRET?: string;
+  SUCCESS_ACCESS_SECRET?: string;
 };
 
 type PagesContext = {
@@ -142,28 +147,48 @@ export async function onRequest(context: PagesContext) {
 
   const routeFunnel = getFunnelForPath(pathname);
   if (routeFunnel) {
-    const activeFunnel = await getActiveFunnel(context.request, context.env);
-
-    if (
-      activeFunnel &&
-      activeFunnel.id === routeFunnel.id &&
-      isPathAllowedForFunnel(activeFunnel, pathname)
-    ) {
-      return context.next();
-    }
-
     if (routeFunnel.type === "paidProgram") {
+      if (pathname === routeFunnel.successPath) {
+        const paidAccess = await getPaidAccess(context.request, context.env);
+        if (
+          paidAccess?.funnel.id === routeFunnel.id &&
+          hasMatchingAccessHash(url, paidAccess.accessHash)
+        ) {
+          return context.next();
+        }
+      } else {
+        const activeAccess = await getActiveFunnelAccess(context.request, context.env);
+        if (
+          activeAccess?.funnel.id === routeFunnel.id &&
+          isPathAllowedForFunnel(activeAccess.funnel, pathname) &&
+          hasMatchingAccessHash(url, activeAccess.accessHash)
+        ) {
+          return context.next();
+        }
+      }
+
       return paidFunnelSupportResponse({
         env: context.env,
         funnel: routeFunnel,
-        funnelStep: "paid_page_access",
+        funnelStep: pathname === routeFunnel.successPath ? "paid_success" : "paid_page_access",
         request: context.request,
         safeMessage:
           "This paid masterclass page could not verify the access link. Please contact support.",
         status: 403,
-        technicalDigest: "paid_page_access_cookie_missing",
+        technicalDigest:
+          pathname === routeFunnel.successPath
+            ? "paid_success_hash_or_cookie_missing"
+            : "paid_page_access_hash_or_cookie_missing",
         userAction: "Open paid masterclass page"
       });
+    }
+
+    const activeAccess = await getActiveFunnelAccess(context.request, context.env);
+    if (
+      activeAccess?.funnel.id === routeFunnel.id &&
+      isPathAllowedForFunnel(activeAccess.funnel, pathname)
+    ) {
+      return context.next();
     }
 
     return blockedLinkResponse();
@@ -218,13 +243,22 @@ async function handleGoLink(context: PagesContext, pathname: string, url: URL) {
     return blockedLinkResponse(funnel ? 503 : 404);
   }
 
+  if (isSocialPreviewRequest(context.request) && url.searchParams.get("open") !== "1") {
+    return funnelSocialPreviewResponse({ funnel, request: context.request });
+  }
+
+  const accessHash = createFunnelAccessHash();
   const accessCookie = await createFunnelAccessCookie({
+    accessHash,
     entryCode: funnel.entryCode,
     funnelId: funnel.id,
     secret,
     secure: url.protocol === "https:"
   });
   const redirectUrl = new URL(funnel.canonicalPath, context.request.url);
+  if (funnel.type === "paidProgram") {
+    redirectUrl.searchParams.set(FUNNEL_ACCESS_HASH_QUERY, accessHash);
+  }
 
   return new Response(null, {
     status: 302,
@@ -236,7 +270,7 @@ async function handleGoLink(context: PagesContext, pathname: string, url: URL) {
   });
 }
 
-async function getActiveFunnel(request: Request, env: Env) {
+async function getActiveFunnelAccess(request: Request, env: Env) {
   const secret = resolveFunnelAccessSecret(env);
   if (!secret) return null;
 
@@ -246,7 +280,27 @@ async function getActiveFunnel(request: Request, env: Env) {
   });
   if (!access) return null;
 
-  return getFunnelById(access.funnelId);
+  const funnel = getFunnelById(access.funnelId);
+
+  return funnel ? { accessHash: access.accessHash, funnel } : null;
+}
+
+async function getPaidAccess(request: Request, env: Env) {
+  if (!env.SUCCESS_ACCESS_SECRET) return null;
+
+  const access = await verifyPaymentAccessFromCookie({
+    cookieHeader: request.headers.get("cookie"),
+    secret: env.SUCCESS_ACCESS_SECRET
+  });
+  if (!access) return null;
+
+  const funnel = getFunnelById(access.funnelId);
+
+  return funnel ? { accessHash: access.accessHash, funnel } : null;
+}
+
+function hasMatchingAccessHash(url: URL, accessHash: string) {
+  return url.searchParams.get(FUNNEL_ACCESS_HASH_QUERY) === accessHash;
 }
 
 function resolveFunnelAccessSecret(env: Env) {

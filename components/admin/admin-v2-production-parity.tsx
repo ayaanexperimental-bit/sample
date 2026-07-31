@@ -823,13 +823,6 @@ export function AdminV2PaidMasterclassPanel({
                 >
                   Open entry
                 </button>
-                <button
-                  className="btn btn-sm"
-                  onClick={() => window.open(managed.paidPagePath, "_blank", "noopener,noreferrer")}
-                  type="button"
-                >
-                  Open paid page
-                </button>
               </div>
             </section>
             <div className={styles.definitionGrid}>
@@ -866,21 +859,8 @@ export function AdminV2PaidMasterclassPanel({
               >
                 Copy entry
               </button>
-              <button
-                className="btn btn-sm"
-                onClick={() => void copyValue("Paid page", managed.paidPagePath)}
-                type="button"
-              >
-                Copy paid page
-              </button>
-              <button
-                className="btn btn-sm"
-                onClick={() => void copyValue("Success page", managed.successPath)}
-                type="button"
-              >
-                Copy success page
-              </button>
             </div>
+            <small>Paid and success URLs are browser-bound and cannot be shared directly.</small>
             <label className={styles.field}>
               Admin OTP
               <input

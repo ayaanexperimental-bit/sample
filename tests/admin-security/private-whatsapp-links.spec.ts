@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { getFunnelById } from "../../lib/coach-platform";
 import { createFunnelAccessCookie } from "../../lib/server/funnel-access";
+import { createPaymentAccessCookie } from "../../lib/server/payment-access";
 import {
   getPrivatePaymentPageUrl,
   getPrivateWhatsappGroupUrl,
@@ -16,6 +17,7 @@ import { onRequest as paymentStartRequest } from "../../functions/api/payment/st
 import { onRequest as whatsappAccessRequest } from "../../functions/api/whatsapp-access";
 
 const FUNNEL_ACCESS_SECRET = "local-funnel-secret";
+const SUCCESS_ACCESS_SECRET = "local-success-secret";
 const PAID_FUNNEL_ID = "gyana-pcos-51";
 const PRIVATE_WHATSAPP_URL = "https://chat.whatsapp.com/localRegressionInvite";
 const ADMIN_EMAIL = "admin@example.com";
@@ -81,7 +83,8 @@ test.describe("private WhatsApp links", () => {
     });
   });
 
-  test("paid WhatsApp API returns join URL only when env and funnel cookie match", async () => {
+  test("paid WhatsApp API returns join URL only when the paid hash and cookie match", async () => {
+    const accessHash = "paidWhatsappRegressionAccessHash1234567890";
     const noCookie = await whatsappAccessRequest({
       env: {
         ADMIN_DB: createPrivateLinksDb({
@@ -91,21 +94,24 @@ test.describe("private WhatsApp links", () => {
             whatsappGroupUrl: PRIVATE_WHATSAPP_URL
           }
         }).db,
-        FUNNEL_ACCESS_SECRET
+        SUCCESS_ACCESS_SECRET
       },
-      request: new Request("https://ywcoach.com/api/whatsapp-access")
+      request: new Request(
+        `https://ywcoach.com/api/whatsapp-access?access=${encodeURIComponent(accessHash)}`
+      )
     });
     expect(noCookie.status).toBe(200);
     expect(await noCookie.json()).toMatchObject({
       allowed: false,
-      reason: "funnel_access_required"
+      reason: "paid_access_required"
     });
 
-    const paidCookie = await createFunnelAccessCookie({
-      entryCode: PAID_FUNNEL_ID,
+    const paidCookie = await createPaymentAccessCookie({
+      accessHash,
       funnelId: PAID_FUNNEL_ID,
-      secret: FUNNEL_ACCESS_SECRET,
-      secure: true
+      paymentId: "pay_local_regression",
+      secret: SUCCESS_ACCESS_SECRET,
+      source: "test_verified_payment"
     });
     const allowed = await whatsappAccessRequest({
       env: {
@@ -116,13 +122,16 @@ test.describe("private WhatsApp links", () => {
             whatsappGroupUrl: PRIVATE_WHATSAPP_URL
           }
         }).db,
-        FUNNEL_ACCESS_SECRET
+        SUCCESS_ACCESS_SECRET
       },
-      request: new Request("https://ywcoach.com/api/whatsapp-access", {
-        headers: {
-          cookie: paidCookie.split(";")[0]
+      request: new Request(
+        `https://ywcoach.com/api/whatsapp-access?access=${encodeURIComponent(accessHash)}`,
+        {
+          headers: {
+            cookie: paidCookie.split(";")[0]
+          }
         }
-      })
+      )
     });
 
     expect(allowed.status).toBe(200);

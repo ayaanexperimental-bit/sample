@@ -20,15 +20,15 @@ import {
 
 type Env = PrivateFunnelLinkEnv &
   PaidFunnelSupportEnv & {
-  ADMIN_DB?: D1Database;
-  FUNNEL_ACCESS_SECRET?: string;
-  NEXT_PUBLIC_SUPPORT_EMAIL?: string;
-  NEXT_PUBLIC_SUPPORT_MESSAGE?: string;
-  NEXT_PUBLIC_SUPPORT_NAME?: string;
-  RAZORPAY_KEY_SECRET?: string;
-  RAZORPAY_PAYMENT_PAGE_URL?: string;
-  SUCCESS_ACCESS_SECRET?: string;
-};
+    ADMIN_DB?: D1Database;
+    FUNNEL_ACCESS_SECRET?: string;
+    NEXT_PUBLIC_SUPPORT_EMAIL?: string;
+    NEXT_PUBLIC_SUPPORT_MESSAGE?: string;
+    NEXT_PUBLIC_SUPPORT_NAME?: string;
+    RAZORPAY_KEY_SECRET?: string;
+    RAZORPAY_PAYMENT_PAGE_URL?: string;
+    SUCCESS_ACCESS_SECRET?: string;
+  };
 
 type PagesContext = {
   env: Env;
@@ -48,10 +48,11 @@ export async function onRequest({ request, env }: PagesContext) {
     });
   }
 
-  const activeFunnel = await getActivePaidFunnel(request, env);
-  if (!activeFunnel) {
+  const activeAccess = await getActivePaidFunnel(request, env);
+  if (!activeAccess) {
     return blockedLinkResponse();
   }
+  const { accessHash, funnel: activeFunnel } = activeAccess;
 
   const accessSecret = env.SUCCESS_ACCESS_SECRET || env.RAZORPAY_KEY_SECRET;
   if (!accessSecret) {
@@ -60,7 +61,8 @@ export async function onRequest({ request, env }: PagesContext) {
       funnel: activeFunnel,
       funnelStep: "payment_start",
       request,
-      safeMessage: "The payment step is temporarily unavailable. Please contact support before retrying.",
+      safeMessage:
+        "The payment step is temporarily unavailable. Please contact support before retrying.",
       technicalDigest: "payment_start_secret_missing",
       userAction: "Open paid payment link"
     });
@@ -68,7 +70,9 @@ export async function onRequest({ request, env }: PagesContext) {
 
   const attemptId = createPaymentAttemptId();
   const attemptCookie = await createPaymentAttemptCookie({
+    accessHash,
     attemptId,
+    funnelId: activeFunnel.id,
     secret: accessSecret
   });
   const resolvedPaymentUrl =
@@ -82,7 +86,8 @@ export async function onRequest({ request, env }: PagesContext) {
       funnel: activeFunnel,
       funnelStep: "payment_start",
       request,
-      safeMessage: "The payment link is temporarily unavailable. Please contact support before retrying.",
+      safeMessage:
+        "The payment link is temporarily unavailable. Please contact support before retrying.",
       technicalDigest: "payment_start_url_invalid",
       userAction: "Open paid payment link"
     });
@@ -119,7 +124,7 @@ async function getActivePaidFunnel(request: Request, env: Env) {
 
   const funnel = getFunnelById(funnelAccess.funnelId);
 
-  return isPaidProgramFunnel(funnel) ? funnel : null;
+  return isPaidProgramFunnel(funnel) ? { accessHash: funnelAccess.accessHash, funnel } : null;
 }
 
 async function recordPaidEvent({

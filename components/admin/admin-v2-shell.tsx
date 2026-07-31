@@ -395,24 +395,21 @@ const AdminAIPillHost = forwardRef<AdminAIPillHostHandle, AdminAIPillHostProps>(
       openRef.current = nextOpen;
       setOpen(nextOpen);
     }, []);
-    const setAssistantMood = useCallback(
-      (state: AdminV2AiAssistantState, resetMs = 0) => {
-        if (assistantStateResetTimerRef.current !== null) {
-          window.clearTimeout(assistantStateResetTimerRef.current);
+    const setAssistantMood = useCallback((state: AdminV2AiAssistantState, resetMs = 0) => {
+      if (assistantStateResetTimerRef.current !== null) {
+        window.clearTimeout(assistantStateResetTimerRef.current);
+        assistantStateResetTimerRef.current = null;
+      }
+
+      setAssistantState(state);
+
+      if (resetMs > 0) {
+        assistantStateResetTimerRef.current = window.setTimeout(() => {
+          setAssistantState(openRef.current ? "listen" : "idle");
           assistantStateResetTimerRef.current = null;
-        }
-
-        setAssistantState(state);
-
-        if (resetMs > 0) {
-          assistantStateResetTimerRef.current = window.setTimeout(() => {
-            setAssistantState(openRef.current ? "listen" : "idle");
-            assistantStateResetTimerRef.current = null;
-          }, resetMs);
-        }
-      },
-      []
-    );
+        }, resetMs);
+      }
+    }, []);
 
     useEffect(
       () => () => {
@@ -440,9 +437,7 @@ const AdminAIPillHost = forwardRef<AdminAIPillHostHandle, AdminAIPillHostProps>(
         onAssistantStateChange={setAssistantMood}
         onOpenChange={handleOpenChange}
         open={open}
-        orbContent={
-          <AdminV2AiBotSvg className={styles.aiAssistantRobot} state={assistantState} />
-        }
+        orbContent={<AdminV2AiBotSvg className={styles.aiAssistantRobot} state={assistantState} />}
       />
     );
   }
@@ -603,12 +598,9 @@ export function AdminV2DashboardShell(props: AdminV2ShellProps) {
         .filter((section) => section.items.length > 0),
     [adminAccess]
   );
-  const setAiAssistantMood = useCallback(
-    (state: AdminV2AiAssistantState, resetMs = 0) => {
-      activityCenterRef.current?.setAssistantState(state, resetMs);
-    },
-    []
-  );
+  const setAiAssistantMood = useCallback((state: AdminV2AiAssistantState, resetMs = 0) => {
+    activityCenterRef.current?.setAssistantState(state, resetMs);
+  }, []);
   const hasVisibleAdminViews = visibleNavSections.length > 0;
   const activeCopilotSection = getAdminAISection(activeView);
   const shellShopAiSnapshot = useMemo(
@@ -16713,9 +16705,9 @@ function getAdminV2CoachFunnelLabels(row: CoachAnalyticsRow) {
 }
 
 function getAdminV2CoachPublicHref(row: CoachAnalyticsRow) {
-  return (
-    row.publicLink || row.paidFunnels.find((funnel) => funnel.canonicalPath)?.canonicalPath || ""
-  );
+  const paidFunnel = row.paidFunnels.find((funnel) => funnel.entryCode);
+
+  return row.publicLink || (paidFunnel ? `/go/${paidFunnel.entryCode}` : "");
 }
 
 function getAdminV2CoachAnalyticsRegionLabel(row: CoachAnalyticsRow) {

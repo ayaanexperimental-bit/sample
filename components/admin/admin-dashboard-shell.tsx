@@ -3069,9 +3069,9 @@ function AnalyticsKpiCard({
 }
 
 function getCoachPublicHref(row: CoachAnalyticsRow) {
-  return (
-    row.publicLink || row.paidFunnels.find((funnel) => funnel.canonicalPath)?.canonicalPath || ""
-  );
+  const paidFunnel = row.paidFunnels.find((funnel) => funnel.entryCode);
+
+  return row.publicLink || (paidFunnel ? `/go/${paidFunnel.entryCode}` : "");
 }
 
 function getCoachRegionLabel(row: CoachAnalyticsRow) {
@@ -6663,14 +6663,6 @@ export function MasterclassLinksView({
               </button>
               <button
                 className={styles.secondaryAction}
-                disabled={privateRevealBusy}
-                onClick={() => openMasterclassPath(currentManagedLink.paidPagePath)}
-                type="button"
-              >
-                Open Paid Page
-              </button>
-              <button
-                className={styles.secondaryAction}
                 aria-busy={paidAction === "copy_entry"}
                 data-loading={paidAction === "copy_entry" ? "true" : "false"}
                 disabled={privateRevealBusy}
@@ -6685,39 +6677,11 @@ export function MasterclassLinksView({
               >
                 {getPaidButtonLabel("copy_entry", "Copy Entry Link")}
               </button>
-              <button
-                className={styles.secondaryAction}
-                aria-busy={paidAction === "copy_paid"}
-                data-loading={paidAction === "copy_paid" ? "true" : "false"}
-                disabled={privateRevealBusy}
-                onClick={() =>
-                  void copyMasterclassPath(
-                    "Paid page link",
-                    currentManagedLink.paidPagePath,
-                    "copy_paid"
-                  )
-                }
-                type="button"
-              >
-                {getPaidButtonLabel("copy_paid", "Copy Paid Page")}
-              </button>
-              <button
-                className={styles.secondaryAction}
-                aria-busy={paidAction === "copy_success"}
-                data-loading={paidAction === "copy_success" ? "true" : "false"}
-                disabled={privateRevealBusy}
-                onClick={() =>
-                  void copyMasterclassPath(
-                    "Success page link",
-                    currentManagedLink.successPath,
-                    "copy_success"
-                  )
-                }
-                type="button"
-              >
-                {getPaidButtonLabel("copy_success", "Copy Success Link")}
-              </button>
             </div>
+
+            <p className={styles.inlineNote}>
+              Paid and success URLs are browser-bound. Share only the public entry link.
+            </p>
 
             {copyMessage ? <p className={styles.inlineStatus}>{copyMessage}</p> : null}
             {privateRevealBusy ? (

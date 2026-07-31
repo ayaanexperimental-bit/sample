@@ -2,9 +2,11 @@ const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
 export const FUNNEL_ACCESS_COOKIE = "yw_active_funnel";
+export const FUNNEL_ACCESS_HASH_QUERY = "access";
 export const FUNNEL_ACCESS_TTL_SECONDS = 24 * 60 * 60;
 
 export type FunnelAccessPayload = {
+  accessHash: string;
   activatedAt: number;
   entryCode: string;
   expiresAt: number;
@@ -15,11 +17,13 @@ export type FunnelAccessPayload = {
 type SignedTokenPayload = Record<string, unknown>;
 
 export async function createFunnelAccessCookie({
+  accessHash = createFunnelAccessHash(),
   entryCode,
   funnelId,
   secret,
   secure
 }: {
+  accessHash?: string;
   entryCode: string;
   funnelId: string;
   secret: string;
@@ -28,6 +32,7 @@ export async function createFunnelAccessCookie({
   const now = Math.floor(Date.now() / 1000);
   const token = await createSignedToken(
     {
+      accessHash,
       activatedAt: now,
       entryCode,
       expiresAt: now + FUNNEL_ACCESS_TTL_SECONDS,
@@ -43,6 +48,13 @@ export async function createFunnelAccessCookie({
   }
 
   return cookieParts.join("; ");
+}
+
+export function createFunnelAccessHash() {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+
+  return base64UrlEncode(bytes);
 }
 
 export async function verifyFunnelAccessFromCookie({
@@ -139,6 +151,8 @@ function base64UrlDecodeToString(value: string) {
 function isFunnelAccessPayload(payload: SignedTokenPayload | null): payload is FunnelAccessPayload {
   return (
     isRecord(payload) &&
+    typeof payload.accessHash === "string" &&
+    /^[A-Za-z0-9_-]{32,128}$/.test(payload.accessHash) &&
     payload.source === "go_link" &&
     typeof payload.activatedAt === "number" &&
     typeof payload.entryCode === "string" &&

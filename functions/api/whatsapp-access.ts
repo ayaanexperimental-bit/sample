@@ -1,6 +1,7 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { getFunnelById, isPaidProgramFunnel } from "../../lib/coach-platform";
-import { verifyFunnelAccessFromCookie } from "../../lib/server/funnel-access";
+import { FUNNEL_ACCESS_HASH_QUERY } from "../../lib/server/funnel-access";
+import { verifyPaymentAccessFromCookie } from "../../lib/server/payment-access";
 import {
   getPrivateWhatsappGroupUrl,
   type PrivateFunnelLinkEnv
@@ -12,9 +13,9 @@ import {
 
 type Env = PrivateFunnelLinkEnv &
   PaidFunnelSupportEnv & {
-  ADMIN_DB?: D1Database;
-  FUNNEL_ACCESS_SECRET?: string;
-};
+    ADMIN_DB?: D1Database;
+    SUCCESS_ACCESS_SECRET?: string;
+  };
 
 type PagesContext = {
   env: Env;
@@ -35,7 +36,7 @@ export async function onRequest({ request, env }: PagesContext) {
 
   const activeFunnel = await getActivePaidFunnel(request, env);
   if (!activeFunnel) {
-    return json({ allowed: false, reason: "funnel_access_required" });
+    return json({ allowed: false, reason: "paid_access_required" });
   }
 
   const joinUrl = await getPrivateWhatsappGroupUrl(activeFunnel, env);
@@ -77,16 +78,19 @@ function wantsSupportFallback(request: Request) {
 }
 
 async function getActivePaidFunnel(request: Request, env: Env) {
-  const funnelAccessSecret = env.FUNNEL_ACCESS_SECRET;
-  if (!funnelAccessSecret) return null;
+  const accessSecret = env.SUCCESS_ACCESS_SECRET;
+  if (!accessSecret) return null;
 
-  const funnelAccess = await verifyFunnelAccessFromCookie({
+  const paidAccess = await verifyPaymentAccessFromCookie({
     cookieHeader: request.headers.get("cookie"),
-    secret: funnelAccessSecret
+    secret: accessSecret
   });
-  if (!funnelAccess) return null;
+  if (!paidAccess) return null;
 
-  const funnel = getFunnelById(funnelAccess.funnelId);
+  const url = new URL(request.url);
+  if (url.searchParams.get(FUNNEL_ACCESS_HASH_QUERY) !== paidAccess.accessHash) return null;
+
+  const funnel = getFunnelById(paidAccess.funnelId);
 
   return isPaidProgramFunnel(funnel) ? funnel : null;
 }

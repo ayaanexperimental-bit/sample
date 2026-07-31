@@ -31,17 +31,28 @@ const checks = [
   async () => {
     const paidEntry = await request(`${SITE_URL}/go/gyana-pcos-51`, { redirect: "manual" });
     assertStatus(paidEntry, [302], "Gyana paid entry");
-    assertPath(paidEntry.headers.get("location"), "/gyana/pcos-51", "Gyana paid entry");
+    const paidLocation = paidEntry.headers.get("location") || "";
+    assertPath(paidLocation, "/gyana/pcos-51", "Gyana paid entry");
+    const paidAccessHash = new URL(paidLocation).searchParams.get("access") || "";
+    if (!paidAccessHash) {
+      throw new Error("Gyana paid entry: missing browser-bound access hash");
+    }
 
     const paidCookie = getSetCookie(paidEntry);
-    const paidPage = await request(`${SITE_URL}/gyana/pcos-51`, { cookie: paidCookie });
+    const paidPage = await request(paidLocation, { cookie: paidCookie });
     assertStatus(paidPage, [200], "Gyana paid page");
+
+    const copiedPaidPage = await request(paidLocation);
+    assertStatus(copiedPaidPage, [403], "Copied paid page is blocked");
 
     const blockedGuest = await request(`${SITE_URL}/gyana`, { cookie: paidCookie });
     assertStatus(blockedGuest, [403], "Paid cannot open guest page");
 
-    const successPage = await request(`${SITE_URL}/gyana/pcos-51/success`, { cookie: paidCookie });
-    assertStatus(successPage, [200], "Gyana paid success page");
+    const directSuccess = await request(
+      `${SITE_URL}/gyana/pcos-51/success?access=${encodeURIComponent(paidAccessHash)}`,
+      { cookie: paidCookie }
+    );
+    assertStatus(directSuccess, [403], "Direct success page is blocked before payment return");
 
     const paymentRedirect = await request(`${SITE_URL}/api/payment/start`, {
       cookie: paidCookie,
@@ -50,11 +61,14 @@ const checks = [
     assertStatus(paymentRedirect, [302], "Payment redirect");
     assertHost(paymentRedirect.headers.get("location"), PAYMENT_HOST, "Payment redirect");
 
-    const whatsappAccess = await request(`${SITE_URL}/api/whatsapp-access`, {
-      cookie: paidCookie
-    });
-    assertStatus(whatsappAccess, [200], "Paid WhatsApp API");
-    await assertAllowedWhatsAppResponse(whatsappAccess, "Paid WhatsApp API");
+    const whatsappAccess = await request(
+      `${SITE_URL}/api/whatsapp-access?access=${encodeURIComponent(paidAccessHash)}`,
+      {
+        cookie: paidCookie
+      }
+    );
+    assertStatus(whatsappAccess, [200], "Pre-payment WhatsApp API");
+    await assertNoJoinUrl(whatsappAccess, "Pre-payment WhatsApp API");
   },
   async () => {
     const invalidEntry = await request(`${SITE_URL}/go/not-real`, { redirect: "manual" });
@@ -123,18 +137,6 @@ async function assertNoJoinUrl(response, name) {
   }
 
   console.log(`PASS ${name}: no joinUrl`);
-}
-
-async function assertAllowedWhatsAppResponse(response, name) {
-  const payload = await response.json();
-
-  if (payload?.allowed === true) {
-    assertHost(payload.joinUrl, "chat.whatsapp.com", name);
-    console.log(`PASS ${name}: matching funnel joinUrl available`);
-    return;
-  }
-
-  throw new Error(`${name}: expected allowed=true for active paid funnel`);
 }
 
 function request(url, options = {}) {
