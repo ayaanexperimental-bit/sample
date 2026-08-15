@@ -575,7 +575,9 @@ export function AdminV2PaidMasterclassPanel({
           groupKey: link.coachName,
           id: link.funnelId,
           label: link.displayName || link.coachName,
-          linkValid: Boolean(link.entryPath?.startsWith("/") && link.successPath?.startsWith("/")),
+          linkValid: Boolean(
+            link.entryPath?.startsWith("/") && link.successPath?.startsWith("/")
+          ),
           requiredDataComplete: Boolean(link.entryCode && link.entryPath && link.successPath),
           status: link.status,
           unresolvedErrors: missingDestinations
@@ -706,8 +708,7 @@ export function AdminV2PaidMasterclassPanel({
             <span>Private access</span>
             <h3>Masterclass link matrix</h3>
             <p>
-              Public paths are visible; private destinations stay server-side until OTP
-              verification.
+              Public paths are visible; private destinations stay server-side until OTP verification.
             </p>
           </div>
           <AdminAIAskButton
@@ -1560,62 +1561,42 @@ export function AdminV2AdminUsersPanel({
               value={form.note}
             />
           </label>
-          <section aria-labelledby="admin-v2-role-template-title">
-            <header className={styles.formSectionHeader}>
-              <div>
-                <h4 id="admin-v2-role-template-title">Choose a role template</h4>
-                <p>Start with the closest least-privilege role. You can refine access below.</p>
-              </div>
-              <span>{form.permissions.length} selected permissions</span>
-            </header>
-            <div className={styles.roleGrid} aria-label="Admin role templates">
-              {(payload.roleTemplates || [])
-                .filter((role) => role.key !== "owner")
-                .map((role) => (
-                  <button
-                    className="btn btn-sm"
-                    data-active={form.roleKey === role.key ? "true" : undefined}
-                    key={role.key}
-                    onClick={() => selectRole(role.key)}
-                    type="button"
-                  >
-                    <strong>{role.label}</strong>
-                    <small>{role.description}</small>
-                  </button>
-                ))}
-            </div>
-          </section>
-          <details className={styles.permissionDisclosure}>
-            <summary>
-              <span>
-                <strong>Customize permissions</strong>
-                <small>
-                  Review individual access only when the selected role needs an exception.
-                </small>
-              </span>
-              <span>{form.permissions.length} selected permissions</span>
-            </summary>
-            <section className={styles.permissionGrid} aria-label="Admin permissions">
-              {permissionGroups.map(([module, permissions]) => (
-                <fieldset key={module}>
-                  <legend>{module.replace(/_/g, " ")}</legend>
-                  {permissions.map((permission) => (
-                    <label key={permission.key}>
-                      <input
-                        checked={form.permissions.includes(permission.key)}
-                        onChange={() => togglePermission(permission.key)}
-                        type="checkbox"
-                      />
-                      <span>
-                        <strong>{permission.label}</strong>
-                        <small>{permission.description}</small>
-                      </span>
-                    </label>
-                  ))}
-                </fieldset>
+          <section className={styles.roleGrid} aria-label="Admin role templates">
+            {(payload.roleTemplates || [])
+              .filter((role) => role.key !== "owner")
+              .map((role) => (
+                <button
+                  className="btn btn-sm"
+                  data-active={form.roleKey === role.key ? "true" : undefined}
+                  key={role.key}
+                  onClick={() => selectRole(role.key)}
+                  type="button"
+                >
+                  <strong>{role.label}</strong>
+                  <small>{role.description}</small>
+                </button>
               ))}
-            </section>
-          </details>
+          </section>
+          <section className={styles.permissionGrid} aria-label="Admin permissions">
+            {permissionGroups.map(([module, permissions]) => (
+              <fieldset key={module}>
+                <legend>{module.replace(/_/g, " ")}</legend>
+                {permissions.map((permission) => (
+                  <label key={permission.key}>
+                    <input
+                      checked={form.permissions.includes(permission.key)}
+                      onChange={() => togglePermission(permission.key)}
+                      type="checkbox"
+                    />
+                    <span>
+                      <strong>{permission.label}</strong>
+                      <small>{permission.description}</small>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+            ))}
+          </section>
           {formMode === "edit" ? (
             <div className={styles.checkList}>
               <label>

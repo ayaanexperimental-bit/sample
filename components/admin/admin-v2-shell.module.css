@@ -45,56 +45,6 @@
   background: rgba(8, 18, 12, 0.78);
 }
 
-.v2ModuleTransition {
-  display: grid;
-  min-height: 220px;
-  align-content: center;
-  gap: 24px;
-  border: 1px solid var(--admin-v2-border);
-  border-radius: 12px;
-  padding: 24px;
-  color: var(--admin-v2-text);
-  background: var(--admin-v2-panel);
-}
-
-.v2ModuleTransition h2,
-.v2ModuleTransition p {
-  margin: 0;
-}
-
-.v2ModuleTransition h2 {
-  font-size: 1.1rem;
-  line-height: 1.3;
-}
-
-.v2ModuleTransition p {
-  max-width: 70ch;
-  margin-top: 6px;
-  color: var(--admin-v2-text-muted);
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-.v2ModuleTransitionBars {
-  display: grid;
-  max-width: 560px;
-  gap: 8px;
-}
-
-.v2ModuleTransitionBars span {
-  height: 10px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--admin-v2-text-muted) 22%, transparent);
-}
-
-.v2ModuleTransitionBars span:nth-child(2) {
-  width: 82%;
-}
-
-.v2ModuleTransitionBars span:nth-child(3) {
-  width: 58%;
-}
-
 .v2DialogCopy {
   margin: 0;
   line-height: 1.55;
@@ -102,39 +52,12 @@
 
 .v2SidebarScrim {
   position: fixed;
-  inset: 0 0 0 min(19rem, calc(100vw - 1.5rem));
+  inset: 0 0 0 min(86vw, 19rem);
   z-index: 78;
   border: 0;
   background: rgba(0, 0, 0, 0.58);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-}
-
-.v2SidebarClose {
-  display: none;
-  width: 44px;
-  height: 44px;
-  align-items: center;
-  justify-content: center;
-  margin-inline-start: auto;
-  border: 1px solid var(--admin-v2-border);
-  border-radius: 10px;
-  color: var(--admin-v2-text);
-  background: var(--admin-v2-panel-2);
-  font: inherit;
-  font-size: 1.5rem;
-  line-height: 1;
-}
-
-.v2SidebarClose:focus-visible {
-  outline: 3px solid color-mix(in oklab, var(--admin-v2-accent-cyan), transparent 55%);
-  outline-offset: 2px;
-}
-
-@media (max-width: 1100px) {
-  .v2SidebarClose {
-    display: inline-flex;
-  }
 }
 
 .v2DialogLayer {
@@ -183,9 +106,11 @@
   max-height: min(720px, calc(100vh - 40px));
   overflow: auto;
   border: 1px solid var(--admin-v2-border, rgba(185, 255, 80, 0.22));
-  border-radius: 12px;
+  border-radius: 24px;
   color: var(--admin-v2-text, #f4ffe9);
-  background: var(--admin-v2-panel, #0d1f15);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(183, 255, 60, 0.14), transparent 42%),
+    linear-gradient(180deg, rgba(13, 31, 21, 0.98), rgba(4, 12, 7, 0.98));
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.52);
 }
 
@@ -198,7 +123,9 @@
 }
 
 .v2DialogLayer[data-od-theme="light"] .v2DialogPanel {
-  background: var(--admin-v2-panel, #ffffff);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(35, 168, 105, 0.14), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(239, 248, 232, 0.98));
   box-shadow: 0 28px 90px rgba(24, 62, 40, 0.22);
 }
 
@@ -219,7 +146,7 @@
 
 .v2DialogHeader button {
   border: 1px solid rgba(183, 255, 60, 0.18);
-  border-radius: 8px;
+  border-radius: 999px;
   padding: 8px 12px;
   color: var(--admin-v2-text, #f4ffe9);
   background: rgba(183, 255, 60, 0.08);
@@ -259,7 +186,7 @@
   min-width: 0;
   gap: 7px;
   border: 1px solid var(--admin-v2-border);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 14px;
   background: color-mix(in srgb, var(--admin-v2-panel-2) 86%, transparent);
 }
@@ -270,10 +197,10 @@
 
 .v2ReportDetailItem small {
   color: var(--admin-v2-text-muted);
-  font-size: 0.8125rem;
-  font-weight: 650;
-  letter-spacing: 0;
-  text-transform: none;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .v2ReportDetailItem > div {
@@ -336,7 +263,7 @@
 .v2DangerField textarea {
   width: 100%;
   border: 1px solid var(--admin-v2-border);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 11px 12px;
   color: var(--admin-v2-text);
   background: color-mix(in srgb, var(--admin-v2-panel-2) 92%, transparent);
@@ -383,7 +310,7 @@
 
 .v2DangerConfirmButton {
   border: 1px solid color-mix(in srgb, var(--admin-v2-danger) 78%, transparent);
-  border-radius: 8px;
+  border-radius: 999px;
   padding: 10px 15px;
   color: #fff;
   background: color-mix(in srgb, var(--admin-v2-danger) 78%, #280709);
@@ -417,11 +344,11 @@
 
 .v2PrimaryAction {
   border: 1px solid rgba(183, 255, 60, 0.42);
-  border-radius: 8px;
+  border-radius: 999px;
   padding: 11px 16px;
   color: #071007;
-  background: #b7ff3c;
-  box-shadow: none;
+  background: linear-gradient(135deg, #b7ff3c, #6cff8d);
+  box-shadow: 0 14px 34px rgba(183, 255, 60, 0.2);
   font: inherit;
   font-weight: 900;
   cursor: pointer;
@@ -429,8 +356,8 @@
 
 .v2PrimaryAction:hover,
 .v2PrimaryAction:focus-visible {
-  background: #c8ff72;
-  box-shadow: none;
+  transform: translateY(-1px);
+  box-shadow: 0 18px 42px rgba(183, 255, 60, 0.28);
 }
 
 .v2SearchResults {
@@ -443,9 +370,11 @@
   max-height: 280px;
   overflow: auto;
   border: 1px solid rgba(183, 255, 60, 0.24);
-  border-radius: 12px;
+  border-radius: 18px;
   padding: 8px;
-  background: var(--admin-v2-panel, #0d1f15);
+  background:
+    radial-gradient(circle at 16% 0%, rgba(183, 255, 60, 0.14), transparent 42%),
+    linear-gradient(180deg, rgba(8, 18, 12, 0.98), rgba(3, 10, 6, 0.98));
   box-shadow:
     0 24px 58px rgba(0, 0, 0, 0.46),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
@@ -490,7 +419,9 @@
 
 .adminV2Mount[data-od-theme="light"] .v2SearchResults {
   border-color: rgba(34, 114, 64, 0.24);
-  background: var(--admin-v2-panel, #ffffff);
+  background:
+    radial-gradient(circle at 16% 0%, rgba(35, 168, 105, 0.14), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(240, 249, 235, 0.98));
   box-shadow:
     0 24px 58px rgba(24, 62, 40, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.88);
@@ -514,7 +445,7 @@
 .v2InlineStatus {
   margin: 0;
   border: 1px solid rgba(183, 255, 60, 0.18);
-  border-radius: 12px;
+  border-radius: 18px;
   padding: 12px 14px;
   color: var(--admin-v2-accent-soft);
   background: rgba(4, 12, 7, 0.78);
@@ -523,8 +454,12 @@
 .adminV2Mount[data-od-theme="light"] .v2InlineStatus {
   border-color: rgba(54, 128, 63, 0.26);
   color: #173d24 !important;
-  background: rgba(255, 255, 250, 0.96);
-  box-shadow: none;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 250, 0.96), rgba(227, 243, 213, 0.94)),
+    rgba(255, 255, 250, 0.96);
+  box-shadow:
+    0 14px 34px rgba(31, 73, 35, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
 }
 
 .aiAssistantDock {

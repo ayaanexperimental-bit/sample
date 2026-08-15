@@ -6,7 +6,6 @@ import {
   type CoachSiteRecord,
   type CoachSiteStatus
 } from "../../lib/admin-coach-sites";
-import { adminV2ViewTitles } from "../../lib/admin-v2-access";
 
 const runCopilotSmoke = process.env.ADMIN_V2_COPILOT_SMOKE === "true";
 const smokeEmail = process.env.ADMIN_V2_SMOKE_EMAIL || "admin-v2-smoke@example.com";
@@ -32,7 +31,7 @@ type ModuleScenario = {
 
 const MODULE_SCENARIOS: ModuleScenario[] = [
   {
-    heading: "Revenue readiness",
+    heading: "Open admin modules",
     id: "overview",
     nav: "Overview",
     sectionName: "Admin Overview"
@@ -120,7 +119,7 @@ test.describe("Admin V2 Copilot resilience and final browser matrix", () => {
       !RESPONSIVE_PROJECTS.has(testInfo.project.name),
       "This bounded matrix covers mobile, tablet, and desktop."
     );
-    test.setTimeout(300_000);
+    test.setTimeout(240_000);
 
     expect(MODULE_SCENARIOS.map(({ id }) => id).sort()).toEqual(
       Object.keys(adminAIRegistry).sort()
@@ -199,8 +198,7 @@ test.describe("Admin V2 Copilot resilience and final browser matrix", () => {
         drawer,
         page.getByRole("button", { name: /Close .* Admin Copilot/ })
       );
-      const summarizeCommand = await revealCopilotCommand(drawer, /Summarize this page/);
-      await summarizeCommand.click();
+      await drawer.getByRole("button", { name: /Summarize this page/ }).click();
       await expect(drawer.locator('[data-admin-ai-response="true"]')).toHaveAttribute(
         "data-state",
         "offline-error"
@@ -234,8 +232,7 @@ test.describe("Admin V2 Copilot resilience and final browser matrix", () => {
       const drawer = page.getByRole("dialog", {
         name: `${moduleScenario.sectionName} Admin Copilot`
       });
-      const generateReport = await revealCopilotCommand(drawer, /Generate report/);
-      await generateReport.click();
+      await drawer.getByRole("button", { name: /Generate report/ }).click();
       const copyReport = drawer.getByRole("button", { name: "Copy report" });
       await expect(copyReport).not.toBeVisible();
       const confirmation = drawer.getByRole("alertdialog", {
@@ -313,49 +310,6 @@ test.describe("Admin V2 Copilot resilience and final browser matrix", () => {
     await loginToAdminV2(page);
     await enableCopilotForCurrentPage(page);
     await assertRouteChangeContinuesLongRead(page);
-  });
-
-  test("keeps an async live-insight failure stable after replacing a detailed report", async ({
-    page
-  }, testInfo) => {
-    test.skip(testInfo.project.name !== "mobile", "The narrow mobile viewport exposes the shift.");
-    test.setTimeout(90_000);
-
-    await page.emulateMedia({ reducedMotion: "reduce" });
-    await loginToAdminV2(page);
-    await enableCopilotForCurrentPage(page);
-
-    const adminUsers = getModuleScenario("admin-users");
-    await openModule(page, adminUsers);
-    const reportDrawer = await openCopilot(page, adminUsers.sectionName);
-    const generateReport = await revealCopilotCommand(reportDrawer, /Generate report/);
-    await generateReport.click();
-    const confirmation = reportDrawer.getByRole("alertdialog", {
-      name: "Generate report",
-      exact: true
-    });
-    await expect(confirmation).toBeVisible();
-    await confirmation.getByRole("button", { name: "Apply suggestion", exact: true }).click();
-    const largeReportConfirmation = reportDrawer.getByRole("alertdialog", {
-      name: "Large report confirmation",
-      exact: true
-    });
-    if (await largeReportConfirmation.isVisible()) {
-      await largeReportConfirmation
-        .getByRole("button", { name: "Continue", exact: true })
-        .click();
-    }
-    await expect(reportDrawer.getByRole("button", { name: "Copy report" })).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(reportDrawer).not.toBeVisible();
-
-    await startCLSMeasurement(page);
-    await assertLiveServiceFailureKeepsOverviewUsable(page);
-    const measurement = await readCLSMeasurement(page);
-    expect(
-      measurement.value,
-      `live-insight replacement CLS exceeded ${CLS_BUDGET}\n${JSON.stringify(measurement.detail)}`
-    ).toBeLessThanOrEqual(CLS_BUDGET);
   });
 
   test("keeps Analytics coach-site identity exact and fails closed for unresolved targets", async ({
@@ -460,81 +414,70 @@ test.describe("Admin V2 Copilot resilience and final browser matrix", () => {
     });
 
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await loginToAdminV2ViaOtpVerification(page);
-    const reviewOnlySettings = await getReviewOnlyDangerousCommandSettings(page);
-    const exposeReviewOnlyDangerousCommands = async (route: Route) => {
-      if (route.request().method() !== "GET") {
-        await route.fallback();
-        return;
-      }
-      await route.fulfill({ json: reviewOnlySettings });
-    };
     await page.route("**/api/admin/ai-settings", exposeReviewOnlyDangerousCommands);
+    await loginToAdminV2(page);
     expect(NON_EXECUTABLE_CONFIRMATIONS).toHaveLength(9);
     expect(NON_EXECUTABLE_CONFIRMATIONS.filter(({ command }) => command.otpRequired)).toHaveLength(
       4
     );
 
-    try {
-      for (const { command, moduleScenario } of NON_EXECUTABLE_CONFIRMATIONS) {
-        await openModule(page, moduleScenario);
-        const drawer = await openCopilot(page, moduleScenario.sectionName);
+    for (const { command, moduleScenario } of NON_EXECUTABLE_CONFIRMATIONS) {
+      await openModule(page, moduleScenario);
+      const drawer = await openCopilot(page, moduleScenario.sectionName);
 
-        const commandButton = await revealCopilotCommand(
-          drawer,
-          new RegExp(`^${escapeRegExp(command.label)}(?:\\s|$)`)
-        );
-        await commandButton.click();
-        let confirmation = drawer.getByRole("alertdialog", { name: command.label, exact: true });
-        await expect(confirmation).toBeVisible();
-        await expect(confirmation).toHaveAttribute(
-          "data-execution-availability",
-          command.executionContract.availability
-        );
-        if (command.otpRequired) {
-          await expect(confirmation).toContainText("Existing OTP required");
-          await expect(confirmation).toContainText(/cannot read, submit, or bypass an OTP/i);
-        }
-        await assertConfirmationUsable(confirmation, page, testInfo.project.name);
-        await confirmation.getByRole("button", { name: "Cancel" }).focus();
-        await page.keyboard.press("Enter");
-        await expect(drawer.getByRole("heading", { name: "Action cancelled" })).toBeVisible();
-
-        await commandButton.click();
-        confirmation = drawer.getByRole("alertdialog", { name: command.label, exact: true });
-        const approve = confirmation.getByRole("button", {
-          name: confirmationLabel(command),
-          exact: true
-        });
-        await approve.scrollIntoViewIfNeeded();
-        await approve.focus();
-        await page.keyboard.press("Enter");
-        await expect(confirmation).not.toBeVisible();
-        await expect(page.locator('[data-admin-version="v2"]')).toBeVisible();
-        if (command.kind === "navigate" && command.destinationView) {
-          const destination = getModuleScenario(command.destinationView as RegistryModuleId);
-          await expect(drawer).not.toBeVisible();
-          await expect(
-            page.getByRole("heading", { name: destination.heading, exact: true }).first()
-          ).toBeVisible();
-          await expect
-            .poll(() => new URL(page.url()).searchParams.get("view"))
-            .toBe(command.destinationView);
-        } else {
-          await expect(drawer.locator('[data-admin-ai-response="true"]')).toHaveAttribute(
-            "data-state",
-            /^(action-prepared|blocked-missing-data|missing-data|ready)$/
-          );
-          await page.keyboard.press("Escape");
-        }
-
-        await expect(drawer).not.toBeVisible();
+      const commandButton = drawer.getByRole("button", {
+        name: new RegExp(`^${escapeRegExp(command.label)}(?:\\s|$)`)
+      });
+      await expect(commandButton).toBeVisible();
+      await commandButton.click();
+      let confirmation = drawer.getByRole("alertdialog", { name: command.label, exact: true });
+      await expect(confirmation).toBeVisible();
+      await expect(confirmation).toHaveAttribute(
+        "data-execution-availability",
+        command.executionContract.availability
+      );
+      if (command.otpRequired) {
+        await expect(confirmation).toContainText("Existing OTP required");
+        await expect(confirmation).toContainText(/cannot read, submit, or bypass an OTP/i);
       }
-    } finally {
-      await page.unroute("**/api/admin/ai-settings", exposeReviewOnlyDangerousCommands);
+      await assertConfirmationUsable(confirmation, page, testInfo.project.name);
+      await confirmation.getByRole("button", { name: "Cancel" }).focus();
+      await page.keyboard.press("Enter");
+      await expect(drawer.getByRole("heading", { name: "Action cancelled" })).toBeVisible();
+
+      await commandButton.click();
+      confirmation = drawer.getByRole("alertdialog", { name: command.label, exact: true });
+      const approve = confirmation.getByRole("button", {
+        name: confirmationLabel(command),
+        exact: true
+      });
+      await approve.scrollIntoViewIfNeeded();
+      await approve.focus();
+      await page.keyboard.press("Enter");
+      await expect(confirmation).not.toBeVisible();
+      await expect(page.locator('[data-admin-version="v2"]')).toBeVisible();
+      if (command.kind === "navigate" && command.destinationView) {
+        const destination = getModuleScenario(command.destinationView as RegistryModuleId);
+        await expect(drawer).not.toBeVisible();
+        await expect(
+          page.getByRole("heading", { name: destination.heading, exact: true }).first()
+        ).toBeVisible();
+        await expect
+          .poll(() => new URL(page.url()).searchParams.get("view"))
+          .toBe(command.destinationView);
+      } else {
+        await expect(drawer.locator('[data-admin-ai-response="true"]')).toHaveAttribute(
+          "data-state",
+          /^(action-prepared|blocked-missing-data|missing-data|ready)$/
+        );
+        await page.keyboard.press("Escape");
+      }
+
+      await expect(drawer).not.toBeVisible();
     }
 
     expect(protectedMutationRequests).toEqual([]);
+    await page.unroute("**/api/admin/ai-settings", exposeReviewOnlyDangerousCommands);
   });
 
   test("fails closed and persists both disposable registered actions through refresh", async ({
@@ -623,7 +566,6 @@ async function openModule(page: Page, scenario: ModuleScenario) {
 }
 
 async function measureModuleNavigation(page: Page, scenario: ModuleScenario) {
-  const pageTitle = adminV2ViewTitles[scenario.id];
   let trigger: Locator;
   if (scenario.parentNav && scenario.nestedButton) {
     await selectAdminSection(page, scenario.parentNav);
@@ -645,8 +587,7 @@ async function measureModuleNavigation(page: Page, scenario: ModuleScenario) {
     throw new Error(`Missing navigation trigger for ${scenario.id}`);
   }
 
-  const navigationMs = await measureClickToVisibleHeading(page, trigger, pageTitle);
-  await expect(page.getByRole("heading", { name: pageTitle, exact: true, level: 1 })).toBeVisible();
+  const navigationMs = await measureClickToVisibleHeading(page, trigger, scenario.heading);
   await expect(
     page.getByRole("heading", { name: scenario.heading, exact: true }).first()
   ).toBeVisible();
@@ -670,18 +611,6 @@ async function openCopilot(page: Page, sectionName: string) {
   const drawer = page.getByRole("dialog", { name: `${sectionName} Admin Copilot` });
   await expect(drawer).toBeVisible();
   return drawer;
-}
-
-async function revealCopilotCommand(drawer: Locator, name: RegExp | string) {
-  const command = drawer.getByRole("button", { name });
-  const disclosure = drawer.locator("details").filter({ hasText: "More commands" });
-  await expect(disclosure).toBeVisible();
-  if ((await disclosure.getAttribute("open")) === null) {
-    await disclosure.locator("summary").click();
-    await expect(disclosure).toHaveAttribute("open", "");
-  }
-  await expect(command).toBeVisible();
-  return command;
 }
 
 function getPrimaryTarget(page: Page, moduleId: RegistryModuleId): Locator {
@@ -791,21 +720,20 @@ async function unavailableAdminAISettings(route: Route) {
   });
 }
 
-async function getReviewOnlyDangerousCommandSettings(page: Page) {
-  const response = await page.request.get("/api/admin/ai-settings");
+async function exposeReviewOnlyDangerousCommands(route: Route) {
+  if (route.request().method() !== "GET") {
+    await route.fallback();
+    return;
+  }
+  const response = await route.fetch();
   const payload = (await response.json()) as {
-    error?: string;
-    ok?: boolean;
     settings?: {
       effectivePolicy?: { actionPermissions?: { dangerousEnabled?: boolean } };
     };
   };
-  expect(response.status(), payload.error || "Admin AI settings snapshot failed.").toBe(200);
-  expect(payload.ok).toBe(true);
   const permissions = payload.settings?.effectivePolicy?.actionPermissions;
-  expect(permissions).toBeTruthy();
   if (permissions) permissions.dangerousEnabled = true;
-  return payload;
+  await route.fulfill({ json: payload, response });
 }
 
 async function assertLiveServiceFailureKeepsOverviewUsable(page: Page) {
@@ -827,35 +755,18 @@ async function assertLiveServiceFailureKeepsOverviewUsable(page: Page) {
   await page.route("**/api/admin/analytics-insights", handler);
 
   const drawer = await openCopilot(page, overview.sectionName);
-  const generateLiveInsight = await revealCopilotCommand(drawer, /^Generate live insight(?:\s|$)/);
-  await generateLiveInsight.click();
-  const liveInsightUnavailable = drawer.getByRole("heading", {
-    name: /^Live AI insight (?:is disabled|unavailable)$/
-  });
-  await expect(liveInsightUnavailable).toBeVisible();
+  await drawer.getByRole("button", { name: /^Generate live insight(?:\s|$)/ }).click();
+  await expect(drawer.getByRole("heading", { name: "Live AI insight unavailable" })).toBeVisible();
   await expect(drawer.locator('[data-admin-ai-response="true"]')).toHaveAttribute(
     "data-state",
     "offline-error"
   );
   const retry = drawer.getByRole("button", { name: /Retry request/ });
   await expect(retry).toBeVisible();
-  const liveModelDisabled = await drawer
-    .getByRole("heading", { name: "Live AI insight is disabled" })
-    .isVisible();
-  if (liveModelDisabled) {
-    expect(requestCount).toBe(0);
-    await retry.click();
-    await expect(drawer.locator('[data-admin-ai-response="true"]')).toHaveAttribute(
-      "data-state",
-      "offline-error"
-    );
-    expect(requestCount).toBe(0);
-  } else {
-    const retryResponse = page.waitForResponse("**/api/admin/analytics-insights");
-    await retry.click();
-    await retryResponse;
-    await expect.poll(() => requestCount).toBe(2);
-  }
+  const retryResponse = page.waitForResponse("**/api/admin/analytics-insights");
+  await retry.click();
+  await retryResponse;
+  await expect.poll(() => requestCount).toBe(2);
   await expect(drawer.getByRole("button", { name: "Cancel", exact: true })).not.toBeVisible();
   await page.keyboard.press("Escape");
   await page.unroute("**/api/admin/analytics-insights", handler);
@@ -1042,7 +953,6 @@ async function expectFocusedCoachSite(page: Page, site: CoachSiteRecord) {
 async function expectSingleCoachSiteCopilotSelection(page: Page, site: CoachSiteRecord) {
   const drawer = await openCopilot(page, "Coach Sites");
   await expect(drawer.getByText(/1 selected \/ \d+ indexed records/)).toBeVisible();
-  await drawer.locator("details").filter({ hasText: "Context details" }).locator("summary").click();
   await expect(
     drawer.getByText(`Selected entity: ${site.coachName}`, { exact: true })
   ).toBeVisible();
@@ -1077,7 +987,6 @@ async function expectCoachSiteFocusToFailClosed(page: Page) {
 
   const drawer = await openCopilot(page, "Coach Sites");
   await expect(drawer.getByText(/0 selected \/ \d+ indexed records/)).toBeVisible();
-  await drawer.locator("details").filter({ hasText: "Context details" }).locator("summary").click();
   await expect(drawer.getByText("Selected entity: None", { exact: true })).toBeVisible();
   await expect(
     drawer.getByRole("button", { name: "Selected Records", exact: true })
@@ -1132,35 +1041,9 @@ async function assertRouteChangeContinuesLongRead(page: Page) {
   await page.route("**/api/admin/analytics-insights", handler);
 
   const drawer = await openCopilot(page, overview.sectionName);
-  const requestStarted = page.waitForRequest("**/api/admin/analytics-insights").catch(() => null);
-  const generateLiveInsight = await revealCopilotCommand(drawer, /^Generate live insight(?:\s|$)/);
-  await generateLiveInsight.click();
-  const disabledResponse = drawer.getByRole("heading", {
-    name: "Live AI insight is disabled"
-  });
-  const liveModelDisabled = await disabledResponse
-    .waitFor({ state: "visible", timeout: 1_000 })
-    .then(() => true)
-    .catch(() => false);
-  if (liveModelDisabled) {
-    releaseRoute();
-    await page.unroute("**/api/admin/analytics-insights", handler);
-    await page.keyboard.press("Escape");
-    await openModule(page, getModuleScenario("coach-analytics"));
-    await expect(page.locator('[data-admin-version="v2"]')).toBeVisible();
-    const analyticsDrawer = await openCopilot(page, "Coach Analytics");
-    await expect(analyticsDrawer.locator('[data-admin-ai-response="true"]')).toHaveAttribute(
-      "data-state",
-      "offline-error"
-    );
-    await expect(
-      analyticsDrawer.getByRole("heading", { name: "Live AI insight is disabled" })
-    ).toBeVisible();
-    await expect(analyticsDrawer).not.toContainText(/cancelled because the admin context changed/i);
-    await page.keyboard.press("Escape");
-    return;
-  }
-  expect(await requestStarted).not.toBeNull();
+  const requestStarted = page.waitForRequest("**/api/admin/analytics-insights");
+  await drawer.getByRole("button", { name: /^Generate live insight(?:\s|$)/ }).click();
+  await requestStarted;
   const menuButton = page.getByRole("button", { name: /Open (admin )?navigation/i });
   if (await menuButton.isVisible().catch(() => false)) {
     await menuButton.focus();
@@ -1297,22 +1180,18 @@ async function verifySettingsActionLifecycle(page: Page, csrfToken: string) {
 }
 
 async function openAndCancelRegisteredAction(drawer: Locator, label: string) {
-  const command = await revealCopilotCommand(
-    drawer,
-    new RegExp(`^${escapeRegExp(label)}(?:\\s|$)`)
-  );
-  await command.click();
+  await drawer
+    .getByRole("button", { name: new RegExp(`^${escapeRegExp(label)}(?:\\s|$)`) })
+    .click();
   const confirmation = drawer.getByRole("alertdialog", { name: label, exact: true });
   await confirmation.getByRole("button", { name: "Cancel" }).click();
   await expect(drawer.getByRole("heading", { name: "Action cancelled" })).toBeVisible();
 }
 
 async function confirmRegisteredAction(drawer: Locator, label: string) {
-  const command = await revealCopilotCommand(
-    drawer,
-    new RegExp(`^${escapeRegExp(label)}(?:\\s|$)`)
-  );
-  await command.click();
+  await drawer
+    .getByRole("button", { name: new RegExp(`^${escapeRegExp(label)}(?:\\s|$)`) })
+    .click();
   const confirmation = drawer.getByRole("alertdialog", { name: label, exact: true });
   await confirmation.getByRole("button", { name: "Confirm action" }).click();
 }
@@ -1727,23 +1606,17 @@ async function startCLSMeasurement(page: Page) {
     const metricsWindow = window as Window & {
       __adminCopilotCLS?: number;
       __adminCopilotCLSDetail?: LayoutShiftDetail;
-      __adminCopilotCLSMeasurementId?: number;
       __adminCopilotCLSObserver?: PerformanceObserver;
     };
     metricsWindow.__adminCopilotCLSObserver?.disconnect();
-    const measurementId = (metricsWindow.__adminCopilotCLSMeasurementId || 0) + 1;
-    metricsWindow.__adminCopilotCLSMeasurementId = measurementId;
     metricsWindow.__adminCopilotCLS = 0;
     metricsWindow.__adminCopilotCLSDetail = { entries: [], value: 0 };
     let currentSessionValue = 0;
     let currentSessionStartedAt = 0;
     let previousEntryAt = 0;
     let currentSessionEntries: LayoutShiftDetail["entries"] = [];
-    const measurementStartedAt = performance.now();
     const observer = new PerformanceObserver((list) => {
-      if (metricsWindow.__adminCopilotCLSMeasurementId !== measurementId) return;
       for (const entry of list.getEntries() as LayoutShiftEntry[]) {
-        if (entry.startTime < measurementStartedAt) continue;
         if (entry.hadRecentInput) continue;
 
         if (

@@ -120,12 +120,6 @@ test.describe("Admin V2 Phase 8 module smoke", () => {
     await page.getByRole("button", { name: "Invite admin" }).click();
     const inviteDialog = page.getByRole("dialog", { name: "Invite administrator" });
     await expect(inviteDialog).toBeVisible();
-    await expect(inviteDialog.getByLabel("Admin role templates")).toBeVisible();
-    const permissionsDisclosure = inviteDialog.locator("details", {
-      hasText: "Customize permissions"
-    });
-    await expect(permissionsDisclosure).not.toHaveAttribute("open", "");
-    await permissionsDisclosure.locator("summary").click();
     await expect(inviteDialog.getByRole("region", { name: "Admin permissions" })).toBeVisible();
     await inviteDialog.getByRole("button", { name: "Cancel" }).click();
     await expect(inviteDialog).toHaveCount(0);

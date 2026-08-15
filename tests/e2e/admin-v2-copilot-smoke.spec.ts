@@ -93,15 +93,13 @@ test.describe("Admin V2 contextual Copilot smoke", () => {
     let drawer = page.getByRole("dialog", { name: "Admin Overview Admin Copilot" });
     await expect(drawer).toBeVisible();
     await expect(drawer.getByText("Contextual Admin Copilot")).toBeVisible();
-    const currentContext = drawer.locator('details[aria-label="Current section context"]');
-    await currentContext.locator("summary").click();
     await expect(drawer.getByText("Current section")).toBeVisible();
     await expect(drawer.getByText("Permission boundary")).toBeVisible();
 
-    await (await revealCopilotCommand(drawer, /Summarize this page/)).click();
+    await drawer.getByRole("button", { name: /Summarize this page/ }).click();
     await expect(drawer.getByRole("heading", { name: "Admin Overview summary" })).toBeVisible();
 
-    await (await revealCopilotCommand(drawer, /Generate report/)).click();
+    await drawer.getByRole("button", { name: /Generate report/ }).click();
     const copyReport = drawer.getByRole("button", { name: "Copy report" });
     await expect(copyReport).not.toBeVisible();
     const reportConfirmation = drawer.getByRole("alertdialog", {
@@ -148,8 +146,6 @@ test.describe("Admin V2 contextual Copilot smoke", () => {
     await expect(plan).toContainText("Dry run: blocked");
     expect(coachSiteMutationCount).toBe(0);
 
-    const responseFeedback = drawer.locator('details[aria-label="Copilot response feedback"]');
-    await responseFeedback.locator("summary").click();
     await drawer.getByRole("button", { name: "Helpful", exact: true }).click();
     await expect(drawer.getByText(/Feedback recorded durably without storing/)).toBeVisible();
     await drawer.getByRole("button", { name: "AI settings and privacy" }).click();
@@ -184,21 +180,20 @@ test.describe("Admin V2 contextual Copilot smoke", () => {
     drawer = page.getByRole("dialog", { name: "Coach Sites Admin Copilot" });
     await expect(drawer).toBeVisible();
     await expect(drawer.getByText("Coach Sites", { exact: true }).first()).toBeVisible();
-    await drawer.getByText("Context details", { exact: true }).click();
     await expect(drawer.getByText(/Context path: Admin Overview -> Coach Sites/)).toBeVisible();
     await drawer.getByRole("button", { name: "Clear conversation/context" }).click();
     await expect(
       drawer.getByLabel("Ask, search, investigate, report, or prepare an action")
     ).toHaveValue("");
 
-    await (await revealCopilotCommand(drawer, /Check registration links/)).click();
+    await drawer.getByRole("button", { name: /Check registration links/ }).click();
     await expect(
       drawer.getByText(
         /loaded source status and aggregate records|No warning or unavailable-source/
       )
     ).toBeVisible();
 
-    await (await revealCopilotCommand(drawer, /Prepare archive review/)).click();
+    await drawer.getByRole("button", { name: /Prepare archive review/ }).click();
     const confirmation = drawer.getByRole("alertdialog", { name: "Prepare archive review" });
     await expect(confirmation).toContainText("Copilot cannot read, submit, or bypass an OTP");
     await confirmation.getByRole("button", { name: "Cancel" }).click();
@@ -210,7 +205,7 @@ test.describe("Admin V2 contextual Copilot smoke", () => {
     const builderPill = page.getByRole("button", { name: "Open Website Creator Admin Copilot" });
     await builderPill.click();
     drawer = page.getByRole("dialog", { name: "Website Creator Admin Copilot" });
-    await (await revealCopilotCommand(drawer, /Check publish readiness/)).click();
+    await drawer.getByRole("button", { name: /Check publish readiness/ }).click();
     const readinessResult = drawer
       .getByRole("listitem")
       .filter({ hasText: /Publish readiness is missing:/ })
@@ -268,7 +263,7 @@ test.describe("Admin V2 contextual Copilot smoke", () => {
       })
       .click();
     await drawer.getByRole("button", { name: "Selected Records" }).click();
-    await (await revealCopilotCommand(drawer, /Mark selected report Reviewing/)).click();
+    await drawer.getByRole("button", { name: /Mark selected report Reviewing/ }).click();
     const reviewConfirmation = drawer.getByRole("alertdialog", {
       name: "Mark selected report Reviewing"
     });
@@ -417,7 +412,7 @@ test.describe("Admin V2 contextual Copilot smoke", () => {
     await pill.click();
     const drawer = page.getByRole("dialog", { name: "Admin Overview Admin Copilot" });
     await expect(drawer).toBeVisible();
-    await (await revealCopilotCommand(drawer, /Summarize this page/)).click();
+    await drawer.getByRole("button", { name: /Summarize this page/ }).click();
     await expect(drawer.locator('[data-admin-ai-response="true"]')).toHaveAttribute(
       "data-state",
       /^(ready|missing-data)$/
@@ -448,29 +443,13 @@ async function verifySectionCopilot(page: import("@playwright/test").Page, secti
     scrollWidth: element.scrollWidth
   }));
   expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1);
-  await (await revealCopilotCommand(drawer, /Summarize this page/)).click();
+  await drawer.getByRole("button", { name: /Summarize this page/ }).click();
   await expect(drawer.locator('[data-admin-ai-response="true"]')).toHaveAttribute(
     "data-state",
     /^(ready|missing-data)$/
   );
   await page.keyboard.press("Escape");
   await expect(drawer).not.toBeVisible();
-}
-
-async function revealCopilotCommand(
-  drawer: import("@playwright/test").Locator,
-  name: RegExp | string
-) {
-  const command = drawer.getByRole("button", { name });
-  if (await command.isVisible()) return command;
-
-  const moreCommands = drawer
-    .locator("details")
-    .filter({ hasText: "More commands" })
-    .locator("summary");
-  await moreCommands.click();
-  await expect(command).toBeVisible();
-  return command;
 }
 
 async function selectAdminSection(page: import("@playwright/test").Page, label: string) {

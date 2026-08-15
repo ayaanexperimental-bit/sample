@@ -11,7 +11,9 @@ import {
   useMemo,
   useState
 } from "react";
+import { AdminMatrixBackground } from "./admin-matrix-background";
 import styles from "./admin-auth-shell.module.css";
+import { BorderGlow } from "./border-glow";
 import {
   adminV2NavSections,
   type AdminV2CoachSiteFocus,
@@ -68,6 +70,18 @@ const ADMIN_REDIRECT_LOOP_WINDOW_MS = 15_000;
 const ADMIN_VIEW_IDS = new Set(
   adminV2NavSections.flatMap((section) => section.items.map((item) => item.id))
 );
+const ADMIN_LOGIN_BORDER_GLOW_PROPS = {
+  animated: true,
+  backgroundColor: "#10151c",
+  borderRadius: 8,
+  colors: ["#35ff8a", "#00ffc8", "#a3ff4a"],
+  coneSpread: 30,
+  edgeSensitivity: 12,
+  fillOpacity: 0.42,
+  glowColor: "145 96 62",
+  glowIntensity: 1.35,
+  glowRadius: 42
+};
 const LazyAdminDashboardShell = lazy(() =>
   import("./admin-dashboard-shell").then((module) => ({
     default: module.AdminDashboardShell
@@ -264,7 +278,7 @@ export function AdminAuthShell({
   const passwordChecks = useMemo(() => getPasswordChecks(newPassword), [newPassword]);
   const passwordStrength = Object.values(passwordChecks).filter(Boolean).length;
   const passwordStrengthStyle = {
-    "--admin-strength": passwordStrength / 5
+    "--admin-strength": `${passwordStrength * 20}%`
   } as CSSProperties;
 
   async function handleEmailCodeSubmit(event: FormEvent<HTMLFormElement>) {
@@ -447,7 +461,8 @@ export function AdminAuthShell({
     if (checkingSession) {
       return (
         <section className={styles.authPanel} aria-busy="true" aria-live="polite">
-          <h1 className={styles.title}>Checking session</h1>
+          <p className={styles.eyebrow}>Admin Security</p>
+          <h1 className={styles.title}>Checking Session</h1>
           <p className={styles.subtitle}>Verifying whether an admin session already exists.</p>
           <div className={styles.loadingBars} aria-hidden="true">
             <span />
@@ -483,51 +498,54 @@ export function AdminAuthShell({
 
   function renderLogin() {
     return (
-      <section className={styles.authPanel} aria-labelledby="admin-login-title">
-        <h1 className={styles.title} id="admin-login-title">
-          Admin login
-        </h1>
-        <p className={styles.subtitle}>Secure access for authorized administrators only.</p>
+      <BorderGlow className={styles.panelGlow} {...ADMIN_LOGIN_BORDER_GLOW_PROPS}>
+        <section className={styles.authPanel} aria-labelledby="admin-login-title">
+          <p className={styles.eyebrow}>Secure Admin Access</p>
+          <h1 className={styles.title} id="admin-login-title">
+            Admin Login
+          </h1>
+          <p className={styles.subtitle}>Secure access for authorized administrators only.</p>
 
-        <div className={styles.form}>
-          {loginMessage ? <StatusMessage message={loginMessage} /> : null}
+          <div className={styles.form}>
+            {loginMessage ? <StatusMessage message={loginMessage} /> : null}
 
-          <a className={styles.googleButton} href="/api/admin/auth/google/start">
-            Continue with Google
-          </a>
-          {/* Google OAuth remains restricted by ADMIN_ALLOWED_EMAILS and final admin role checks. */}
-        </div>
+            <a className={styles.googleButton} href="/api/admin/auth/google/start">
+              Continue with Google
+            </a>
+            {/* TODO: Keep Google OAuth restricted by ADMIN_ALLOWED_EMAILS and final admin role checks. */}
+          </div>
 
-        <div className={styles.authDivider} aria-hidden="true">
-          <span />
-          <strong>or</strong>
-          <span />
-        </div>
+          <div className={styles.authDivider} aria-hidden="true">
+            <span />
+            <strong>or</strong>
+            <span />
+          </div>
 
-        <form className={styles.form} noValidate onSubmit={handleEmailCodeSubmit}>
-          <label className={styles.field} htmlFor="admin-email">
-            <span>Admin email</span>
-            <input
-              autoComplete="email"
-              id="admin-email"
-              inputMode="email"
-              name="email"
-              onChange={(event) => setLoginEmail(event.target.value)}
-              required
-              type="email"
-              value={loginEmail}
-            />
-          </label>
+          <form className={styles.form} noValidate onSubmit={handleEmailCodeSubmit}>
+            <label className={styles.field} htmlFor="admin-email">
+              <span>Admin email</span>
+              <input
+                autoComplete="email"
+                id="admin-email"
+                inputMode="email"
+                name="email"
+                onChange={(event) => setLoginEmail(event.target.value)}
+                required
+                type="email"
+                value={loginEmail}
+              />
+            </label>
 
-          <button className={styles.primaryButton} disabled={emailSubmitting} type="submit">
-            {emailSubmitting ? "Sending code..." : "Send one-time code"}
-          </button>
-        </form>
+            <button className={styles.primaryButton} disabled={emailSubmitting} type="submit">
+              {emailSubmitting ? "Sending code..." : "Send one-time code"}
+            </button>
+          </form>
 
-        <p className={styles.securityNotice}>
-          Authorized access only. Admin activity may be logged for security.
-        </p>
-      </section>
+          <p className={styles.securityNotice}>
+            Authorized access only. Admin activity may be logged for security.
+          </p>
+        </section>
+      </BorderGlow>
     );
   }
 
@@ -536,8 +554,9 @@ export function AdminAuthShell({
 
     return (
       <section className={styles.authPanel} aria-labelledby="admin-verify-title">
+        <p className={styles.eyebrow}>Multi-Factor Check</p>
         <h1 className={styles.title} id="admin-verify-title">
-          Verify your identity
+          Verify Your Identity
         </h1>
         <p className={styles.subtitle}>
           Enter the one-time code sent to your registered admin email.
@@ -617,8 +636,9 @@ export function AdminAuthShell({
   function renderForgotPassword() {
     return (
       <section className={styles.authPanel} aria-labelledby="admin-forgot-title">
+        <p className={styles.eyebrow}>Account Recovery</p>
         <h1 className={styles.title} id="admin-forgot-title">
-          Reset admin password
+          Reset Admin Password
         </h1>
         <p className={styles.subtitle}>
           Enter your admin email. If the account is authorized, reset instructions will be sent.
@@ -662,8 +682,9 @@ export function AdminAuthShell({
   function renderResetPassword() {
     return (
       <section className={styles.authPanel} aria-labelledby="admin-reset-title">
+        <p className={styles.eyebrow}>Password Update</p>
         <h1 className={styles.title} id="admin-reset-title">
-          Reset admin password
+          Reset Admin Password
         </h1>
         <p className={styles.subtitle}>
           Set a strong password. Real token validation will be connected before production admin
@@ -777,6 +798,7 @@ export function AdminAuthShell({
   function renderAccessIssue(issue: Exclude<AccessIssueState, null>) {
     return (
       <section className={styles.authPanel} aria-labelledby="admin-access-state-title">
+        <p className={styles.eyebrow}>Admin Access</p>
         <h1 className={styles.title} id="admin-access-state-title">
           {issue.title}
         </h1>
@@ -789,16 +811,30 @@ export function AdminAuthShell({
   }
 
   function renderBrandPanel() {
-    return (
+    const panel = (
       <aside className={styles.brandPanel} aria-label="YW Coach admin security">
         <div className={styles.logoMark}>
+          <span className={styles.logoAura} aria-hidden="true" />
+          <span className={styles.logoOrbit} aria-hidden="true" />
+          <span className={styles.logoScan} aria-hidden="true" />
+          <span className={styles.logoPips} aria-hidden="true" />
           <Image alt="" height={994} priority src="/images/yw-nutritech-logo.png" width={1302} />
         </div>
+        <p className={styles.brandKicker}>YW Coach Admin</p>
         <h2>Controlled access for coach platform operations.</h2>
         <p>
-          Allowlisted admins, multi-factor verification, guarded APIs, and auditable operations.
+          This foundation is structured for allowlisted admins, MFA, guarded APIs, audit trails, and
+          future dashboard modules.
         </p>
       </aside>
+    );
+
+    if (step !== "login") return panel;
+
+    return (
+      <BorderGlow className={styles.panelGlow} {...ADMIN_LOGIN_BORDER_GLOW_PROPS}>
+        {panel}
+      </BorderGlow>
     );
   }
 
@@ -806,6 +842,9 @@ export function AdminAuthShell({
     <main
       className={`${styles.adminPage} ${step === "dashboard" ? styles.adminDashboardPage : ""}`}
     >
+      {step === "dashboard" ? null : (
+        <AdminMatrixBackground className={styles.matrixBackgroundLayer} />
+      )}
       <div className={styles.backdrop} aria-hidden="true" />
       <div className={`${styles.shell} ${step === "dashboard" ? styles.shellDashboard : ""}`}>
         {step === "dashboard" ? null : renderBrandPanel()}
@@ -819,8 +858,9 @@ export function AdminAuthShell({
 function AdminDashboardLoading() {
   return (
     <div className={styles.authPanel} aria-busy="true" aria-live="polite">
+      <p className={styles.eyebrow}>Admin Security</p>
       <h1 className={styles.title} id="admin-dashboard-title">
-        Loading admin dashboard
+        Loading Admin Dashboard
       </h1>
       <p className={styles.subtitle}>Preparing your permission-filtered admin modules.</p>
       <div className={styles.loadingBars} aria-hidden="true">

@@ -39,8 +39,7 @@ export function AdminAIResponsePanel({
   onSaveArtifact,
   onToggleSearchResult,
   response,
-  selectedSearchResultIds = [],
-  stabilizeLayout = false
+  selectedSearchResultIds = []
 }: {
   onApprovePlan?: () => void;
   onCancelPlan?: () => void;
@@ -54,14 +53,12 @@ export function AdminAIResponsePanel({
   onToggleSearchResult?: (id: string) => void;
   response: AdminAIResponse | null;
   selectedSearchResultIds?: string[];
-  stabilizeLayout?: boolean;
 }) {
   if (!response) {
     return (
       <section
         aria-label="Admin AI response"
         className={styles.responsePanel}
-        data-layout-stable={stabilizeLayout ? "true" : "false"}
         data-state="idle"
         role="region"
       >
@@ -96,7 +93,6 @@ export function AdminAIResponsePanel({
       aria-label={`Admin AI response: ${response.title}`}
       className={styles.responsePanel}
       data-admin-ai-response="true"
-      data-layout-stable={stabilizeLayout ? "true" : "false"}
       data-state={response.state}
       role="region"
     >
@@ -112,6 +108,20 @@ export function AdminAIResponsePanel({
       </small>
       {response.report ? null : <h4>{response.title}</h4>}
       <p>{response.body}</p>
+      {response.state === "offline-error" || response.state === "action-failed" ? (
+        <div className={styles.failureFallback}>
+          <p>Copilot is optional. Continue with this page&apos;s manual admin controls.</p>
+          {onRetry ? (
+            <button
+              aria-label={`Retry request for ${response.title}`}
+              onClick={onRetry}
+              type="button"
+            >
+              Retry request
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {response.incident ? <AdminAIIncidentPanel incident={response.incident} /> : null}
 
@@ -467,15 +477,11 @@ export function AdminAIResponsePanel({
       ) : null}
 
       {response.approvalReceipt ? (
-        <details
-          className={styles.approvalReceipt}
-          aria-label="Admin AI approval receipt"
-          role="region"
-        >
-          <summary>
+        <section className={styles.approvalReceipt} aria-label="Admin AI approval receipt">
+          <header>
             <small>Approval receipt</small>
             <strong>{response.approvalReceipt.action}</strong>
-          </summary>
+          </header>
           <dl>
             <div>
               <dt>Recommended by AI</dt>
@@ -553,7 +559,7 @@ export function AdminAIResponsePanel({
             {response.approvalReceipt.impact}
           </p>
           <time>{response.approvalReceipt.confirmationTimestamp}</time>
-        </details>
+        </section>
       ) : null}
 
       {response.rollbackAction ? (
@@ -636,21 +642,6 @@ export function AdminAIResponsePanel({
               ceiling. {response.modelRoute.reason}
             </p>
           </details>
-        </div>
-      ) : null}
-
-      {response.state === "offline-error" || response.state === "action-failed" ? (
-        <div className={styles.failureFallback}>
-          <p>Copilot is optional. Continue with this page&apos;s manual admin controls.</p>
-          {onRetry ? (
-            <button
-              aria-label={`Retry request for ${response.title}`}
-              onClick={onRetry}
-              type="button"
-            >
-              Retry request
-            </button>
-          ) : null}
         </div>
       ) : null}
 

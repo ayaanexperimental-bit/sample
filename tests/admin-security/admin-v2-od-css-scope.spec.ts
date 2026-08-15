@@ -123,7 +123,7 @@ test.describe("Admin V2 OD stylesheet containment", () => {
       expect(sourceCss).not.toContain(malformed);
       expect(generatedCss).not.toContain(malformed);
     }
-    expect(sourceCss).toContain("--font-sans: var(--font-body)");
+    expect(sourceCss).toContain("--font-body:");
     expect(sourceCss).toContain(".radial-body");
     expect(sourceCss).toContain("[data-table-body]");
   });
@@ -170,8 +170,7 @@ test.describe("Admin V2 OD stylesheet containment", () => {
 
   test("keeps all native Admin V2 portals inside the stylesheet namespace", () => {
     const portalScopeSource = readRequired(portalScopePath);
-    expect(portalScopeSource).toContain('data-admin-v2={active ? "true" : undefined}');
-    expect(portalScopeSource).toContain("active = true");
+    expect(portalScopeSource).toContain('data-admin-v2="true"');
     expect(portalScopeSource).toContain("data-od-theme={theme}");
     expect(portalScopeSource).toContain('display: "contents"');
 

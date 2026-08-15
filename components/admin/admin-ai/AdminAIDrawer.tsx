@@ -1,75 +1,26 @@
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import styles from "./admin-ai.module.css";
 
 export function AdminAIDrawer({
   children,
+  dismissed,
   onClose,
-  onContentHidden,
-  open,
   sectionName,
   stateLabel,
   theme
 }: {
   children: ReactNode;
+  dismissed?: boolean;
   onClose: () => void;
-  onContentHidden?: () => void;
-  open: boolean;
   sectionName: string;
   stateLabel: string;
   theme: "dark" | "light";
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
-  const scrimRef = useRef<HTMLButtonElement>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const bodyHideTimerRef = useRef<number | null>(null);
-  const [contentVisible, setContentVisible] = useState(false);
-
-  const dismiss = useCallback(() => {
-    if (panelRef.current) {
-      panelRef.current.style.pointerEvents = "none";
-      panelRef.current.style.visibility = "hidden";
-    }
-    if (scrimRef.current) {
-      scrimRef.current.style.pointerEvents = "none";
-      scrimRef.current.style.visibility = "hidden";
-    }
-    onClose();
-  }, [onClose]);
 
   useEffect(() => {
-    if (bodyHideTimerRef.current !== null) {
-      window.clearTimeout(bodyHideTimerRef.current);
-      bodyHideTimerRef.current = null;
-    }
-    if (open) return;
-    bodyHideTimerRef.current = window.setTimeout(() => {
-      if (bodyRef.current) bodyRef.current.dataset.visible = "false";
-      setContentVisible(false);
-      onContentHidden?.();
-      bodyHideTimerRef.current = null;
-    }, 100);
-    return () => {
-      if (bodyHideTimerRef.current !== null) {
-        window.clearTimeout(bodyHideTimerRef.current);
-        bodyHideTimerRef.current = null;
-      }
-    };
-  }, [onContentHidden, open]);
-
-  useEffect(() => {
-    if (!open) return;
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const panel = panelRef.current;
-    if (panel) {
-      panel.scrollTop = 0;
-      panel.style.pointerEvents = "";
-      panel.style.visibility = "";
-    }
-    if (scrimRef.current) {
-      scrimRef.current.style.pointerEvents = "";
-      scrimRef.current.style.visibility = "";
-    }
-    const contentTimer = window.setTimeout(() => setContentVisible(true), 200);
     const closeButton = panel?.querySelector<HTMLButtonElement>('[data-copilot-close="true"]');
     closeButton?.focus();
 
@@ -84,7 +35,7 @@ export function AdminAIDrawer({
           confirmationCancel.click();
           return;
         }
-        dismiss();
+        onClose();
         return;
       }
       if (event.key !== "Tab") return;
@@ -108,37 +59,29 @@ export function AdminAIDrawer({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => {
-      window.clearTimeout(contentTimer);
       document.removeEventListener("keydown", handleKeyDown);
       previousFocus?.focus();
     };
-  }, [dismiss, open]);
+  }, [onClose]);
 
   return (
     <>
       <button
-        aria-hidden={!open}
         aria-label="Close Admin Copilot"
         className={styles.scrim}
-        disabled={!open}
-        onClick={dismiss}
-        ref={scrimRef}
-        style={open ? undefined : { pointerEvents: "none", visibility: "hidden" }}
-        tabIndex={open ? undefined : -1}
+        hidden={dismissed}
+        onClick={onClose}
         type="button"
       />
       <div
-        aria-busy={open && !contentVisible}
-        aria-hidden={!open}
         aria-label={`${sectionName} Admin Copilot`}
         aria-modal="true"
         className={styles.drawer}
         data-theme={theme}
+        hidden={dismissed}
         id="admin-ai-copilot-dialog"
-        inert={!open}
         ref={panelRef}
         role="dialog"
-        style={open ? undefined : { pointerEvents: "none", visibility: "hidden" }}
       >
         <header className={styles.drawerHeader}>
           <div>
@@ -149,20 +92,13 @@ export function AdminAIDrawer({
           <button
             aria-label="Close Admin Copilot"
             data-copilot-close="true"
-            onClick={dismiss}
+            onClick={onClose}
             type="button"
           >
             Close
           </button>
         </header>
-        <div
-          aria-hidden={!contentVisible}
-          className={styles.drawerBody}
-          data-visible={contentVisible ? "true" : "false"}
-          ref={bodyRef}
-        >
-          {children}
-        </div>
+        {children}
       </div>
     </>
   );

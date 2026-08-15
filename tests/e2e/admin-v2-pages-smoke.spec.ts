@@ -74,26 +74,17 @@ test.describe("Admin V2 Pages smoke", () => {
     const adminV2Mount = page.locator('[data-admin-v2="true"]');
     await expect(adminV2Mount).toBeVisible();
     await expect(page.locator('[data-admin-version="v2"]')).toBeVisible();
-    const moreModules = page.locator("details.admin-more");
-    await expect(moreModules).toBeVisible();
-    await expect(moreModules).not.toHaveAttribute("open", "");
-    await moreModules.locator("summary").click();
     await expect(page.getByRole("heading", { name: "Open admin modules" })).toBeVisible();
     await expect(page.getByRole("status", { name: /Owner|Admin|admin-v2-smoke/i })).toBeVisible();
 
     if (smokeMode === "limited") {
-      const navigation = page.getByRole("complementary", { name: "Admin navigation" });
-      await expect(navigation.getByRole("button", { exact: true, name: "Overview" })).toBeVisible();
-      await expect(navigation.getByRole("button", { exact: true, name: "Reports" })).toBeVisible();
-      await expect(navigation.getByRole("button", { exact: true, name: "Shop" })).toHaveCount(0);
-      await expect(
-        navigation.getByRole("button", { exact: true, name: "Admin Users" })
-      ).toHaveCount(0);
-      await expect(
-        navigation.getByRole("button", { exact: true, name: "Create Site" })
-      ).toHaveCount(0);
+      await expect(page.getByRole("button", { exact: true, name: "Overview" })).toBeVisible();
+      await expect(page.getByRole("button", { exact: true, name: "Reports" })).toBeVisible();
+      await expect(page.getByRole("button", { exact: true, name: "Shop" })).toHaveCount(0);
+      await expect(page.getByRole("button", { exact: true, name: "Admin Users" })).toHaveCount(0);
+      await expect(page.getByRole("button", { exact: true, name: "Create Site" })).toHaveCount(0);
 
-      await navigation.getByRole("button", { exact: true, name: "Reports" }).click();
+      await page.getByRole("button", { exact: true, name: "Reports" }).click();
       await expect(page.getByRole("heading", { exact: true, name: "Error Reports" })).toBeVisible();
       await expect(page.locator('[data-admin-version="v2"]')).toBeVisible();
       await expect(page.getByLabel("Cleanup target")).toBeDisabled();

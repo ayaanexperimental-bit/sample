@@ -359,7 +359,12 @@ function AdminAIMemoryClearConfirm({
         >
           Keep memory
         </button>
-        <button data-primary="true" disabled={busy} onClick={() => void onConfirm()} type="button">
+        <button
+          data-primary="true"
+          disabled={busy}
+          onClick={() => void onConfirm()}
+          type="button"
+        >
           {busy ? "Clearing memory..." : "Clear memory and feedback"}
         </button>
       </div>
@@ -486,32 +491,18 @@ export function AdminAIPill({
   const [scope, setScope] = useState<AdminAIScope>("page");
   const [selectedEntityIds, setSelectedEntityIds] = useState<string[]>([]);
   const [preparedPanelSectionId, setPreparedPanelSectionId] = useState("");
-  const panelContentReady = preparedPanelSectionId === context.sectionId;
-  const [networkActiveSectionId, setNetworkActiveSectionId] = useState("");
-  const panelContentActive =
-    open && panelContentReady && networkActiveSectionId === context.sectionId;
+  const [drawerDismissed, setDrawerDismissed] = useState(false);
+  const closeFrameRef = useRef(0);
+  const panelContentReady = open && preparedPanelSectionId === context.sectionId;
   useEffect(() => {
-    if (panelContentReady) return;
-    if (open) {
-      const activationId = window.setTimeout(() => {
-        startTransition(() => setPreparedPanelSectionId(context.sectionId));
-      }, 200);
-      return () => window.clearTimeout(activationId);
+    if (!open) {
+      const resetId = window.setTimeout(() => setPreparedPanelSectionId(""), 0);
+      return () => window.clearTimeout(resetId);
     }
     return scheduleAdminAIPanelContent(() => {
       startTransition(() => setPreparedPanelSectionId(context.sectionId));
     });
-  }, [context.sectionId, open, panelContentReady]);
-  useEffect(() => {
-    if (!open || !panelContentReady) {
-      const resetId = window.setTimeout(() => setNetworkActiveSectionId(""), 0);
-      return () => window.clearTimeout(resetId);
-    }
-    const activationId = window.setTimeout(() => {
-      startTransition(() => setNetworkActiveSectionId(context.sectionId));
-    }, 120);
-    return () => window.clearTimeout(activationId);
-  }, [context.sectionId, open, panelContentReady]);
+  }, [context.sectionId, open]);
   const effectiveContext = useMemo(() => {
     if (!panelContentReady) return context;
     return scopeAdminAIContext(context, scope, selectedEntityIds);
@@ -652,8 +643,6 @@ export function AdminAIPill({
   const [canRetry, setCanRetry] = useState(false);
   const [pendingReportDecision, setPendingReportDecision] =
     useState<PendingAdminAIReportDecision | null>(null);
-  const [responseLayoutStable, setResponseLayoutStable] = useState(false);
-  const releaseResponseLayout = useCallback(() => setResponseLayoutStable(false), []);
   const auditQueueRef = useRef<Promise<AdminAIActionAuditResult>>(
     Promise.resolve({ ok: true, requestId: "" })
   );
@@ -997,7 +986,7 @@ export function AdminAIPill({
   }, []);
 
   useEffect(() => {
-    if (!panelContentActive || busy || !profile?.isOwner || !featureFlags.incidentMode) return;
+    if (!panelContentReady || busy || !profile?.isOwner || !featureFlags.incidentMode) return;
     const controller = new AbortController();
     void fetch("/api/admin/ai-incidents", {
       cache: "no-store",
@@ -1017,10 +1006,10 @@ export function AdminAIPill({
       })
       .catch(() => undefined);
     return () => controller.abort();
-  }, [busy, effectiveContext, featureFlags.incidentMode, panelContentActive, profile?.isOwner]);
+  }, [busy, effectiveContext, featureFlags.incidentMode, panelContentReady, profile?.isOwner]);
 
   useEffect(() => {
-    if (!panelContentActive || !profile?.email) return;
+    if (!panelContentReady || !profile?.email) return;
     const controller = new AbortController();
     void loadAdminAIArtifacts(controller.signal).then((result) => {
       if (controller.signal.aborted) return;
@@ -1029,10 +1018,10 @@ export function AdminAIPill({
       );
     });
     return () => controller.abort();
-  }, [panelContentActive, profile?.email]);
+  }, [panelContentReady, profile?.email]);
 
   useEffect(() => {
-    if (!panelContentActive || !profile?.email) return;
+    if (!panelContentReady || !profile?.email) return;
     const controller = new AbortController();
     void loadAdminAISettings(controller.signal).then((result) => {
       if (controller.signal.aborted) return;
@@ -1057,10 +1046,10 @@ export function AdminAIPill({
       setSettingsStatus("Durable AI settings loaded.");
     });
     return () => controller.abort();
-  }, [panelContentActive, profile?.email]);
+  }, [panelContentReady, profile?.email]);
 
   useEffect(() => {
-    if (!panelContentActive || !profile?.email) return;
+    if (!panelContentReady || !profile?.email) return;
     const controller = new AbortController();
     void loadAdminAISavedTasks(controller.signal).then((result) => {
       if (controller.signal.aborted) return;
@@ -1078,10 +1067,10 @@ export function AdminAIPill({
       );
     });
     return () => controller.abort();
-  }, [panelContentActive, profile?.email]);
+  }, [panelContentReady, profile?.email]);
 
   useEffect(() => {
-    if (!panelContentActive || !profile?.isOwner) return;
+    if (!panelContentReady || !profile?.isOwner) return;
     const controller = new AbortController();
     void loadAdminAIObservability(controller.signal).then((result) => {
       if (!controller.signal.aborted && result.ok && result.payload.dashboard) {
@@ -1089,10 +1078,10 @@ export function AdminAIPill({
       }
     });
     return () => controller.abort();
-  }, [panelContentActive, profile?.isOwner]);
+  }, [panelContentReady, profile?.isOwner]);
 
   useEffect(() => {
-    if (!panelContentActive || !settingsOpen || !profile?.isOwner) return;
+    if (!panelContentReady || !settingsOpen || !profile?.isOwner) return;
     const controller = new AbortController();
     void loadAdminAISchedules(controller.signal).then((result) => {
       if (!controller.signal.aborted && result.ok && result.payload.schedules) {
@@ -1100,7 +1089,7 @@ export function AdminAIPill({
       }
     });
     return () => controller.abort();
-  }, [panelContentActive, profile?.isOwner, settingsOpen]);
+  }, [panelContentReady, profile?.isOwner, settingsOpen]);
 
   useEffect(() => {
     function openCommandCenter(event: KeyboardEvent) {
@@ -1136,9 +1125,17 @@ export function AdminAIPill({
   const close = useCallback(() => {
     setPendingCommand(null);
     setClearMemoryConfirmOpen(false);
-    setNetworkActiveSectionId("");
-    onOpenChange(false);
-    startTransition(() => onAssistantStateChange("idle"));
+    setDrawerDismissed(true);
+    window.cancelAnimationFrame(closeFrameRef.current);
+    closeFrameRef.current = window.requestAnimationFrame(() => {
+      closeFrameRef.current = window.requestAnimationFrame(() => {
+        setPreparedPanelSectionId("");
+        onOpenChange(false);
+        startTransition(() => onAssistantStateChange("idle"));
+        setDrawerDismissed(false);
+        closeFrameRef.current = 0;
+      });
+    });
   }, [onAssistantStateChange, onOpenChange]);
 
   function updatePreferences(next: AdminAIPreferences) {
@@ -1728,7 +1725,6 @@ export function AdminAIPill({
       : () => void execute(command, confirmed);
     setCanRetry(!serverOwnsExecutionAudit);
     const startedAt = monotonicTimeMs();
-    setResponseLayoutStable(true);
     setBusy(true);
     setSelectedId(command.id);
     setResponse({
@@ -1861,11 +1857,6 @@ export function AdminAIPill({
                 }
               }
             : nextResponse;
-      responseWithReceipt.progress = [
-        { id: "context", label: "Reading permission-filtered context", status: "complete" },
-        { id: "command", label: "Running registered command", status: "complete" },
-        { id: "verify", label: "Verifying result", status: "complete" }
-      ];
       setResponse(responseWithReceipt);
       onAssistantStateChange(failed ? "confused" : "success", 2400);
       onActivity({
@@ -2248,7 +2239,6 @@ export function AdminAIPill({
     retryOperationRef.current = () => void submitQuery(undefined, request);
     setCanRetry(true);
     const startedAt = monotonicTimeMs();
-    setResponseLayoutStable(true);
     setBusy(true);
     setPendingCommand(null);
     setSelectedId("");
@@ -2371,7 +2361,10 @@ export function AdminAIPill({
             status: responseOutcome.checkpointStatus
           },
           csrfToken,
-          createAdminAIIdempotencyKey("checkpoint", `${taskForRequest.id}-${requestFingerprint}`)
+          createAdminAIIdempotencyKey(
+            "checkpoint",
+            `${taskForRequest.id}-${requestFingerprint}`
+          )
         );
         if (checkpoint.ok && checkpoint.payload.task) {
           taskForRequest = checkpoint.payload.task;
@@ -2429,11 +2422,6 @@ export function AdminAIPill({
             { csrfToken }
           );
       if (operationRef.current !== operationId || controller.signal.aborted) return;
-      next.progress = [
-        { id: "scope", label: "Applying scope and permissions", status: "complete" },
-        { id: "retrieve", label: "Retrieving bounded evidence", status: "complete" },
-        { id: "answer", label: "Preparing grounded result", status: "complete" }
-      ];
       setResponse(next);
       recordObservation(
         {
@@ -2636,8 +2624,7 @@ export function AdminAIPill({
     );
     if (!result.ok || !result.payload.task) {
       setSavedTaskStatus(
-        result.error ||
-          "Local context cleared, but the durable conversation boundary was not updated."
+        result.error || "Local context cleared, but the durable conversation boundary was not updated."
       );
       return;
     }
@@ -2749,11 +2736,10 @@ export function AdminAIPill({
         ? "listening"
         : "idle";
 
-  const panel = (
+  const panel = open ? (
     <AdminAIDrawer
+      dismissed={drawerDismissed}
       onClose={close}
-      onContentHidden={releaseResponseLayout}
-      open={open}
       sectionName={scope === "global" ? "Global Admin" : section.name}
       stateLabel={`${context.dataFreshness} / ${formatCopilotState(copilotDisplayState)}`}
       theme={theme}
@@ -2787,14 +2773,9 @@ export function AdminAIPill({
                 );
               })}
             </div>
-            <details className={styles.scopeDetails}>
-              <summary>Context details</summary>
-              <div>
-                <p>Context path: {contextTrail.join(" -> ")}</p>
-                <p>Selected entity: {selectedEntitySummary || "None"}</p>
-                <p>Current filters: {filterSummary || "None"}</p>
-              </div>
-            </details>
+            <p>Context path: {contextTrail.join(" -> ")}</p>
+            <p>Selected entity: {selectedEntitySummary || "None"}</p>
+            <p>Current filters: {filterSummary || "None"}</p>
           </section>
 
           <section className={styles.savedTasksPanel} aria-label="Saved tasks">
@@ -2816,14 +2797,13 @@ export function AdminAIPill({
             </button>
             {savedTasksOpen ? (
               <div className={styles.savedTasksBody}>
-                <p>Resume is always explicit. Permissions and data will be checked again.</p>
+                <p>
+                  Resume is always explicit. Permissions and data will be checked again.
+                </p>
                 {savedTasks.length ? (
                   <ul className={styles.savedTaskList}>
                     {savedTasks.map((task) => (
-                      <li
-                        data-active={activeSavedTask?.id === task.id ? "true" : "false"}
-                        key={task.id}
-                      >
+                      <li data-active={activeSavedTask?.id === task.id ? "true" : "false"} key={task.id}>
                         <div>
                           <strong>{task.title}</strong>
                           <span>
@@ -2840,11 +2820,7 @@ export function AdminAIPill({
                   <p>No saved tasks yet. Run a request to create a secure task boundary.</p>
                 )}
                 {resumeCandidate ? (
-                  <div
-                    className={styles.resumePreview}
-                    role="group"
-                    aria-label="Saved task resume preview"
-                  >
+                  <div className={styles.resumePreview} role="group" aria-label="Saved task resume preview">
                     <strong>{resumeCandidate.title}</strong>
                     <p>{resumeCandidate.goal}</p>
                     <dl>
@@ -2946,42 +2922,36 @@ export function AdminAIPill({
             </small>
           </form>
 
-          <details className={styles.contextSummary} aria-label="Current section context">
-            <summary>
-              <span>Current context</span>
+          <section className={styles.contextSummary} aria-label="Current section context">
+            <div>
+              <small>Current section</small>
               <strong>{context.sectionName}</strong>
-            </summary>
-            <div className={styles.contextSummaryGrid}>
-              <div>
-                <small>Current section</small>
-                <strong>{context.sectionName}</strong>
-                <span>{context.dateRange}</span>
-              </div>
-              <div>
-                <small>Permission boundary</small>
-                <strong>{rolePersonalization?.label}</strong>
-                <span>
-                  {commands.length} allowed commands · {rolePersonalization?.focus}
-                </span>
-                {unavailableCapabilityReason ? (
-                  <button onClick={explainUnavailableCapabilities} type="button">
-                    Why are some actions unavailable?
-                  </button>
-                ) : null}
-              </div>
-              <div>
-                <small>Source state</small>
-                <strong>
-                  {effectiveContext.loadingState
-                    ? "Loading"
-                    : effectiveContext.errors.length
-                      ? "Unavailable source"
-                      : "Ready"}
-                </strong>
-                <span>{effectiveContext.relatedAPIs.length} registered sources</span>
-              </div>
+              <span>{context.dateRange}</span>
             </div>
-          </details>
+            <div>
+              <small>Permission boundary</small>
+              <strong>{rolePersonalization?.label}</strong>
+              <span>
+                {commands.length} allowed commands · {rolePersonalization?.focus}
+              </span>
+              {unavailableCapabilityReason ? (
+                <button onClick={explainUnavailableCapabilities} type="button">
+                  Why are some actions unavailable?
+                </button>
+              ) : null}
+            </div>
+            <div>
+              <small>Source state</small>
+              <strong>
+                {effectiveContext.loadingState
+                  ? "Loading"
+                  : effectiveContext.errors.length
+                    ? "Unavailable source"
+                    : "Ready"}
+              </strong>
+              <span>{effectiveContext.relatedAPIs.length} registered sources</span>
+            </div>
+          </section>
 
           {alertCount ? (
             <section className={styles.alertStrip} aria-label="Real data alerts">
@@ -3064,7 +3034,6 @@ export function AdminAIPill({
               }
               response={response}
               selectedSearchResultIds={selectedEntityIds}
-              stabilizeLayout={responseLayoutStable}
             />
           </Suspense>
 
@@ -3118,55 +3087,52 @@ export function AdminAIPill({
           ) : null}
 
           {response && !busy ? (
-            <details className={styles.feedbackPanel} aria-label="Copilot response feedback">
-              <summary>Response feedback and correction</summary>
-              <div className={styles.feedbackBody}>
-                <strong>Evaluate this response</strong>
-                <div>
-                  {FEEDBACK.map((item) => (
-                    <button key={item.id} onClick={() => recordFeedback(item.id)} type="button">
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-                <div className={styles.settingsGrid}>
-                  <label>
-                    Structured correction category
-                    <select
-                      onChange={(event) =>
-                        setCorrectionCategory(
-                          event.target.value as (typeof CORRECTION_CATEGORIES)[number]["id"]
-                        )
-                      }
-                      value={correctionCategory}
-                    >
-                      {CORRECTION_CATEGORIES.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Correction for evaluation
-                    <textarea
-                      maxLength={800}
-                      onChange={(event) => setCorrectionText(event.target.value)}
-                      placeholder="Describe the corrected interpretation or workflow preference."
-                      value={correctionText}
-                    />
-                  </label>
-                  <button
-                    disabled={!correctionText.trim()}
-                    onClick={() => void submitCorrection()}
-                    type="button"
-                  >
-                    Submit for owner review
+            <section className={styles.feedbackPanel} aria-label="Copilot response feedback">
+              <strong>Evaluate this response</strong>
+              <div>
+                {FEEDBACK.map((item) => (
+                  <button key={item.id} onClick={() => recordFeedback(item.id)} type="button">
+                    {item.label}
                   </button>
-                </div>
-                {feedbackStatus ? <p role="status">{feedbackStatus}</p> : null}
+                ))}
               </div>
-            </details>
+              <div className={styles.settingsGrid}>
+                <label>
+                  Structured correction category
+                  <select
+                    onChange={(event) =>
+                      setCorrectionCategory(
+                        event.target.value as (typeof CORRECTION_CATEGORIES)[number]["id"]
+                      )
+                    }
+                    value={correctionCategory}
+                  >
+                    {CORRECTION_CATEGORIES.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Correction for evaluation
+                  <textarea
+                    maxLength={800}
+                    onChange={(event) => setCorrectionText(event.target.value)}
+                    placeholder="Describe the corrected interpretation or workflow preference."
+                    value={correctionText}
+                  />
+                </label>
+                <button
+                  disabled={!correctionText.trim()}
+                  onClick={() => void submitCorrection()}
+                  type="button"
+                >
+                  Submit for owner review
+                </button>
+              </div>
+              {feedbackStatus ? <p role="status">{feedbackStatus}</p> : null}
+            </section>
           ) : null}
 
           <section className={styles.settingsPanel} aria-label="Admin Copilot settings">
@@ -3860,65 +3826,56 @@ export function AdminAIPill({
           </section>
 
           {profile?.isOwner ? (
-            <details className={styles.observabilityDisclosure} aria-label="Owner AI observability">
-              <summary>
-                <span>
-                  <strong>AI observability</strong>
-                  <small>Owner-only usage, reliability, safety, and cost signals</small>
-                </span>
-                <span aria-hidden="true">Review</span>
-              </summary>
-              <section className={styles.observabilityPanel}>
-                <div>
-                  <small>Durable requests</small>
-                  <strong>
-                    {observabilityDashboard?.usage.requests ?? observationSummary?.requests ?? 0}
-                  </strong>
-                </div>
-                <div>
-                  <small>Action success</small>
-                  <strong>
-                    {observabilityDashboard?.actionSuccess.rate ??
-                      observationSummary?.successRate ??
-                      0}
-                    %
-                  </strong>
-                </div>
-                <div>
-                  <small>Blocked</small>
-                  <strong>
-                    {observabilityDashboard?.failures.blocked ?? observationSummary?.blocked ?? 0}
-                  </strong>
-                </div>
-                <div>
-                  <small>Average latency</small>
-                  <strong>
-                    {observabilityDashboard?.latency.averageMs ??
-                      observationSummary?.averageLatencyMs ??
-                      0}{" "}
-                    ms
-                  </strong>
-                </div>
-                <div>
-                  <small>Dangerous actions blocked</small>
-                  <strong>{observabilityDashboard?.blockedDangerousActions ?? 0}</strong>
-                </div>
-                <div>
-                  <small>Feedback score</small>
-                  <strong>{observabilityDashboard?.feedback.score ?? 0}%</strong>
-                </div>
-                <div>
-                  <small>Pending corrections</small>
-                  <strong>{observabilityDashboard?.corrections.pending ?? 0}</strong>
-                </div>
-                <div>
-                  <small>Estimated cost</small>
-                  <strong>
-                    {formatMicrousd(observabilityDashboard?.cost.estimatedMicrousd ?? 0)}
-                  </strong>
-                </div>
-              </section>
-            </details>
+            <section className={styles.observabilityPanel} aria-label="Owner AI observability">
+              <div>
+                <small>Durable requests</small>
+                <strong>
+                  {observabilityDashboard?.usage.requests ?? observationSummary?.requests ?? 0}
+                </strong>
+              </div>
+              <div>
+                <small>Action success</small>
+                <strong>
+                  {observabilityDashboard?.actionSuccess.rate ??
+                    observationSummary?.successRate ??
+                    0}
+                  %
+                </strong>
+              </div>
+              <div>
+                <small>Blocked</small>
+                <strong>
+                  {observabilityDashboard?.failures.blocked ?? observationSummary?.blocked ?? 0}
+                </strong>
+              </div>
+              <div>
+                <small>Average latency</small>
+                <strong>
+                  {observabilityDashboard?.latency.averageMs ??
+                    observationSummary?.averageLatencyMs ??
+                    0}{" "}
+                  ms
+                </strong>
+              </div>
+              <div>
+                <small>Dangerous actions blocked</small>
+                <strong>{observabilityDashboard?.blockedDangerousActions ?? 0}</strong>
+              </div>
+              <div>
+                <small>Feedback score</small>
+                <strong>{observabilityDashboard?.feedback.score ?? 0}%</strong>
+              </div>
+              <div>
+                <small>Pending corrections</small>
+                <strong>{observabilityDashboard?.corrections.pending ?? 0}</strong>
+              </div>
+              <div>
+                <small>Estimated cost</small>
+                <strong>
+                  {formatMicrousd(observabilityDashboard?.cost.estimatedMicrousd ?? 0)}
+                </strong>
+              </div>
+            </section>
           ) : null}
 
           <section className={styles.activityStream} aria-label="Copilot action audit stream">
@@ -3948,7 +3905,7 @@ export function AdminAIPill({
         </div>
       )}
     </AdminAIDrawer>
-  );
+  ) : null;
 
   if (!featureFlags.copilot) return null;
 
@@ -3971,6 +3928,9 @@ export function AdminAIPill({
             close();
             return;
           }
+          window.cancelAnimationFrame(closeFrameRef.current);
+          closeFrameRef.current = 0;
+          setDrawerDismissed(false);
           onOpenChange(!open);
           startTransition(() => onAssistantStateChange(open ? "idle" : "listen"));
         }}
@@ -3996,9 +3956,7 @@ export function AdminAIPill({
       </button>
       {panel && typeof document !== "undefined"
         ? createPortal(
-            <AdminV2PortalScope active={open} theme={theme}>
-              {panel}
-            </AdminV2PortalScope>,
+            <AdminV2PortalScope theme={theme}>{panel}</AdminV2PortalScope>,
             document.body
           )
         : panel}
